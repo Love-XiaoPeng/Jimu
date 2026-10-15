@@ -33,7 +33,7 @@ Spring AI 的 ToolDefinition 由适配层从已校验 descriptor 和输入 Schem
 
 输出 Schema 在 generate-resources 阶段直接复制原权威文件，源码中不维护第二份输出定义。启动准入和来源完整性测试核对摘要；旧 `$id`、`$comment` 与四字段原样保留。校验使用 JSON 边界类型，公共插件契约不暴露 JSON/Spring 类型。
 
-样例 provider 仅允许运维配置的一个 HTTP(S) origin，无凭据、禁重定向，最多收集 1 MiB + 1 字节以识别截断，仅输出前 1 MiB；前后检查取消，剩余 deadline 约束整个请求（包含慢响应体），超限或超时取消订阅/请求。readiness 同样限制完整请求为 2 秒、响应体为 4096 字节，超过上限返回 DOWN。非 2xx 是可观察内容。`configured-origin-only` 是 P1 fixture 的窄权限，并不等于已完成 `public-web-through-proxy`、HTML 清洗、SSRF/重绑定隔离、canonical 总字节预算或 Harness 模型投影；任意网页业务仍未启用。取消目前在边界前后检查，不宣称已实现 P2 的进程树排空或实时取消协议。
+样例 provider 仅允许运维配置的一个 HTTP(S) origin，无凭据、禁重定向，最多收集 1 MiB + 1 字节以识别截断，输出为不超过 1 MiB 的完整 UTF-8 字符前缀。截断处未完成的字符不输出，不通过 U+FFFD 替换补齐；已解码前缀存在非法编码或完整响应以未完成字符结束时失败。上限约束 content 重新编码的字节数，不包括 HTTP DTO/JSON 元数据。前后检查取消，剩余 deadline 约束整个请求（包含慢响应体），超限或超时取消订阅/请求。readiness 同样限制完整请求为 2 秒、响应体为 4096 字节，超过上限返回 DOWN。非 2xx 是可观察内容。`configured-origin-only` 是 P1 fixture 的窄权限，并不等于已完成 `public-web-through-proxy`、HTML 清洗、SSRF/重绑定隔离、canonical 总字节预算或 Harness 模型投影；任意网页业务仍未启用。取消目前在边界前后检查，不宣称已实现 P2 的进程树排空或实时取消协议。
 
 ## 启动与必需资源
 

@@ -1,6 +1,25 @@
 # XIAO-34 验证记录
 
-## R4 退出调用门禁修订（2026-10-15）
+## UTF-8 截断修订与 R4 联合回归（2026-10-15）
+
+测试侧最小复现为合法 UTF-8 `"中".repeat(349527)`，输入 1,048,581 字节。修复前新增回归确实因输出包含 U+FFFD 失败，原始 Maven 退出 **1**。修复后结果为完整的 349525 个“中”，UTF-8 重新编码为 **1,048,575 字节**，`truncated=true`，未生成替换字符。
+
+实现仍最多收集 1 MiB + 1 字节识别截断，再使用 UTF-8 decoder 读取不超过 1 MiB 的前缀；截断时不把末尾未完成字符当成完整输入，因此只输出完整字符。非法编码报错，完整响应以未完成字符结束也报错，避免替换字符膨胀。这是 content 的 UTF-8 字节上限，不是整个 JSON 的 canonical 总预算。
+
+| 本轮实际命令 | 原始退出码 / 结果 |
+| --- | --- |
+| `mvnw.cmd -B -ntp spotless:apply test -Dtest=Utf8ResponseContractTest#qaReproductionKeepsWholeCharactersWithinByteLimit`（修复前） | **1**；1 test / 1 failure，在替换字符断言失败 |
+| `mvnw.cmd -B -ntp spotless:apply test -Dtest=Utf8ResponseContractTest`（修复后） | **0**；17 tests / 0 failures / 0 errors / 0 skipped |
+| `mvnw.cmd -B -ntp verify` | **0**；31 tests（29 单元/契约/架构 + 2 独立进程集成），无失败/错误/跳过，SpotBugs 0 问题；47.775 秒 |
+| `node tools/verify-negative-gates.mjs system-exit runtime-exit runtime-halt` | 脚本 **0**；三个独立副本完整构建分别 **1 / 1 / 1**，均在 ArchUnit 的对应方法调用处失败 |
+
+新增 `Utf8ResponseContractTest` 的 17 次执行包括：1 次测试侧最小复现、12 个 2/3/4 字节字符边界位置、3 个响应大小 N−1/N/N+1（N=1,048,576）和 1 次非法/不完整 UTF-8 拒绝检查。合法 fixture 均断言完整预期前缀、未新增 U+FFFD、重新编码不超上限、状态码及正确 truncated 标志。测试使用真实本机 HTTP fixture，finally 关闭，不请求外部站点。
+
+本轮 R4 三个副本每次为 29 项单元/契约/架构测试中 1 项 ArchUnit 断言失败；退出方法未执行。R4 的方法调用约束与原线程/进程规则未改。首次 8 类负向构建历史结果仍见下节，本轮未重复执行。正常构建的 worker/control 子进程均收集并确认退出；原始日志、测试报告与清理证据随事项交付。
+
+本次仅修改受控 reader 的 UTF-8 解码、对应回归和说明；权威来源、Schema、DTO 字段及依赖版本保持不变。R4 与本缺陷仍待独立聚焦复验及产品验收，不能据此宣称 P1 已验收。
+
+## R4 退出调用门禁修订（提交 48cbeec，2026-10-15）
 
 审查在首批提交 `0c82e1b37db65c3a60a417350b8eb36cba55f62d` 的插件包中加入未执行的 `ForbiddenExit.stop(int status) { System.exit(status); }` 后，完整 verify 仍退出 0。该缺口已通过实际方法调用规则修复：生产类不得调用 `System.exit(int)`、`Runtime.exit(int)` 或 `Runtime.halt(int)`。P1 没有获准的退出调用点，因此覆盖全部生产包；原 Thread/ProcessBuilder 规则及其他架构约束未改。此规则不把一般 `System`/`Runtime` 类型引用一概禁止，也不等于运行时沙箱。
 

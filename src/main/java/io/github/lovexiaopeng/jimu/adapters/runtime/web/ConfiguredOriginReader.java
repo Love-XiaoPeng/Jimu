@@ -8,10 +8,11 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
 
 /** P1 fixture provider, restricted to one operator-configured origin, with redirects disabled. */
 public final class ConfiguredOriginReader implements WebPageReader, AutoCloseable {
@@ -62,13 +63,14 @@ public final class ConfiguredOriginReader implements WebPageReader, AutoCloseabl
               timeout);
       byte[] bytes = response.body();
       boolean truncated = bytes.length > OUTPUT_BYTES;
-      byte[] content = truncated ? Arrays.copyOf(bytes, OUTPUT_BYTES) : bytes;
+      var input = ByteBuffer.wrap(bytes, 0, Math.min(bytes.length, OUTPUT_BYTES));
+      var content = CharBuffer.allocate(input.remaining());
+      // A truncated response may end partway through a code point; leave those bytes undecoded.
+      var decoded = StandardCharsets.UTF_8.newDecoder().decode(input, content, !truncated);
+      if (decoded.isError()) decoded.throwException();
       context.cancellation().throwIfCancelled();
       return new FetchOutput(
-          response.statusCode(),
-          target.toString(),
-          new String(content, StandardCharsets.UTF_8),
-          truncated);
+          response.statusCode(), target.toString(), content.flip().toString(), truncated);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new IllegalStateException("Provider request interrupted", e);
