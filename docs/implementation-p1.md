@@ -17,6 +17,8 @@
 
 `plugin.api` 只有 JDK 类型和不可变契约。`kernel.plugin.application` 构造不可变发现集合，不静默覆盖重复身份或能力名；这不是持久化安装/升级服务。`kernel.readiness` 经自己的端口探测资源，仅通过 `kernel.plugin.api` 访问插件目录。`api` 仅暴露 readiness DTO；`bootstrap` 只做角色配置与固定实现装配。ArchUnit 约束叶子契约、跨模块公开 API、插件/内核/Controller 方向、线程/进程准入及顶层包循环。
 
+R4 补充：ArchUnit 对实际生产字节码的方法调用分别禁止 `System.exit(int)`、`Runtime.exit(int)`、`Runtime.halt(int)`。P1 没有获准的 JVM 退出调用点，因此本规则覆盖全部生产包，bootstrap/runtime 不自动获得退出豁免；既有 Thread/ProcessBuilder 类型规则保留。将来确需例外须按 ADR 精确批准调用位置。本门禁不等于对反射、native 或不可信 JAR 的运行时沙箱。
+
 Spring AI 的 ToolDefinition 由适配层从已校验 descriptor 和输入 Schema 生成，实际测试通过。P1 没有配置 ChatModel、ToolCallback 或工具循环，未请求真实模型；P2 才接入唯一 ToolCallingAdvisor 循环及宿主网关，不能绕过租约、身份、权限和预算直接把样例发布成可调用工具。
 
 ## Jackson 安全补丁依据

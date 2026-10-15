@@ -1,6 +1,26 @@
 # XIAO-34 验证记录
 
-## P1 实现验证（2026-10-15）
+## R4 退出调用门禁修订（2026-10-15）
+
+审查在首批提交 `0c82e1b37db65c3a60a417350b8eb36cba55f62d` 的插件包中加入未执行的 `ForbiddenExit.stop(int status) { System.exit(status); }` 后，完整 verify 仍退出 0。该缺口已通过实际方法调用规则修复：生产类不得调用 `System.exit(int)`、`Runtime.exit(int)` 或 `Runtime.halt(int)`。P1 没有获准的退出调用点，因此覆盖全部生产包；原 Thread/ProcessBuilder 规则及其他架构约束未改。此规则不把一般 `System`/`Runtime` 类型引用一概禁止，也不等于运行时沙箱。
+
+本轮只修改架构门禁、负向验证脚本和实施/验证说明；生产实现、依赖及权威来源未变。正常完整 `mvnw.cmd -B -ntp verify` 退出 **0**，耗时 49.170 秒，仍为 **14 tests / 0 failures / 0 errors / 0 skipped**，SpotBugs 0 问题。真实 worker/control 集成成功，3 个子 JVM 均记录 `alive=false`。
+
+执行 `node tools/verify-negative-gates.mjs system-exit runtime-exit runtime-halt`，脚本退出 **0**；三个隔离源码副本均执行格式修正及完整 verify，各自原始退出码 **1**：
+
+| 新增副本 | 实际失败点 |
+| --- | --- |
+| `system-exit` | ArchUnit 报告 `ForbiddenExit.stop(int)` 调用 `java.lang.System.exit(int)`，与审查复现一致 |
+| `runtime-exit` | ArchUnit 报告同一插件位置调用 `java.lang.Runtime.exit(int)` |
+| `runtime-halt` | ArchUnit 报告同一插件位置调用 `java.lang.Runtime.halt(int)` |
+
+每个负向构建为 12 项单元/契约/架构测试中 1 项架构断言失败，发生于 Surefire，尚未执行打包后的集成阶段；违规退出方法只编译/扫描，未运行。脚本匹配具体调用目标才计通过，不用任意非零冒充预期失败。违规源码仅存在于隔离副本；正常源码的完整 verify 通过。
+
+本轮未重跑首批 8 类负向构建；它们的历史结果在下节，测试侧独立矩阵继续。原始正常构建、三个失败构建、源码及清理记录随事项附件交付，修复是否解除 R4 待独立聚焦复验。
+
+额外尝试的 `clean verify` 在清理历史 CRLF 证明副本的只读 Git 对象时退出 1，未进入构建门禁。递归清理操作被运行时策略拒绝；没有改审批或绕路删除，保留该日志。本轮报告的正常通过命令是上述完整 `verify`，未声称本机 `clean verify` 通过。
+
+## P1 首批实现验证（提交 0c82e1b，2026-10-15）
 
 PR：<https://github.com/Love-XiaoPeng/Jimu/pull/1>，base `master`，沿用任务分支，保留既有公开可见性和历史。固定实现提交见该 PR 与事项交付评论；本记录与实现一同提交。下列是本地实测，CI 与独立复核单独记录，不宣称已验收。
 

@@ -72,6 +72,10 @@ class PackageBoundariesTest {
         .dependOnClassesThat()
         .haveFullyQualifiedName("java.lang.ProcessBuilder")
         .check(classes);
+    // No production call site is admitted to terminate the JVM in P1.
+    noClasses().should().callMethod(System.class, "exit", int.class).check(classes);
+    noClasses().should().callMethod(Runtime.class, "exit", int.class).check(classes);
+    noClasses().should().callMethod(Runtime.class, "halt", int.class).check(classes);
     slices().matching("io.github.lovexiaopeng.jimu.(*)..").should().beFreeOfCycles().check(classes);
     for (var type : classes) {
       for (var dependency : type.getDirectDependenciesFromSelf()) {

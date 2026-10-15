@@ -22,6 +22,15 @@ const cases = [
   { name: 'kernel-to-plugin', marker: /Architecture Violation/, mutate(dir) {
     fs.writeFileSync(path.join(dir, main, 'kernel/plugin/application/ForbiddenDependency.java'), 'package io.github.lovexiaopeng.jimu.kernel.plugin.application;\n\nimport io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebFetchPlugin;\n\npublic record ForbiddenDependency(WebFetchPlugin plugin) {}\n');
   }, format: true },
+  { name: 'system-exit', marker: /calls method <java.lang.System.exit\(int\)>/, mutate(dir) {
+    fs.writeFileSync(path.join(dir, main, 'plugins/builtin/webfetch/ForbiddenExit.java'), 'package io.github.lovexiaopeng.jimu.plugins.builtin.webfetch;\n\npublic final class ForbiddenExit {\n  public void stop(int status) {\n    System.exit(status);\n  }\n}\n');
+  }, format: true },
+  { name: 'runtime-exit', marker: /calls method <java.lang.Runtime.exit\(int\)>/, mutate(dir) {
+    fs.writeFileSync(path.join(dir, main, 'plugins/builtin/webfetch/ForbiddenExit.java'), 'package io.github.lovexiaopeng.jimu.plugins.builtin.webfetch;\n\npublic final class ForbiddenExit {\n  public void stop(int status) {\n    Runtime.getRuntime().exit(status);\n  }\n}\n');
+  }, format: true },
+  { name: 'runtime-halt', marker: /calls method <java.lang.Runtime.halt\(int\)>/, mutate(dir) {
+    fs.writeFileSync(path.join(dir, main, 'plugins/builtin/webfetch/ForbiddenExit.java'), 'package io.github.lovexiaopeng.jimu.plugins.builtin.webfetch;\n\npublic final class ForbiddenExit {\n  public void stop(int status) {\n    Runtime.getRuntime().halt(status);\n  }\n}\n');
+  }, format: true },
   { name: 'controller-to-plugin', marker: /Architecture Violation/, mutate(dir) {
     fs.writeFileSync(path.join(dir, main, 'api/ForbiddenController.java'), 'package io.github.lovexiaopeng.jimu.api;\n\nimport io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebFetchPlugin;\n\npublic record ForbiddenController(WebFetchPlugin plugin) {}\n');
   }, format: true },
