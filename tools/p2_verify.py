@@ -248,7 +248,7 @@ class Experiment:
                  "INSERT INTO installation(tenant_id,plugin_id,plugin_version,plugin_digest) VALUES"
                  "('tenant-a','web_fetch','0.2.0','" + digest + "'),('tenant-b','web_fetch','0.2.0','" + digest + "');")
 
-    def start(self, name, role, boundary="", model_stream=False):
+    def start(self, name, role, boundary="", model_stream=False, expected_ready=200):
         folder = self.root / name
         folder.mkdir()
         config = dict(self.common, **{"jimu.role": role})
@@ -270,7 +270,7 @@ class Experiment:
         port = eventually(started, name + " startup")
         instance = {"process": child, "port": port, "folder": folder, "name": name}
         self.results.append({"process": name, "pid": child.pid, "port": port})
-        self.assert_that(self.http("GET", "/readyz", instance=instance)[0] == 200, name + " readiness")
+        self.assert_that(self.http("GET", "/readyz", instance=instance)[0] == expected_ready, name + " readiness", expectedStatus=expected_ready)
         return instance
 
     def stop(self, instance, kill=False):
@@ -664,8 +664,10 @@ class Experiment:
         self.assert_that(self.fixture.identities["parallel-tenant-a"] == ["tenant-a", "tenant-a"] and self.fixture.identities["parallel-tenant-b"] == ["tenant-b", "tenant-b"], "concurrent model credentials and checkpoint history stay tenant bound")
         self.stop(a); self.stop(b)
 
-        health_worker = self.start("provider-health-worker", "worker")
+        # Establish the unavailable resource before the worker's first probe. Starting
+        # healthy and toggling afterward races a ready check already in flight with claim.
         self.fixture.available = False
+        health_worker = self.start("provider-health-worker", "worker", expected_ready=503)
         queued_provider = self.submit("wait-for-provider")
         time.sleep(.8)
         self.assert_that(self.http("GET", "/readyz", instance=health_worker)[0] == 503, "missing provider makes worker unready")
