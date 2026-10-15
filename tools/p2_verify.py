@@ -894,6 +894,22 @@ class Experiment:
             if failure == "revocation":
                 self.sql("UPDATE installation SET enabled=TRUE WHERE tenant_id='tenant-a';")
 
+        # Stopped existing writers do not authorize deletion while a future recovery can write.
+        task = self.submit("r5-recoverable-expiry")
+        old = self.start("r5-recoverable-old", "worker", "A2")
+        self.barrier(old); self.stop(old, kill=True)
+        eventually(lambda: self.sql("SELECT quiescent FROM task_attempt WHERE task_id='" + task + "';") == "1", "crashed publisher stop confirmed before recoverable expiry")
+        self.expire(task)
+        self.sql("UPDATE artifact SET expires_at=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE task_id='" + task + "';")
+        time.sleep(11)
+        upload = self.sql("SELECT upload_id FROM artifact WHERE task_id='" + task + "';")
+        self.assert_that(self.sql("SELECT state FROM task WHERE id='" + task + "';") == "RUNNING" and self.sql("SELECT state FROM artifact WHERE task_id='" + task + "';") == "PUBLISHED" and len(list((self.root / "objects").rglob(upload + "*"))) == 1 and self.sql("SELECT r.state FROM artifact a JOIN reservation r ON r.id=a.id AND r.tenant_id=a.tenant_id WHERE a.task_id='" + task + "';") == "SETTLED", "recoverable task retains expired object for future attempt despite existing writer stop")
+        fresh = self.start("r5-recoverable-new", "worker")
+        self.state(task, "SUCCEEDED")
+        eventually(lambda: self.sql("SELECT r.state FROM artifact a JOIN reservation r ON r.id=a.id AND r.tenant_id=a.tenant_id WHERE a.task_id='" + task + "';") == "RELEASED", "expiry cleaned only after recovered task terminal")
+        self.assert_that(not list((self.root / "objects").rglob(upload + "*")) and self.fixture.tools.get("/page/r5-recoverable-expiry") == 1 and self.sql("SELECT COUNT(*) FROM event WHERE task_id='" + task + "' AND type='artifact.created';") == "1", "recoverable expiry finishes without tool replay or duplicate publish")
+        self.stop(fresh)
+
         # A new successful attempt does not erase an older live writer's protection.
         task = self.submit("r5-historical-writer")
         old = self.start("r5-historical-old", "worker", "A0")

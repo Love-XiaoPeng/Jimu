@@ -1118,6 +1118,11 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                         tenant,
                         artifact);
                 boolean expired = time(a, "expires_at").isBefore(Instant.now());
+                // A RUNNING task may still claim a new attempt after this transaction.
+                // Quiescence of existing writers alone cannot make that cleanup safe.
+                if (expired
+                    && !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(task, "state")))
+                  return false;
                 if (!expired && !List.of("FAILED", "CANCELLED").contains(s(task, "state")))
                   return false;
                 if (!writersQuiescent(task)) return false;
