@@ -176,6 +176,8 @@ class Experiment:
         self.password = secrets.token_urlsafe(32)
         self.java = None
         self.schema_ready = False
+        # All test HTTP targets are loopback; inherited desktop proxies must not route them.
+        self.http_client = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
     def assert_that(self, condition, name, **facts):
         assert condition, name + ": " + str(facts)
@@ -297,7 +299,7 @@ class Experiment:
         for k, v in (headers or {}).items():
             request.add_header(k, v)
         try:
-            response = urllib.request.urlopen(request, timeout=35)
+            response = self.http_client.open(request, timeout=35)
         except urllib.error.HTTPError as e:
             response = e
         with response:
@@ -695,7 +697,7 @@ class Experiment:
         self.stop(worker)
         effect_id = self.sql("SELECT effect_intent_id FROM invocation WHERE task_id='" + unknown + "';")
         request = urllib.request.Request(self.fixture.origin + "/effects/" + effect_id, headers={"Authorization": "Bearer " + self.fixture.credentials["tenant-a"]})
-        with urllib.request.urlopen(request, timeout=5) as response:
+        with self.http_client.open(request, timeout=5) as response:
             effect = json.load(response)
         self.assert_that(effect["count"] == 1 and effect["path"] == "/effect/unknown-response-lost", "queryable service reconciles stable effect intent", effectId=effect_id, count=effect["count"])
         self.assert_that(self.http("POST", "/api/tasks/" + unknown + "/cancel")[1]["state"] == "NEEDS_RECONCILIATION", "unknown effect cancellation never reports safe cancellation")
