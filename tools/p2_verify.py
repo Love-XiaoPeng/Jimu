@@ -554,7 +554,8 @@ class Experiment:
         self.barrier(writer)
         self.sql("DELETE FROM installation WHERE tenant_id='tenant-a' AND plugin_id='web_fetch';")
         (writer["folder"] / "release").touch()
-        self.state(pinned, "FAILED")
+        eventually(lambda: self.sql("SELECT state FROM task WHERE id='" + pinned + "';") == "FAILED", "missing installation stops task")
+        self.assert_that(self.http("GET", "/api/tasks/" + pinned)[0] == 403, "missing installation revokes task visibility")
         self.assert_that(self.sql("SELECT code FROM task WHERE id='" + pinned + "';") == "CAPABILITY_REVOKED" and self.fixture.tools.get("/page/pin-installation-missing", 0) == 0, "missing installation rejects bound callback before effect")
         self.stop(writer)
         self.sql("INSERT INTO installation(tenant_id,plugin_id,plugin_version,plugin_digest) VALUES('tenant-a','web_fetch','0.2.0','" + original_pin + "');")
@@ -604,6 +605,20 @@ class Experiment:
         (a["folder"] / "release").touch(); (b["folder"] / "release").touch()
         for tid in tids:
             self.state(tid, "SUCCEEDED")
+        self.stop(a); self.stop(b)
+
+        tenant_a = self.submit("parallel-tenant-a")
+        a = self.start("parallel-tenant-a-worker", "worker", "M0")
+        self.barrier(a)
+        tenant_b = self.submit("parallel-tenant-b", subject="b")
+        b = self.start("parallel-tenant-b-worker", "worker", "M0")
+        self.barrier(b)
+        self.assert_that(self.sql("SELECT COUNT(DISTINCT tenant_id) FROM task WHERE id IN ('" + tenant_a + "','" + tenant_b + "') AND state='RUNNING';") == "2", "independent workers execute two trusted tenants concurrently")
+        self.assert_that(self.http("GET", "/api/tasks/" + tenant_a, subject="b")[0] == 404 and self.http("GET", "/api/tasks/" + tenant_b)[0] == 404, "parallel task snapshots cannot cross tenant boundary")
+        (a["folder"] / "release").touch(); (b["folder"] / "release").touch()
+        self.state(tenant_a, "SUCCEEDED")
+        eventually(lambda: self.http("GET", "/api/tasks/" + tenant_b, subject="b")[1]["state"] == "SUCCEEDED", "parallel second tenant completes")
+        self.assert_that(self.fixture.identities["parallel-tenant-a"] == ["tenant-a", "tenant-a"] and self.fixture.identities["parallel-tenant-b"] == ["tenant-b", "tenant-b"], "concurrent model credentials and checkpoint history stay tenant bound")
         self.stop(a); self.stop(b)
 
         health_worker = self.start("provider-health-worker", "worker")
@@ -722,7 +737,7 @@ class Experiment:
         self.fixture_thread.join(timeout=5)
         if self.cid:
             try:
-                tables = [("task", "tenant_id,id,state,fence,revision,models_used,tools_used,token_held,code"), ("task_attempt", "tenant_id,id,task_id,fence,state"), ("step", "tenant_id,id,task_id,ordinal,state,dispatches,request_digest,response_digest,request_snapshot,response_snapshot"), ("invocation", "tenant_id,id,task_id,step_id,slot,effect_intent_id,state,input_snapshot,output_snapshot,output_digest"), ("reservation", "tenant_id,id,task_id,category,state,amount,actual,usage_quality,cost_quality"), ("event", "tenant_id,task_id,seq,event_id,type,status,artifact_id"), ("artifact", "tenant_id,id,task_id,state,upload_id,sha256,size,snapshot_key"), ("tenant_budget", "*"), ("worker_process", "*"), ("flyway_schema_history", "version,script,checksum,success")]
+                tables = [("task", "tenant_id,id,state,current_attempt_id,worker_id,fence,lease_until,revision,models_used,tools_used,token_held,code"), ("task_attempt", "tenant_id,id,task_id,worker_id,fence,state"), ("step", "tenant_id,id,task_id,attempt_id,ordinal,state,dispatch_id,dispatches,request_digest,response_digest,request_snapshot,response_snapshot"), ("invocation", "tenant_id,id,task_id,step_id,attempt_id,slot,provider_id,effect_intent_id,state,plugin_version,plugin_digest,installation_epoch,input_snapshot,input_digest,output_snapshot,output_digest"), ("reservation", "tenant_id,id,task_id,dispatch_id,category,state,amount,actual,usage_quality,cost_quality"), ("event", "tenant_id,task_id,seq,event_id,type,status,artifact_id"), ("artifact", "tenant_id,id,task_id,state,upload_id,sha256,size,snapshot_key"), ("tenant_budget", "*"), ("worker_process", "*"), ("flyway_schema_history", "version,script,checksum,success")]
                 for table, fields in tables if self.schema_ready else []:
                     (self.evidence / (table + ".tsv")).write_text(self.sql("SELECT " + fields + " FROM " + table + ";"))
             except Exception as e:
