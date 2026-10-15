@@ -1,6 +1,6 @@
 # 参与积木开发
 
-以 [工程规范 0.2](docs/baseline/XIAO-33-工程规范-v0.2.md) 为规则基线，来源及适用范围见 [基线索引](docs/baseline/README.md)。当前首批提交为文档基线，运行能力以实际验证记录为准。
+以 [工程规范 0.2](docs/baseline/XIAO-33-工程规范-v0.2.md) 为规则基线，来源及适用范围见 [基线索引](docs/baseline/README.md)。骨架实际启用范围和资源约定见 [P1 实现说明](docs/implementation-p1.md)。
 
 ## 实施顺序
 
@@ -14,7 +14,11 @@
 
 骨架实现后使用固定 Maven Wrapper 和 JDK 21，候选 Boot/AI 版本以实际构建、effective POM 和 dependency tree 证明兼容；不混用两条 BOM 或编排链。
 
-Linux/CI 执行 `./mvnw -B -ntp verify`，Windows 执行 `.\mvnw.cmd -B -ntp verify`。完整门禁绑定格式、静态、包依赖、单元/契约、打包及当前阶段必需的真实 worker 集成；缺必需资源失败。当前包未提供这些工具，未完成完整验证。
+Linux/CI 执行 `./mvnw -B -ntp verify`，Windows 执行 `.\mvnw.cmd -B -ntp verify`。完整门禁绑定格式、静态、包依赖、单元/契约、打包及当前阶段必需的真实 worker 集成；缺必需资源失败。修改 Java 后先运行 `./mvnw -B -ntp spotless:apply` 修复格式。不得用跳过测试/静态检查的快速命令替代完整验收。
+
+可选的负向证明命令为 `node tools/verify-negative-gates.mjs`（Node 22+），逐个在 `target/negative-gates/` 的独立副本中注入违规并调用完整 verify，保存原始日志与退出码；不修改工作树。Node 不是应用或默认 verify 的运行依赖。单项复验可在命令后传入用例名。
+
+提交后本地及 CI 统一执行 `git -c core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol diff origin/master...HEAD --check`。先 fetch 确保基线最新；检查尚未提交的内容时把比较范围换为 `--cached`。规则显式允许原始 CRLF，但继续拒绝行尾空格、尾部空行和 tab 前空格；`.gitattributes` 固定相同规则，来源目录 `-text` 继续保留原字节。`node tools/verify-whitespace.mjs` 在隔离 Git 副本中验证原始 CRLF 退出 0、注入行尾空格退出 2，证据写入 `target/whitespace-evidence/results.json`。
 
 Manifest 只维护 plugin.yaml，JSON 是派生视图。输出 Schema 保持一份权威源，打包副本须核验摘要。历史 taotie 标识、Schema URN 和上游名称原样保存，映射由架构决定。迁移先固定 SHA、核对许可及行为，再实现和验证；已发布的破坏兼容变更须新版本及迁移说明。
 

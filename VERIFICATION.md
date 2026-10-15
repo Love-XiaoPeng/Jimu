@@ -1,6 +1,54 @@
 # XIAO-34 验证记录
 
-## 当前入库状态（2026-10-15）
+## P1 实现验证（2026-10-15）
+
+PR：<https://github.com/Love-XiaoPeng/Jimu/pull/1>，base `master`，沿用任务分支，保留既有公开可见性和历史。固定实现提交见该 PR 与事项交付评论；本记录与实现一同提交。下列是本地实测，CI 与独立复核单独记录，不宣称已验收。
+
+工具链：Temurin `21.0.12.1+1-LTS`，Maven Wrapper `3.9.9`，Boot `4.1.1`、Spring AI `2.0.1`。Jackson 安全补丁为 `2.21.7` / `3.1.7`，依据和范围见 [实施说明](docs/implementation-p1.md)。
+
+| 实际命令 | 退出码 / 结果 |
+| --- | --- |
+| `./mvnw.cmd -B -ntp verify` | 0；默认完整生命周期，14 tests，0 failures/errors/skipped |
+| `./mvnw.cmd -B -ntp spotless:apply verify help:effective-pom -Doutput=target/effective-pom.xml dependency:tree -DoutputFile=target/dependency-tree.txt` | 0；格式修正后完整构建，effective POM / 实际依赖树生成成功 |
+| `node tools/verify-negative-gates.mjs` | 0 表示全部注入均按预期失败；各副本完整 verify 退出 1，详见下表 |
+| `node tools/verify-whitespace.mjs` | 0；原始 CRLF 文件检查退出 0，加一个真实行尾空格后检查退出 2 |
+| `git -c core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol diff origin/master...HEAD --check` | 与 CI 使用相同显式规则；来源字节不规范化 |
+
+### 测试与断言
+
+| Suite | 数量 | 实际检查 |
+| --- | --- | --- |
+| `SourceIntegrityTest` | 1 | 13 份来源长度/SHA256，以及打包输出 Schema 与权威源逐字节一致 |
+| `PackageBoundariesTest` | 1 | 扫描实际生产类，叶子契约/内核/插件/Controller 依赖方向、跨内核公开 API、线程/进程准入和顶层包无环 |
+| `WebFetchPluginContractTest` | 10 | HTTP 非 2xx 四字段 DTO；缺失/额外/类型/URI 拒绝；重复身份/能力拒绝；manifest 路径/入口拒绝；2020-12 格式/关键词/本地引用；调用前后取消；origin/deadline 限制；截断/禁重定向；已收到响应头后的慢响应体仍超时、readiness 返回 DOWN；Spring AI 适配类型实际可用 |
+| `RuntimeIT` | 2 | 打包 JAR 作为真实 worker/control 子进程；资源正常 UP、provider 下线两角色 DOWN、恢复 UP、worker 退出 control DOWN；缺必需 origin 启动非零；finally 收集进程 |
+
+SpotBugs：0 BugInstance、0 Error；Enforcer 工具链/收敛/禁止依赖均通过。原始 Maven、测试汇总及运行日志随事项交付，CI 使用相同默认 verify 并上传报告。
+
+### 真实负向门禁
+
+每项在 `target/negative-gates/` 独立副本修改，不污染源码；退出 1 且日志匹配对应失败点才计为成功，超时/错误位置不匹配不计通过。注入后未改动的主工作树完整 verify 退出 0。
+
+| 注入 | 预期且已观察的失败点 |
+| --- | --- |
+| 非规范 Java 格式 | Spotless |
+| Alibaba agent-framework 依赖 | Enforcer BannedDependencies |
+| 内核引用具体插件 | ArchUnit |
+| Controller 引用具体插件 | ArchUnit |
+| 确定的 null 解引用 | SpotBugs NP_ALWAYS_NULL |
+| 启动清单重复插件身份 | Duplicate plugin identity |
+| 输入 Schema 改成其他 draft | Unsupported Schema dialect |
+| 指定不存在的 worker Java 运行时 | Failsafe 启动进程失败，未 skip |
+
+### 独立资源与清理交接
+
+本阶段必需资源由测试自己建立：loopback 临时端口 HTTP fixture、独立 worker/control JVM 和 JUnit 临时目录。无需账户、付费模型、共享服务、数据库或对象存储。测试 finally 关闭 fixture 并停止/等待所有子 JVM；`target/failsafe-reports/runtime-evidence/cleanup-*.txt` 记录 PID、退出码与 `alive=false`，临时文件由 JUnit 清理，日志保留于 target。Windows 主动终止进程记录 exit=1 是清理结果，与 Maven 构建退出码分开记录。没有需要使用者继续维持的服务。
+
+当前未启用账本/持久化/产物写入职责，因此没有 DB/存储迁移或集成通过声明；P2 启用时必须先绑定独立资源、版本与迁移并加入默认门禁。本轮仅提交可信内置样例和 readiness；模型循环、恢复/租约、任意网页业务、实时取消/隔离、安全及性能验收不在通过声明中。
+
+依赖可获得性及构建收敛已实测；OSV 查询在当次返回的范围内发现并修复 Jackson 公告，修复坐标查询无返回公告。这不是全依赖安全审计或永久无漏洞声明。正式框架运行链仍按 ADR 等待 P2/E1 的持久边界恢复试验。
+
+## 首批文档入库状态（历史记录）
 
 确认目标为原有公开空仓库，使用已授权 GitHub 身份在 `master` 创建首个 README 提交，再由 Multica 受管检出建立独立任务分支。保留仓库可见性。
 

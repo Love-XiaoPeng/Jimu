@@ -13,8 +13,10 @@
 - [协作约定](CONTRIBUTING.md)
 - [Agent 约定](AGENTS.md)
 
-P1 采用单 Maven 制品与模块化包边界，控制/API 和独立 Java worker 为不同启动角色。三份 accepted ADR 已明确根包/groupId 为 `io.github.lovexiaopeng.jimu`、artifactId 为 `jimu`；JDK 21 / Maven 3.9.9 / Boot 4.1.1 / Spring AI 2.0.1 是待实际构建验证的候选。旧文档示例按 ADR 映射，原始来源保持不变。
+P1 采用单 Maven 制品与模块化包边界，控制/API 和独立 Java worker 为不同启动角色。三份 accepted ADR 已明确根包/groupId 为 `io.github.lovexiaopeng.jimu`、artifactId 为 `jimu`；JDK 21 / Maven 3.9.9 / Boot 4.1.1 / Spring AI 2.0.1 已取得本地骨架构建证据，等待独立复核。旧文档示例按 ADR 映射，原始来源保持不变。
 
-当前没有 Java 骨架、Maven Wrapper、CI 或运行服务，没有构建、worker、恢复、隔离、性能或网页业务通过结论。骨架实现后完整受理命令为 `./mvnw -B -ntp verify`（Windows：`.\mvnw.cmd -B -ntp verify`）；缺当前阶段必需资源须失败，快速检查不能代替完整门禁。
+已提供 Java 21 单制品骨架、固定 Maven 3.9.9 Wrapper、内置插件样例及自动门禁。完整命令为 `./mvnw -B -ntp verify`（Windows：`.\mvnw.cmd -B -ntp verify`），会编译、检查契约与包边界、打包并启动真正独立的 worker/control 进程完成集成验证，缺必需资源会失败。安装 JDK 21 并设置 `JAVA_HOME` 即可；测试使用临时本机 HTTP fixture，无需模型密钥或浏览器。
+
+当前运行入口仅为 `/readyz`。启动角色、必需配置、依赖版本、验证范围与限制见 [P1 实现说明](docs/implementation-p1.md)，实际结果见 [验证记录](VERIFICATION.md)。样例未开放工具调用 API；任务持久化、租约恢复、模型工具循环、网页业务、任意第三方插件与运行隔离尚未实现，不能据此宣称 P2/P3 或生产安全通过。
 
 机制与基础工具参考 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 固定提交 `571902028a75c64c1d767f4ae5fd099485f0ddf0`，源码与许可对照见基线。本包不含其源代码，未来迁移须保留适用许可。积木独立于女娲 AI，不复用其代码、工具、配置、数据或服务。
