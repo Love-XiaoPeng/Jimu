@@ -187,8 +187,16 @@ class Experiment:
         print("PASS", name, json.dumps(facts), flush=True)
 
     def sql(self, sql):
-        return run(["docker", "exec", "-i", self.cid, "sh", "-c",
-                    'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot -N -B --raw jimu'], input=sql)
+        try:
+            # The image's temporary initialization server accepts socket queries but has no TCP listener.
+            return run(["docker", "exec", "-i", self.cid, "sh", "-c",
+                        'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql --protocol=TCP -h127.0.0.1 -uroot -N -B --raw jimu'], input=sql)
+        except subprocess.CalledProcessError as error:
+            with (self.evidence / "mysql-errors.jsonl").open("a") as log:
+                log.write(json.dumps({"exit": error.returncode,
+                                      "stdout": error.stdout.replace(self.password, "<redacted>"),
+                                      "stderr": error.stderr.replace(self.password, "<redacted>")}) + "\n")
+            raise
 
     def prepare(self):
         # Native files avoid WSL cross-filesystem JAR lookup costs; object semantics use ext4 too.
@@ -259,7 +267,9 @@ class Experiment:
         properties = folder / "runtime.properties"
         properties.write_text("\n".join(k + "=" + v for k, v in config.items()) + "\n")
         os.chmod(properties, 0o600)
-        logfile = self.evidence / (name + ".log")
+        # Concurrent read/write on WSL's mounted Windows files can raise ENODATA.
+        # Observe native logs, then export them after the children have exited.
+        logfile = folder / (name + ".log")
         with logfile.open("w") as log:
             child = subprocess.Popen([self.java, "-jar", str(self.jar), "--spring.config.additional-location=file:" + str(properties)], stdout=log, stderr=subprocess.STDOUT)
         self.children.append(child)
@@ -396,11 +406,11 @@ class Experiment:
         properties = folder / "runtime.properties"
         properties.write_text("\n".join(k + "=" + v for k, v in config.items()) + "\n")
         os.chmod(properties, 0o600)
-        with (self.evidence / (name + ".log")).open("w") as log:
+        with (folder / (name + ".log")).open("w") as log:
             child = subprocess.Popen([self.java, "-jar", str(self.jar), "--spring.config.additional-location=file:" + str(properties)], stdout=log, stderr=subprocess.STDOUT)
         self.children.append(child)
         self.assert_that(child.wait(timeout=40) != 0, name + " is required, startup rejects missing/incompatible resource")
-        self.assert_that(expected in (self.evidence / (name + ".log")).read_text(), name + " fails for intended reason")
+        self.assert_that(expected in (folder / (name + ".log")).read_text(), name + " fails for intended reason")
 
     def remaining(self, task, artifact):
         for subject in ["b", "c"]:
@@ -553,7 +563,7 @@ class Experiment:
             self.assert_that(old["process"].poll() is None and self.sql("SELECT state FROM task WHERE id='" + cancelled + "';") == "CANCEL_REQUESTED", "expired lease cannot finalize cancellation while old worker is live")
             self.assert_that(self.sql("SELECT state FROM reservation WHERE id='" + cancelled + ":run';") == "RESERVED", "live cancelled worker retains concurrency reservation")
             (old["folder"] / "release").touch()
-            eventually(lambda: "Execution stopped:" in (self.evidence / "cancel-live-old.log").read_text(), "old cancelled dispatcher rechecks admission after barrier")
+            eventually(lambda: "Execution stopped:" in (self.root / "cancel-live-old/cancel-live-old.log").read_text(), "old cancelled dispatcher rechecks admission after barrier")
             self.assert_that(self.fixture.models.get("cancel-live-m1", 0) == 0, "cancelled stale model dispatcher causes zero HTTP requests")
             self.stop(fresh)
         finally:
@@ -818,7 +828,7 @@ class Experiment:
         fresh = self.start("stale-new", "worker")
         self.state(stale, "NEEDS_RECONCILIATION")
         (old["folder"] / "release").touch()
-        eventually(lambda: "FENCE_REJECTED" in (self.evidence / "stale-old.log").read_text(), "old writer rejected")
+        eventually(lambda: "FENCE_REJECTED" in (self.root / "stale-old/stale-old.log").read_text(), "old writer rejected")
         self.assert_that(self.sql("SELECT COUNT(*) FROM invocation WHERE task_id='" + stale + "' AND state='SUCCEEDED';") == "0", "late old callback cannot overwrite unknown fact")
         self.assert_that(self.fixture.tools["/page/stale-writer"] == 1, "stale writer recovery does not replay effect")
         self.stop(old); self.stop(fresh)
@@ -880,7 +890,7 @@ class Experiment:
                 os.kill(self.control["process"].pid, signal.SIGSTOP)
                 try:
                     (old["folder"] / "release").touch()
-                    eventually(lambda: "FENCE_REJECTED" in (self.evidence / (name + "-old.log")).read_text(), name + " stale publication fenced")
+                    eventually(lambda: "FENCE_REJECTED" in (self.root / (name + "-old") / (name + "-old.log")).read_text(), name + " stale publication fenced")
                     eventually(lambda: self.sql("SELECT quiescent FROM task_attempt WHERE task_id='" + task + "';") == "1", name + " finally acknowledges stopped execution")
                     late = self.writer_facts(task, old, name + "-late-object-before-cleanup")
                     self.assert_that(late["objectCount"] == 1 and late["storage"] == "RESERVED" and late["publishedEvents"] == "0", name + " late object remains accounted until cleanup", **late)
@@ -988,7 +998,22 @@ class Experiment:
         self.fixture.shutdown()
         self.fixture.server_close()
         self.fixture_thread.join(timeout=5)
+        try:
+            for logfile in self.root.glob("*/*.log"):
+                shutil.copyfile(logfile, self.evidence / logfile.name)
+        except Exception as e:
+            failures.append(str(e))
         if self.cid:
+            try:
+                for name, command in (("mysql-startup", ["docker", "logs", self.cid]),
+                                      ("mysql-state", ["docker", "inspect", "--format", "{{json .State}}", self.cid])):
+                    result = subprocess.run(command, text=True, capture_output=True, timeout=20)
+                    (self.evidence / (name + ".json")).write_text(json.dumps({
+                        "exit": result.returncode, "stdout": result.stdout.replace(self.password, "<redacted>"),
+                        "stderr": result.stderr.replace(self.password, "<redacted>")}, indent=2))
+                    assert result.returncode == 0, name + " evidence collection failed"
+            except Exception as e:
+                failures.append(str(e))
             try:
                 tables = [("task", "tenant_id,id,state,current_attempt_id,worker_id,fence,lease_until,revision,models_used,tools_used,token_held,code"), ("task_attempt", "tenant_id,id,task_id,worker_id,fence,state,quiescent"), ("step", "tenant_id,id,task_id,attempt_id,ordinal,state,dispatch_id,dispatches,request_digest,response_digest,request_snapshot,response_snapshot"), ("invocation", "tenant_id,id,task_id,step_id,attempt_id,slot,provider_id,effect_intent_id,state,plugin_version,plugin_digest,installation_epoch,input_snapshot,input_digest,output_snapshot,output_digest"), ("reservation", "tenant_id,id,task_id,dispatch_id,category,state,amount,actual,usage_quality,cost_quality"), ("event", "tenant_id,task_id,seq,event_id,type,status,artifact_id"), ("artifact", "tenant_id,id,task_id,state,upload_id,sha256,size,snapshot_key"), ("tenant_budget", "*"), ("worker_process", "*"), ("flyway_schema_history", "version,script,checksum,success")]
                 for table, fields in tables if self.schema_ready else []:

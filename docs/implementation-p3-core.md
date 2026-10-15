@@ -91,6 +91,8 @@ R3 修复：`model_dispatch` 的 BOUND_EXCEEDED 以及真实 paid 派发的 FAIL
 
 默认 `mvnw.cmd -B -ntp verify` / `./mvnw -B -ntp verify` 保留完整 P2 必需集成，另有 ModelCoreIT；缺 MySQL、Linux POSIX 存储或 JDK21 仍失败。`tools/p3_model_verify.py <jar> <evidence>` 可独立复现本地协议/快照/预算，所有资源在前台收集并 finally 清理。验证记录随固定 SHA 交付，不把替身当真实推理/真实业务证据。
 
+门禁夹具诊断：私有 MySQL 就绪与后续 SQL 统一使用 TCP，避免镜像临时初始化服务（socket 可查询但 port=0、skip_networking=1）被误判为最终服务；失败 SQL 的退出码、stdout/stderr 脱敏后保存在 `mysql-errors.jsonl`，清理前保存容器启动 stdout/stderr 与 State。JVM 实时日志在私有 Linux 临时目录读写，全部进程退出后复制到 evidence，避开已在 WSL 9p/DrvFS 并发读写复现的 ENODATA；复制或证据采集失败仍使门禁失败。RuntimeIT 保持原 5 秒请求超时、不重试，失败时在终止应用前保存请求耗时、PID/存活状态、Linux proc 状态及 jcmd 线程信息；额外的故意无响应本地请求只验证诊断路径。各 RuntimeIT 用例单独保存证据，避免覆盖。历史 CI SQL 失败因缺 stderr 不能追溯确认原因，历史 readiness 偶发超时也仍需与新捕获现场区分，不以通过一次复验宣称其根因已修复。
+
 集中待产品经理协调：实际平台文档和完整 base_url、地域/工作空间/快照型号权限、适用价目与完整计费输入/输出上界证据；搜索推荐单一 Exa 路线，需独立权限/凭据、明确 search 类型与结果数、禁用额外 contents/answer/research、确认适用单价和 USD/CNY 预算换算。不重复索要已提供凭据，不抓取搜索结果页代替授权。公共抓取将需 HttpClient5 可固定 DNS 与 HTML 解析依赖的兼容/许可证据，无新增付费资源申请。
 
 后续完整 P3 仍需公共 HTTPS 抓取出口防护、真实搜索、read 观察/write CAS/present 生产者及授权 Markdown 下载、真实模型小额质量评测与独立审查测试。父任务保持 in_progress。

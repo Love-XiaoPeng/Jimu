@@ -2,6 +2,7 @@ package io.github.lovexiaopeng.jimu.integration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,6 +12,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -22,10 +24,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 
 class RuntimeIT {
   @TempDir Path directory;
+  private final List<Process> children = new ArrayList<>();
+  private int readinessRequests;
 
   private Process start(String name, String... properties) throws Exception {
     Path jar = Path.of(System.getProperty("jimu.jar"));
@@ -37,10 +42,13 @@ class RuntimeIT {
         new ArrayList<>(
             List.of(executable, "-jar", jar.toAbsolutePath().toString(), "--server.port=0"));
     command.addAll(List.of(properties));
-    return new ProcessBuilder(command)
-        .redirectErrorStream(true)
-        .redirectOutput(directory.resolve(name + ".log").toFile())
-        .start();
+    Process process =
+        new ProcessBuilder(command)
+            .redirectErrorStream(true)
+            .redirectOutput(directory.resolve(name + ".log").toFile())
+            .start();
+    children.add(process);
+    return process;
   }
 
   private URI started(Process process, String name) throws Exception {
@@ -56,10 +64,70 @@ class RuntimeIT {
     throw new AssertionError("Required " + name + " failed to start: " + Files.readString(log));
   }
 
-  private static HttpResponse<String> readiness(HttpClient client, URI uri) throws Exception {
-    return client.send(
-        HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(5)).GET().build(),
-        HttpResponse.BodyHandlers.ofString());
+  private HttpResponse<String> readiness(HttpClient client, URI uri) throws Exception {
+    Path evidence = directory.resolve("readiness-" + ++readinessRequests + ".txt");
+    long started = System.nanoTime();
+    try {
+      var response =
+          client.send(
+              HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(5)).GET().build(),
+              HttpResponse.BodyHandlers.ofString());
+      Files.writeString(
+          evidence,
+          "uri="
+              + uri
+              + " status="
+              + response.statusCode()
+              + " elapsedMillis="
+              + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
+      return response;
+    } catch (Exception failure) {
+      try {
+        StringBuilder state =
+            new StringBuilder(
+                "uri="
+                    + uri
+                    + " failure="
+                    + failure
+                    + " elapsedMillis="
+                    + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
+                    + "\n");
+        for (Process process : children) {
+          state
+              .append("pid=")
+              .append(process.pid())
+              .append(" alive=")
+              .append(process.isAlive())
+              .append(" info=")
+              .append(process.info())
+              .append('\n');
+          Path status = Path.of("/proc", Long.toString(process.pid()), "status");
+          if (Files.isRegularFile(status)) state.append(Files.readString(status));
+        }
+        Files.writeString(evidence, state);
+        // Capture before finally destroys the live worker/control; jcmd failures stay visible.
+        for (Process process : children) {
+          if (!process.isAlive()) continue;
+          String jcmd = Path.of(System.getProperty("java.home"), "bin", "jcmd").toString();
+          Process dump =
+              new ProcessBuilder(jcmd, Long.toString(process.pid()), "Thread.print")
+                  .redirectErrorStream(true)
+                  .redirectOutput(directory.resolve("threads-" + process.pid() + ".txt").toFile())
+                  .start();
+          try {
+            dump.waitFor(5, TimeUnit.SECONDS);
+          } finally {
+            if (dump.isAlive()) {
+              dump.destroyForcibly();
+              dump.waitFor();
+            }
+          }
+        }
+      } catch (Exception diagnosticFailure) {
+        failure.addSuppressed(diagnosticFailure);
+      }
+      throw failure;
+    }
   }
 
   private void stop(Process process) throws Exception {
@@ -83,8 +151,11 @@ class RuntimeIT {
   }
 
   @AfterEach
-  void preserveProcessEvidence() throws Exception {
-    Path target = Path.of("target/failsafe-reports/runtime-evidence");
+  void preserveProcessEvidence(TestInfo test) throws Exception {
+    Path target =
+        Path.of(
+            "target/failsafe-reports/runtime-evidence",
+            test.getTestMethod().orElseThrow().getName());
     Files.createDirectories(target);
     try (var files = Files.list(directory)) {
       for (Path file : files.toList())
@@ -147,6 +218,41 @@ class RuntimeIT {
         } finally {
           fixture.stop(0);
         }
+      }
+    }
+  }
+
+  @Test
+  void readinessTimeoutPreservesLiveProcessEvidence() throws Exception {
+    // A deliberately unanswered local request checks diagnostics without relaxing the gate timeout.
+    HttpServer stalled = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    stalled.createContext("/readyz", exchange -> {});
+    stalled.start();
+    Process worker = null;
+    try (var client = HttpClient.newHttpClient()) {
+      worker =
+          start(
+              "diagnostic-worker",
+              "--jimu.role=worker",
+              "--jimu.provider-origin=http://127.0.0.1:" + stalled.getAddress().getPort());
+      started(worker, "diagnostic-worker");
+      assertThrows(
+          HttpTimeoutException.class,
+          () ->
+              readiness(
+                  client,
+                  URI.create("http://127.0.0.1:" + stalled.getAddress().getPort() + "/readyz")));
+      String state = Files.readString(directory.resolve("readiness-1.txt"));
+      assertTrue(state.contains("HttpTimeoutException"), state);
+      assertTrue(state.contains("pid=" + worker.pid() + " alive=true"), state);
+      assertTrue(
+          Files.readString(directory.resolve("threads-" + worker.pid() + ".txt"))
+              .contains("Full thread dump"));
+    } finally {
+      try {
+        stop(worker);
+      } finally {
+        stalled.stop(0);
       }
     }
   }
