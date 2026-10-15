@@ -81,6 +81,10 @@ evaluation_budget 持久上限最多20次、1,000,000 micro-CNY。不同候选/w
 
 ## 验证与后续依赖
 
+R3 修复：`model_dispatch` 的 BOUND_EXCEEDED 以及真实 paid 派发的 FAILED/code 是持久执行拒绝，不能仅靠落账后的 Java 异常。claim 回收任务和 fenced 准入（恢复/checkpoint、工具准入、产物发布、成功终结）均检查原任务的拒绝记录；恢复不重发、不重结算，并保留原拒绝原因。超界响应落账事务只写 REJECTED step，不保存可执行快照或新建工具槽位；已有旧版快照也服从 dispatch 拒绝。没有用整个 STOPPED run 拒绝其他已派发任务的有效结果。无付费 fixture 原有有限恢复策略保持原样，V1–V4 迁移原字节不变。
+
+默认模型集成另执行 `tools/p3_rejection_verify.py`：在 MODEL_RESPONSE_COMMITTED / MODEL_FAILURE_COMMITTED 测试点先从独立数据库连接确认账单提交、task 仍为 RUNNING 且无终态码，再结束原 worker，启动 control 与两个就绪 worker，最后令原租约过期并竞争恢复。覆盖 JSON/完整 SSE 的 stop/tool_calls、KNOWN/UNKNOWN 非零合成价格，以及 length 和缺 DONE 的超界/未超界 usage；检查原任务失败、工具与产物为零、单次模型请求、账单和预留不变、STOPPED 后并发停发，以及 OPEN run 中其他正常任务继续执行。观测点仅在显式 test-mode 装配可启用，不替代数据库断言；旧版对照须明确标注仅加入同样观测点的源码补丁，不将带观测点制品冒充未修改原始 JAR。静态路径说明与实际故障注入结果分别交付。
+
 审查 R1/R2 修复：输入、输出与 total 的已知超界分别触发持久 STOPPED，不要求两项 usage 同时已知；缺分项时 actual_cost 仍为 UNKNOWN，保留最坏预留。输出可执行性与计费事实分离，完整 JSON 的 length/filter/refusal 及缺 DONE 的 SSE 中已收到的完整 usage 事件仍保存分项、关联 ID 和 finish reason，拒绝执行输出或工具。坏 UTF-8/JSON、无效或冲突 usage 不作为可信账单。停发事务沿用 evaluation→tenant→task 锁序；已派发请求不能撤回，STOPPED 提交后新派发被共享账本拒绝。
 
 默认 ModelCoreIT 包含审查的三个反例，以及 SSE 单项、断流完整 usage、total-only 超界；逐例停止全部应用进程后重启 control 和两个 worker，并发提交四个后续任务，断言 provider 未收到新请求、预算不变、UNKNOWN 预留未释放。`tools/p3_model_verify.py <jar> <evidence> --bounds-only` 可单独运行这些回归，不能代替完整 verify。

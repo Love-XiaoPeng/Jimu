@@ -275,20 +275,26 @@ public final class DurableAgent implements AutoCloseable {
         } catch (OpenAiProtocol.InvalidResponse invalid) {
           String code = checkpoint.stream() ? "MODEL_STREAM_INCOMPLETE" : "MODEL_RESPONSE_INVALID";
           ledger.modelFailed(lease, dispatch, code, invalid.usage());
+          probe.hit("MODEL_FAILURE_COMMITTED", lease.taskId());
           throw new TaskFailure(502, code);
         } catch (TaskFailure error) {
           ledger.modelFailed(lease, dispatch, error.code(), null);
           throw error;
         }
         probe.hit("M1_RESPONSE", lease.taskId());
-        ledger.modelResponded(
-            lease,
-            step.id(),
-            dispatch,
-            Payloads.json(response),
-            slots(response),
-            response.tokens(),
-            response.usage());
+        try {
+          ledger.modelResponded(
+              lease,
+              step.id(),
+              dispatch,
+              Payloads.json(response),
+              slots(response),
+              response.tokens(),
+              response.usage());
+        } finally {
+          // Also reached on the post-commit rejection, before WorkerLoop can persist failure.
+          probe.hit("MODEL_RESPONSE_COMMITTED", lease.taskId());
+        }
       }
       if (response.version() != 2) throw new TaskFailure(409, "PAYLOAD_VERSION_UNSUPPORTED");
       calls = slots(response);

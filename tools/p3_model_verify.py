@@ -308,5 +308,8 @@ if __name__ == "__main__":
     try:
         experiment.prepare()
         model_core(experiment, "--bounds-only" in sys.argv[3:])
+        if "--bounds-only" not in sys.argv[3:]:
+            from p3_rejection_verify import rejection_recovery
+            rejection_recovery(experiment)
     finally:
         experiment.cleanup()

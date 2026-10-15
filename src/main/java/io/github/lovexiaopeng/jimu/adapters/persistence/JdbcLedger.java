@@ -418,6 +418,11 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                   terminal(task, "NEEDS_RECONCILIATION", "EFFECT_OUTCOME_UNKNOWN");
                   return Optional.empty();
                 }
+                String rejection = modelRejection(task);
+                if (rejection != null) {
+                  terminal(task, "FAILED", rejection);
+                  return Optional.empty();
+                }
                 if (n(task, "within_deadline") != 1) {
                   terminal(task, "FAILED", "DEADLINE_EXCEEDED");
                   return Optional.empty();
@@ -487,6 +492,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
         || !List.of("RUNNING", "CANCEL_REQUESTED").contains(s(task, "state")))
       throw new TaskFailure(409, "FENCE_REJECTED");
     if (admission) {
+      String rejection = modelRejection(task);
+      if (rejection != null) throw new TaskFailure(409, rejection);
       access(task);
       if (task.get("cancel_requested_at") != null) throw new TaskFailure(409, "CANCEL_REQUESTED");
       if (n(task, "within_deadline") != 1) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
@@ -500,6 +507,17 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             lease.fence())
         != 1) throw new TaskFailure(409, "FENCE_REJECTED");
     return task;
+  }
+
+  // The dispatch fact is the execution decision, including rows written before this fix.
+  // Fixture failures may retry; a paid failed dispatch must retain its original rejection.
+  private String modelRejection(Map<String, Object> task) {
+    var rejected =
+        rows(
+            "SELECT code FROM model_dispatch WHERE tenant_id=? AND task_id=? AND (state='BOUND_EXCEEDED' OR (state='FAILED' AND currency IS NOT NULL)) ORDER BY started_at,id LIMIT 1",
+            s(task, "tenant_id"),
+            s(task, "id"));
+    return rejected.isEmpty() ? null : s(rejected.getFirst(), "code");
   }
 
   @Override
@@ -755,7 +773,14 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                   lease.taskId());
           if (!dispatch.equals(s(step, "dispatch_id")) || step.get("response_snapshot") != null)
             throw new TaskFailure(409, "DISPATCH_REJECTED");
-          settleCost(lease, task, evaluation, dispatch, usage);
+          if (settleCost(lease, task, evaluation, dispatch, usage)) {
+            db.update(
+                "UPDATE step SET state='REJECTED' WHERE tenant_id=? AND id=?",
+                lease.tenant(),
+                stepId);
+            event(task, "response:" + stepId, "model.rejected", "MODEL_COST_BOUND_EXCEEDED");
+            return null;
+          }
           db.update(
               "UPDATE step SET state='RESPONDED',response_snapshot=?,response_digest=? WHERE tenant_id=? AND id=?",
               response,
@@ -834,7 +859,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                 "state"))) throw new TaskFailure(409, "MODEL_COST_BOUND_EXCEEDED");
   }
 
-  private void settleCost(
+  private boolean settleCost(
       Lease lease,
       Map<String, Object> task,
       Map<String, Object> evaluation,
@@ -916,6 +941,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           "UPDATE task SET max_models=models_used WHERE tenant_id=? AND id=?",
           lease.tenant(),
           lease.taskId());
+    return exceeded;
   }
 
   @Override
