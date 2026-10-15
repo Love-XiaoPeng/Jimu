@@ -1,5 +1,22 @@
 # XIAO-34 验证记录
 
+## Windows CRLF 工具生命周期修订（2026-10-15）
+
+审查复现了旧脚本在 target 留下只读 Git 对象，导致后续 Maven clean 失败。本次临时仓库改放系统临时目录，由脚本在 finally 收尾；删除前核实精确父目录、唯一前缀、非符号链接及实际路径，只处理本次 mkdtemp 返回的目录。成功、检查异常和清理异常均保存结果；检查或清理失败会非零退出，不再用 process.exit 跳过收尾。原始来源字节与本地/CI 的显式 whitespace 规则未改。
+
+在 Windows 的新建 tracked-source 副本中，使用同一 JDK 21 / Maven Wrapper 3.9.9，按审查要求串行执行：
+
+| 顺序 / 实际命令 | 原始退出码 / 结果 |
+| --- | --- |
+| 1. `mvnw.cmd -B -ntp clean verify` | **0**；31 tests，0 failures/errors/skipped，SpotBugs 0 问题；Maven 49.340 秒 |
+| 2. `node tools/verify-whitespace.mjs` | **0**；原始 CRLF 检查 **0**，注入真实尾随空格 **2**；scopeVerified=true、removed=true，进程返回后再次确认副本不存在 |
+| 3. `mvnw.cmd -B -ntp clean verify` | **0**；31 tests，0 failures/errors/skipped，SpotBugs 0 问题；包含 17 项 UTF-8 回归和 2 项真实进程集成 |
+| 4. 在验证副本的来源中注入尾随空格，再运行同一 CRLF 脚本 | **1**（预期失败）；“合法来源”检查退出 **2**，脚本报告结果不符合预期；finally 仍删除本次含 Git 对象的副本，removed=true |
+
+两次完整构建均包含默认全部门禁；每次 3 个子 JVM 均记录 alive=false，HTTP fixture 随测试关闭。步骤 2 的 JSON、第一次构建报告在步骤 3 clean 前复制到工程外保存；错误路径的副本来源也在 finally 恢复，并核对 SHA256 与原工作树一致。target/whitespace-evidence 内没有新 Git 副本。附件包含顺序运行器、原始日志、退出码 JSON、测试汇总和进程清理记录，可复现正常及异常清理。
+
+原工作树中历史被拒清理的旧 fixture 保留原样，本轮没有扫描删除旧目录，也没有声称对历史工作树执行 clean 成功；顺序复验使用与审查相同的新建源码副本。Node 22+ / Git 仅供该可选证明脚本使用，默认 Java verify 不增加运行资源。R4 已获独立复验解除；UTF-8 与本工具修订仍待独立复验，事项保持 in_progress，P1 尚未验收。
+
 ## UTF-8 截断修订与 R4 联合回归（2026-10-15）
 
 测试侧最小复现为合法 UTF-8 `"中".repeat(349527)`，输入 1,048,581 字节。修复前新增回归确实因输出包含 U+FFFD 失败，原始 Maven 退出 **1**。修复后结果为完整的 349525 个“中”，UTF-8 重新编码为 **1,048,575 字节**，`truncated=true`，未生成替换字符。

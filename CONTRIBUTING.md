@@ -20,6 +20,8 @@ Linux/CI 执行 `./mvnw -B -ntp verify`，Windows 执行 `.\mvnw.cmd -B -ntp ver
 
 提交后本地及 CI 统一执行 `git -c core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol diff origin/master...HEAD --check`。先 fetch 确保基线最新；检查尚未提交的内容时把比较范围换为 `--cached`。规则显式允许原始 CRLF，但继续拒绝行尾空格、尾部空行和 tab 前空格；`.gitattributes` 固定相同规则，来源目录 `-text` 继续保留原字节。`node tools/verify-whitespace.mjs` 在隔离 Git 副本中验证原始 CRLF 退出 0、注入行尾空格退出 2，证据写入 `target/whitespace-evidence/results.json`。
 
+CRLF 脚本在系统临时目录创建唯一的 `jimu-whitespace-*` Git 副本，成功或异常均在 `finally` 核实路径并删除本次副本；清理失败会使脚本非零退出。只清理当前调用创建的目录，不扫描或删除历史副本。Windows 上 Git 对象可能只读，因此不再把临时仓库留给 Maven clean。`results.json` 保留正反例、异常及清理结果；下一次 clean 会删除 target 下的证据，需要保留时先复制到工程外。可按 `mvnw.cmd -B -ntp clean verify` → `node tools/verify-whitespace.mjs` → `mvnw.cmd -B -ntp clean verify` 检查生命周期。
+
 Manifest 只维护 plugin.yaml，JSON 是派生视图。输出 Schema 保持一份权威源，打包副本须核验摘要。历史 taotie 标识、Schema URN 和上游名称原样保存，映射由架构决定。迁移先固定 SHA、核对许可及行为，再实现和验证；已发布的破坏兼容变更须新版本及迁移说明。
 
 ## 交付
