@@ -39,6 +39,10 @@ public class RuntimeConfiguration {
   }
 
   @Bean(destroyMethod = "close")
+  @ConditionalOnProperty(
+      name = "jimu.durable.enabled",
+      havingValue = "false",
+      matchIfMissing = true)
   HttpResourceProbe resourceProbe(Environment environment) {
     String role = environment.getRequiredProperty("jimu.role");
     return switch (role) {

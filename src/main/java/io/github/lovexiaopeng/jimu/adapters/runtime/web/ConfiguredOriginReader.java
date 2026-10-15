@@ -19,8 +19,13 @@ public final class ConfiguredOriginReader implements WebPageReader, AutoCloseabl
   private static final int OUTPUT_BYTES = 1048576;
   private final URI origin;
   private final HttpClient client;
+  private final String credential;
 
   public ConfiguredOriginReader(URI origin) {
+    this(origin, "");
+  }
+
+  public ConfiguredOriginReader(URI origin, String credential) {
     if (!("http".equals(origin.getScheme()) || "https".equals(origin.getScheme()))
         || origin.getHost() == null
         || origin.getUserInfo() != null
@@ -31,6 +36,7 @@ public final class ConfiguredOriginReader implements WebPageReader, AutoCloseabl
           "Provider origin must be an HTTP(S) origin without credentials, query or path");
     }
     this.origin = origin;
+    this.credential = credential;
     client =
         HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(2))
@@ -55,12 +61,9 @@ public final class ConfiguredOriginReader implements WebPageReader, AutoCloseabl
     Duration timeout =
         remaining.compareTo(Duration.ofSeconds(30)) > 0 ? Duration.ofSeconds(30) : remaining;
     try {
-      var response =
-          BoundedHttp.get(
-              client,
-              HttpRequest.newBuilder(target).timeout(timeout).GET().build(),
-              OUTPUT_BYTES + 1,
-              timeout);
+      var request = HttpRequest.newBuilder(target).timeout(timeout);
+      if (!credential.isEmpty()) request.header("Authorization", "Bearer " + credential);
+      var response = BoundedHttp.get(client, request.GET().build(), OUTPUT_BYTES + 1, timeout);
       byte[] bytes = response.body();
       boolean truncated = bytes.length > OUTPUT_BYTES;
       var input = ByteBuffer.wrap(bytes, 0, Math.min(bytes.length, OUTPUT_BYTES));
