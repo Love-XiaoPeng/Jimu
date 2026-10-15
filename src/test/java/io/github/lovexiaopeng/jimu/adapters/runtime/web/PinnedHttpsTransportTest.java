@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsExchange;
+import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
 import java.io.ByteArrayOutputStream;
@@ -36,6 +37,7 @@ import javax.net.ssl.ExtendedSSLSession;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SNIHostName;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.TrustManagerFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -117,10 +119,19 @@ class PinnedHttpsTransportTest {
     final List<com.sun.net.httpserver.Headers> headers = new CopyOnWriteArrayList<>();
     final List<String> sni = new CopyOnWriteArrayList<>();
     final AtomicInteger requests = new AtomicInteger();
+    final AtomicInteger clientIdentities = new AtomicInteger();
 
     Fixture() throws IOException {
       server = HttpsServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-      server.setHttpsConfigurator(new HttpsConfigurator(trusted));
+      server.setHttpsConfigurator(
+          new HttpsConfigurator(trusted) {
+            @Override
+            public void configure(HttpsParameters parameters) {
+              var ssl = trusted.getDefaultSSLParameters();
+              ssl.setWantClientAuth(true);
+              parameters.setSSLParameters(ssl);
+            }
+          });
       server.setExecutor(executor);
       server.createContext(
           "/",
@@ -128,6 +139,12 @@ class PinnedHttpsTransportTest {
             try (exchange) {
               requests.incrementAndGet();
               headers.add(exchange.getRequestHeaders());
+              try {
+                ((HttpsExchange) exchange).getSSLSession().getPeerCertificates();
+                clientIdentities.incrementAndGet();
+              } catch (SSLPeerUnverifiedException e) {
+                // Anonymous client: the server requested, but did not require, a certificate.
+              }
               for (var name :
                   ((ExtendedSSLSession) ((HttpsExchange) exchange).getSSLSession())
                       .getRequestedServerNames())
@@ -265,6 +282,48 @@ class PinnedHttpsTransportTest {
       assertEquals(1, fixture.requests.get());
     } finally {
       ProxySelector.setDefault(prior);
+    }
+  }
+
+  @Test
+  void anonymousTlsNeverLoadsJvmClientKeyStore() throws Exception {
+    var keys =
+        List.of(
+            "javax.net.ssl.keyStore",
+            "javax.net.ssl.keyStorePassword",
+            "javax.net.ssl.keyStoreType",
+            "javax.net.ssl.trustStore",
+            "javax.net.ssl.trustStorePassword",
+            "javax.net.ssl.trustStoreType");
+    var prior = new java.util.HashMap<String, String>();
+    for (String key : keys) prior.put(key, System.getProperty(key));
+    try (var fixture = new Fixture()) {
+      for (String prefix : List.of("javax.net.ssl.keyStore", "javax.net.ssl.trustStore")) {
+        System.setProperty(prefix, directory.resolve("fixture.p12").toString());
+        System.setProperty(prefix + "Password", "fixture-only");
+        System.setProperty(prefix + "Type", "PKCS12");
+      }
+      fixture.get("/control-with-client-identity");
+      assertEquals(
+          1, fixture.clientIdentities.get(), "fixture must actually request client authentication");
+      var reply =
+          PublicWebReader.defaultTransport()
+              .get(
+                  fixture.target("/anonymous"),
+                  new InetAddress[] {InetAddress.getByName("127.0.0.1")},
+                  PublicWebReaderTest.context(),
+                  new AtomicReference<>());
+      assertEquals(200, reply.status());
+      assertEquals(2, fixture.requests.get());
+      assertEquals(
+          1,
+          fixture.clientIdentities.get(),
+          "anonymous transport must not send the configured JVM client identity");
+    } finally {
+      for (String key : keys) {
+        if (prior.get(key) == null) System.clearProperty(key);
+        else System.setProperty(key, prior.get(key));
+      }
     }
   }
 

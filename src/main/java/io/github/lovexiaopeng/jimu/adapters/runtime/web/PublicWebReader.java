@@ -6,7 +6,7 @@ import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebPageReader;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
-import java.security.NoSuchAlgorithmException;
+import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
@@ -16,6 +16,7 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
 import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 
@@ -50,10 +51,13 @@ public final class PublicWebReader implements WebPageReader {
     this.transport = transport;
   }
 
-  private static Transport defaultTransport() {
+  static Transport defaultTransport() {
     try {
-      return new PinnedHttpsTransport(SSLContext.getDefault())::get;
-    } catch (NoSuchAlgorithmException e) {
+      // Do not inherit client identities from the JVM default SSLContext / keyStore properties.
+      SSLContext tls = SSLContext.getInstance("TLS");
+      tls.init(new KeyManager[0], null, null);
+      return new PinnedHttpsTransport(tls)::get;
+    } catch (GeneralSecurityException e) {
       throw new IllegalStateException("Default TLS unavailable", e);
     }
   }
