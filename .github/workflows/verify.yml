@@ -1,0 +1,38 @@
+name: verify
+on:
+  pull_request:
+  push:
+    branches: [master]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Explicit whitespace rule (preserve original CRLF evidence)
+        run: git -c core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol diff origin/master...HEAD --check
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Full build, contracts and real worker integration
+        run: ./mvnw -B -ntp verify
+      - name: Effective dependency evidence
+        if: always()
+        run: ./mvnw -B -ntp help:effective-pom -Doutput=target/effective-pom.xml dependency:tree -DoutputFile=target/dependency-tree.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: verification-evidence
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+            target/effective-pom.xml
+            target/dependency-tree.txt
+            target/spotbugsXml.xml
+          if-no-files-found: error

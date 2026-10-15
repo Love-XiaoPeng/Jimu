@@ -1,0 +1,35 @@
+{
+    "attachmentId":  "01a13dea-6390-784e-8cab-52e565d627b2",
+    "files":  [
+                  {
+                      "file":  "0001-jimu-naming.md",
+                      "bytes":  5681,
+                      "sha256":  "7aa1515876c369d2691bd8c0af67f8fca5c78d6c4f16473db7f0d542d6a8ba74",
+                      "publishedHashVerified":  true
+                  },
+                  {
+                      "file":  "0002-dependency-baseline.md",
+                      "bytes":  5544,
+                      "sha256":  "27593a28480308bf1d978f0c7f6180bdbb9bcb2980ecf5fa56b5568911c2ad23",
+                      "publishedHashVerified":  true
+                  },
+                  {
+                      "file":  "0003-package-boundaries.md",
+                      "bytes":  6829,
+                      "sha256":  "45a482a1cef2c69e69c870ed2779c12a67a25806263fe164d918570b2e70937a",
+                      "publishedHashVerified":  true
+                  },
+                  {
+                      "file":  "README.md",
+                      "bytes":  3446,
+                      "sha256":  "9ce692a7c0b5b6fa4561ba49b103c2a5216425b28d7d58f8824a9039c7e7738c",
+                      "publishedHashVerified":  true
+                  },
+                  {
+                      "file":  "verification.txt",
+                      "bytes":  1188,
+                      "sha256":  "911a17f64a2e0040f9ef127b004a8e00443025b73f987f469eea08827a2848e2",
+                      "publishedHashVerified":  false
+                  }
+              ]
+}
