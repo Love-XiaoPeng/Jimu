@@ -2,16 +2,17 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.contract;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.JsonSchemaFactory;
-import com.networknt.schema.SchemaValidatorsConfig;
-import com.networknt.schema.SpecVersion;
+import com.networknt.schema.InputFormat;
+import com.networknt.schema.Schema;
+import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SchemaRegistryConfig;
+import com.networknt.schema.SpecificationVersion;
 import java.io.IOException;
 
 /** JSON is confined to this boundary. P1 schemas are single-file 2020-12 documents. */
 public final class SchemaContract {
   private final ObjectMapper mapper = new ObjectMapper();
-  private final JsonSchema schema;
+  private final Schema schema;
 
   public SchemaContract(byte[] bytes) throws IOException {
     JsonNode document = mapper.readTree(bytes);
@@ -19,9 +20,11 @@ public final class SchemaContract {
       throw new IllegalArgumentException("Unsupported Schema dialect");
     }
     checkReferences(document);
-    var config = SchemaValidatorsConfig.builder().formatAssertionsEnabled(true).build();
+    var config = SchemaRegistryConfig.builder().formatAssertionsEnabled(true).build();
     schema =
-        JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012).getSchema(document, config);
+        SchemaRegistry.withDefaultDialect(
+                SpecificationVersion.DRAFT_2020_12, builder -> builder.schemaRegistryConfig(config))
+            .getSchema(document.toString(), InputFormat.JSON);
     schema.initializeValidators();
   }
 
@@ -36,7 +39,7 @@ public final class SchemaContract {
   }
 
   public void validate(JsonNode value) {
-    if (!schema.validate(value).isEmpty())
+    if (!schema.validate(value.toString(), InputFormat.JSON).isEmpty())
       throw new IllegalArgumentException("Schema validation failed");
   }
 

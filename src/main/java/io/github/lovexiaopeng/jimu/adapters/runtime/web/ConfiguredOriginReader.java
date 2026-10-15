@@ -19,8 +19,18 @@ public final class ConfiguredOriginReader implements WebPageReader, AutoCloseabl
   private static final int OUTPUT_BYTES = 1048576;
   private final URI origin;
   private final HttpClient client;
+  private final String credential;
+  private final String effectId;
 
   public ConfiguredOriginReader(URI origin) {
+    this(origin, "");
+  }
+
+  public ConfiguredOriginReader(URI origin, String credential) {
+    this(origin, credential, "");
+  }
+
+  public ConfiguredOriginReader(URI origin, String credential, String effectId) {
     if (!("http".equals(origin.getScheme()) || "https".equals(origin.getScheme()))
         || origin.getHost() == null
         || origin.getUserInfo() != null
@@ -31,6 +41,8 @@ public final class ConfiguredOriginReader implements WebPageReader, AutoCloseabl
           "Provider origin must be an HTTP(S) origin without credentials, query or path");
     }
     this.origin = origin;
+    this.credential = credential;
+    this.effectId = effectId;
     client =
         HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(2))
@@ -40,6 +52,11 @@ public final class ConfiguredOriginReader implements WebPageReader, AutoCloseabl
 
   @Override
   public FetchOutput fetch(String url, ExecutionContext context) {
+    URI target = checkedTarget(origin, url);
+    return fetchTarget(target, context);
+  }
+
+  public static URI checkedTarget(URI origin, String url) {
     URI target = URI.create(url);
     if (!origin.getScheme().equalsIgnoreCase(target.getScheme())
         || !origin.getHost().equalsIgnoreCase(target.getHost())
@@ -48,6 +65,10 @@ public final class ConfiguredOriginReader implements WebPageReader, AutoCloseabl
         || target.getFragment() != null) {
       throw new IllegalArgumentException("URL outside the configured provider origin");
     }
+    return target;
+  }
+
+  private FetchOutput fetchTarget(URI target, ExecutionContext context) {
     context.cancellation().throwIfCancelled();
     Duration remaining = Duration.between(Instant.now(), context.deadline());
     if (remaining.isNegative() || remaining.isZero())
@@ -55,12 +76,10 @@ public final class ConfiguredOriginReader implements WebPageReader, AutoCloseabl
     Duration timeout =
         remaining.compareTo(Duration.ofSeconds(30)) > 0 ? Duration.ofSeconds(30) : remaining;
     try {
-      var response =
-          BoundedHttp.get(
-              client,
-              HttpRequest.newBuilder(target).timeout(timeout).GET().build(),
-              OUTPUT_BYTES + 1,
-              timeout);
+      var request = HttpRequest.newBuilder(target).timeout(timeout);
+      if (!credential.isEmpty()) request.header("Authorization", "Bearer " + credential);
+      if (!effectId.isEmpty()) request.header("X-Jimu-Effect-Intent-Id", effectId);
+      var response = BoundedHttp.get(client, request.GET().build(), OUTPUT_BYTES + 1, timeout);
       byte[] bytes = response.body();
       boolean truncated = bytes.length > OUTPUT_BYTES;
       var input = ByteBuffer.wrap(bytes, 0, Math.min(bytes.length, OUTPUT_BYTES));
