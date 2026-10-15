@@ -4,6 +4,7 @@ import http.server
 import json
 from pathlib import Path
 import threading
+import concurrent.futures
 
 
 class Models(http.server.ThreadingHTTPServer):
@@ -166,8 +167,9 @@ def model_core(e):
         new, other = worker(paid_b), worker(paid_b)
         for task in tasks:
             e.state(task, "SUCCEEDED")
-        for i in range(10):
-            task = e.submit("cost-second-" + ("unknown" if i == 0 else str(i)))
+        with concurrent.futures.ThreadPoolExecutor(4) as pool:
+            submitted = list(pool.map(lambda i: e.submit("cost-second-" + ("unknown" if i == 0 else str(i))), range(10)))
+        for task in submitted:
             e.state(task, "SUCCEEDED")
         final = e.submit("cost-21st")
         e.state(final, "FAILED")

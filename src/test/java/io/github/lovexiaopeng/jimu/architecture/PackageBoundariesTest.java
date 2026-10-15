@@ -17,10 +17,17 @@ class PackageBoundariesTest {
         classes.size() >= 20, "Architecture scan must contain actual Jimu production classes");
     classes()
         .that()
-        .resideInAnyPackage("..plugin.api..", "..model.api..")
+        .resideInAPackage("..plugin.api..")
         .should()
         .onlyDependOnClassesThat()
-        .resideInAnyPackage("java..", "..plugin.api..", "..model.api..")
+        .resideInAnyPackage("java..", "..plugin.api..")
+        .check(classes);
+    classes()
+        .that()
+        .resideInAPackage("..model.api..")
+        .should()
+        .onlyDependOnClassesThat()
+        .resideInAnyPackage("java..", "..model.api..")
         .check(classes);
     noClasses()
         .that()

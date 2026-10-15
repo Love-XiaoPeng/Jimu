@@ -118,6 +118,21 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   public View submit(Identity identity, String key, Request request) {
     return tx(
         () -> {
+          // InnoDB also locks the evaluation parent while checking task's FK. Acquire that
+          // parent before tenant_budget, including acceptance and idempotent retries.
+          var binding =
+              rows(
+                  "SELECT evaluation_run_id FROM task WHERE tenant_id=? AND owner_actor_id=? AND idempotency_key=?",
+                  identity.tenant(),
+                  identity.actor(),
+                  key);
+          String run;
+          if (binding.isEmpty()) {
+            var candidate = models.selected(identity.tenant());
+            models.admit(candidate);
+            run = candidate.paid() ? models.evaluationRunId() : null;
+          } else run = s(binding.getFirst(), "evaluation_run_id");
+          evaluation(identity.tenant(), run);
           var budget = bucket(identity.tenant());
           identity(identity);
           String snapshot = Payloads.json(request), digest = Payloads.hash(snapshot);
@@ -553,12 +568,15 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                 lease.tenant(),
                 lease.taskId()),
             "evaluation_run_id");
-    return run == null
-        ? null
-        : one(
-            "SELECT * FROM evaluation_budget WHERE tenant_id=? AND id=? FOR UPDATE",
-            lease.tenant(),
-            run);
+    return evaluation(lease.tenant(), run);
+  }
+
+  private Map<String, Object> evaluation(String tenant, String run) {
+    if (run == null) return null;
+    var found =
+        rows("SELECT * FROM evaluation_budget WHERE tenant_id=? AND id=? FOR UPDATE", tenant, run);
+    if (found.isEmpty()) throw new TaskFailure(503, "MODEL_EVALUATION_UNAVAILABLE");
+    return found.getFirst();
   }
 
   @Override
