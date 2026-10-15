@@ -81,7 +81,10 @@ final class PinnedHttpsTransport {
     var manager =
         new BasicHttpClientConnectionManager(
             new DefaultHttpClientConnectionOperator(
-                ignored -> new Socket(Proxy.NO_PROXY),
+                ignored -> {
+                  PublicWebReader.check(context);
+                  return new Socket(Proxy.NO_PROXY);
+                },
                 DefaultSchemePortResolver.INSTANCE,
                 resolver,
                 RegistryBuilder.<org.apache.hc.client5.http.ssl.TlsSocketStrategy>create()

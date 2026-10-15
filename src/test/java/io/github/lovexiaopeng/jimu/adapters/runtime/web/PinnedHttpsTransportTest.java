@@ -269,6 +269,16 @@ class PinnedHttpsTransportTest {
       assertNull(fixture.headers.getFirst().getFirst("Authorization"));
       assertNull(fixture.headers.getFirst().getFirst("Cookie"));
       assertNull(fixture.headers.getFirst().getFirst("X-Jimu-Effect-Intent-Id"));
+      var fallback =
+          new PinnedHttpsTransport(trusted)
+              .get(
+                  fixture.target("/pinned-fallback"),
+                  new InetAddress[] {
+                    InetAddress.getByName("127.0.0.2"), InetAddress.getByName("127.0.0.1")
+                  },
+                  PublicWebReaderTest.context(),
+                  new AtomicReference<>());
+      assertEquals(200, fallback.status());
       assertThrows(
           IOException.class,
           () ->
@@ -279,7 +289,7 @@ class PinnedHttpsTransportTest {
                       new InetAddress[] {InetAddress.getByName("127.0.0.1")},
                       PublicWebReaderTest.context(),
                       new AtomicReference<>()));
-      assertEquals(1, fixture.requests.get());
+      assertEquals(2, fixture.requests.get());
     } finally {
       ProxySelector.setDefault(prior);
     }

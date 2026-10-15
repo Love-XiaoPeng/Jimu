@@ -15,7 +15,7 @@
 - Apache 自定义 `DnsResolver` 只返回本跳已检查的地址集，不再查询系统 DNS/反向 DNS。原 host 用于 HTTP Host、TLS SNI 和证书域名验证。匿名 TLS 上下文显式使用空 KeyManager 集合，不继承 JVM 默认客户端证书，保留系统信任校验。每跳新建连接、不复用，不自动重试/认证/带 cookie/重定向；固定直连路由，底层显式 `Socket(Proxy.NO_PROXY)`，不使用系统 HTTP/SOCKS 代理。经典 HTTP/1 客户端不处理 Alt-Svc。
 - 同源手动跟随最多 5 次；每跳重新验证 URL 和 DNS。跨源即使也在域名集合内仍拒绝。
 - 响应最多 64 个头，每行最多 8192；正文传输和解压各最多 2 MiB，流式计数，超出显式失败。只支持 identity/gzip；拒绝其他 Content-Encoding、歧义类型头、非 UTF-8 和非 HTML/plaintext。超界、解码失败或重定向时先 abort，避免底层 entity close 自动排空无限正文。
-- 整次调用使用任务剩余 deadline 与 30 秒较小值，轮询取消并 abort 活跃请求，覆盖慢速响应。系统 DNS 的底层阻塞不保证能被 Java 中断：调用者按 deadline 返回，迟到解析结果经过取消/deadline 检查后不能建连。DNS 线程可能晚于调用者退出，故本阶段**不宣称完成任务 quiescence/进程树排空接入**；接入既有 worker supervisor 前需补生命周期证据。
+- 整次调用使用任务剩余 deadline 与 30 秒较小值，轮询取消并 abort 活跃请求，覆盖慢速响应；固定地址集内的回退每次创建 Socket 前也重查取消/deadline。系统 DNS 的底层阻塞不保证能被 Java 中断：调用者按 deadline 返回，迟到解析结果经过取消/deadline 检查后不能建连。DNS 线程可能晚于调用者退出，故本阶段**不宣称完成任务 quiescence/进程树排空接入**；接入既有 worker supervisor 前需补生命周期证据。
 - `public-text-v1` 为确定性的纯文本子集，不宣称通用 HTML→Markdown 或 JS 渲染。jsoup 只解析已取得的有界字符串，移除脚本、样式、表单、导航、iframe 等节点，不执行脚本或加载子资源；保留文本并转义 HTML 标签字符。输出有来源及整段不可信标记，最多 200,000 个 UTF-16 单元，按完整 Unicode 边界截断，显式 `truncated` 和 `[TRUNCATED]`。另检查四字段 JSON 序列化总量 ≤1 MiB。
 - 非 2xx 和空正文保留可观察状态；这些结果尚未接入报告有效证据分类。调用者不能把不可信标记或 HTTP 成功本身当成报告证据。
 
