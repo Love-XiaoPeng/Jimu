@@ -937,6 +937,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   }
 
   private void terminal(Map<String, Object> task, String state, String code) {
+    if ("CANCELLED".equals(state) && !writersQuiescent(task)) return;
     String tenant = s(task, "tenant_id"), taskId = s(task, "id");
     db.update(
         "UPDATE task SET state=?,code=? WHERE tenant_id=? AND id=?", state, code, tenant, taskId);
@@ -945,8 +946,6 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           "UPDATE invocation SET state='OUTCOME_UNKNOWN' WHERE tenant_id=? AND task_id=? AND state='RUNNING'",
           tenant,
           taskId);
-      if (!rows("SELECT id FROM worker_process WHERE id=? AND stopped=TRUE", s(task, "worker_id"))
-          .isEmpty()) releaseRun(task);
       db.update(
           "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND task_id=? AND category='TOOL' AND state='RESERVED'",
           tenant,
@@ -958,17 +957,9 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'",
               tenant,
               taskId + ":queue");
-      int running =
-          db.update(
-              "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'",
-              tenant,
-              taskId + ":run");
-      db.update(
-          "UPDATE tenant_budget SET queued=queued-?,running=running-? WHERE tenant_id=?",
-          queued,
-          running,
-          tenant);
+      db.update("UPDATE tenant_budget SET queued=queued-? WHERE tenant_id=?", queued, tenant);
     }
+    if (writersQuiescent(task)) releaseRun(task);
     db.update(
         "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND task_id=? AND category='MODEL' AND state='RESERVED'",
         tenant,
@@ -1000,7 +991,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   @Override
   public List<WorkerProcess> processes(String host) {
     return rows(
-            "SELECT w.*,EXISTS(SELECT 1 FROM task t WHERE t.worker_id=w.id AND t.state='CANCEL_REQUESTED' AND t.cancel_requested_at<CURRENT_TIMESTAMP(6)-INTERVAL 3 SECOND) AS overdue FROM worker_process w WHERE host_id=? AND stopped=FALSE ORDER BY id LIMIT 64",
+            "SELECT w.*,EXISTS(SELECT 1 FROM task_attempt a JOIN task t ON t.tenant_id=a.tenant_id AND t.id=a.task_id WHERE a.worker_id=w.id AND a.quiescent=FALSE AND t.state='CANCEL_REQUESTED' AND t.cancel_requested_at<CURRENT_TIMESTAMP(6)-INTERVAL 3 SECOND) AS overdue FROM worker_process w WHERE host_id=? AND stopped=FALSE ORDER BY id LIMIT 64",
             host)
         .stream()
         .map(
@@ -1021,16 +1012,29 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           "UPDATE tenant_budget SET running=running-1 WHERE tenant_id=?", s(task, "tenant_id"));
   }
 
+  private boolean writersQuiescent(Map<String, Object> task) {
+    // Every attempt matters, including expired attempts fenced out by a later worker.
+    // Missing receipts and process-observation failures remain unknown.
+    return rows(
+            "SELECT a.id FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.tenant_id=? AND a.task_id=? AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE)",
+            s(task, "tenant_id"),
+            s(task, "id"))
+        .isEmpty();
+  }
+
   @Override
   public void quiescent(Lease lease) {
     tx(
         () -> {
           bucket(lease.tenant());
           var task = locked(lease.tenant(), lease.taskId());
-          if (lease.worker().equals(s(task, "worker_id"))
-              && n(task, "fence") == lease.fence()
-              && List.of("NEEDS_RECONCILIATION", "SUCCEEDED", "FAILED", "CANCELLED")
-                  .contains(s(task, "state"))) releaseRun(task);
+          db.update(
+              "UPDATE task_attempt SET quiescent=TRUE WHERE tenant_id=? AND id=? AND worker_id=? AND fence=?",
+              lease.tenant(),
+              lease.attemptId(),
+              lease.worker(),
+              lease.fence());
+          settleStoppedWriters(task);
           return null;
         });
   }
@@ -1039,47 +1043,59 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   public void processStopped(String worker) {
     for (var candidate :
         rows(
-            "SELECT tenant_id,id FROM task WHERE worker_id=? AND state IN ('RUNNING','CANCEL_REQUESTED','NEEDS_RECONCILIATION')",
+            "SELECT DISTINCT tenant_id,task_id AS id FROM task_attempt WHERE worker_id=?",
             worker)) {
       tx(
           () -> {
             String tenant = s(candidate, "tenant_id");
             bucket(tenant);
             var task = locked(tenant, s(candidate, "id"));
-            if (!worker.equals(s(task, "worker_id"))) return null;
             db.update(
-                "UPDATE task SET lease_until=CURRENT_TIMESTAMP(6)-INTERVAL 1 MICROSECOND WHERE tenant_id=? AND id=?",
+                "UPDATE task_attempt SET quiescent=TRUE WHERE tenant_id=? AND task_id=? AND worker_id=?",
                 tenant,
-                s(task, "id"));
-            if ("CANCEL_REQUESTED".equals(s(task, "state"))) {
-              boolean uncertain =
-                  !rows(
-                          "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN')",
-                          tenant,
-                          s(task, "id"))
-                      .isEmpty();
-              terminal(
-                  task,
-                  uncertain ? "NEEDS_RECONCILIATION" : "CANCELLED",
-                  uncertain ? "EFFECT_OUTCOME_UNKNOWN" : "CANCELLED");
-              releaseRun(task);
-            } else if ("NEEDS_RECONCILIATION".equals(s(task, "state"))) releaseRun(task);
+                s(task, "id"),
+                worker);
+            if (worker.equals(s(task, "worker_id")))
+              db.update(
+                  "UPDATE task SET lease_until=CURRENT_TIMESTAMP(6)-INTERVAL 1 MICROSECOND WHERE tenant_id=? AND id=?",
+                  tenant,
+                  s(task, "id"));
+            settleStoppedWriters(task);
             return null;
           });
     }
+    // Mark the receipt last: a crash during reconciliation must leave it eligible for retry.
     db.update("UPDATE worker_process SET stopped=TRUE WHERE id=?", worker);
+  }
+
+  private void settleStoppedWriters(Map<String, Object> task) {
+    if (!writersQuiescent(task)) return;
+    if ("CANCEL_REQUESTED".equals(s(task, "state"))) {
+      boolean uncertain =
+          !rows(
+                  "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN')",
+                  s(task, "tenant_id"),
+                  s(task, "id"))
+              .isEmpty();
+      terminal(
+          task,
+          uncertain ? "NEEDS_RECONCILIATION" : "CANCELLED",
+          uncertain ? "EFFECT_OUTCOME_UNKNOWN" : "CANCELLED");
+    }
+    if (List.of("CANCEL_REQUESTED", "NEEDS_RECONCILIATION", "SUCCEEDED", "FAILED", "CANCELLED")
+        .contains(s(task, "state"))) releaseRun(task);
   }
 
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3') AND success=TRUE",
             Integer.class)
-        != 2) throw new IllegalStateException("Required migration unavailable");
+        != 3) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 2) throw new IllegalStateException("Unsupported schema version");
+        != 3) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override
@@ -1104,11 +1120,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                 boolean expired = time(a, "expires_at").isBefore(Instant.now());
                 if (!expired && !List.of("FAILED", "CANCELLED").contains(s(task, "state")))
                   return false;
-                if (!rows(
-                        "SELECT id FROM task_attempt WHERE tenant_id=? AND task_id=? AND state='ACTIVE'",
-                        tenant,
-                        taskId)
-                    .isEmpty()) return false;
+                if (!writersQuiescent(task)) return false;
                 db.update(
                     "UPDATE artifact SET state=? WHERE tenant_id=? AND id=?",
                     expired ? "EXPIRED" : "ABANDONED",

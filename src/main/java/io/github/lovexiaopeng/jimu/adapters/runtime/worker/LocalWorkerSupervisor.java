@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.worker;
 
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
+import java.nio.file.Path;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -9,45 +10,53 @@ import java.util.concurrent.TimeUnit;
 public final class LocalWorkerSupervisor implements AutoCloseable {
   private final ExecutionLedger ledger;
   private final String host;
+  private final Path proc;
   private final ScheduledExecutorService clock = Executors.newSingleThreadScheduledExecutor();
 
   public LocalWorkerSupervisor(ExecutionLedger ledger, String host) {
+    this(ledger, host, Path.of("/proc"));
+  }
+
+  LocalWorkerSupervisor(ExecutionLedger ledger, String host, Path proc) {
     this.ledger = ledger;
     this.host = host;
+    this.proc = proc;
   }
 
   public void start() {
     clock.scheduleWithFixedDelay(this::reconcile, 0, 250, TimeUnit.MILLISECONDS);
   }
 
-  private void reconcile() {
+  void reconcile() {
     try {
       for (var receipt : ledger.processes(host)) {
+        // Capture the JDK handle before validating /proc identity, so its own native
+        // start-time check also protects destroyForcibly against subsequent PID reuse.
         var process = ProcessHandle.of(receipt.pid());
-        if (process.isEmpty() || !process.get().isAlive()) {
-          ledger.processStopped(receipt.id());
-          continue;
-        }
-        long ticks;
+        LinuxProcessReceipt.Status status;
         try {
-          ticks = LinuxProcessReceipt.startTicks(receipt.pid());
+          status =
+              LinuxProcessReceipt.read(proc.resolve(Long.toString(receipt.pid())).resolve("stat"));
+        } catch (java.nio.file.NoSuchFileException absent) {
+          if (ProcessHandle.of(receipt.pid()).isEmpty()) ledger.processStopped(receipt.id());
+          continue;
         } catch (java.io.IOException unavailable) {
           // Unreadable /proc is not proof of death. Recheck on the next reconciliation.
           continue;
         }
-        boolean same = ticks == receipt.startTicks();
-        if (same && process.get().isAlive() && receipt.cancellationOverdue()) {
+        if (status.startTicks() != receipt.startTicks()) continue;
+        // Linux zombies have exited and cannot execute, even while a sibling JVM's
+        // ProcessHandle reports alive. The external parent need not reap them first.
+        if (status.exited()) {
+          ledger.processStopped(receipt.id());
+          continue;
+        }
+        if (process.isPresent() && receipt.cancellationOverdue()) {
           // Registered local workers only. No process-name scans and no shared-service operations.
           process.get().destroyForcibly();
-          process.get().onExit().get(5, TimeUnit.SECONDS);
         }
-        if (!same || !process.get().isAlive()) ledger.processStopped(receipt.id());
       }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    } catch (java.util.concurrent.ExecutionException
-        | java.util.concurrent.TimeoutException
-        | RuntimeException error) {
+    } catch (RuntimeException error) {
       System.getLogger(LocalWorkerSupervisor.class.getName())
           .log(System.Logger.Level.ERROR, "Worker reconciliation failed", error);
     }

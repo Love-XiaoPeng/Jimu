@@ -553,9 +553,10 @@ class Experiment:
             self.stop(fresh)
         finally:
             os.kill(self.control["process"].pid, signal.SIGCONT)
-        eventually(lambda: old["process"].poll() is not None, "cancelled stale worker stop confirmed", 12)
         self.state(cancelled, "CANCELLED")
+        self.assert_that(self.sql("SELECT COUNT(*) FROM task_attempt WHERE task_id='" + cancelled + "' AND quiescent=FALSE;") == "0" and self.sql("SELECT state FROM reservation WHERE id='" + cancelled + ":run';") == "RELEASED", "cancelled stale execution has trusted quiescence and releases run exactly once")
         self.assert_that(self.fixture.models.get("cancel-live-m1", 0) == 0, "no model dispatch after cancelled terminal")
+        self.stop(old)
 
         # Current implementation and persisted pins must agree before any effect.
         original_pin = self.sql("SELECT plugin_digest FROM installation WHERE tenant_id='tenant-a' AND plugin_id='web_fetch';")
@@ -822,6 +823,137 @@ class Experiment:
         except subprocess.CalledProcessError:
             return False
 
+    def writer_facts(self, task, writer, phase):
+        pid = writer["process"].pid
+        stat = Path("/proc/" + str(pid) + "/stat").read_text().rsplit(") ", 1)[1].split()
+        upload = self.sql("SELECT upload_id FROM artifact WHERE task_id='" + task + "';")
+        facts = {"phase": phase, "taskId": task, "pid": pid, "procState": stat[0], "startTicks": stat[19],
+                 "task": self.sql("SELECT state,code,fence,current_attempt_id,worker_id FROM task WHERE id='" + task + "';"),
+                 "attempts": self.sql("SELECT a.id,a.fence,a.state,a.quiescent,w.host_id,w.pid,w.start_ticks,w.stopped FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.task_id='" + task + "' ORDER BY a.fence;"),
+                 "reservations": self.sql("SELECT category,state,amount FROM reservation WHERE task_id='" + task + "' AND category IN ('RUNNING','STORAGE') ORDER BY category;"),
+                 "run": self.sql("SELECT state FROM reservation WHERE id='" + task + ":run';"),
+                 "storage": self.sql("SELECT r.state FROM artifact a JOIN reservation r ON r.id=a.id AND r.tenant_id=a.tenant_id WHERE a.task_id='" + task + "';"),
+                 "storageHeld": self.sql("SELECT storage_held FROM tenant_budget WHERE tenant_id='tenant-a';"),
+                 "artifact": self.sql("SELECT state,size,sha256 FROM artifact WHERE task_id='" + task + "';"),
+                 "objectCount": len(list((self.root / "objects").rglob(upload + "*"))) if upload else 0,
+                 "publishedEvents": self.sql("SELECT COUNT(*) FROM event WHERE task_id='" + task + "' AND type='artifact.created';")}
+        self.results.append(facts)
+        return facts
+
+    def writer_stop_regressions(self):
+        # R5: age the actual upload before lease/deadline recovery. EXPIRED is not quiescence.
+        for point, failure, end in [("A0", "deadline", "release"), ("A1", "deadline", "kill"), ("A0", "revocation", "release")]:
+            name = "r5-" + point.lower() + "-" + failure
+            task = self.submit(name)
+            old = self.start(name + "-old", "worker", point)
+            self.barrier(old)
+            if point == "A0" and failure == "deadline":
+                # Reconstruct the exact V2 schema in this private DB, with a live old
+                # attempt, then exercise control's real Flyway V2 -> V3 upgrade.
+                self.stop(self.control)
+                self.sql("ALTER TABLE task_attempt DROP COLUMN quiescent; DELETE FROM flyway_schema_history WHERE version='3';")
+                self.reject_start("v2-worker-rejected", {}, "migration")
+                self.control = self.start("v3-upgrade-control", "control")
+                self.assert_that(self.sql("SELECT version FROM flyway_schema_history WHERE version='3' AND success=TRUE;") == "3" and self.sql("SELECT quiescent FROM task_attempt WHERE task_id='" + task + "';") == "0", "V2 upgrade retains live attempt as unknown instead of inferring stop")
+            before = self.writer_facts(task, old, name + "-before-expiry")
+            self.sql("UPDATE artifact SET updated_at=CURRENT_TIMESTAMP(6)-INTERVAL 2 HOUR WHERE task_id='" + task + "';")
+            self.expire(task)
+            if failure == "deadline":
+                self.sql("UPDATE task SET deadline=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE id='" + task + "';")
+            else:
+                self.sql("UPDATE installation SET enabled=FALSE WHERE tenant_id='tenant-a';")
+            fresh = self.start(name + "-contender", "worker")
+            eventually(lambda: self.sql("SELECT state FROM task WHERE id='" + task + "';") == "FAILED", name + " fails without discarding writer receipt")
+            time.sleep(11)  # At least one real maintenance period, without extending the upload TTL.
+            held = self.writer_facts(task, old, name + "-after-maintenance-live")
+            self.assert_that(held["procState"] not in ("Z", "X") and held["run"] == "RESERVED" and held["storage"] == "RESERVED" and held["storageHeld"] == before["storageHeld"] and held["objectCount"] == before["objectCount"] and held["publishedEvents"] == "0", name + " live expired writer keeps run, storage and objects", **held)
+            self.assert_that(self.sql("SELECT COUNT(*) FROM task_attempt WHERE task_id='" + task + "' AND state='EXPIRED' AND quiescent=FALSE;") == "1", name + " expired attempt is explicitly not quiescent")
+            if end == "release":
+                # Freeze maintenance so the late object can be observed before the next cleanup.
+                os.kill(self.control["process"].pid, signal.SIGSTOP)
+                try:
+                    (old["folder"] / "release").touch()
+                    eventually(lambda: "FENCE_REJECTED" in (self.evidence / (name + "-old.log")).read_text(), name + " stale publication fenced")
+                    eventually(lambda: self.sql("SELECT quiescent FROM task_attempt WHERE task_id='" + task + "';") == "1", name + " finally acknowledges stopped execution")
+                    late = self.writer_facts(task, old, name + "-late-object-before-cleanup")
+                    self.assert_that(late["objectCount"] == 1 and late["storage"] == "RESERVED" and late["publishedEvents"] == "0", name + " late object remains accounted until cleanup", **late)
+                finally:
+                    os.kill(self.control["process"].pid, signal.SIGCONT)
+            else:
+                old["process"].kill()  # Deliberately leave the dead JVM unreaped for product reconciliation.
+                eventually(lambda: Path("/proc/" + str(old["process"].pid) + "/stat").read_text().rsplit(") ", 1)[1].split()[0] == "Z", name + " kernel confirms unreaped exit")
+            eventually(lambda: self.sql("SELECT state FROM reservation WHERE id='" + task + ":run';") == "RELEASED", name + " run released after trusted stop")
+            eventually(lambda: self.sql("SELECT r.state FROM artifact a JOIN reservation r ON r.id=a.id AND r.tenant_id=a.tenant_id WHERE a.task_id='" + task + "';") == "RELEASED", name + " cleanup releases storage")
+            cleaned = self.writer_facts(task, old, name + "-cleaned")
+            self.assert_that(cleaned["objectCount"] == 0 and cleaned["publishedEvents"] == "0", name + " no unaccounted orphan or stale publication", **cleaned)
+            self.assert_that(self.sql("SELECT code FROM task WHERE id='" + task + "';") == ("DEADLINE_EXCEEDED" if failure == "deadline" else "CAPABILITY_REVOKED"), name + " failure reason preserved")
+            time.sleep(11)
+            repeated = self.writer_facts(task, old, name + "-repeated-cleanup")
+            self.assert_that(repeated["objectCount"] == 0 and repeated["storageHeld"] == cleaned["storageHeld"] and repeated["run"] == "RELEASED", name + " cleanup and refunds are idempotent", **repeated)
+            self.stop(old); self.stop(fresh)
+            if failure == "revocation":
+                self.sql("UPDATE installation SET enabled=TRUE WHERE tenant_id='tenant-a';")
+
+        # A new successful attempt does not erase an older live writer's protection.
+        task = self.submit("r5-historical-writer")
+        old = self.start("r5-historical-old", "worker", "A0")
+        self.barrier(old); self.expire(task)
+        fresh = self.start("r5-historical-new", "worker")
+        self.state(task, "SUCCEEDED")
+        self.sql("UPDATE artifact SET expires_at=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE task_id='" + task + "';")
+        time.sleep(11)
+        held = self.writer_facts(task, old, "historical-live-after-success-and-expiry")
+        self.assert_that(held["run"] == "RESERVED" and held["storage"] == "SETTLED" and held["objectCount"] == 1 and held["publishedEvents"] == "1", "all historical writers protect published expired objects", **held)
+        (old["folder"] / "release").touch()
+        eventually(lambda: self.sql("SELECT COUNT(*) FROM task_attempt WHERE task_id='" + task + "' AND quiescent=FALSE;") == "0", "both historical attempts confirm quiescence")
+        eventually(lambda: self.sql("SELECT r.state FROM artifact a JOIN reservation r ON r.id=a.id AND r.tenant_id=a.tenant_id WHERE a.task_id='" + task + "';") == "RELEASED", "historical writers stopped before expiry cleanup")
+        done = self.writer_facts(task, old, "historical-cleaned")
+        self.assert_that(done["run"] == "RELEASED" and done["objectCount"] == 0 and done["publishedEvents"] == "1" and self.fixture.tools.get("/page/r5-historical-writer") == 1, "historical completion has no orphan, duplicate publication or tool replay", **done)
+        self.stop(old); self.stop(fresh)
+
+        task = self.submit("r5-historical-cancel")
+        old = self.start("r5-cancel-historical-old", "worker", "A0")
+        self.barrier(old); self.expire(task)
+        fresh = self.start("r5-cancel-current", "worker", "A1")
+        self.barrier(fresh)
+        self.http("POST", "/api/tasks/" + task + "/cancel")
+        # Both are left unreaped; cancellation must stop every possible writer.
+        self.state(task, "CANCELLED")
+        self.assert_that(self.sql("SELECT COUNT(*) FROM task_attempt WHERE task_id='" + task + "' AND quiescent=FALSE;") == "0" and self.sql("SELECT state FROM reservation WHERE id='" + task + ":run';") == "RELEASED", "cancellation confirms historical and current attempts stopped before releasing run")
+        self.assert_that(self.writer_facts(task, old, "historical-cancel-old")["procState"] == "Z" and self.writer_facts(task, fresh, "historical-cancel-current")["procState"] == "Z", "supervisor stops both historical and current noncooperating writers without parent reap")
+        self.sql("UPDATE artifact SET updated_at=CURRENT_TIMESTAMP(6)-INTERVAL 2 HOUR WHERE task_id='" + task + "';")
+        eventually(lambda: self.sql("SELECT r.state FROM artifact a JOIN reservation r ON r.id=a.id AND r.tenant_id=a.tenant_id WHERE a.task_id='" + task + "';") == "RELEASED", "historical cancellation upload cleaned after all writers stop")
+        done = self.writer_facts(task, old, "historical-cancel-cleaned")
+        self.assert_that(done["objectCount"] == 0 and done["publishedEvents"] == "0" and self.fixture.tools.get("/page/r5-historical-cancel") == 1, "historical cancellation cleans once without publishing or replay", **done)
+        self.stop(old); self.stop(fresh)
+
+        # R6: no poll/wait/reap until API/ledger convergence and post-terminal count assertions.
+        task = self.submit("r6-unreaped-cancel")
+        old = self.start("r6-unreaped-old", "worker", "M1")
+        self.barrier(old)
+        receipt = self.sql("SELECT w.id,w.host_id,w.start_ticks FROM worker_process w JOIN task t ON t.worker_id=w.id WHERE t.id='" + task + "';").split("\t")
+        self.http("POST", "/api/tasks/" + task + "/cancel")
+        self.sql("UPDATE worker_process SET host_id='" + str(uuid.uuid4()) + "' WHERE id='" + receipt[0] + "';")
+        time.sleep(4)
+        held = self.writer_facts(task, old, "r6-host-mismatch")
+        self.assert_that(held["procState"] not in ("Z", "X") and held["run"] == "RESERVED", "foreign host receipt cannot signal or confirm local worker", **held)
+        self.sql("UPDATE worker_process SET host_id='" + receipt[1] + "',start_ticks=start_ticks+1 WHERE id='" + receipt[0] + "';")
+        time.sleep(2)
+        held = self.writer_facts(task, old, "r6-tick-mismatch")
+        self.assert_that(held["procState"] not in ("Z", "X") and held["run"] == "RESERVED" and self.sql("SELECT state FROM task WHERE id='" + task + "';") == "CANCEL_REQUESTED", "start tick mismatch remains conservative", **held)
+        stop_started = time.monotonic()
+        self.sql("UPDATE worker_process SET start_ticks=" + receipt[2] + " WHERE id='" + receipt[0] + "';")
+        eventually(lambda: Path("/proc/" + str(old["process"].pid) + "/stat").read_text().rsplit(") ", 1)[1].split()[0] == "Z", "cancelled worker is kernel zombie before any parent reap", 12)
+        eventually(lambda: self.sql("SELECT state FROM task WHERE id='" + task + "';") == "CANCELLED", "product converges cancellation before parent reap", 12)
+        self.state(task, "CANCELLED")
+        eventually(lambda: self.sql("SELECT state FROM reservation WHERE id='" + task + ":run';") == "RELEASED", "product releases run before parent reap", 12)
+        time.sleep(1)
+        done = self.writer_facts(task, old, "r6-converged-before-reap")
+        done["stopConvergenceSeconds"] = round(time.monotonic() - stop_started, 3)
+        self.assert_that(done["procState"] == "Z" and old["process"].returncode is None and done["run"] == "RELEASED" and self.fixture.models.get("r6-unreaped-cancel", 0) == 0 and self.fixture.tools.get("/page/r6-unreaped-cancel", 0) == 0, "unreaped cancellation independently converges with zero post-terminal requests", **done)
+        self.assert_that(self.sql("SELECT COUNT(*) FROM event WHERE task_id='" + task + "' AND type='task.cancelled';") == "1", "unreaped cancellation emits one terminal fact")
+        self.stop(old)
+
     def cleanup(self):
         failures = []
         self.fixture.release_stream.set()
@@ -835,7 +967,7 @@ class Experiment:
         self.fixture_thread.join(timeout=5)
         if self.cid:
             try:
-                tables = [("task", "tenant_id,id,state,current_attempt_id,worker_id,fence,lease_until,revision,models_used,tools_used,token_held,code"), ("task_attempt", "tenant_id,id,task_id,worker_id,fence,state"), ("step", "tenant_id,id,task_id,attempt_id,ordinal,state,dispatch_id,dispatches,request_digest,response_digest,request_snapshot,response_snapshot"), ("invocation", "tenant_id,id,task_id,step_id,attempt_id,slot,provider_id,effect_intent_id,state,plugin_version,plugin_digest,installation_epoch,input_snapshot,input_digest,output_snapshot,output_digest"), ("reservation", "tenant_id,id,task_id,dispatch_id,category,state,amount,actual,usage_quality,cost_quality"), ("event", "tenant_id,task_id,seq,event_id,type,status,artifact_id"), ("artifact", "tenant_id,id,task_id,state,upload_id,sha256,size,snapshot_key"), ("tenant_budget", "*"), ("worker_process", "*"), ("flyway_schema_history", "version,script,checksum,success")]
+                tables = [("task", "tenant_id,id,state,current_attempt_id,worker_id,fence,lease_until,revision,models_used,tools_used,token_held,code"), ("task_attempt", "tenant_id,id,task_id,worker_id,fence,state,quiescent"), ("step", "tenant_id,id,task_id,attempt_id,ordinal,state,dispatch_id,dispatches,request_digest,response_digest,request_snapshot,response_snapshot"), ("invocation", "tenant_id,id,task_id,step_id,attempt_id,slot,provider_id,effect_intent_id,state,plugin_version,plugin_digest,installation_epoch,input_snapshot,input_digest,output_snapshot,output_digest"), ("reservation", "tenant_id,id,task_id,dispatch_id,category,state,amount,actual,usage_quality,cost_quality"), ("event", "tenant_id,task_id,seq,event_id,type,status,artifact_id"), ("artifact", "tenant_id,id,task_id,state,upload_id,sha256,size,snapshot_key"), ("tenant_budget", "*"), ("worker_process", "*"), ("flyway_schema_history", "version,script,checksum,success")]
                 for table, fields in tables if self.schema_ready else []:
                     (self.evidence / (table + ".tsv")).write_text(self.sql("SELECT " + fields + " FROM " + table + ";"))
             except Exception as e:
@@ -865,13 +997,18 @@ def main():
     parser.add_argument("jar", type=Path)
     parser.add_argument("evidence", type=Path)
     parser.add_argument("--slice", action="store_true")
+    parser.add_argument("--writer-stops", action="store_true")
     args = parser.parse_args()
     experiment = Experiment(args.jar, args.evidence)
     try:
         experiment.prepare()
-        task, artifact = experiment.first_slice()
-        if not args.slice:
-            experiment.remaining(task, artifact)
+        if args.writer_stops:
+            experiment.writer_stop_regressions()
+        else:
+            task, artifact = experiment.first_slice()
+            if not args.slice:
+                experiment.remaining(task, artifact)
+                experiment.writer_stop_regressions()
     finally:
         experiment.cleanup()
 

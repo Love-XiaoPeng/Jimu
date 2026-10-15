@@ -4,7 +4,7 @@
 
 ## 运行与依赖
 
-一个控制进程、两个独立 Java worker 共用专有 MySQL 8.0.46/InnoDB 和 POSIX 本机存储。控制进程运行 Flyway 迁移，worker 只 validate/check；V1 是任务账本，V2 是本机 worker 的 PID 与 Linux `/proc` 原始启动 tick 收据。运行账号只需本库 SELECT/INSERT/UPDATE/DELETE，迁移另用 DDL 身份。缺库、迁移不匹配或存储缺失不能领取；控制受理不依赖某一个 worker 在线。
+一个控制进程、两个独立 Java worker 共用专有 MySQL 8.0.46/InnoDB 和 POSIX 本机存储。控制进程运行 Flyway 迁移，worker 只 validate/check；V1 是任务账本，V2 是本机 worker 的 PID 与 Linux `/proc` 原始启动 tick 收据，V3 单独记录每个 attempt 的执行静止确认。V3 不从历史状态推断静止，旧 attempt 默认仍未知，须由原 worker 的 finally 或可信进程退出收据确认。运行账号只需本库 SELECT/INSERT/UPDATE/DELETE，迁移另用 DDL 身份。缺库、迁移不匹配或存储缺失不能领取；控制受理不依赖某一个 worker 在线。
 
 沿用唯一 Spring AI 2.0.1 BOM，新增 client-chat、Spring JDBC、MySQL Connector/J 和 Flyway。client-chat 要求 networknt 3.0.1，SchemaContract 随之升级；保留 P1 的 Jackson 2 边界入口和原始权威 Schema 字节，Spring MVC 使用 Boot 管理的 Jackson 3。真实解析版本由 effective-pom/dependency-tree 留证。
 
@@ -69,9 +69,9 @@ token 预留使用受控模型请求检查点 UTF-8字节数+4096 的保守上�
 
 取消与完成锁同一任务、按提交顺序收敛；取消先提交后不准入新模型、工具或发布。已准入结果允许记录真实事实，但不能令 task 成功。
 
-V2 注册同机 worker 的随机 instanceId、PID、Linux `/proc` 原始启动 tick 和 host UUID。控制角色只检查本 host 的已注册进程；启动 tick 不符说明旧实例已退出，无法读取进程信息时不假定已停止。取消超过3秒仍未退出执行的专有 worker 由 supervisor 按准确 PID 回收并确认退出，没有进程名扫描。恢复扫描可以据此立即使旧租约失效。该实现依赖同机进程可见性，不支持跨主机 supervisor。
+V2 注册同机 worker 的随机 instanceId、PID、Linux `/proc` 原始启动 tick 和 host UUID。控制角色只检查本 host 的已注册进程；启动 tick 不符或读取失败保持未知，不标记停止、不发信号。相同启动 tick 的内核 Z/X 状态证明执行已退出，无需外部父进程先 reap；`/proc` 记录不存在且 ProcessHandle 也不存在才认定进程已消失。取消超过3秒仍未退出执行的专有 worker 由 supervisor 按准确 PID 发出强停信号，下次读取内核事实后才确认停止；没有进程名扫描或等待兄弟 JVM 的 onExit。恢复扫描可以据此立即使旧租约失效。该实现依赖同机进程可见性，不支持跨主机 supervisor。
 
-RUNNING 工具缺成功事实时，即使进程已死也不能推断效果没发生：保留 OUTCOME_UNKNOWN、task.NEEDS_RECONCILIATION，禁止自动重试。网络响应丢失的受控假服务同样如此。宿主将稳定 effectIntentId 作为关联头传至受控服务；测试按该 ID 查询真实效果计数，此头不承诺服务端去重。worker 同步执行已经退出的 quiescent 收据，或 supervisor 确认 PID 已退出后，幂等释放运行槽；未知工具/费用预留仍单独占用。没有以 TTL、interrupt 或取消202作为安全取消证明。P2 提供待核对事实，人工核对后的业务裁决接口尚未开放。
+RUNNING 工具缺成功事实时，即使进程已死也不能推断效果没发生：保留 OUTCOME_UNKNOWN、task.NEEDS_RECONCILIATION，禁止自动重试。网络响应丢失的受控假服务同样如此。宿主将稳定 effectIntentId 作为关联头传至受控服务；测试按该 ID 查询真实效果计数，此头不承诺服务端去重。V3 的 attempt.quiescent 仅由同步执行已经退出的 finally 或 supervisor 的可信退出确认写入；过期旧 fence 也可确认自身 attempt 静止，不能改写任务事实。所有历史 attempt 都确认静止后，终态才幂等释放运行槽；安全取消也等待所有历史写者静止，未知工具/费用预留仍单独占用。deadline、权限失败等可以先记录 FAILED，但运行槽及存储保护保守持有。没有以 EXPIRED、STOPPED、无 ACTIVE attempt、TTL、interrupt 或取消202作为停止证明。P2 提供待核对事实，人工核对后的业务裁决接口尚未开放。
 
 ## 事件与产物
 
@@ -79,6 +79,8 @@ RUNNING 工具缺成功事实时，即使进程已死也不能推断效果没发
 
 产物先登记 STAGING/uploadId，再在事务外写专有临时文件、fsync、计算摘要，以 hard-link create-if-absent 建立不可变快照并 fsync目录；核验后 VERIFIED，当前租约/权限/取消检查通过才 PUBLISHED+artifact.created。重试沿用同一 artifact/upload/hash，授权下载再次验证对象，公共消息不含路径。
 
-未发布对象可由 uploadId 追踪。任务已 FAILED/CANCELLED、没有 ACTIVE attempt、至少1小时后，维护器标记 ABANDONED，在事务外删除该 upload 的对象，再幂等释放存储预留；删除失败保留可重试状态。发布对象7天到期后 EXPIRED 并回收。未知效果/未知写者不会被此清理器自动删除。
+未发布对象可由 uploadId 追踪。任务已 FAILED/CANCELLED、全部历史 attempt 已可信确认静止、至少1小时后，维护器标记 ABANDONED，在事务外删除该 upload 的对象，再幂等释放存储预留；删除失败保留可重试状态。发布对象7天到期后也须等待全部历史写者静止才 EXPIRED 并回收，避免旧写者晚落盘形成退款孤儿。未知效果/未知写者不会被此清理器自动删除。
+
+R5/R6 专项入口：`python3 tools/p2_verify.py target/jimu-0.1.0-SNAPSHOT.jar target/writer-stop-evidence --writer-stops`（Linux/WSL）。同一场景必需纳入默认 verify：A0/A1 老化、deadline/lease 竞争、撤权失败、历史旧写者跨成功恢复，以及不 poll/wait/reap 的僵尸取消。夹具保存各阶段 PID/start tick/host、task/attempt/fence、预留、对象数和发布事实。新增窗口使 IT 有界上限调整为24分钟、CI为30分钟；缺资源或断言失败仍非零退出。
 
 最终验收命令、固定提交、实际断言数量和限制见 XIAO-37 的交付记录；本文说明行为，不替代独立审查、测试或产品验收。
