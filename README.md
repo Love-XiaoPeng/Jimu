@@ -10,6 +10,7 @@
 - [总体方案 0.3](docs/baseline/XIAO-33-可行性与总体方案-v0.3.md)
 - [积木实施决定与命名映射](docs/architecture.md)
 - [三份架构 ADR](docs/adr/README.md)
+- [P2 持久执行决定](docs/adr/0004-p2-durable-execution.md)与[架构交接/资源证据](docs/verification/XIAO-36/architecture-handoff.md)
 - [协作约定](CONTRIBUTING.md)
 - [Agent 约定](AGENTS.md)
 
