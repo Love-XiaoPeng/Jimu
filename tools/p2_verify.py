@@ -248,11 +248,12 @@ class Experiment:
                  "INSERT INTO installation(tenant_id,plugin_id,plugin_version,plugin_digest) VALUES"
                  "('tenant-a','web_fetch','0.2.0','" + digest + "'),('tenant-b','web_fetch','0.2.0','" + digest + "');")
 
-    def start(self, name, role, boundary="", model_stream=False, expected_ready=200):
+    def start(self, name, role, boundary="", model_stream=False, expected_ready=200, extra=None):
         folder = self.root / name
         folder.mkdir()
         config = dict(self.common, **{"jimu.role": role})
         config["jimu.model-stream"] = str(model_stream).lower()
+        config.update(extra or {})
         if boundary:
             config.update({"jimu.test.boundary": boundary, "jimu.test.barrier": str(folder)})
         properties = folder / "runtime.properties"
@@ -504,6 +505,8 @@ class Experiment:
         for point in ["M0", "M1", "M1_RESPONSE", "M2", "T0_BEFORE", "A0", "A1", "A2", "M3", "DONE"]:
             self.crash_case(point)
         self.crash_case("T1", prefix="multi")
+        self.stop(self.control)
+        self.control = self.start("stream-admission-control", "control", model_stream=True)
         for point in ["M1_RESPONSE", "T1"]:
             self.crash_case(point, prefix="stream", model_stream=True)
         partial = self.submit("stream-partial")
@@ -521,6 +524,8 @@ class Experiment:
         self.state(incomplete, "FAILED")
         self.assert_that(self.sql("SELECT COUNT(*) FROM invocation WHERE task_id='" + incomplete + "';") == "0", "SSE without DONE is not a response")
         self.stop(new_stream)
+        self.stop(self.control)
+        self.control = self.start("call-admission-control", "control")
 
         for point in ["T0_BEFORE", "T1"]:
             goal = "cancel-" + point.lower()
@@ -850,9 +855,9 @@ class Experiment:
             old = self.start(name + "-old", "worker", point)
             self.barrier(old)
             if point == "A0" and failure == "deadline":
-                # Reconstruct the exact V2 schema in this private DB, with a live old
-                # attempt, then exercise control's real Flyway V2 -> V3 upgrade.
+                # Reconstruct V2, including removing V4, then exercise the real V2 -> V3 -> V4 upgrade.
                 self.stop(self.control)
+                self.sql("ALTER TABLE task DROP FOREIGN KEY task_ibfk_2; DROP TABLE model_dispatch; DROP TABLE evaluation_budget; ALTER TABLE task DROP COLUMN model_snapshot,DROP COLUMN model_digest,DROP COLUMN evaluation_run_id,DROP COLUMN cost_held,DROP COLUMN max_cost_micros; ALTER TABLE tenant_budget DROP COLUMN cost_held,DROP COLUMN cost_limit; ALTER TABLE step MODIFY COLUMN model_version VARCHAR(32) NOT NULL DEFAULT 'fixture-v1'; DELETE FROM flyway_schema_history WHERE version='4';")
                 self.sql("ALTER TABLE task_attempt DROP COLUMN quiescent; DELETE FROM flyway_schema_history WHERE version='3';")
                 self.reject_start("v2-worker-rejected", {}, "migration")
                 self.control = self.start("v3-upgrade-control", "control")

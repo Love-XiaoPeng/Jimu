@@ -1,9 +1,12 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
+import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
+import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
+import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -24,8 +27,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 public final class JdbcLedger implements Tasks, ExecutionLedger {
   private final JdbcTemplate db;
   private final TransactionTemplate transactions;
+  private final ModelProfiles models;
 
-  public JdbcLedger(DataSource source) {
+  public JdbcLedger(DataSource source, ModelProfiles models) {
+    this.models = models;
     db = new JdbcTemplate(source);
     db.setQueryTimeout(5);
     transactions = new TransactionTemplate(new DataSourceTransactionManager(source));
@@ -123,11 +128,19 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                   identity.actor(),
                   key);
           if (!old.isEmpty()) {
-            if (!digest.equals(s(old.getFirst(), "request_digest")))
-              throw new TaskFailure(409, "IDEMPOTENCY_CONFLICT");
+            if (!Payloads.hash(s(old.getFirst(), "request_snapshot"))
+                .equals(s(old.getFirst(), "request_digest")))
+              throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+            if (!Payloads.read(s(old.getFirst(), "request_snapshot"), Request.class)
+                .equals(request)) throw new TaskFailure(409, "IDEMPOTENCY_CONFLICT");
             return view(old.getFirst());
           }
           long installationEpoch = epoch(identity, request.capabilityIds());
+          var model = models.selected(identity.tenant());
+          if (request.budget().maxCostMicros() != null && !model.paid())
+            throw new TaskFailure(400, "CURRENCY_BUDGET_NOT_CONFIGURED");
+          models.admit(model);
+          String modelSnapshot = Payloads.json(model);
           if (n(budget, "queued") >= n(budget, "queue_limit"))
             throw new TaskFailure(429, "QUEUE_LIMIT");
           String task = id();
@@ -145,6 +158,14 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               request.budget().deadlineSeconds(),
               request.budget().maxModelRequests(),
               request.budget().maxToolInvocations());
+          db.update(
+              "UPDATE task SET model_snapshot=?,model_digest=?,evaluation_run_id=?,max_cost_micros=? WHERE tenant_id=? AND id=?",
+              modelSnapshot,
+              Payloads.hash(modelSnapshot),
+              model.paid() ? models.evaluationRunId() : null,
+              request.budget().maxCostMicros() == null ? 1000000 : request.budget().maxCostMicros(),
+              identity.tenant(),
+              task);
           db.update(
               "UPDATE tenant_budget SET queued=queued+1 WHERE tenant_id=?", identity.tenant());
           reserve(identity.tenant(), task, task + ":queue", null, "QUEUE", 1, "RESERVED", "KNOWN");
@@ -508,6 +529,38 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
         s(row, "dispatch_id"));
   }
 
+  private ModelSnapshot snapshot(Map<String, Object> task) {
+    String value = s(task, "model_snapshot");
+    if (value == null) throw new TaskFailure(409, "MODEL_SNAPSHOT_MISSING");
+    if (!Payloads.hash(value).equals(s(task, "model_digest")))
+      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    var snapshot = Payloads.read(value, ModelSnapshot.class);
+    models.available(snapshot);
+    return snapshot;
+  }
+
+  @Override
+  public ModelSnapshot modelSnapshot(Lease lease) {
+    return tx(() -> snapshot(fenced(lease, true)));
+  }
+
+  // This is always the first lock when a transaction can mutate evaluation accounting.
+  private Map<String, Object> evaluation(Lease lease) {
+    String run =
+        s(
+            one(
+                "SELECT evaluation_run_id FROM task WHERE tenant_id=? AND id=?",
+                lease.tenant(),
+                lease.taskId()),
+            "evaluation_run_id");
+    return run == null
+        ? null
+        : one(
+            "SELECT * FROM evaluation_budget WHERE tenant_id=? AND id=? FOR UPDATE",
+            lease.tenant(),
+            run);
+  }
+
   @Override
   public Step prepare(Lease lease, String request) {
     return tx(
@@ -530,14 +583,15 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           int ordinal = previous.isEmpty() ? 1 : (int) n(previous.getFirst(), "ordinal") + 1;
           String stepId = id();
           db.update(
-              "INSERT INTO step(tenant_id,id,task_id,attempt_id,ordinal,state,request_snapshot,request_digest) VALUES(?,?,?,?,?,'PREPARED',?,?)",
+              "INSERT INTO step(tenant_id,id,task_id,attempt_id,ordinal,state,request_snapshot,request_digest,model_version) VALUES(?,?,?,?,?,'PREPARED',?,?,?)",
               lease.tenant(),
               stepId,
               lease.taskId(),
               lease.attemptId(),
               ordinal,
               request,
-              Payloads.hash(request));
+              Payloads.hash(request),
+              snapshot(task).model());
           event(task, "prepared:" + stepId, "model.prepared", null);
           return new Step(stepId, ordinal, request, null, null);
         });
@@ -547,7 +601,10 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   public String dispatchModel(Lease lease, String stepId) {
     return tx(
         () -> {
+          var evaluation = evaluation(lease);
           var task = fenced(lease, true);
+          var model = snapshot(task);
+          models.admit(model);
           var budget = bucket(lease.tenant());
           var step =
               one(
@@ -557,16 +614,75 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                   lease.taskId());
           if (step.get("response_snapshot") != null)
             throw new TaskFailure(409, "ALREADY_RESPONDED");
+          var wire =
+              Payloads.read(
+                  s(step, "request_snapshot"), com.fasterxml.jackson.databind.JsonNode.class);
+          String bodyDigest = Payloads.hash(wire.path("requestBody").asText());
+          if (!bodyDigest.equals(wire.path("bodyDigest").asText()))
+            throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
           long upper =
-              s(step, "request_snapshot").getBytes(java.nio.charset.StandardCharsets.UTF_8).length
-                  + 4096L;
-          if (n(step, "dispatches") >= 2
+              model.paid()
+                  ? model.price().inputTokenUpper() + model.maxOutputTokens()
+                  : s(step, "request_snapshot")
+                          .getBytes(java.nio.charset.StandardCharsets.UTF_8)
+                          .length
+                      + 4096L;
+          long cost =
+              model.paid()
+                  ? ModelCosts.amount(
+                      model.price(), model.price().inputTokenUpper(), model.maxOutputTokens())
+                  : 0;
+          if (model.paid()
+              && (evaluation == null
+                  || !"OPEN".equals(s(evaluation, "state"))
+                  || n(evaluation, "requests_used") >= n(evaluation, "max_requests")
+                  || cost > n(evaluation, "max_cost_micros") - n(evaluation, "cost_held")
+                  || cost > n(task, "max_cost_micros") - n(task, "cost_held")
+                  || cost > n(budget, "cost_limit") - n(budget, "cost_held")))
+            throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
+          if (n(step, "dispatches") >= (model.paid() ? 1 : 2)
               || n(task, "models_used") >= n(task, "max_models")
               || n(budget, "model_used") >= n(budget, "model_limit")
               || n(budget, "token_held") + upper > n(budget, "token_limit")
               || n(task, "token_held") + upper > n(task, "max_tokens"))
             throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
           String dispatch = id();
+          if (model.paid()) {
+            db.update(
+                "UPDATE evaluation_budget SET requests_used=requests_used+1,cost_held=cost_held+? WHERE tenant_id=? AND id=?",
+                cost,
+                lease.tenant(),
+                s(evaluation, "id"));
+            db.update(
+                "UPDATE tenant_budget SET cost_held=cost_held+? WHERE tenant_id=?",
+                cost,
+                lease.tenant());
+            db.update(
+                "UPDATE task SET cost_held=cost_held+? WHERE tenant_id=? AND id=?",
+                cost,
+                lease.tenant(),
+                lease.taskId());
+            reserve(
+                lease.tenant(),
+                lease.taskId(),
+                dispatch + ":cost",
+                dispatch,
+                "MODEL_COST",
+                cost,
+                "HELD_UNKNOWN",
+                "UNKNOWN");
+          }
+          db.update(
+              "INSERT INTO model_dispatch(tenant_id,id,task_id,step_id,config_digest,request_digest,state,price_version,currency,reserved_cost) VALUES(?,?,?,?,?,?,'DISPATCHED',?,?,?)",
+              lease.tenant(),
+              dispatch,
+              lease.taskId(),
+              stepId,
+              s(task, "model_digest"),
+              bodyDigest,
+              model.price() == null ? null : model.price().version(),
+              model.paid() ? "CNY" : null,
+              model.paid() ? cost : null);
           db.update(
               "UPDATE tenant_budget SET model_used=model_used+1,token_held=token_held+? WHERE tenant_id=?",
               upper,
@@ -607,9 +723,11 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
       String dispatch,
       String response,
       List<Call> calls,
-      Integer tokens) {
+      Integer tokens,
+      ModelUsage usage) {
     tx(
         () -> {
+          var evaluation = evaluation(lease);
           var task = fenced(lease, false);
           var step =
               one(
@@ -619,6 +737,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                   lease.taskId());
           if (!dispatch.equals(s(step, "dispatch_id")) || step.get("response_snapshot") != null)
             throw new TaskFailure(409, "DISPATCH_REJECTED");
+          settleCost(lease, task, evaluation, dispatch, usage);
           db.update(
               "UPDATE step SET state='RESPONDED',response_snapshot=?,response_digest=? WHERE tenant_id=? AND id=?",
               response,
@@ -685,6 +804,105 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                 Payloads.hash(call.input()));
           }
           event(task, "response:" + stepId, "model.responded", null);
+          return null;
+        });
+    if ("BOUND_EXCEEDED"
+        .equals(
+            s(
+                one(
+                    "SELECT state FROM model_dispatch WHERE tenant_id=? AND id=?",
+                    lease.tenant(),
+                    dispatch),
+                "state"))) throw new TaskFailure(409, "MODEL_COST_BOUND_EXCEEDED");
+  }
+
+  private void settleCost(
+      Lease lease,
+      Map<String, Object> task,
+      Map<String, Object> evaluation,
+      String dispatch,
+      ModelUsage usage) {
+    var model = snapshot(task);
+    Long actual = null;
+    boolean exceeded = false;
+    if (model.paid() && usage.inputTokens() != null && usage.outputTokens() != null) {
+      try {
+        actual = ModelCosts.amount(model.price(), usage.inputTokens(), usage.outputTokens());
+      } catch (ArithmeticException invalidProviderCost) {
+        // Retain raw usage; an unrepresentable cost is UNKNOWN, never clamped.
+        exceeded = true;
+      }
+      long reserved =
+          n(
+              one(
+                  "SELECT reserved_cost FROM model_dispatch WHERE tenant_id=? AND id=?",
+                  lease.tenant(),
+                  dispatch),
+              "reserved_cost");
+      long delta = actual == null ? 0 : actual - reserved;
+      exceeded =
+          exceeded
+              || usage.inputTokens() > model.price().inputTokenUpper()
+              || usage.outputTokens() > model.maxOutputTokens()
+              || actual != null && actual > reserved;
+      db.update(
+          "UPDATE evaluation_budget SET cost_held=cost_held+?,state=IF(?,'STOPPED',state) WHERE tenant_id=? AND id=?",
+          delta,
+          exceeded,
+          lease.tenant(),
+          s(evaluation, "id"));
+      db.update(
+          "UPDATE tenant_budget SET cost_held=cost_held+? WHERE tenant_id=?",
+          delta,
+          lease.tenant());
+      db.update(
+          "UPDATE task SET cost_held=cost_held+? WHERE tenant_id=? AND id=?",
+          delta,
+          lease.tenant(),
+          lease.taskId());
+      if (actual != null)
+        db.update(
+            "UPDATE reservation SET actual=?,state='SETTLED',usage_quality='KNOWN',cost_quality='KNOWN' WHERE tenant_id=? AND id=?",
+            actual,
+            lease.tenant(),
+            dispatch + ":cost");
+    }
+    db.update(
+        "UPDATE model_dispatch SET state=?,code=?,ended_at=CURRENT_TIMESTAMP(6),input_tokens=?,output_tokens=?,total_tokens=?,usage_snapshot=?,actual_cost=?,cost_quality=? WHERE tenant_id=? AND id=?",
+        exceeded ? "BOUND_EXCEEDED" : "RESPONDED",
+        exceeded ? "MODEL_COST_BOUND_EXCEEDED" : null,
+        usage.inputTokens(),
+        usage.outputTokens(),
+        usage.totalTokens(),
+        Payloads.json(usage),
+        actual,
+        actual == null ? "UNKNOWN" : "KNOWN",
+        lease.tenant(),
+        dispatch);
+    // Preserve the actual fact and stop subsequent dispatches even if the provider violates its
+    // bound.
+    if (exceeded)
+      db.update(
+          "UPDATE task SET max_models=models_used WHERE tenant_id=? AND id=?",
+          lease.tenant(),
+          lease.taskId());
+  }
+
+  @Override
+  public void modelFailed(Lease lease, String dispatch, String code) {
+    tx(
+        () -> {
+          fenced(lease, false);
+          db.update(
+              "UPDATE model_dispatch SET state='FAILED',code=?,ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND task_id=? AND state='DISPATCHED'",
+              code,
+              lease.tenant(),
+              dispatch,
+              lease.taskId());
+          db.update(
+              "UPDATE reservation SET state='HELD_UNKNOWN' WHERE tenant_id=? AND dispatch_id=? AND category='MODEL'",
+              lease.tenant(),
+              dispatch);
           return null;
         });
   }
@@ -1089,13 +1307,13 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4') AND success=TRUE",
             Integer.class)
-        != 3) throw new IllegalStateException("Required migration unavailable");
+        != 4) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 3) throw new IllegalStateException("Unsupported schema version");
+        != 4) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override

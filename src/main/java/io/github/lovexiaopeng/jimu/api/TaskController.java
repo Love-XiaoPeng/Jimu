@@ -78,13 +78,16 @@ public final class TaskController {
     if (request.resourceIds() != null && !request.resourceIds().isEmpty())
       throw new TaskFailure(403, "RESOURCE_NOT_AUTHORIZED");
     BudgetRequest b = request.budget();
-    if (b != null && b.maxCostMicros() != null)
-      throw new TaskFailure(400, "CURRENCY_BUDGET_NOT_CONFIGURED");
+    if (b != null
+        && b.maxCostMicros() != null
+        && (b.maxCostMicros() < 1 || b.maxCostMicros() > 1000000))
+      throw new TaskFailure(400, "INVALID_BUDGET");
     var budget =
         new Tasks.Budget(
             bound(b == null ? null : b.deadlineSeconds(), 180),
             bound(b == null ? null : b.maxModelRequests(), 8),
-            bound(b == null ? null : b.maxToolInvocations(), 20));
+            bound(b == null ? null : b.maxToolInvocations(), 20),
+            b == null ? null : b.maxCostMicros());
     var result =
         tasks.submit(
             identity, key, new Tasks.Request(request.goal(), capabilities, List.of(), budget));

@@ -2,11 +2,11 @@ package io.github.lovexiaopeng.jimu.adapters.ai.springai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.BuiltinManifestLoader;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
 import io.github.lovexiaopeng.jimu.adapters.runtime.http.ProviderHttp;
+import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.adapters.runtime.web.ConfiguredOriginReader;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.BoundaryProbe;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
@@ -14,6 +14,8 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
+import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchInput;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebFetchPlugin;
@@ -47,7 +49,7 @@ import reactor.core.publisher.Flux;
 
 /** One ToolCallingAdvisor loop. The model boundary and callbacks commit facts before returning. */
 public final class DurableAgent implements AutoCloseable {
-  // These v1 records are neutral wire snapshots; no Spring object is serialized.
+  // Neutral versioned wire snapshots; no Spring object is serialized.
   public record ToolCall(String id, String type, String name, String arguments) {}
 
   public record ToolReply(String id, String name, String data) {}
@@ -61,16 +63,21 @@ public final class DurableAgent implements AutoCloseable {
       List<WireMessage> messages,
       List<String> capabilities,
       long epoch,
-      boolean stream) {}
+      boolean stream,
+      String configDigest,
+      String requestBody,
+      String bodyDigest) {}
 
-  public record Response(int version, String content, List<ToolCall> calls, Integer tokens) {}
+  public record Response(
+      int version, String content, List<ToolCall> calls, Integer tokens, ModelUsage usage) {}
 
   private final ExecutionLedger ledger;
   private final ArtifactStore store;
   private final WebFetchPlugin plugin;
   private final BoundaryProbe probe;
   private final URI origin;
-  private final boolean modelStream;
+  private final ModelProfiles models;
+  private final OpenAiProtocol protocol = new OpenAiProtocol();
   private final java.util.Map<String, String> credentials;
   private final ProviderHttp http = new ProviderHttp();
   private final ObjectMapper json = new ObjectMapper();
@@ -85,14 +92,14 @@ public final class DurableAgent implements AutoCloseable {
       BoundaryProbe probe,
       URI origin,
       java.util.Map<String, String> credentials,
-      boolean modelStream)
+      ModelProfiles models)
       throws IOException {
     this.ledger = ledger;
     this.store = store;
     this.plugin = plugin;
     this.probe = probe;
     this.origin = origin;
-    this.modelStream = modelStream;
+    this.models = models;
     this.credentials = java.util.Map.copyOf(credentials);
     inputSchema = new SchemaContract(BuiltinManifestLoader.resource("input.schema.json"));
     outputSchema = new SchemaContract(BuiltinManifestLoader.resource("output.schema.json"));
@@ -105,11 +112,12 @@ public final class DurableAgent implements AutoCloseable {
   }
 
   public void run(Lease lease) {
-    Session session = new Session(lease);
+    var modelSnapshot = ledger.modelSnapshot(lease);
+    Session session = new Session(lease, modelSnapshot);
     var previous = ledger.checkpoint(lease);
     List<Message> messages =
         previous
-            .map(step -> restore(Payloads.read(step.request(), Checkpoint.class)))
+            .map(step -> restore(Payloads.read(step.request(), Checkpoint.class), modelSnapshot))
             .orElseGet(() -> List.of(new UserMessage(lease.goal())));
     var manager = session.manager();
     var advisor = ToolCallingAdvisor.builder().toolCallingManager(manager).build();
@@ -129,18 +137,18 @@ public final class DurableAgent implements AutoCloseable {
 
           @Override
           public ToolCallingChatOptions getOptions() {
-            return ToolCallingChatOptions.builder().model("fixture-v1").build();
+            return ToolCallingChatOptions.builder().model(modelSnapshot.model()).build();
           }
         };
     var client = ChatClient.builder(model).defaultAdvisors(advisor).build();
     var options =
         ToolCallingChatOptions.builder()
-            .model("fixture-v1")
+            .model(modelSnapshot.model())
             .toolCallbacks(session.discoveryCallback())
             .build();
     var request = client.prompt(new Prompt(messages, options));
     var response =
-        modelStream
+        modelSnapshot.stream()
             ? request.stream().chatResponse().blockLast(Duration.ofSeconds(180))
             : request.call().chatResponse();
     if (response == null) throw new TaskFailure(502, "MODEL_STREAM_INCOMPLETE");
@@ -172,9 +180,16 @@ public final class DurableAgent implements AutoCloseable {
     probe.hit("DONE", lease.taskId());
   }
 
-  private List<Message> restore(Checkpoint checkpoint) {
-    if (checkpoint.version() != 1) throw new TaskFailure(409, "PAYLOAD_VERSION_UNSUPPORTED");
-    if (checkpoint.stream() != modelStream) throw new TaskFailure(409, "MODEL_MODE_CHANGED");
+  private List<Message> restore(Checkpoint checkpoint, ModelSnapshot snapshot) {
+    if (checkpoint.version() != 2) throw new TaskFailure(409, "PAYLOAD_VERSION_UNSUPPORTED");
+    if (!ModelProfiles.digest(snapshot).equals(checkpoint.configDigest()))
+      throw new TaskFailure(409, "MODEL_CONFIG_UNAVAILABLE");
+    if (!Payloads.hash(checkpoint.requestBody()).equals(checkpoint.bodyDigest()))
+      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    if (!checkpoint
+        .requestBody()
+        .equals(protocol.body(snapshot, checkpoint.messages(), definition)))
+      throw new TaskFailure(409, "MODEL_CONFIG_UNAVAILABLE");
     return checkpoint.messages().stream().map(this::message).toList();
   }
 
@@ -182,7 +197,8 @@ public final class DurableAgent implements AutoCloseable {
     return switch (message.role()) {
       case "user" -> new UserMessage(message.content());
       case "system" -> new SystemMessage(message.content());
-      case "assistant" -> assistant(new Response(1, message.content(), message.calls(), null));
+      case "assistant" ->
+          assistant(new Response(2, message.content(), message.calls(), null, null));
       case "tool" ->
           ToolResponseMessage.builder()
               .responses(
@@ -222,23 +238,30 @@ public final class DurableAgent implements AutoCloseable {
 
   private final class Session {
     private final Lease lease;
+    private final ModelSnapshot modelSnapshot;
     private ExecutionLedger.Step step;
     private List<Call> calls = List.of();
     private boolean hadTools;
 
-    Session(Lease lease) {
+    Session(Lease lease, ModelSnapshot modelSnapshot) {
+      this.modelSnapshot = modelSnapshot;
       this.lease = lease;
     }
 
     private ChatResponse call(Prompt prompt) {
+      var history = prompt.getInstructions().stream().map(DurableAgent.this::wire).toList();
+      String body = protocol.body(modelSnapshot, history, definition);
       var checkpoint =
           new Checkpoint(
-              1,
-              "fixture-v1",
-              prompt.getInstructions().stream().map(DurableAgent.this::wire).toList(),
+              2,
+              modelSnapshot.model(),
+              history,
               lease.capabilities(),
               lease.installationEpoch(),
-              modelStream);
+              modelSnapshot.stream(),
+              ModelProfiles.digest(modelSnapshot),
+              body,
+              Payloads.hash(body));
       step = ledger.prepare(lease, Payloads.json(checkpoint));
       probe.hit("M0", lease.taskId());
       Response response;
@@ -247,7 +270,12 @@ public final class DurableAgent implements AutoCloseable {
         String dispatch = ledger.dispatchModel(lease, step.id());
         probe.hit("M1", lease.taskId());
         ledger.checkpoint(lease);
-        response = request(checkpoint);
+        try {
+          response = request(checkpoint);
+        } catch (TaskFailure error) {
+          ledger.modelFailed(lease, dispatch, error.code());
+          throw error;
+        }
         probe.hit("M1_RESPONSE", lease.taskId());
         ledger.modelResponded(
             lease,
@@ -255,9 +283,10 @@ public final class DurableAgent implements AutoCloseable {
             dispatch,
             Payloads.json(response),
             slots(response),
-            response.tokens());
+            response.tokens(),
+            response.usage());
       }
-      if (response.version() != 1) throw new TaskFailure(409, "PAYLOAD_VERSION_UNSUPPORTED");
+      if (response.version() != 2) throw new TaskFailure(409, "PAYLOAD_VERSION_UNSUPPORTED");
       calls = slots(response);
       hadTools =
           hadTools
@@ -334,6 +363,7 @@ public final class DurableAgent implements AutoCloseable {
     }
 
     private String invoke(Call call, String input) {
+      if (credentials.isEmpty()) throw new TaskFailure(503, "PUBLIC_WEB_NOT_CONFIGURED");
       try {
         inputSchema.validate(json.readTree(input));
         ConfiguredOriginReader.checkedTarget(origin, Payloads.read(input, FetchInput.class).url());
@@ -379,142 +409,46 @@ public final class DurableAgent implements AutoCloseable {
     }
 
     private Response request(Checkpoint checkpoint) {
-      ObjectNode body = json.createObjectNode();
-      body.put("model", "fixture-v1");
-      body.put("stream", checkpoint.stream());
-      body.put("max_tokens", 2048);
-      var messages = body.putArray("messages");
-      for (WireMessage m : checkpoint.messages()) {
-        if ("tool".equals(m.role())) {
-          for (ToolReply r : m.replies()) {
-            var node = messages.addObject();
-            node.put("role", "tool");
-            node.put("tool_call_id", r.id());
-            node.put("content", r.data());
-          }
-        } else {
-          var node = messages.addObject();
-          node.put("role", m.role());
-          node.put("content", m.content());
-          if (!m.calls().isEmpty())
-            for (ToolCall c : m.calls()) {
-              var t = node.withArray("tool_calls").addObject();
-              t.put("id", c.id());
-              t.put("type", "function");
-              var f = t.putObject("function");
-              f.put("name", c.name());
-              f.put("arguments", c.arguments());
-            }
-        }
-      }
-      var tool = body.putArray("tools").addObject();
-      tool.put("type", "function");
-      var function = tool.putObject("function");
-      function.put("name", definition.name());
-      function.put("description", definition.description());
+      models.admit(modelSnapshot);
+      if (!Payloads.hash(checkpoint.requestBody()).equals(checkpoint.bodyDigest()))
+        throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      Duration remaining = Duration.between(Instant.now(), lease.deadline());
+      if (remaining.isNegative() || remaining.isZero())
+        throw new TaskFailure(409, "DEADLINE_EXCEEDED");
+      Duration configured = Duration.ofMillis(modelSnapshot.requestTimeoutMs());
+      Duration timeout = remaining.compareTo(configured) < 0 ? remaining : configured;
       try {
-        function.set("parameters", json.readTree(definition.inputSchema()));
-        Duration remaining = Duration.between(Instant.now(), lease.deadline());
-        if (remaining.isNegative() || remaining.isZero())
-          throw new TaskFailure(409, "DEADLINE_EXCEEDED");
-        Duration timeout =
-            remaining.compareTo(Duration.ofSeconds(20)) < 0 ? remaining : Duration.ofSeconds(20);
         var response =
             http.post(
-                origin.resolve("/v1/chat/completions"),
-                json.writeValueAsBytes(body),
+                URI.create(modelSnapshot.baseUrl() + "/chat/completions"),
+                checkpoint.requestBody().getBytes(StandardCharsets.UTF_8),
                 timeout,
-                credentials.get(lease.tenant()));
-        if (response.statusCode() != 200 || response.body().length > 1048576)
-          throw new IOException("Invalid provider response");
-        var root =
-            checkpoint.stream() ? aggregate(response.body()) : json.readTree(response.body());
-        var choice = root.path("choices").path(0);
-        var message = choice.path("message");
-        if (!message.isObject()
-            || !List.of("stop", "tool_calls").contains(choice.path("finish_reason").asText()))
-          throw new IOException("Incomplete provider response");
-        List<ToolCall> tools = new ArrayList<>();
-        for (var c : message.path("tool_calls")) {
-          if (tools.size() >= 20
-              || !c.path("id").asText().matches("[A-Za-z0-9_-]{1,128}")
-              || !"function".equals(c.path("type").asText())
-              || !c.path("function").path("arguments").isTextual())
-            throw new IOException("Invalid tool slot");
-          tools.add(
-              new ToolCall(
-                  c.path("id").asText(),
-                  "function",
-                  c.path("function").path("name").asText(),
-                  c.path("function").path("arguments").asText()));
+                models.credential(modelSnapshot),
+                Duration.ofMillis(modelSnapshot.connectTimeoutMs()),
+                modelSnapshot.responseBytes());
+        String error =
+            switch (response.statusCode()) {
+              case 200 -> null;
+              case 401, 403 -> "MODEL_AUTH_FAILED";
+              case 404 -> "MODEL_NOT_FOUND";
+              case 429 -> "MODEL_RATE_LIMITED";
+              default -> "MODEL_UNAVAILABLE";
+            };
+        if (error != null) throw new TaskFailure(502, error);
+        if (response.body().length > modelSnapshot.responseBytes())
+          throw new TaskFailure(502, "MODEL_RESPONSE_INVALID");
+        try {
+          return protocol.parse(response.body(), checkpoint.stream(), lease.capabilities());
+        } catch (IOException e) {
+          throw new TaskFailure(
+              502, checkpoint.stream() ? "MODEL_STREAM_INCOMPLETE" : "MODEL_RESPONSE_INVALID");
         }
-        var usage = root.path("usage").path("total_tokens");
-        Integer tokens =
-            usage.isIntegralNumber() && usage.canConvertToInt() ? usage.intValue() : null;
-        return new Response(1, message.path("content").asText(""), List.copyOf(tools), tokens);
+      } catch (java.net.http.HttpTimeoutException e) {
+        throw new TaskFailure(502, "MODEL_TIMEOUT");
       } catch (IOException e) {
-        throw new TaskFailure(502, "MODEL_RESPONSE_UNAVAILABLE");
+        throw new TaskFailure(502, "MODEL_UNAVAILABLE");
       }
     }
-  }
-
-  private JsonNode aggregate(byte[] bytes) throws IOException {
-    StringBuilder content = new StringBuilder();
-    var slots = new java.util.TreeMap<Integer, StringBuilder[]>();
-    String finish = "";
-    JsonNode usage = null;
-    boolean complete = false;
-    for (String line : new String(bytes, StandardCharsets.UTF_8).split("\\R")) {
-      if (!line.startsWith("data:")) continue;
-      String data = line.substring(5).strip();
-      if (complete) throw new IOException("Data after stream completion");
-      if ("[DONE]".equals(data)) {
-        complete = true;
-        continue;
-      }
-      var chunk = json.readTree(data);
-      if (chunk.has("usage") && !chunk.path("usage").isNull()) usage = chunk.path("usage");
-      var choice = chunk.path("choices").path(0);
-      var delta = choice.path("delta");
-      if (delta.path("content").isTextual()) content.append(delta.path("content").asText());
-      for (var call : delta.path("tool_calls")) {
-        if (!call.path("index").isInt()
-            || call.path("index").intValue() < 0
-            || call.path("index").intValue() >= 20) throw new IOException("Invalid stream slot");
-        var parts =
-            slots.computeIfAbsent(
-                call.path("index").intValue(),
-                index ->
-                    new StringBuilder[] {
-                      new StringBuilder(), new StringBuilder(), new StringBuilder()
-                    });
-        if (call.path("id").isTextual()) parts[0].append(call.path("id").asText());
-        if (call.path("function").path("name").isTextual())
-          parts[1].append(call.path("function").path("name").asText());
-        if (call.path("function").path("arguments").isTextual())
-          parts[2].append(call.path("function").path("arguments").asText());
-      }
-      if (choice.path("finish_reason").isTextual()) finish = choice.path("finish_reason").asText();
-    }
-    if (!complete || !List.of("stop", "tool_calls").contains(finish))
-      throw new IOException("Incomplete stream");
-    var root = json.createObjectNode();
-    var choice = root.putArray("choices").addObject();
-    choice.put("finish_reason", finish);
-    var message = choice.putObject("message");
-    message.put("role", "assistant");
-    message.put("content", content.toString());
-    var calls = message.putArray("tool_calls");
-    for (var parts : slots.values()) {
-      var call = calls.addObject();
-      call.put("id", parts[0].toString());
-      call.put("type", "function");
-      var function = call.putObject("function");
-      function.put("name", parts[1].toString());
-      function.put("arguments", parts[2].toString());
-    }
-    if (usage != null) root.set("usage", usage);
-    return root;
   }
 
   @Override

@@ -6,6 +6,7 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.events.DatabaseEventFeed;
 import io.github.lovexiaopeng.jimu.adapters.runtime.health.HttpResourceProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.health.LedgerProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.identity.SignedIdentity;
+import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.BoundaryProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.LedgerMaintenance;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.LocalWorkerSupervisor;
@@ -33,6 +34,11 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 @ConditionalOnProperty(name = "jimu.durable.enabled", havingValue = "true")
 public class DurableConfiguration {
   @Bean
+  ModelProfiles modelProfiles(Environment env) {
+    return new ModelProfiles(env);
+  }
+
+  @Bean
   DataSource ledgerDataSource(Environment env) {
     return new DriverManagerDataSource(
         env.getRequiredProperty("jimu.db.url"),
@@ -41,7 +47,7 @@ public class DurableConfiguration {
   }
 
   @Bean
-  JdbcLedger ledger(DataSource source, Environment env) {
+  JdbcLedger ledger(DataSource source, Environment env, ModelProfiles models) {
     if ("control".equals(env.getRequiredProperty("jimu.role"))) {
       Flyway.configure()
           .dataSource(
@@ -53,7 +59,7 @@ public class DurableConfiguration {
           .migrate();
     }
     Flyway.configure().dataSource(source).cleanDisabled(true).load().validate();
-    var ledger = new JdbcLedger(source);
+    var ledger = new JdbcLedger(source, models);
     ledger.check();
     return ledger;
   }
@@ -78,14 +84,16 @@ public class DurableConfiguration {
   }
 
   @Bean(destroyMethod = "close")
-  LedgerProbe durableReadiness(ExecutionLedger ledger, ArtifactStore store, Environment env) {
+  LedgerProbe durableReadiness(
+      ExecutionLedger ledger, ArtifactStore store, Environment env, ModelProfiles models) {
     return new LedgerProbe(
         ledger,
         store,
-        "worker".equals(env.getRequiredProperty("jimu.role"))
+        models.fixture() && "worker".equals(env.getRequiredProperty("jimu.role"))
             ? new HttpResourceProbe(
                 URI.create(env.getRequiredProperty("jimu.provider-origin")), false)
-            : null);
+            : null,
+        models::ready);
   }
 
   @Bean
@@ -103,13 +111,15 @@ public class DurableConfiguration {
       ArtifactStore store,
       WebFetchPlugin plugin,
       BoundaryProbe probe,
+      ModelProfiles models,
       Environment env)
       throws IOException {
     var credentials = new HashMap<String, String>();
-    for (String entry : env.getRequiredProperty("jimu.fixture.credentials").split(";")) {
-      String[] pair = entry.split(":", 2);
-      credentials.put(pair[0], pair[1]);
-    }
+    if (env.getProperty("jimu.test-mode", Boolean.class, false))
+      for (String entry : env.getRequiredProperty("jimu.fixture.credentials").split(";")) {
+        String[] pair = entry.split(":", 2);
+        credentials.put(pair[0], pair[1]);
+      }
     return new DurableAgent(
         ledger,
         store,
@@ -117,7 +127,7 @@ public class DurableConfiguration {
         probe,
         URI.create(env.getRequiredProperty("jimu.provider-origin")),
         credentials,
-        env.getProperty("jimu.model-stream", Boolean.class, false));
+        models);
   }
 
   @Bean(initMethod = "start", destroyMethod = "close")

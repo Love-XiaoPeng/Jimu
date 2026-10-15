@@ -1,5 +1,7 @@
 package io.github.lovexiaopeng.jimu.kernel.task.api;
 
+import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
+import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +38,8 @@ public interface ExecutionLedger {
 
   Optional<Step> checkpoint(Lease lease);
 
+  ModelSnapshot modelSnapshot(Lease lease);
+
   Step prepare(Lease lease, String request);
 
   String dispatchModel(Lease lease, String stepId);
@@ -46,7 +50,10 @@ public interface ExecutionLedger {
       String dispatchId,
       String response,
       List<Call> calls,
-      Integer tokens);
+      Integer tokens,
+      ModelUsage usage);
+
+  void modelFailed(Lease lease, String dispatchId, String code);
 
   Invocation admit(
       Lease lease, String stepId, Call call, String pluginVersion, String pluginDigest);

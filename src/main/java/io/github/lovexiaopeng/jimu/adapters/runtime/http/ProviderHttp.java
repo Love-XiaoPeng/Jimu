@@ -9,24 +9,26 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 public final class ProviderHttp implements AutoCloseable {
-  private final HttpClient client =
-      HttpClient.newBuilder()
-          .connectTimeout(Duration.ofSeconds(2))
-          .followRedirects(HttpClient.Redirect.NEVER)
-          .build();
-
-  public HttpResponse<byte[]> post(URI uri, byte[] body, Duration timeout, String credential)
+  public HttpResponse<byte[]> post(
+      URI uri,
+      byte[] body,
+      Duration timeout,
+      String credential,
+      Duration connectTimeout,
+      int responseBytes)
       throws IOException {
-    try {
+    try (var client =
+        HttpClient.newBuilder()
+            .connectTimeout(connectTimeout)
+            .followRedirects(HttpClient.Redirect.NEVER)
+            .build()) {
+      var request =
+          HttpRequest.newBuilder(uri).timeout(timeout).header("Content-Type", "application/json");
+      if (credential != null) request.header("Authorization", "Bearer " + credential);
       return BoundedHttp.get(
           client,
-          HttpRequest.newBuilder(uri)
-              .timeout(timeout)
-              .header("Content-Type", "application/json")
-              .header("Authorization", "Bearer " + credential)
-              .POST(HttpRequest.BodyPublishers.ofByteArray(body))
-              .build(),
-          1048577,
+          request.POST(HttpRequest.BodyPublishers.ofByteArray(body)).build(),
+          responseBytes + 1,
           timeout);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -36,6 +38,6 @@ public final class ProviderHttp implements AutoCloseable {
 
   @Override
   public void close() {
-    client.close();
+    // Per-dispatch clients are closed before returning; no credentials/connections are cached.
   }
 }
