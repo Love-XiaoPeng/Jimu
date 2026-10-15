@@ -12,8 +12,20 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
+import org.springframework.core.env.SystemEnvironmentPropertySource;
 
 class ModelProfilesTest {
+  @Test
+  void secretEnvironmentNamesAreNotTreatedAsProfileProperties() {
+    var env = new StandardEnvironment();
+    env.getPropertySources()
+        .addFirst(
+            new SystemEnvironmentPropertySource(
+                "secret-env", Map.of("JIMU_MODEL_KEY_V1", "synthetic")));
+    env.getPropertySources().addFirst(new MapPropertySource("test", local()));
+    assertEquals("local", new ModelProfiles(env).selected("tenant").profile());
+  }
+
   private static Map<String, Object> local() {
     var p = new HashMap<String, Object>();
     p.put("jimu.model.default-profile-ref", "local");

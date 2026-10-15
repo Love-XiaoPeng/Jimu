@@ -12,6 +12,7 @@ import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.WireMessage
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.OpenAiProtocol;
 import io.github.lovexiaopeng.jimu.adapters.persistence.ModelCosts;
 import io.github.lovexiaopeng.jimu.adapters.runtime.http.ProviderHttp;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -182,6 +183,21 @@ class ModelProtocolTest {
       http.post(
           uri, utf8("{}"), Duration.ofSeconds(2), "synthetic-test", Duration.ofSeconds(1), 1024);
       assertEquals("Bearer synthetic-test", authorization.get());
+      for (String invalid : List.of("synthetic\u0000", "synthetic\n", "含非法头字符")) {
+        var error =
+            assertThrows(
+                TaskFailure.class,
+                () ->
+                    http.post(
+                        uri,
+                        utf8("{}"),
+                        Duration.ofSeconds(2),
+                        invalid,
+                        Duration.ofSeconds(1),
+                        1024));
+        assertEquals("CREDENTIAL_UNAVAILABLE", error.code());
+        assertFalse(error.getMessage().contains(invalid));
+      }
     } finally {
       server.stop(0);
     }

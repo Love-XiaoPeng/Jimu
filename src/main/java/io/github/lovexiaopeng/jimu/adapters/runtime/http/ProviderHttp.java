@@ -17,6 +17,8 @@ public final class ProviderHttp implements AutoCloseable {
       Duration connectTimeout,
       int responseBytes)
       throws IOException {
+    if (credential != null && !credential.matches("[!-~]{1,4096}"))
+      throw new TaskFailure(503, "CREDENTIAL_UNAVAILABLE");
     try (var client =
         HttpClient.newBuilder()
             .connectTimeout(connectTimeout)

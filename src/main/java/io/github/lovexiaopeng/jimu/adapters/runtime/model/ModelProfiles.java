@@ -151,8 +151,7 @@ public final class ModelProfiles {
     } else if (ref.startsWith("env:")) {
       // Read only the process environment, never arbitrary Spring property sources or CLI values.
       String value = System.getenv(ref.substring(4));
-      if (value != null && !value.isBlank() && !value.contains("\r") && !value.contains("\n"))
-        return value;
+      if (value != null && value.matches("[!-~]{1,4096}")) return value;
     }
     throw new TaskFailure(503, "CREDENTIAL_UNAVAILABLE");
   }
