@@ -843,12 +843,23 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
     var model = snapshot(task);
     Long actual = null;
     boolean exceeded = false;
-    if (model.paid() && usage.inputTokens() != null && usage.outputTokens() != null) {
-      try {
-        actual = ModelCosts.amount(model.price(), usage.inputTokens(), usage.outputTokens());
-      } catch (ArithmeticException invalidProviderCost) {
-        // Retain raw usage; an unrepresentable cost is UNKNOWN, never clamped.
-        exceeded = true;
+    if (model.paid()) {
+      exceeded =
+          usage.inputTokens() != null && usage.inputTokens() > model.price().inputTokenUpper()
+              || usage.outputTokens() != null && usage.outputTokens() > model.maxOutputTokens()
+              || usage.totalTokens() != null
+                  && java.math.BigInteger.valueOf(usage.totalTokens())
+                          .compareTo(
+                              java.math.BigInteger.valueOf(model.price().inputTokenUpper())
+                                  .add(java.math.BigInteger.valueOf(model.maxOutputTokens())))
+                      > 0;
+      if (usage.inputTokens() != null && usage.outputTokens() != null) {
+        try {
+          actual = ModelCosts.amount(model.price(), usage.inputTokens(), usage.outputTokens());
+        } catch (ArithmeticException invalidProviderCost) {
+          // Retain raw usage; an unrepresentable cost is UNKNOWN, never clamped.
+          exceeded = true;
+        }
       }
       long reserved =
           n(
@@ -858,11 +869,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                   dispatch),
               "reserved_cost");
       long delta = actual == null ? 0 : actual - reserved;
-      exceeded =
-          exceeded
-              || usage.inputTokens() > model.price().inputTokenUpper()
-              || usage.outputTokens() > model.maxOutputTokens()
-              || actual != null && actual > reserved;
+      exceeded = exceeded || actual != null && actual > reserved;
       db.update(
           "UPDATE evaluation_budget SET cost_held=cost_held+?,state=IF(?,'STOPPED',state) WHERE tenant_id=? AND id=?",
           delta,
@@ -882,6 +889,11 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
         db.update(
             "UPDATE reservation SET actual=?,state='SETTLED',usage_quality='KNOWN',cost_quality='KNOWN' WHERE tenant_id=? AND id=?",
             actual,
+            lease.tenant(),
+            dispatch + ":cost");
+      else
+        db.update(
+            "UPDATE reservation SET state='HELD_UNKNOWN' WHERE tenant_id=? AND id=?",
             lease.tenant(),
             dispatch + ":cost");
     }
@@ -907,12 +919,14 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   }
 
   @Override
-  public void modelFailed(Lease lease, String dispatch, String code) {
+  public void modelFailed(Lease lease, String dispatch, String code, ModelUsage usage) {
     tx(
         () -> {
-          fenced(lease, false);
+          var evaluation = evaluation(lease);
+          var task = fenced(lease, false);
+          if (usage != null) settleCost(lease, task, evaluation, dispatch, usage);
           db.update(
-              "UPDATE model_dispatch SET state='FAILED',code=?,ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND task_id=? AND state='DISPATCHED'",
+              "UPDATE model_dispatch SET state='FAILED',code=?,ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND task_id=? AND state IN ('DISPATCHED','RESPONDED')",
               code,
               lease.tenant(),
               dispatch,

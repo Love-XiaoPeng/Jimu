@@ -112,6 +112,40 @@ class ModelProtocolTest {
   }
 
   @Test
+  void rejectedOutputRetainsVerifiedBillingFactsForCallAndTruncatedStream() throws Exception {
+    String usage =
+        "\"usage\":{\"prompt_tokens\":100,\"completion_tokens\":1000,\"total_tokens\":1100}";
+    for (String finish : List.of("length", "content_filter")) {
+      String base = result("{\"content\":\"partial\"}", finish);
+      var failure =
+          assertThrows(
+              OpenAiProtocol.InvalidResponse.class,
+              () ->
+                  protocol.parse(
+                      utf8(base.substring(0, base.length() - 1) + "," + usage + "}"),
+                      false,
+                      List.of()));
+      assertEquals(100, failure.usage().inputTokens());
+      assertEquals(1000, failure.usage().outputTokens());
+      assertEquals(finish, failure.usage().finishReason());
+    }
+    String stream =
+        "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"partial\"},\"finish_reason\":\"stop\"}]}\n\n"
+            + "data: {\"choices\":[],"
+            + usage
+            + "}\n\n";
+    var failure =
+        assertThrows(
+            OpenAiProtocol.InvalidResponse.class,
+            () -> protocol.parse(utf8(stream + "data: {\"unfinished\":"), true, List.of()));
+    assertEquals(1100, failure.usage().totalTokens());
+    assertEquals("stop", failure.usage().finishReason());
+    assertThrows(
+        IOException.class,
+        () -> protocol.parse(utf8(stream.replace("1000", "-1")), true, List.of()));
+  }
+
+  @Test
   void providerOptionsOutputBoundAndUsageRequestAreExplicit() throws Exception {
     var profile =
         new ModelSnapshot(

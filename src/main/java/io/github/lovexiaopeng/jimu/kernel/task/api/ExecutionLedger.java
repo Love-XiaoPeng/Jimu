@@ -53,7 +53,7 @@ public interface ExecutionLedger {
       Integer tokens,
       ModelUsage usage);
 
-  void modelFailed(Lease lease, String dispatchId, String code);
+  void modelFailed(Lease lease, String dispatchId, String code, ModelUsage usage);
 
   Invocation admit(
       Lease lease, String stepId, Call call, String pluginVersion, String pluginDigest);

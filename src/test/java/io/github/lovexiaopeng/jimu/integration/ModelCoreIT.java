@@ -50,7 +50,7 @@ class ModelCoreIT {
         new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile()).start();
     try {
       assertTrue(
-          process.waitFor(14, TimeUnit.MINUTES),
+          process.waitFor(20, TimeUnit.MINUTES),
           "Model fixture must complete and clean up in foreground");
       assertEquals(
           0,

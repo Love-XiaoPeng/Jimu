@@ -70,6 +70,63 @@ public final class OpenAiProtocol {
 
   public Response parse(byte[] bytes, boolean stream, List<String> authorizedTools)
       throws IOException {
+    ModelUsage usage = billing(bytes, stream);
+    try {
+      return executable(bytes, stream, authorizedTools);
+    } catch (IOException invalid) {
+      throw new InvalidResponse(usage);
+    }
+  }
+
+  /** Verified billing facts survive rejection of output, including a stream missing DONE. */
+  public static final class InvalidResponse extends IOException {
+    private final ModelUsage usage;
+
+    InvalidResponse(ModelUsage usage) {
+      super("Non-executable model response");
+      this.usage = usage;
+    }
+
+    public ModelUsage usage() {
+      return usage;
+    }
+  }
+
+  private ModelUsage billing(byte[] bytes, boolean stream) throws IOException {
+    String text = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)).toString();
+    if (!stream) return usage(json.readTree(text));
+    var root = json.createObjectNode();
+    // Only complete SSE events supply facts; a truncated final event is never parsed.
+    String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
+    int end = normalized.lastIndexOf("\n\n");
+    if (end < 0) return usage(root);
+    for (String event : normalized.substring(0, end).split("\n\n")) {
+      var data = new StringBuilder();
+      for (String line : event.split("\n")) {
+        if (!line.startsWith("data:")) continue;
+        if (!data.isEmpty()) data.append('\n');
+        data.append(line.substring(5).stripLeading());
+      }
+      if (data.isEmpty()) continue;
+      if ("[DONE]".contentEquals(data)) break;
+      var chunk = json.readTree(data.toString());
+      if (chunk == null) throw new IOException("Invalid billing event");
+      for (String field : List.of("usage", "id", "model")) {
+        if (!chunk.hasNonNull(field)) continue;
+        if (root.has(field) && !root.get(field).equals(chunk.get(field)))
+          throw new IOException("Conflicting billing metadata");
+        root.set(field, chunk.get(field));
+      }
+      if (chunk.path("choices").isArray() && chunk.path("choices").size() == 1) {
+        var finish = chunk.path("choices").get(0).get("finish_reason");
+        if (finish != null && !finish.isNull()) root.set("finish_reason", finish);
+      }
+    }
+    return usage(root);
+  }
+
+  private Response executable(byte[] bytes, boolean stream, List<String> authorizedTools)
+      throws IOException {
     String utf8;
     try {
       utf8 = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)).toString();
@@ -77,8 +134,10 @@ public final class OpenAiProtocol {
       throw new IOException("Invalid model UTF-8");
     }
     var root = stream ? aggregate(utf8) : json.readTree(utf8);
-    if (root == null || root.has("error") || root.path("choices").size() != 1)
-      throw new IOException("Invalid model response");
+    if (root == null
+        || root.has("error")
+        || !root.path("choices").isArray()
+        || root.path("choices").size() != 1) throw new IOException("Invalid model response");
     var choice = root.path("choices").get(0);
     var message = choice.path("message");
     String finish = choice.path("finish_reason").asText();
@@ -108,6 +167,14 @@ public final class OpenAiProtocol {
     }
     if ("tool_calls".equals(finish) == calls.isEmpty())
       throw new IOException("Conflicting finish reason");
+    var usage = usage(root);
+    Long total = usage.totalTokens();
+    Integer tokens = total != null && total <= Integer.MAX_VALUE ? total.intValue() : null;
+    return new Response(2, message.path("content").asText(""), List.copyOf(calls), tokens, usage);
+  }
+
+  private static ModelUsage usage(JsonNode root) throws IOException {
+    if (root == null) throw new IOException("Missing response");
     var u = root.path("usage");
     Long input = count(u, "prompt_tokens"),
         output = count(u, "completion_tokens"),
@@ -119,18 +186,19 @@ public final class OpenAiProtocol {
                 .add(java.math.BigInteger.valueOf(output))
                 .compareTo(java.math.BigInteger.valueOf(total))
             != 0) throw new IOException("Conflicting usage");
-    var usage =
-        new ModelUsage(
-            input,
-            output,
-            total,
-            count(u.path("prompt_tokens_details"), "cached_tokens"),
-            count(u.path("completion_tokens_details"), "reasoning_tokens"),
-            safeId(root, "id"),
-            safeId(root, "model"),
-            finish);
-    Integer tokens = total != null && total <= Integer.MAX_VALUE ? total.intValue() : null;
-    return new Response(2, message.path("content").asText(""), List.copyOf(calls), tokens, usage);
+    return new ModelUsage(
+        input,
+        output,
+        total,
+        count(u.path("prompt_tokens_details"), "cached_tokens"),
+        count(u.path("completion_tokens_details"), "reasoning_tokens"),
+        safeId(root, "id"),
+        safeId(root, "model"),
+        root.has("finish_reason")
+            ? safeId(root, "finish_reason")
+            : root.path("choices").isArray() && root.path("choices").size() == 1
+                ? safeId(root.path("choices").get(0), "finish_reason")
+                : null);
   }
 
   private static String safeId(JsonNode node, String field) throws IOException {

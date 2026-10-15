@@ -272,8 +272,12 @@ public final class DurableAgent implements AutoCloseable {
         ledger.checkpoint(lease);
         try {
           response = request(checkpoint);
+        } catch (OpenAiProtocol.InvalidResponse invalid) {
+          String code = checkpoint.stream() ? "MODEL_STREAM_INCOMPLETE" : "MODEL_RESPONSE_INVALID";
+          ledger.modelFailed(lease, dispatch, code, invalid.usage());
+          throw new TaskFailure(502, code);
         } catch (TaskFailure error) {
-          ledger.modelFailed(lease, dispatch, error.code());
+          ledger.modelFailed(lease, dispatch, error.code(), null);
           throw error;
         }
         probe.hit("M1_RESPONSE", lease.taskId());
@@ -408,7 +412,7 @@ public final class DurableAgent implements AutoCloseable {
       return output;
     }
 
-    private Response request(Checkpoint checkpoint) {
+    private Response request(Checkpoint checkpoint) throws OpenAiProtocol.InvalidResponse {
       models.admit(modelSnapshot);
       if (!Payloads.hash(checkpoint.requestBody()).equals(checkpoint.bodyDigest()))
         throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
@@ -439,10 +443,14 @@ public final class DurableAgent implements AutoCloseable {
           throw new TaskFailure(502, "MODEL_RESPONSE_INVALID");
         try {
           return protocol.parse(response.body(), checkpoint.stream(), lease.capabilities());
+        } catch (OpenAiProtocol.InvalidResponse invalid) {
+          throw invalid;
         } catch (IOException e) {
           throw new TaskFailure(
               502, checkpoint.stream() ? "MODEL_STREAM_INCOMPLETE" : "MODEL_RESPONSE_INVALID");
         }
+      } catch (OpenAiProtocol.InvalidResponse invalid) {
+        throw invalid;
       } catch (java.net.http.HttpTimeoutException e) {
         throw new TaskFailure(502, "MODEL_TIMEOUT");
       } catch (IOException e) {

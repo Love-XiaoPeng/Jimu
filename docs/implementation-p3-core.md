@@ -81,6 +81,10 @@ evaluation_budget 持久上限最多20次、1,000,000 micro-CNY。不同候选/w
 
 ## 验证与后续依赖
 
+审查 R1/R2 修复：输入、输出与 total 的已知超界分别触发持久 STOPPED，不要求两项 usage 同时已知；缺分项时 actual_cost 仍为 UNKNOWN，保留最坏预留。输出可执行性与计费事实分离，完整 JSON 的 length/filter/refusal 及缺 DONE 的 SSE 中已收到的完整 usage 事件仍保存分项、关联 ID 和 finish reason，拒绝执行输出或工具。坏 UTF-8/JSON、无效或冲突 usage 不作为可信账单。停发事务沿用 evaluation→tenant→task 锁序；已派发请求不能撤回，STOPPED 提交后新派发被共享账本拒绝。
+
+默认 ModelCoreIT 包含审查的三个反例，以及 SSE 单项、断流完整 usage、total-only 超界；逐例停止全部应用进程后重启 control 和两个 worker，并发提交四个后续任务，断言 provider 未收到新请求、预算不变、UNKNOWN 预留未释放。`tools/p3_model_verify.py <jar> <evidence> --bounds-only` 可单独运行这些回归，不能代替完整 verify。
+
 默认 `mvnw.cmd -B -ntp verify` / `./mvnw -B -ntp verify` 保留完整 P2 必需集成，另有 ModelCoreIT；缺 MySQL、Linux POSIX 存储或 JDK21 仍失败。`tools/p3_model_verify.py <jar> <evidence>` 可独立复现本地协议/快照/预算，所有资源在前台收集并 finally 清理。验证记录随固定 SHA 交付，不把替身当真实推理/真实业务证据。
 
 集中待产品经理协调：实际平台文档和完整 base_url、地域/工作空间/快照型号权限、适用价目与完整计费输入/输出上界证据；搜索推荐单一 Exa 路线，需独立权限/凭据、明确 search 类型与结果数、禁用额外 contents/answer/research、确认适用单价和 USD/CNY 预算换算。不重复索要已提供凭据，不抓取搜索结果页代替授权。公共抓取将需 HttpClient5 可固定 DNS 与 HTML 解析依赖的兼容/许可证据，无新增付费资源申请。

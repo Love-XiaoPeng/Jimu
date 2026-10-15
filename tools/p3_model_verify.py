@@ -38,7 +38,29 @@ class ModelHandler(http.server.BaseHTTPRequestHandler):
         if "unknown" not in goal:
             input_tokens = 9000 if goal == "cost-overrun" else 100
             response["usage"] = {"prompt_tokens": input_tokens, "completion_tokens": 50, "total_tokens": input_tokens + 50}
-        data = json.dumps(response).encode()
+        if goal.startswith("cost-bound-"):
+            if "partial-output" in goal:
+                response["usage"] = {"completion_tokens": 1000}
+            elif "partial-input" in goal:
+                response["usage"] = {"prompt_tokens": 9000}
+            elif "total-only" in goal:
+                response["usage"] = {"total_tokens": 9000}
+            else:
+                response["usage"] = {"prompt_tokens": 100, "completion_tokens": 1000, "total_tokens": 1100}
+            if "length" in goal or "truncated" in goal:
+                response["choices"][0] = {"message": {"tool_calls": [{"id": "blocked_tool", "type": "function", "function": {
+                    "name": "web_fetch", "arguments": json.dumps({"url": self.server.web_origin + "/page/" + goal})}}]}, "finish_reason": "length"}
+        if body["stream"]:
+            choice = response["choices"][0]
+            delta = dict(choice["message"])
+            if "tool_calls" in delta:
+                delta["tool_calls"][0]["index"] = 0
+            chunks = [{"id": response["id"], "model": response["model"], "choices": [{"index": 0, "delta": delta, "finish_reason": choice["finish_reason"]}]},
+                      {"choices": [], "usage": response.get("usage")}]
+            data = ("".join("data: " + json.dumps(c) + "\n\n" for c in chunks) +
+                    ("" if "truncated" in goal else "data: [DONE]\n\n")).encode()
+        else:
+            data = json.dumps(response).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
@@ -72,7 +94,7 @@ def config(servers, selected="a", paid=False, run_id="core-evaluation", enabled=
     return out
 
 
-def model_core(e):
+def model_core(e, bounds_only=False):
     servers = {name: Models(e.fixture.origin) for name in ("a", "b")}
     threads = [threading.Thread(target=s.serve_forever) for s in servers.values()]
     for thread in threads:
@@ -93,7 +115,66 @@ def model_core(e):
     def replace(settings):
         e.stop(e.control)
         control(settings)
+    def bound_regressions():
+        # R1/R2: each known component stops dispatch independently of executable output.
+        cases = ("partial-output", "partial-input", "length-overrun", "stream-partial-output",
+                 "stream-partial-input", "stream-truncated-overrun", "total-only")
+        e.sql("UPDATE tenant_budget SET cost_limit=10000000 WHERE tenant_id='tenant-a';")
+        for case in cases:
+            run_id = "bound-" + case
+            e.sql("INSERT INTO evaluation_budget(tenant_id,id) VALUES('tenant-a','" + run_id + "');")
+            settings = config(servers, paid=True, run_id=run_id)
+            if case.startswith("stream-"):
+                for name in servers:
+                    prefix = "jimu.model.profiles." + name + "."
+                    for key in ("stream", "capabilities.stream-text", "capabilities.stream-tools", "capabilities.usage-stream"):
+                        settings[prefix + key] = "true"
+            replace(settings)
+            goal = "cost-bound-" + case
+            task = e.submit(goal)
+            new = worker(settings)
+            e.state(task, "FAILED")
+            e.stop(new)
+            e.assert_that(e.sql("SELECT state,requests_used,cost_held FROM evaluation_budget WHERE id='" + run_id + "';") == "STOPPED\t1\t50000",
+                          "known usage violation durably stops run and retains charge", case=case)
+            expected = ("NULL\t1000\tNULL" if "partial-output" in case else "9000\tNULL\tNULL" if "partial-input" in case else
+                        "NULL\tNULL\t9000" if case == "total-only" else "100\t1000\t1100")
+            e.assert_that(e.sql("SELECT input_tokens,output_tokens,total_tokens FROM model_dispatch WHERE task_id='" + task + "';") == expected,
+                          "billing components survive independent of response executability", case=case)
+            e.assert_that(e.sql("SELECT state,code FROM model_dispatch WHERE task_id='" + task + "';") == "BOUND_EXCEEDED\tMODEL_COST_BOUND_EXCEEDED",
+                          "dispatch persists explicit bound violation", case=case)
+            unknown = "partial" in case or case == "total-only"
+            e.assert_that(e.sql("SELECT actual_cost,cost_quality FROM model_dispatch WHERE task_id='" + task + "';") == ("NULL\tUNKNOWN" if unknown else "50000\tKNOWN"),
+                          "missing component retains UNKNOWN monetary reservation", case=case)
+            e.assert_that(e.sql("SELECT state,actual FROM reservation WHERE task_id='" + task + "' AND category='MODEL_COST';") == ("HELD_UNKNOWN\tNULL" if unknown else "SETTLED\t50000"),
+                          "billing reservation remains reconcilable", case=case)
+            if "length" in case or "truncated" in case:
+                e.assert_that(json.loads(e.sql("SELECT usage_snapshot FROM model_dispatch WHERE task_id='" + task + "';"))["finishReason"] == "length",
+                              "rejected response retains finish reason", case=case)
+            e.assert_that(e.sql("SELECT COUNT(*) FROM invocation WHERE task_id='" + task + "';") == "0" and
+                          e.fixture.tools.get("/page/" + goal, 0) == 0, "overrun output never executes a tool", case=case)
+            # Kill all application processes, then restart control and two competing workers.
+            replace(settings)
+            new, other = worker(settings), worker(settings)
+            with concurrent.futures.ThreadPoolExecutor(4) as pool:
+                after = list(pool.map(lambda i: e.submit(goal + "-after-" + str(i)), range(4)))
+            for following in after:
+                e.state(following, "FAILED")
+            e.stop(new); e.stop(other)
+            e.assert_that(all(count(goal + "-after-" + str(i)) == 0 for i in range(4)) and count(goal) == 1,
+                          "persisted stop blocks concurrent requests after process restart", case=case)
+            e.assert_that(e.sql("SELECT state,requests_used,cost_held FROM evaluation_budget WHERE id='" + run_id + "';") == "STOPPED\t1\t50000",
+                          "concurrent denied dispatches never alter stopped run budget", case=case)
+            e.assert_that(e.sql("SELECT COUNT(*) FROM task WHERE evaluation_run_id='" + run_id + "' AND code='MODEL_BUDGET_EXCEEDED';") == "4",
+                          "all concurrent attempts fail at durable budget boundary", case=case)
+        (e.evidence / "bound-model-facts.json").write_text(json.dumps([c for s in servers.values() for c in s.calls if c["goal"].startswith("cost-bound-")], indent=2))
+        for table in ("model_dispatch", "evaluation_budget"):
+            (e.evidence / ("bound-" + table + ".tsv")).write_text(e.sql("SELECT * FROM " + table + ";"))
     try:
+        if bounds_only:
+            control(config(servers))
+            bound_regressions()
+            return
         a, b = config(servers, "a"), config(servers, "b")
         # Queue/M0/M1/M2/T1 recover across default changes; all later steps retain A.
         for point in ("QUEUED", "M0", "M1", "M2", "T1"):
@@ -206,6 +287,7 @@ def model_core(e):
         e.stop(new)
         e.assert_that(e.sql("SELECT state FROM evaluation_budget WHERE id='core-overrun';") == "STOPPED" and count("cost-after-overrun") == 0,
                       "observed usage bound violation persists and stops subsequent requests")
+        bound_regressions()
         facts = [c for s in servers.values() for c in s.calls]
         e.assert_that(all(c["authorizationAbsent"] and c["outputLimit"] == 502 for c in facts), "all local model requests omit auth and honor 512 token bound with 10 token margin")
         (e.evidence / "local-model-facts.json").write_text(json.dumps(facts, indent=2))
@@ -225,6 +307,6 @@ if __name__ == "__main__":
     experiment = Experiment(Path(sys.argv[1]), Path(sys.argv[2]))
     try:
         experiment.prepare()
-        model_core(experiment)
+        model_core(experiment, "--bounds-only" in sys.argv[3:])
     finally:
         experiment.cleanup()
