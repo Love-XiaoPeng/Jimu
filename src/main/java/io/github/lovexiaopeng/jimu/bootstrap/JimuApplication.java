@@ -9,6 +9,8 @@ public class JimuApplication {
     // Each HTTP dispatch is budgeted by the host; transport retries must not create hidden
     // dispatches.
     System.setProperty("jdk.httpclient.disableRetryConnect", "true");
+    System.setProperty("jdk.httpclient.redirects.retrylimit", "1");
+    System.setProperty("jdk.httpclient.enableAllMethodRetry", "false");
     SpringApplication.run(JimuApplication.class, args);
   }
 }

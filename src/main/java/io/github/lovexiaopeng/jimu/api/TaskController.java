@@ -55,16 +55,20 @@ public final class TaskController {
       @RequestHeader(value = "Idempotency-Key", required = false) String key,
       @RequestBody SubmitRequest request) {
     var identity = authentication.authenticate(authorization);
-    if (key == null
+    if (request == null
+        || key == null
         || !key.matches("[!-~]{1,128}")
         || request.goal() == null
         || request.goal().isBlank()
         || request.goal().getBytes(StandardCharsets.UTF_8).length > 8192)
       throw new TaskFailure(400, "INVALID_REQUEST");
+    if (request.capabilityIds() != null
+        && request.capabilityIds().stream().anyMatch(java.util.Objects::isNull))
+      throw new TaskFailure(400, "INVALID_CAPABILITIES");
     var capabilities =
         request.capabilityIds() == null
             ? List.of("web_fetch")
-            : request.capabilityIds().stream().distinct().sorted().toList();
+            : request.capabilityIds().stream().distinct().toList();
     if (capabilities.isEmpty()
         || capabilities.size() > 1
         || !List.of("web_fetch").containsAll(capabilities))

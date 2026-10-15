@@ -70,7 +70,8 @@ public final class DatabaseEventFeed implements EventFeed, AutoCloseable {
                   event.accept(item);
                   last[0] = item.seq();
                 }
-                if (tasks.get(current, taskId).terminal()
+                if ((tasks.get(current, taskId).terminal()
+                        && tasks.events(current, taskId, last[0], 1).isEmpty())
                     || System.nanoTime() - started > TimeUnit.SECONDS.toNanos(25)) close.run();
               } catch (RuntimeException failure) {
                 close.run();

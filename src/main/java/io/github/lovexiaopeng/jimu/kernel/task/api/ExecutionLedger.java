@@ -48,7 +48,8 @@ public interface ExecutionLedger {
       List<Call> calls,
       Integer tokens);
 
-  Invocation admit(Lease lease, String stepId, Call call);
+  Invocation admit(
+      Lease lease, String stepId, Call call, String pluginVersion, String pluginDigest);
 
   void toolSucceeded(Lease lease, String invocationId, String output);
 
@@ -67,4 +68,14 @@ public interface ExecutionLedger {
   void check();
 
   void cleanupArtifacts(ArtifactStore store);
+
+  record WorkerProcess(String id, long pid, long startTicks, boolean cancellationOverdue) {}
+
+  void registerWorker(String worker, String host, long pid, long startTicks);
+
+  List<WorkerProcess> processes(String host);
+
+  void processStopped(String worker);
+
+  void quiescent(Lease lease);
 }

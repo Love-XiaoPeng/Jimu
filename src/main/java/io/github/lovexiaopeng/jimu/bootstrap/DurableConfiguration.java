@@ -8,6 +8,7 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.health.LedgerProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.identity.SignedIdentity;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.BoundaryProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.LedgerMaintenance;
+import io.github.lovexiaopeng.jimu.adapters.runtime.worker.LocalWorkerSupervisor;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.WorkerLoop;
 import io.github.lovexiaopeng.jimu.adapters.storage.LocalArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
@@ -115,13 +116,19 @@ public class DurableConfiguration {
         plugin,
         probe,
         URI.create(env.getRequiredProperty("jimu.provider-origin")),
-        credentials);
+        credentials,
+        env.getProperty("jimu.model-stream", Boolean.class, false));
   }
 
   @Bean(initMethod = "start", destroyMethod = "close")
   @ConditionalOnProperty(name = "jimu.role", havingValue = "worker")
-  WorkerLoop workerLoop(ExecutionLedger ledger, DurableAgent agent) {
-    return new WorkerLoop(ledger, agent);
+  WorkerLoop workerLoop(
+      ExecutionLedger ledger, DurableAgent agent, Environment env, LedgerProbe resources) {
+    return new WorkerLoop(
+        ledger,
+        agent,
+        java.util.UUID.fromString(env.getRequiredProperty("jimu.host-id")).toString(),
+        resources);
   }
 
   @Bean(destroyMethod = "close")
@@ -133,5 +140,12 @@ public class DurableConfiguration {
   @ConditionalOnProperty(name = "jimu.role", havingValue = "control")
   LedgerMaintenance maintenance(ExecutionLedger ledger, ArtifactStore store) {
     return new LedgerMaintenance(ledger, store);
+  }
+
+  @Bean(initMethod = "start", destroyMethod = "close")
+  @ConditionalOnProperty(name = "jimu.role", havingValue = "control")
+  LocalWorkerSupervisor supervisor(ExecutionLedger ledger, Environment env) {
+    return new LocalWorkerSupervisor(
+        ledger, java.util.UUID.fromString(env.getRequiredProperty("jimu.host-id")).toString());
   }
 }

@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.worker;
 
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent;
+import io.github.lovexiaopeng.jimu.kernel.readiness.port.ResourceProbe;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import java.util.UUID;
@@ -12,20 +13,29 @@ public final class WorkerLoop implements AutoCloseable {
   private final ExecutionLedger ledger;
   private final DurableAgent agent;
   private final String instance = UUID.randomUUID().toString();
+  private final String host;
+  private final ResourceProbe resources;
   private final ScheduledExecutorService work = Executors.newSingleThreadScheduledExecutor();
   private final ScheduledExecutorService heartbeat = Executors.newSingleThreadScheduledExecutor();
 
-  public WorkerLoop(ExecutionLedger ledger, DurableAgent agent) {
+  public WorkerLoop(
+      ExecutionLedger ledger, DurableAgent agent, String host, ResourceProbe resources) {
     this.ledger = ledger;
     this.agent = agent;
+    this.host = host;
+    this.resources = resources;
   }
 
-  public void start() {
+  public void start() throws java.io.IOException {
+    var process = ProcessHandle.current();
+    ledger.registerWorker(
+        instance, host, process.pid(), LinuxProcessReceipt.startTicks(process.pid()));
     work.scheduleWithFixedDelay(this::tick, 0, 100, TimeUnit.MILLISECONDS);
   }
 
   private void tick() {
     try {
+      if (!resources.ready()) return;
       var candidate = ledger.claim(instance);
       if (candidate.isEmpty()) return;
       var lease = candidate.get();
@@ -44,6 +54,7 @@ public final class WorkerLoop implements AutoCloseable {
         }
       } finally {
         renewal.cancel(false);
+        ledger.quiescent(lease);
       }
     } catch (RuntimeException error) {
       System.getLogger(WorkerLoop.class.getName())

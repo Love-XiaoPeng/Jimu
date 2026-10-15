@@ -181,7 +181,12 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public View get(Identity identity, String task) {
-    return tx(() -> view(visible(identity, task)));
+    return tx(
+        () -> {
+          var row = visible(identity, task);
+          access(row);
+          return view(row);
+        });
   }
 
   private View view(Map<String, Object> row) {
@@ -350,7 +355,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                 var budget = bucket(tenant);
                 var candidates =
                     rows(
-                        "SELECT *,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND record_version=1 AND (state='QUEUED' OR (state IN ('RUNNING','CANCEL_REQUESTED') AND lease_until<=CURRENT_TIMESTAMP(6))) ORDER BY ready_at,id LIMIT 1 FOR UPDATE SKIP LOCKED",
+                        "SELECT *,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND record_version=1 AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) ORDER BY ready_at,id LIMIT 1 FOR UPDATE SKIP LOCKED",
                         tenant);
                 if (candidates.isEmpty()) return Optional.empty();
                 var task = candidates.getFirst();
@@ -450,6 +455,14 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
       if (task.get("cancel_requested_at") != null) throw new TaskFailure(409, "CANCEL_REQUESTED");
       if (n(task, "within_deadline") != 1) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
     }
+    if (db.update(
+            "UPDATE task SET revision=revision+1,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND revision=? AND current_attempt_id=? AND fence=? AND lease_until>CURRENT_TIMESTAMP(6)",
+            lease.tenant(),
+            lease.taskId(),
+            n(task, "revision"),
+            lease.attemptId(),
+            lease.fence())
+        != 1) throw new TaskFailure(409, "FENCE_REJECTED");
     return task;
   }
 
@@ -677,7 +690,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   }
 
   @Override
-  public Invocation admit(Lease lease, String stepId, Call call) {
+  public Invocation admit(
+      Lease lease, String stepId, Call call, String pluginVersion, String pluginDigest) {
     return tx(
         () -> {
           var task = fenced(lease, true);
@@ -694,6 +708,16 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               || !call.providerId().equals(s(invocation, "provider_id")))
             throw new TaskFailure(409, "INVOCATION_MISMATCH");
           String invocationId = s(invocation, "id");
+          var installation =
+              one(
+                  "SELECT * FROM installation WHERE tenant_id=? AND plugin_id=?",
+                  lease.tenant(),
+                  call.tool());
+          if (!pluginVersion.equals(s(invocation, "plugin_version"))
+              || !pluginDigest.equals(s(invocation, "plugin_digest"))
+              || !pluginVersion.equals(s(installation, "plugin_version"))
+              || !pluginDigest.equals(s(installation, "plugin_digest")))
+            throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
           if ("SUCCEEDED".equals(s(invocation, "state"))) {
             if (!Payloads.hash(s(invocation, "output_snapshot"))
                 .equals(s(invocation, "output_digest")))
@@ -921,6 +945,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           "UPDATE invocation SET state='OUTCOME_UNKNOWN' WHERE tenant_id=? AND task_id=? AND state='RUNNING'",
           tenant,
           taskId);
+      if (!rows("SELECT id FROM worker_process WHERE id=? AND stopped=TRUE", s(task, "worker_id"))
+          .isEmpty()) releaseRun(task);
       db.update(
           "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND task_id=? AND category='TOOL' AND state='RESERVED'",
           tenant,
@@ -962,22 +988,105 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   }
 
   @Override
+  public void registerWorker(String worker, String host, long pid, long startTicks) {
+    db.update(
+        "INSERT INTO worker_process(id,host_id,pid,start_ticks) VALUES(?,?,?,?)",
+        worker,
+        host,
+        pid,
+        startTicks);
+  }
+
+  @Override
+  public List<WorkerProcess> processes(String host) {
+    return rows(
+            "SELECT w.*,EXISTS(SELECT 1 FROM task t WHERE t.worker_id=w.id AND t.state='CANCEL_REQUESTED' AND t.cancel_requested_at<CURRENT_TIMESTAMP(6)-INTERVAL 3 SECOND) AS overdue FROM worker_process w WHERE host_id=? AND stopped=FALSE ORDER BY id LIMIT 64",
+            host)
+        .stream()
+        .map(
+            w ->
+                new WorkerProcess(
+                    s(w, "id"), n(w, "pid"), n(w, "start_ticks"), n(w, "overdue") == 1))
+        .toList();
+  }
+
+  private void releaseRun(Map<String, Object> task) {
+    int released =
+        db.update(
+            "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'",
+            s(task, "tenant_id"),
+            s(task, "id") + ":run");
+    if (released == 1)
+      db.update(
+          "UPDATE tenant_budget SET running=running-1 WHERE tenant_id=?", s(task, "tenant_id"));
+  }
+
+  @Override
+  public void quiescent(Lease lease) {
+    tx(
+        () -> {
+          bucket(lease.tenant());
+          var task = locked(lease.tenant(), lease.taskId());
+          if (lease.worker().equals(s(task, "worker_id"))
+              && n(task, "fence") == lease.fence()
+              && List.of("NEEDS_RECONCILIATION", "SUCCEEDED", "FAILED", "CANCELLED")
+                  .contains(s(task, "state"))) releaseRun(task);
+          return null;
+        });
+  }
+
+  @Override
+  public void processStopped(String worker) {
+    for (var candidate :
+        rows(
+            "SELECT tenant_id,id FROM task WHERE worker_id=? AND state IN ('RUNNING','CANCEL_REQUESTED','NEEDS_RECONCILIATION')",
+            worker)) {
+      tx(
+          () -> {
+            String tenant = s(candidate, "tenant_id");
+            bucket(tenant);
+            var task = locked(tenant, s(candidate, "id"));
+            if (!worker.equals(s(task, "worker_id"))) return null;
+            db.update(
+                "UPDATE task SET lease_until=CURRENT_TIMESTAMP(6)-INTERVAL 1 MICROSECOND WHERE tenant_id=? AND id=?",
+                tenant,
+                s(task, "id"));
+            if ("CANCEL_REQUESTED".equals(s(task, "state"))) {
+              boolean uncertain =
+                  !rows(
+                          "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN')",
+                          tenant,
+                          s(task, "id"))
+                      .isEmpty();
+              terminal(
+                  task,
+                  uncertain ? "NEEDS_RECONCILIATION" : "CANCELLED",
+                  uncertain ? "EFFECT_OUTCOME_UNKNOWN" : "CANCELLED");
+              releaseRun(task);
+            } else if ("NEEDS_RECONCILIATION".equals(s(task, "state"))) releaseRun(task);
+            return null;
+          });
+    }
+    db.update("UPDATE worker_process SET stopped=TRUE WHERE id=?", worker);
+  }
+
+  @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version='1' AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2') AND success=TRUE",
             Integer.class)
-        != 1) throw new IllegalStateException("Required migration unavailable");
+        != 2) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 1) throw new IllegalStateException("Unsupported schema version");
+        != 2) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override
   public void cleanupArtifacts(ArtifactStore store) {
     var candidates =
         rows(
-            "SELECT a.tenant_id,a.id,a.task_id,a.upload_id FROM artifact a JOIN task t ON t.tenant_id=a.tenant_id AND t.id=a.task_id WHERE (a.state IN ('STAGING','VERIFIED','ABANDONED') AND a.updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 1 HOUR AND t.state IN ('FAILED','CANCELLED')) OR (a.state IN ('PUBLISHED','EXPIRED') AND a.expires_at<CURRENT_TIMESTAMP(6)) LIMIT 64");
+            "SELECT a.tenant_id,a.id,a.task_id,a.upload_id FROM artifact a JOIN task t ON t.tenant_id=a.tenant_id AND t.id=a.task_id JOIN reservation r ON r.tenant_id=a.tenant_id AND r.id=a.id WHERE r.state<>'RELEASED' AND ((a.state IN ('STAGING','VERIFIED','ABANDONED') AND a.updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 1 HOUR AND t.state IN ('FAILED','CANCELLED')) OR (a.state IN ('PUBLISHED','EXPIRED') AND a.expires_at<CURRENT_TIMESTAMP(6))) LIMIT 64");
     for (var candidate : candidates) {
       String tenant = s(candidate, "tenant_id"),
           artifact = s(candidate, "id"),
