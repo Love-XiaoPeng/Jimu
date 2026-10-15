@@ -1,0 +1,4 @@
+* text=auto eol=lf
+docs/baseline/** -text whitespace=cr-at-eol
+docs/adr/** -text whitespace=cr-at-eol
+*.cmd text eol=crlf

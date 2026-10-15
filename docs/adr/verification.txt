@@ -1,0 +1,15 @@
+XIAO-34 architecture handoff: static verification only
+UTC: 2026-10-15T04:55:02.8028870Z
+PASS: five authoritative baseline SHA256 values match the published revision table.
+PASS: canonical Schema identity, 2020-12 dialect, required fields and additionalProperties policy match.
+PASS: inventory has 32 packages / 72 registrations / 67 unique capability names.
+PASS: T15/T23/T25/T71/T72 map to present/read/write/web_fetch/web_search.
+PASS: three ADRs and README decode as strict UTF-8; Markdown tables/fences are structurally consistent.
+NOT RUN: Java compilation, dependency resolution, JSON Schema validator execution, DTO serialization, worker/DB/storage integrations, recovery, security, performance.
+Repository: not checked out or changed by the architect; no PR or Git commit produced.
+
+Delivered Markdown file SHA256:
+7aa1515876c369d2691bd8c0af67f8fca5c78d6c4f16473db7f0d542d6a8ba74  0001-jimu-naming.md
+27593a28480308bf1d978f0c7f6180bdbb9bcb2980ecf5fa56b5568911c2ad23  0002-dependency-baseline.md
+45a482a1cef2c69e69c870ed2779c12a67a25806263fe164d918570b2e70937a  0003-package-boundaries.md
+9ce692a7c0b5b6fa4561ba49b103c2a5216425b28d7d58f8824a9039c7e7738c  README.md

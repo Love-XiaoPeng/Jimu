@@ -1,0 +1,63 @@
+{
+    "sourceIssue":  "XIAO-33",
+    "targetIssue":  "XIAO-34",
+    "status":  "Prepared locally; not committed or pushed",
+    "files":  [
+                  {
+                      "file":  "XIAO-33-可行性与总体方案-v0.3.md",
+                      "attachmentId":  "01a13b9c-25a1-78ae-9e88-e625e1927f8f",
+                      "bytes":  95190,
+                      "sha256":  "2b8e53c700aab0d96a6f06351ee9f924a43c8d5af4b5f62837b20e6f92e6c014",
+                      "publishedHashVerified":  true
+                  },
+                  {
+                      "file":  "XIAO-33-工程规范-v0.2.md",
+                      "attachmentId":  "01a13b9c-25ca-71f6-a51c-fe43d521b5c3",
+                      "bytes":  27621,
+                      "sha256":  "36553f58e0b129903f04389c852f75560cf4879bbe9fbdac0e2759cb3f8298b7",
+                      "publishedHashVerified":  true
+                  },
+                  {
+                      "file":  "XIAO-33-tool-migration-evidence-v1.1.md",
+                      "attachmentId":  "01a13b9c-25ee-7928-942d-683f58caf52d",
+                      "bytes":  87122,
+                      "sha256":  "2111bc4a0be86a3cc69420fb9b9d08adc0bc5b609686d859b38830edce17c0f7",
+                      "publishedHashVerified":  true
+                  },
+                  {
+                      "file":  "XIAO-33-harness-tool-inventory-v1.1.json",
+                      "attachmentId":  "01a13b9c-26fd-7c0c-b526-07c7d115a82d",
+                      "bytes":  196149,
+                      "sha256":  "30b6904aad8d85dac3e789434e434c449575383cb23e254329a84930436f5b02",
+                      "publishedHashVerified":  true
+                  },
+                  {
+                      "file":  "XIAO-33-web-fetch-output-v0.2.0.schema.json",
+                      "attachmentId":  "01a13b9c-28f6-71b3-99cc-39c899b5ba4d",
+                      "bytes":  602,
+                      "sha256":  "08a144489ed9ea37b5b33a5ffdc815237f31d4f229b76ba1d5e465b9e13f9ff8",
+                      "publishedHashVerified":  true
+                  },
+                  {
+                      "file":  "XIAO-33-合稿修订与评审对照-v0.3.md",
+                      "attachmentId":  "01a13b9c-2a15-7dc4-b593-6cbd365ec2cf",
+                      "bytes":  8322,
+                      "sha256":  "ca708c3693ffd385cbedc5b5bb4a619c5bbd72e3a1e39031bc4f528974278ea5",
+                      "publishedHashVerified":  false
+                  },
+                  {
+                      "file":  "XIAO-33-security-performance-recheck-v2.md",
+                      "attachmentId":  "01a13ba1-cfd0-7f15-8707-c6f54c2a10d3",
+                      "bytes":  5808,
+                      "sha256":  "6839750256d799baaa2bdbed4472c9a36afb7ef7deb1415cea1db6f4d70f9792",
+                      "publishedHashVerified":  false
+                  },
+                  {
+                      "file":  "XIAO-33-testability-recheck-v2.md",
+                      "attachmentId":  "01a13ba3-6586-7667-8b84-18b490f6d1c8",
+                      "bytes":  7632,
+                      "sha256":  "4b8b4a3893fb55ceafdef0937c1b78818931d433a86949dd36d55165a19d9725",
+                      "publishedHashVerified":  false
+                  }
+              ]
+}
