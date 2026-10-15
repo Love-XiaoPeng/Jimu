@@ -47,7 +47,7 @@ class DurableExecutionIT {
         new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile()).start();
     try {
       assertTrue(
-          process.waitFor(12, TimeUnit.MINUTES),
+          process.waitFor(14, TimeUnit.MINUTES),
           "P2 fixture must finish and clean up in foreground");
       assertEquals(
           0,

@@ -124,6 +124,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 message["tool_calls"][0]["function"]["arguments"] = json.dumps({"url": "http://127.0.0.1:1/foreign"})
             if goal == "foreign-tenant-resource":
                 message["tool_calls"][0]["function"]["arguments"] = json.dumps({"url": self.server.origin + "/private/tenant-b/document"})
+            if goal == "own-tenant-resource":
+                message["tool_calls"][0]["function"]["arguments"] = json.dumps({"url": self.server.origin + "/private/tenant-b/document"})
             if goal == "unauthorized-tool":
                 message["tool_calls"][0]["function"]["name"] = "shell"
             reason = "tool_calls"
@@ -402,6 +404,7 @@ class Experiment:
     def remaining(self, task, artifact):
         for subject in ["b", "c"]:
             self.assert_that(self.http("GET", "/api/tasks/" + task, subject=subject)[0] == 404, subject + " cannot query another owner")
+            self.assert_that(self.http("POST", "/api/tasks/" + task + "/cancel", subject=subject)[0] == 404, subject + " cannot cancel another owner")
             self.assert_that(self.http("GET", "/api/tasks/" + task + "/events", subject=subject, headers={"Last-Event-ID": "malformed"})[0] == 404, subject + " cannot read history even with bad cursor")
             self.assert_that(self.http("GET", "/api/artifacts/" + artifact["artifactId"] + "/download", subject=subject)[0] == 404, subject + " cannot download another owner artifact")
         self.assert_that(self.http("GET", "/api/capabilities", headers={"Authorization": "Bearer " + self.token(expired=True)})[0] == 401, "expired identity rejected")
@@ -437,6 +440,13 @@ class Experiment:
         os.chmod(snapshot, 0o600); snapshot.write_bytes(b"x" * len(original)); os.chmod(snapshot, 0o400)
         self.assert_that(self.http("GET", "/api/artifacts/" + artifact["artifactId"] + "/download")[0] == 503, "artifact corruption cannot bypass download integrity check")
         os.chmod(snapshot, 0o600); snapshot.write_bytes(original); os.chmod(snapshot, 0o400)
+        saved_snapshot = snapshot.with_name(snapshot.name + ".saved")
+        snapshot.rename(saved_snapshot)
+        snapshot.symlink_to(saved_snapshot)
+        try:
+            self.assert_that(self.http("GET", "/api/artifacts/" + artifact["artifactId"] + "/download")[0] == 503, "symbolic link cannot replace immutable artifact")
+        finally:
+            snapshot.unlink(); saved_snapshot.rename(snapshot)
         self.sql("UPDATE artifact SET expires_at=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE task_id='" + task + "';")
         self.assert_that(self.http("GET", "/api/artifacts/" + artifact["artifactId"] + "/download")[0] == 410, "owner receives explicit artifact expiry")
         self.stop(self.control)
@@ -463,6 +473,32 @@ class Experiment:
         self.sql("INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,installed_by,execution_time,success) SELECT MAX(installed_rank)+1,'999','future schema','SQL','future.sql','fixture',0,TRUE FROM flyway_schema_history;")
         self.reject_start("wrong-schema", {}, "Unsupported schema version")
         self.sql("DELETE FROM flyway_schema_history WHERE version='999';")
+
+        live_task = self.submit("live-sse-restart")
+        writer = self.start("live-sse-worker", "worker", "M0")
+        self.barrier(writer)
+        connection = http.client.HTTPConnection("127.0.0.1", self.control["port"], timeout=8)
+        connection.request("GET", "/api/tasks/" + live_task + "/events", headers={"Authorization": "Bearer " + self.token()})
+        response = connection.getresponse()
+        first_line = response.readline().decode().strip()
+        self.assert_that(response.status == 200 and first_line.startswith("id:" + live_task + ":"), "running SSE delivers committed facts before task completion")
+        cursor = first_line.removeprefix("id:")
+        response.close(); connection.close()
+        connection = http.client.HTTPConnection("127.0.0.1", self.control["port"], timeout=8)
+        connection.request("GET", "/api/tasks/" + live_task + "/events", headers={"Authorization": "Bearer " + self.token(), "Last-Event-ID": cursor})
+        response = connection.getresponse()
+        self.assert_that(response.status == 200, "running SSE reconnect is authorized")
+        self.stop(self.control, kill=True)
+        response.close(); connection.close()
+        self.control = self.start("control-live-replay-restart", "control")
+        (writer["folder"] / "release").touch()
+        self.state(live_task, "SUCCEEDED")
+        status, replay = self.http("GET", "/api/tasks/" + live_task + "/events", headers={"Last-Event-ID": cursor})
+        seqs = [int(value.rsplit(":", 1)[1]) for value in re.findall(r"^id:(.+)$", replay, re.M)]
+        maximum = int(self.sql("SELECT next_event_seq FROM task WHERE id='" + live_task + "';"))
+        self.assert_that(status == 200 and seqs == list(range(int(cursor.rsplit(":", 1)[1]) + 1, maximum + 1)), "live disconnect and killed control replay every later committed fact")
+        self.assert_that(self.fixture.models["live-sse-restart"] == 2 and self.fixture.tools["/page/live-sse-restart"] == 1, "SSE disconnect and control restart do not restart agent execution")
+        self.stop(writer)
 
         # Every durable boundary gets a real SIGKILL and another independent JVM.
         for point in ["M0", "M1", "M1_RESPONSE", "M2", "T0_BEFORE", "A0", "A1", "A2", "M3", "DONE"]:
@@ -565,6 +601,10 @@ class Experiment:
         abandoned = self.submit("cancel-artifact-upload")
         writer = self.start("artifact-upload-writer", "worker", "A1")
         self.barrier(writer)
+        active_upload = self.sql("SELECT upload_id FROM artifact WHERE task_id='" + abandoned + "';")
+        self.sql("UPDATE artifact SET updated_at=CURRENT_TIMESTAMP(6)-INTERVAL 2 HOUR WHERE task_id='" + abandoned + "';")
+        time.sleep(11)
+        self.assert_that(writer["process"].poll() is None and len(list((self.root / "objects").rglob(active_upload + "*"))) == 1 and self.sql("SELECT r.state FROM reservation r JOIN artifact a ON r.tenant_id=a.tenant_id AND r.id=a.id WHERE a.task_id='" + abandoned + "';") == "RESERVED", "maintenance preserves aged upload while registered writer is active")
         self.http("POST", "/api/tasks/" + abandoned + "/cancel")
         eventually(lambda: writer["process"].poll() is not None, "supervisor confirms non-cooperating worker stopped", 12)
         self.state(abandoned, "CANCELLED")
@@ -631,6 +671,17 @@ class Experiment:
         self.assert_that(self.http("GET", "/api/tasks/" + queued_provider)[1]["state"] == "QUEUED" and self.fixture.models.get("wait-for-provider", 0) == 0, "unready worker refuses claim and provider dispatch")
         self.fixture.available = True
         self.state(queued_provider, "SUCCEEDED")
+        objects_root = self.root / "objects"
+        offline_root = self.root / "objects-offline"
+        objects_root.rename(offline_root)
+        try:
+            waiting = self.submit("wait-for-storage")
+            time.sleep(.8)
+            self.assert_that(self.http("GET", "/readyz", instance=health_worker)[0] == 503, "lost storage makes worker unready")
+            self.assert_that(self.http("GET", "/api/tasks/" + waiting)[1]["state"] == "QUEUED" and self.fixture.models.get("wait-for-storage", 0) == 0, "worker refuses claim while dedicated storage is missing")
+        finally:
+            offline_root.rename(objects_root)
+        self.state(waiting, "SUCCEEDED")
         self.stop(health_worker)
 
         model_budget = self.submit("model-budget", budget={"maxModelRequests": 1})
@@ -639,6 +690,7 @@ class Experiment:
         other = self.submit("tenant-b-task", subject="b")
         foreign_origin = self.submit("foreign-origin")
         foreign_tenant = self.submit("foreign-tenant-resource")
+        own_resource = self.submit("own-tenant-resource", subject="b")
         unauthorized_tool = self.submit("unauthorized-tool")
         worker = self.start("budget-worker", "worker")
         self.state(model_budget, "FAILED"); self.state(tool_budget, "FAILED"); self.state(unknown_usage, "SUCCEEDED")
@@ -654,7 +706,50 @@ class Experiment:
         self.assert_that(self.sql("SELECT tools_used FROM task WHERE id='" + foreign_origin + "';") == "0", "foreign origin rejected before tool dispatch")
         self.assert_that(self.sql("SELECT output_snapshot FROM invocation WHERE task_id='" + foreign_tenant + "';").find("tenant-b-fixture-private-content") == -1, "tenant bound connection credential cannot read another tenant resource")
         self.assert_that(self.sql("SELECT tools_used FROM task WHERE id='" + unauthorized_tool + "';") == "0", "model cannot select unauthorized tool")
+        eventually(lambda: self.http("GET", "/api/tasks/" + own_resource, subject="b")[1]["state"] == "SUCCEEDED", "second tenant own resource task")
+        self.assert_that("tenant-b-fixture-private-content" in self.sql("SELECT output_snapshot FROM invocation WHERE task_id='" + own_resource + "';"), "tenant connection credential permits its own private resource")
+        self.assert_that(self.http("GET", "/api/tasks/" + own_resource)[0] == 404, "first tenant cannot query second tenant task")
+        other_artifact = self.http("GET", "/api/tasks/" + own_resource, subject="b")[1]["artifacts"][0]
+        status, body = self.http("GET", "/api/artifacts/" + other_artifact["artifactId"] + "/download", subject="b")
+        self.assert_that(status == 200 and hashlib.sha256(body.encode()).hexdigest() == other_artifact["sha256"], "second tenant authorized artifact download succeeds")
+        self.assert_that(self.http("GET", "/api/artifacts/" + other_artifact["artifactId"] + "/download")[0] == 404, "first tenant cannot download second tenant artifact")
         self.stop(worker)
+
+        self.sql("UPDATE tenant_budget SET token_limit=token_held WHERE tenant_id='tenant-a';")
+        token_task = self.submit("token-budget-boundary")
+        expired_task = self.submit("deadline-boundary")
+        self.sql("UPDATE task SET deadline=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE id='" + expired_task + "';")
+        worker = self.start("remaining-budget-worker", "worker")
+        self.state(token_task, "FAILED"); self.state(expired_task, "FAILED")
+        self.assert_that(self.fixture.models.get("token-budget-boundary", 0) == 0 and self.sql("SELECT code FROM task WHERE id='" + token_task + "';") == "MODEL_BUDGET_EXCEEDED", "token reservation at tenant limit rejects before HTTP dispatch")
+        self.assert_that(self.fixture.models.get("deadline-boundary", 0) == 0 and self.sql("SELECT code FROM task WHERE id='" + expired_task + "';") == "DEADLINE_EXCEEDED", "expired deadline cannot admit model or tool")
+        self.sql("UPDATE tenant_budget SET token_limit=524288,storage_limit=storage_held+1 WHERE tenant_id='tenant-a';")
+        storage_before = self.sql("SELECT storage_held FROM tenant_budget WHERE tenant_id='tenant-a';")
+        storage_task = self.submit("storage-budget-boundary")
+        self.state(storage_task, "FAILED")
+        self.assert_that(self.sql("SELECT code FROM task WHERE id='" + storage_task + "';") == "STORAGE_BUDGET_EXCEEDED" and self.sql("SELECT storage_held FROM tenant_budget WHERE tenant_id='tenant-a';") == storage_before and self.sql("SELECT COUNT(*) FROM artifact WHERE task_id='" + storage_task + "';") == "0", "storage over-limit cannot reserve publish or leak occupancy")
+        self.sql("UPDATE tenant_budget SET storage_limit=16777216 WHERE tenant_id='tenant-a';")
+        self.stop(worker)
+
+        self.sql("UPDATE tenant_budget SET queue_limit=32 WHERE tenant_id='tenant-a';")
+        subscription_tasks = [self.submit("subscription-limit-" + str(i)) for i in range(17)]
+        held = []
+        try:
+            for tid in subscription_tasks[:16]:
+                for _ in range(2):
+                    connection = http.client.HTTPConnection("127.0.0.1", self.control["port"], timeout=8)
+                    connection.request("GET", "/api/tasks/" + tid + "/events", headers={"Authorization": "Bearer " + self.token()})
+                    response = connection.getresponse()
+                    self.assert_that(response.status == 200, "SSE subscription within global limit")
+                    held.append((connection, response))
+            self.assert_that(self.http("GET", "/api/tasks/" + subscription_tasks[-1] + "/events")[0] == 429, "global 33rd SSE subscription rejected before allocation")
+        finally:
+            for connection, response in held:
+                response.close(); connection.close()
+        for tid in subscription_tasks:
+            self.http("POST", "/api/tasks/" + tid + "/cancel")
+        self.sql("UPDATE tenant_budget SET queue_limit=16 WHERE tenant_id='tenant-a';")
+        self.assert_that(eventually(lambda: self.http("GET", "/api/tasks/" + subscription_tasks[-1] + "/events")[0] == 200, "SSE reader slots reclaimed"), "disconnected SSE subscriptions release bounded reader slots")
 
         # Epoch revocation after callback construction must be checked again by the real gateway.
         revoked = self.submit("revoke-callback")
@@ -674,6 +769,7 @@ class Experiment:
             response.read(); connection.close()
             self.assert_that(time.monotonic() - started < 5, "existing SSE closes after capability revocation")
         self.assert_that(self.http("GET", "/api/capabilities")[1] == [], "revoked capability disappears from discovery")
+        self.assert_that(self.http("GET", "/api/capabilities", subject="b")[1] == ["web_fetch"], "revoking one tenant does not contaminate another tenant discovery")
         self.assert_that(self.http("GET", "/api/artifacts/" + artifact["artifactId"] + "/download")[0] == 403, "revocation blocks old artifact download")
         (worker["folder"] / "release").touch()
         eventually(lambda: self.sql("SELECT state FROM task WHERE id='" + revoked + "';") == "FAILED", "revoked callback stopped")
