@@ -1,5 +1,6 @@
 """Real control/worker/MySQL, local TLS + model substitutes; never public DNS/socket evidence."""
 import argparse
+import concurrent.futures
 import http.server
 import json
 import os
@@ -136,6 +137,31 @@ def verify(e):
                   "default public dispatch gate rejects before model and TLS")
     e.stop(worker)
     enabled = {"jimu.web.public-dispatch-enabled": "true"}
+
+    task = e.submit("public-denied-observation")
+    worker = e.start("barrier-observation", "worker", "M0", extra=enabled)
+    eventually(lambda: (worker["folder"] / "reached").exists(), "observation worker remains paused")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        for seconds, persistent in [(2, False), (8, True)]:
+            future = executor.submit(e.sql, "START TRANSACTION; SELECT * FROM tenant_budget WHERE tenant_id='tenant-b' FOR UPDATE; DO SLEEP(" + str(seconds) + "); COMMIT;")
+            eventually(lambda: e.sql("SELECT COUNT(*) FROM information_schema.innodb_trx;") != "0", "known unrelated transaction becomes visible")
+            e.assert_that(e.sql("SELECT COUNT(*) FROM information_schema.innodb_trx;") != "0",
+                          "original instantaneous global assertion rejects known unrelated transaction", persistent=persistent)
+            if persistent:
+                try:
+                    e.barrier(worker)
+                except AssertionError as error:
+                    e.assert_that("database quiet point" in str(error), "bounded observation still rejects persistent transaction", error=str(error))
+                else:
+                    raise AssertionError("Persistent transaction must fail the gate")
+            else:
+                e.barrier(worker)
+            future.result()
+    (worker["folder"] / "release").touch()
+    e.state(task, "FAILED")
+    e.assert_that(not e.tls.requests and e.sql("SELECT code FROM task WHERE id='" + task + "';") == "TOOL_INPUT_INVALID",
+                  "observation controls leave production admission and zero TLS intact")
+    e.stop(worker)
 
     task = e.submit("public-success")
     worker = e.start("successful", "worker", extra=enabled)

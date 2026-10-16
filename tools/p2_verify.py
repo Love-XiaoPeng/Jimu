@@ -330,7 +330,27 @@ class Experiment:
 
     def barrier(self, worker):
         marker = eventually(lambda: (worker["folder"] / "reached").read_text() if (worker["folder"] / "reached").exists() else False, worker["name"] + " barrier")
-        self.assert_that(self.sql("SELECT COUNT(*) FROM information_schema.innodb_trx;") == "0", worker["name"] + " external boundary holds no DB transaction")
+        # A control maintenance/heartbeat transaction can overlap this observation. Keep the
+        # external operation paused and require a quiet point within five seconds. A transaction
+        # held across the paused external operation cannot clear and must still fail the gate.
+        samples = []
+        started = time.monotonic()
+        def quiet():
+            active = self.sql("SELECT t.trx_id,t.trx_mysql_thread_id,t.trx_state,t.trx_started,p.USER,p.COMMAND,p.TIME "
+                              "FROM information_schema.innodb_trx t LEFT JOIN information_schema.PROCESSLIST p "
+                              "ON p.ID=t.trx_mysql_thread_id ORDER BY t.trx_mysql_thread_id;")
+            if active:
+                samples.append({"elapsedSeconds": round(time.monotonic() - started, 3), "transactions": active})
+            return not active
+        cleared = False
+        try:
+            eventually(quiet, worker["name"] + " database quiet point while external operation stays paused", 5)
+            cleared = True
+        finally:
+            with (self.evidence / "barrier-transactions.jsonl").open("a") as log:
+                log.write(json.dumps({"worker": worker["name"], "marker": marker, "cleared": cleared,
+                                      "elapsedSeconds": round(time.monotonic() - started, 3), "samples": samples}) + "\n")
+        self.assert_that(cleared, worker["name"] + " external boundary holds no DB transaction")
         return marker
 
     def expire(self, task):
