@@ -447,6 +447,7 @@ def verify(e, materials_only=False):
         provision(p,run)
         cfg=settings(p,model,"W1",run)
         replace(cfg)
+        server.case=run
         def race(index):
             return e.http("POST","/api/tasks",{"goal":GOALS["W1"],"capabilityIds":["web_fetch","read","write","present"]},key=run+"-"+str(index))
         with concurrent.futures.ThreadPoolExecutor(6) as pool:
