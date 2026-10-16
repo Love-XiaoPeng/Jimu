@@ -59,7 +59,8 @@ public final class SecureWorkspaceStore {
       String scope,
       Map<String, FileValue> files,
       Map<String, Long> observed,
-      Map<String, Operation> operations) {}
+      Map<String, Operation> operations,
+      Map<String, Map<String, Long>> bindings) {}
 
   private record Envelope(String digest, String payload) {}
 
@@ -91,17 +92,47 @@ public final class SecureWorkspaceStore {
     }
   }
 
-  /** Called only by the host with its admitted invocation's stable effect identity. */
+  /** New admission only. The host must use resume for a previously admitted operation. */
   public FilePort bind(String tenant, String task, String operationId, Cancellation cancellation) {
+    return bind(tenant, task, operationId, cancellation, false);
+  }
+
+  /** Recovery never creates a binding or adopts current observations. */
+  public FilePort resume(
+      String tenant, String task, String operationId, Cancellation cancellation) {
+    return bind(tenant, task, operationId, cancellation, true);
+  }
+
+  private FilePort bind(
+      String tenant, String task, String operationId, Cancellation cancellation, boolean recovery) {
     if (!tenant.matches("[A-Za-z0-9_-]{1,64}")
         || !UUID.fromString(task).toString().equals(task)
         || !UUID.fromString(operationId).toString().equals(operationId))
       throw new IllegalArgumentException("Invalid workspace scope");
     String scope = Payloads.hash(tenant + ":" + task);
-    // Freeze the host's observation when binding an admitted operation. Two concurrent writes
-    // cannot silently adopt the version just written by the other operation.
+    // Persist before returning a port. Intent rename may never happen; recovery must not
+    // reconstruct this snapshot from observations subsequently advanced by another operation.
     Map<String, Long> boundObservations =
-        locked(scope, cancellation, directory -> Map.copyOf(load(directory, scope).observed()));
+        locked(
+            scope,
+            cancellation,
+            directory -> {
+              State state = load(directory, scope);
+              var original = state.bindings().get(operationId);
+              if (recovery) {
+                // Without the invocation receipt its original kind/arguments are unproven too.
+                if (original == null || !state.operations().containsKey(operationId))
+                  throw new FileFailure("FS_BINDING_UNPROVEN");
+                return Map.copyOf(original);
+              }
+              if (original != null) throw new FileFailure("FS_OPERATION_MISMATCH");
+              if (state.bindings().size() >= 100) throw new FileFailure("WORKSPACE_LIMIT");
+              var frozen = Map.copyOf(state.observed());
+              state.bindings().put(operationId, frozen);
+              save(directory, state, "BINDING_BEFORE_RENAME");
+              boundary.hit("BINDING_DURABLE");
+              return frozen;
+            });
     return new FilePort() {
       @Override
       public Read read(String path, int offset, int limit) {
@@ -291,14 +322,17 @@ public final class SecureWorkspaceStore {
         if (file.read(buffer) < 0) throw new IOException("Truncated workspace");
       bytes = buffer.array();
     } catch (NoSuchFileException missing) {
-      return new State(1, scope, new HashMap<>(), new HashMap<>(), new HashMap<>());
+      return new State(
+          2, scope, new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
     }
     try {
       Envelope envelope = STATE_JSON.readValue(bytes, Envelope.class);
       if (!Payloads.hash(envelope.payload()).equals(envelope.digest()))
         throw new IOException("Workspace integrity failure");
       State state = STATE_JSON.readValue(envelope.payload(), State.class);
-      if (state.format() != 1 || !scope.equals(state.scope()))
+      // Format 1 never persisted binding identity. Do not manufacture it from latest reads.
+      if (state.format() == 1) throw new FileFailure("FS_BINDING_UNPROVEN");
+      if (state.format() != 2 || !scope.equals(state.scope()) || state.bindings() == null)
         throw new IOException("Workspace scope mismatch");
       for (FileValue value : state.files().values()) verify(value);
       for (Operation operation : state.operations().values())
@@ -317,6 +351,11 @@ public final class SecureWorkspaceStore {
   }
 
   private void save(SecureDirectoryStream<Path> directory, State state) throws IOException {
+    save(directory, state, "STATE_BEFORE_RENAME");
+  }
+
+  private void save(SecureDirectoryStream<Path> directory, State state, String phase)
+      throws IOException {
     String payload = Payloads.json(state);
     byte[] bytes =
         Payloads.json(new Envelope(Payloads.hash(payload), payload))
@@ -338,7 +377,7 @@ public final class SecureWorkspaceStore {
         while (buffer.hasRemaining()) file.write(buffer);
         file.force(true);
       }
-      boundary.hit("STATE_BEFORE_RENAME");
+      boundary.hit(phase);
       directory.move(temporary, directory, Path.of(state.scope() + ".json"));
       forceDirectory(directory);
     } finally {

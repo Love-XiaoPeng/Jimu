@@ -162,7 +162,7 @@ public final class WorkspaceScenario {
           "FS_STALE_VERSION",
           () ->
               afterIntent
-                  .bind("tenant-a", TASK, intentOperation, () -> {})
+                  .resume("tenant-a", TASK, intentOperation, () -> {})
                   .write("crash.md", "after crash"));
       check(
           port(afterIntent).read("crash.md", 1, 2000).sha256().equals(independent.sha256()),
@@ -172,7 +172,7 @@ public final class WorkspaceScenario {
       var afterCommit = new SecureWorkspaceStore(root);
       var recovered =
           afterCommit
-              .bind("tenant-a", TASK, committedOperation, () -> {})
+              .resume("tenant-a", TASK, committedOperation, () -> {})
               .write("crash.md", "after crash");
       check(
           recovered.version() == 2 && port(afterCommit).read("crash.md", 1, 2000).version() == 2,
@@ -183,13 +183,12 @@ public final class WorkspaceScenario {
       check(
           port(afterBeforeRename).read("crash.md", 1, 2000).version() == 2,
           "exit with fsynced temp before rename keeps complete previous state");
+      failure(
+          "FS_BINDING_UNPROVEN",
+          () -> afterBeforeRename.resume("tenant-a", TASK, beforeRename, () -> {}));
       check(
-          afterBeforeRename
-                  .bind("tenant-a", TASK, beforeRename, () -> {})
-                  .write("crash.md", "after crash")
-                  .version()
-              == 3,
-          "retry of uncommitted intent performs CAS exactly once");
+          port(afterBeforeRename).write("crash.md", "after crash").version() == 3,
+          "new admission after rejected unproven recovery performs CAS once");
       check(
           port(afterBeforeRename).read("crash.md", 1, 2000).sha256().equals(recovered.sha256()),
           "same bytes still create a new version and do not hide ABA");
@@ -222,7 +221,7 @@ public final class WorkspaceScenario {
       }
       check(
           new SecureWorkspaceStore(root)
-                  .bind("tenant-a", TASK, cancelledOperation, () -> {})
+                  .resume("tenant-a", TASK, cancelledOperation, () -> {})
                   .write("cancel-race", "retained intent")
                   .version()
               == 1,
@@ -434,6 +433,7 @@ public final class WorkspaceScenario {
       } catch (java.util.concurrent.CancellationException expected) {
         check(true, "cancelled host cannot enter workspace operation");
       }
+      WorkspaceRecoveryScenario.run(root, evidence.resolve("r6"));
     } finally {
       Files.writeString(evidence.resolve("assertions.json"), Payloads.json(RESULTS));
     }
