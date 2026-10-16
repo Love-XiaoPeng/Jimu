@@ -95,6 +95,9 @@ class Model(http.server.BaseHTTPRequestHandler):
         if name:
             message["tool_calls"] = [{"id": "eval_" + str(len(replies)), "type": "function",
                 "function": {"name": name, "arguments": json.dumps(args, ensure_ascii=False)}}]
+            if "current-step-partial" in case and not replies:
+                message["tool_calls"].append({"id":"eval_1","type":"function",
+                    "function":{"name":"read","arguments":json.dumps({"file_path":SAMPLES[sample]["target"]})}})
         usage = {"prompt_tokens": 1000000, "completion_tokens": 4096, "total_tokens": 1004096}
         if "output-below" in case:
             usage={"prompt_tokens":1000000,"completion_tokens":4095,"total_tokens":1004095}
@@ -112,7 +115,7 @@ class Model(http.server.BaseHTTPRequestHandler):
         if body["stream"]:
             delta = dict(message)
             if name:
-                delta["tool_calls"][0]["index"] = 0
+                for index,call in enumerate(delta["tool_calls"]): call["index"] = index
             chunks = [{"id": "closed-local", "choices": [{"index": 0,"delta": delta,"finish_reason": reason}]}, {"choices": [],"usage": usage}]
             data = ("".join("data: " + json.dumps(c,ensure_ascii=False) + "\n\n" for c in chunks) + "data: [DONE]\n\n").encode()
         else:
@@ -344,9 +347,136 @@ def verify(e, materials_only=False):
                     "W4 missing or altered draft refused before any model quota",case=kind)
             facts.append({"materialCase":kind,"sample":"W4","task":task,"view":view,"predecessor":"synthetic trusted SQL quality fixture, not grading acceptance"})
 
+    def history():
+        p=json.loads((resources/"qwen-main-v1.json").read_text())
+        candidate="qwen3.8-max-0902"
+        reproduce="--history-reproduce" in sys.argv
+        samples=["W2" if "--history-sse" in sys.argv else "W1"] if reproduce else ["W1","W2"]
+        kinds=["rollback","missing-round","missing-assistant","missing-tool","duplicate-round",
+            "reordered","arguments","assistant-content","call-id","output",
+            "current-step-complete","current-step-partial","prepared-positive"]
+        if "--history-smoke" in sys.argv: kinds=["rollback","current-step-partial","prepared-positive"]
+        if reproduce: kinds=["rollback"]
+        for sample in samples:
+            for kind in kinds:
+                run_id="history-"+sample+"-"+kind
+                provision(p,run_id)
+                cfg=settings(p,candidate,sample,run_id)
+                replace(cfg);task=accept(run_id,sample)
+                calls_before=len(server.calls);tls_before=len(e.tls.requests)
+                current=kind.startswith("current-step-")
+                positive=current or kind=="prepared-positive"
+                w=worker(cfg,"T1" if current else "READ_MODEL_PREPARED")
+                e.barrier(w)
+                expected_calls=1 if current else 2
+                e.assert_that(len(server.calls)-calls_before==expected_calls,"history fixture reached precise target step",sample=sample,case=kind)
+                step=e.sql("SELECT id FROM step WHERE task_id='"+task+"' ORDER BY ordinal DESC LIMIT 1;").strip()
+                e.stop(w,kill=True);e.expire(task)
+                # Actual process exit precedes all private-DB fault injection.
+                replace(cfg)
+                if current:
+                    states=e.sql("SELECT state FROM invocation WHERE step_id='"+step+"' ORDER BY slot;")
+                    e.assert_that(states==("SUCCEEDED\nPENDING" if kind.endswith("partial") else "SUCCEEDED"),
+                        "own step has committed tool output absent from its legal old request",sample=sample,case=kind,states=states)
+                raw=bytes.fromhex(e.sql("SELECT HEX(request_snapshot) FROM step WHERE id='"+step+"';"))
+                (e.evidence/(run_id+"-original-checkpoint.bin")).write_bytes(raw)
+                if not positive:
+                    if kind=="rollback":
+                        old=bytes.fromhex(e.sql("SELECT HEX(request_snapshot) FROM step WHERE task_id='"+task+"' AND ordinal=1;"))
+                        e.sql("UPDATE step SET request_snapshot=CONVERT(0x"+old.hex()+" USING utf8mb4),request_digest='"+hashlib.sha256(old).hexdigest()+"' WHERE id='"+step+"';")
+                    else:
+                        def mutation(checkpoint):
+                            messages=checkpoint["messages"]
+                            if kind=="missing-round": del messages[2:4]
+                            elif kind=="missing-assistant": del messages[2]
+                            elif kind=="missing-tool": del messages[3]
+                            elif kind=="duplicate-round": messages[4:4]=json.loads(json.dumps(messages[2:4]))
+                            elif kind=="reordered": messages[2:6]=messages[4:6]+messages[2:4]
+                            elif kind=="arguments": messages[2]["calls"][0]["arguments"]='{"url":"https://docs.python.org/3/library/colorsys.html"}'
+                            elif kind=="assistant-content": messages[2]["content"]+=" changed assistant"
+                            elif kind=="call-id":
+                                messages[2]["calls"][0]["id"]="changed_call"
+                                messages[3]["replies"][0]["id"]="changed_call"
+                            elif kind=="output": messages[5]["replies"][0]["data"]+=" changed output"
+                            body=json.loads(checkpoint["requestBody"]);visible=[]
+                            for m in messages:
+                                if m["role"]=="tool":
+                                    visible.extend({"role":"tool","tool_call_id":r["id"],"content":r["data"]} for r in m["replies"])
+                                else:
+                                    item={"role":m["role"],"content":m["content"]}
+                                    if m["calls"]: item["tool_calls"]=[{"id":c["id"],"type":"function","function":{"name":c["name"],"arguments":c["arguments"]}} for c in m["calls"]]
+                                    visible.append(item)
+                            body["messages"]=visible
+                            checkpoint["requestBody"]=json.dumps(body,ensure_ascii=False,separators=(",",":"))
+                            checkpoint["bodyDigest"]=hashlib.sha256(checkpoint["requestBody"].encode()).hexdigest()
+                        change_json("step",step,"request_snapshot","request_digest",mutation)
+                if kind=="arguments":
+                    # Explicit pre-existing liability fixture; not a provider usage claim.
+                    e.sql("INSERT INTO reservation(tenant_id,id,task_id,category,amount,usage_quality,cost_quality,state) VALUES('tenant-a','"+task+":prior-unknown','"+task+"','MODEL',17,'UNKNOWN','UNKNOWN','HELD_UNKNOWN');"
+                        "UPDATE task SET token_held=token_held+17,cost_held=cost_held+23 WHERE id='"+task+"';"
+                        "UPDATE tenant_budget SET token_held=token_held+17,cost_held=cost_held+23 WHERE tenant_id='tenant-a';"
+                        "UPDATE evaluation_budget SET cost_held=cost_held+23 WHERE id='"+run_id+"';")
+                reservations=e.sql("SELECT id,state,amount,actual,usage_quality,cost_quality FROM reservation WHERE task_id='"+task+"' AND category NOT IN ('RUNNING','QUEUE') ORDER BY id;")
+                balances=e.sql("SELECT models_used,tools_used,cost_held,token_held FROM task WHERE id='"+task+"';")
+                run_before=e.sql("SELECT requests_used,cost_held FROM evaluation_budget WHERE id='"+run_id+"';")
+                invocations=e.sql("SELECT id,state,input_digest,output_digest FROM invocation WHERE task_id='"+task+"' ORDER BY id;")
+                (e.evidence/(run_id+"-before.json")).write_text(json.dumps({"balances":balances,"run":run_before,
+                    "reservations":reservations,"invocations":invocations},indent=2),encoding="utf-8")
+                if reproduce:
+                    w=worker(cfg,"MODEL_RESPONSE_COMMITTED");e.barrier(w)
+                    e.assert_that(len(server.calls)-calls_before==3
+                        and server.calls[-1]["bodySha256"]==server.calls[calls_before]["bodySha256"]
+                        and e.sql("SELECT state,requests_used FROM evaluation_budget WHERE id='"+run_id+"';")=="OPEN\t3",
+                        "old product admits self-consistent step1 rollback at step3",sample=sample)
+                    e.stop(w,kill=True)
+                    view=e.http("GET","/api/tasks/"+task)[1]
+                else:
+                    w=worker(cfg);view=e.state(task,"SUCCEEDED" if positive else "FAILED");e.stop(w)
+                    if positive:
+                        rounds=(7 if sample=="W1" else 6)-(1 if kind.endswith("partial") else 0)
+                        e.assert_that(len(server.calls)-calls_before==rounds and len(e.tls.requests)==tls_before+1
+                            and len(view["artifacts"])==1,"legal step boundary survives actual worker and control restart",sample=sample,case=kind)
+                        artifact=view["artifacts"][0]
+                        status,body=e.http("GET","/api/artifacts/"+artifact["artifactId"]+"/download")
+                        e.assert_that(status==200 and hashlib.sha256(body.encode()).hexdigest()==artifact["sha256"],
+                            "positive recovered report remains exact and authorized for owner",sample=sample,case=kind)
+                        (e.evidence/(run_id+"-download.md")).write_bytes(body.encode("utf-8"))
+                        (e.evidence/(run_id+"-download.json")).write_text(json.dumps({"task":task,"artifact":artifact,
+                            "httpStatus":status,"downloadSha256":hashlib.sha256(body.encode()).hexdigest()},indent=2),encoding="utf-8")
+                    else:
+                        e.assert_that(view["code"]=="EVALUATION_MATERIAL_MISMATCH" and not view["artifacts"]
+                            and len(server.calls)-calls_before==expected_calls
+                            and e.sql("SELECT state FROM evaluation_budget WHERE id='"+run_id+"';")=="STOPPED",
+                            "incomplete or changed history durably stops before any further HTTP",sample=sample,case=kind)
+                        e.assert_that(balances==e.sql("SELECT models_used,tools_used,cost_held,token_held FROM task WHERE id='"+task+"';")
+                            and run_before==e.sql("SELECT requests_used,cost_held FROM evaluation_budget WHERE id='"+run_id+"';")
+                            and invocations==e.sql("SELECT id,state,input_digest,output_digest FROM invocation WHERE task_id='"+task+"' ORDER BY id;")
+                            and reservations==e.sql("SELECT id,state,amount,actual,usage_quality,cost_quality FROM reservation WHERE task_id='"+task+"' AND category NOT IN ('RUNNING','QUEUE') ORDER BY id;"),
+                            "history refusal preserves fees reservations and invocation facts",sample=sample,case=kind)
+                        e.assert_that(e.sql("SELECT state FROM reservation WHERE id='"+task+":run';")=="RELEASED",
+                            "confirmed stopped worker releases concurrency separately from fees",sample=sample,case=kind)
+                        if kind=="rollback":
+                            # The persisted stop also applies after another control/worker restart.
+                            other_sample="W2" if sample=="W1" else "W1"
+                            other_cfg=settings(p,candidate,other_sample,run_id)
+                            replace(other_cfg);follow=accept(run_id+"-same-run-follow",other_sample)
+                            w=worker(other_cfg);follow_view=e.state(follow,"FAILED");e.stop(w)
+                            e.assert_that(not follow_view["artifacts"] and len(server.calls)-calls_before==expected_calls
+                                and e.sql("SELECT models_used,tools_used FROM task WHERE id='"+follow+"';")=="0\t0"
+                                and run_before==e.sql("SELECT requests_used,cost_held FROM evaluation_budget WHERE id='"+run_id+"';"),
+                                "persisted history stop prevents same-run follow-up effects after restart",sample=sample)
+                facts.append({"historyCase":kind,"sample":sample,"task":task,"step":step,"view":view,
+                    "before":{"balances":balances,"run":run_before,"reservations":reservations,"invocations":invocations},
+                    "scope":"private DB checkpoint fault injection after actual worker exit" if not positive else "actual process recovery without snapshot mutation"})
+                (e.evidence/"history-facts.json").write_text(json.dumps(facts,ensure_ascii=False,indent=2),encoding="utf-8")
+        (e.evidence/"history-facts.json").write_text(json.dumps(facts,ensure_ascii=False,indent=2),encoding="utf-8")
+
     try:
         e.sql("UPDATE tenant_budget SET token_limit=1000000000,cost_limit=2000000000,model_limit=1000,running_limit=1 WHERE tenant_id='tenant-a';")
         other = e.sql("SELECT token_limit,cost_limit,model_limit,running_limit FROM tenant_budget WHERE tenant_id='tenant-b';")
+        if "--history-only" in sys.argv:
+            history()
+            return
         if "--plans-only" not in sys.argv:
             materials()
         if materials_only:
@@ -559,6 +689,9 @@ def verify(e, materials_only=False):
             receipts.append({"step":ident,"snapshotSha256":digest,"bodySha256":checkpoint["bodyDigest"],"bodyBytes":len(raw)})
         (e.evidence/"body-receipts.json").write_text(json.dumps(receipts,indent=2))
         (e.evidence/"material-tls-requests.json").write_text(json.dumps(e.tls.requests,indent=2))
+        if "--history-only" in sys.argv:
+            (e.evidence/"history-step.tsv").write_text(e.sql("SELECT id,task_id,ordinal,state,request_digest,HEX(request_snapshot),response_digest,HEX(response_snapshot) FROM step ORDER BY task_id,ordinal;"),encoding="utf-8")
+            (e.evidence/"history-invocation.tsv").write_text(e.sql("SELECT id,task_id,step_id,slot,provider_id,tool,state,input_digest,HEX(input_snapshot),output_digest,HEX(output_snapshot) FROM invocation ORDER BY task_id,step_id,slot;"),encoding="utf-8")
 
 
 if __name__=="__main__":

@@ -778,32 +778,78 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
         });
   }
 
-  private void materialBody(Map<String, Object> task, String request) {
+  private void materialBody(Map<String, Object> task, String request, int ordinal) {
     var material = material(task);
     if (material == null) return;
     initialFile(task);
     var wire = Payloads.read(request, com.fasterxml.jackson.databind.JsonNode.class);
     EvaluationMaterials.body(
         material, wire.path("requestBody").asText(), time(task, "report_time").toString());
-    // In particular W4's model-visible read must be the actual original file receipt,
-    // not merely a correct receipt in the DB paired with changed cached HTTP history.
-    var outputs =
+    // Step N's request contains exactly the confirmed history through N-1. Its own
+    // outputs may already be committed on recovery and must not enter this prefix.
+    var preceding =
         rows(
-            "SELECT i.provider_id,i.output_snapshot FROM invocation i JOIN step s ON s.tenant_id=i.tenant_id AND s.id=i.step_id WHERE i.tenant_id=? AND i.task_id=? AND i.state='SUCCEEDED' ORDER BY s.ordinal,CAST(SUBSTRING_INDEX(i.slot,':',1) AS UNSIGNED)",
+            "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND ordinal<? ORDER BY ordinal",
             s(task, "tenant_id"),
-            s(task, "id"));
-    int index = 0;
+            s(task, "id"),
+            ordinal);
+    EvaluationMaterials.require(ordinal > 0 && preceding.size() == ordinal - 1);
     var body =
         Payloads.read(
             wire.path("requestBody").asText(), com.fasterxml.jackson.databind.JsonNode.class);
-    for (var message : body.path("messages")) {
-      if (!message.path("role").asText().equals("tool")) continue;
-      EvaluationMaterials.require(index < outputs.size());
-      var original = outputs.get(index++);
+    var expected = Payloads.read("[]", com.fasterxml.jackson.databind.node.ArrayNode.class);
+    expected.add(body.path("messages").get(0));
+    expected.add(body.path("messages").get(1));
+    int position = 0;
+    for (var prior : preceding) {
+      String response = s(prior, "response_snapshot");
       EvaluationMaterials.require(
-          message.path("tool_call_id").asText().equals(s(original, "provider_id"))
-              && message.path("content").asText().equals(s(original, "output_snapshot")));
+          n(prior, "ordinal") == ++position
+              && response != null
+              && Payloads.hash(response).equals(s(prior, "response_digest")));
+      var original = Payloads.read(response, com.fasterxml.jackson.databind.JsonNode.class);
+      EvaluationMaterials.require(
+          original.path("version").asInt() == 2 && original.path("calls").isArray());
+      var assistant = expected.addObject().put("role", "assistant");
+      assistant.put("content", original.path("content").asText(""));
+      var invocations =
+          rows(
+              "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND step_id=? ORDER BY CAST(SUBSTRING_INDEX(slot,':',1) AS UNSIGNED)",
+              s(task, "tenant_id"),
+              s(task, "id"),
+              s(prior, "id"));
+      EvaluationMaterials.require(invocations.size() == original.path("calls").size());
+      int slot = 0;
+      for (var call : original.path("calls")) {
+        var invocation = invocations.get(slot);
+        String input = s(invocation, "input_snapshot");
+        String output = s(invocation, "output_snapshot");
+        EvaluationMaterials.require(
+            (slot + ":" + call.path("id").asText()).equals(s(invocation, "slot"))
+                && call.path("id").asText().equals(s(invocation, "provider_id"))
+                && call.path("name").asText().equals(s(invocation, "tool"))
+                && call.path("type").asText().equals("function")
+                && call.path("arguments").asText().equals(input)
+                && Payloads.hash(input).equals(s(invocation, "input_digest"))
+                && s(invocation, "state").equals("SUCCEEDED")
+                && output != null
+                && Payloads.hash(output).equals(s(invocation, "output_digest")));
+        var emitted = assistant.withArray("tool_calls").addObject();
+        emitted.put("id", call.path("id").asText()).put("type", "function");
+        emitted
+            .putObject("function")
+            .put("name", call.path("name").asText())
+            .put("arguments", input);
+        slot++;
+      }
+      for (var invocation : invocations)
+        expected
+            .addObject()
+            .put("role", "tool")
+            .put("tool_call_id", s(invocation, "provider_id"))
+            .put("content", s(invocation, "output_snapshot"));
     }
+    EvaluationMaterials.require(expected.equals(body.path("messages")));
   }
 
   private String runRejection(Map<String, Object> evaluation) {
@@ -848,7 +894,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               .stream()
               .map(
                   row -> {
-                    materialBody(task, s(row, "request_snapshot"));
+                    materialBody(task, s(row, "request_snapshot"), (int) n(row, "ordinal"));
                     return step(row);
                   })
               .findFirst();
@@ -1116,14 +1162,15 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
         lease,
         () -> {
           var task = fenced(lease, true);
-          materialBody(task, request);
           var previous =
               rows(
                   "SELECT * FROM step WHERE tenant_id=? AND task_id=? ORDER BY ordinal DESC LIMIT 1",
                   lease.tenant(),
                   lease.taskId());
-          if (!previous.isEmpty() && request.equals(s(previous.getFirst(), "request_snapshot")))
+          if (!previous.isEmpty() && request.equals(s(previous.getFirst(), "request_snapshot"))) {
+            materialBody(task, request, (int) n(previous.getFirst(), "ordinal"));
             return step(previous.getFirst());
+          }
           if (!previous.isEmpty()
               && (previous.getFirst().get("response_snapshot") == null
                   || !rows(
@@ -1132,6 +1179,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                           s(previous.getFirst(), "id"))
                       .isEmpty())) throw new TaskFailure(409, "CHECKPOINT_INCOMPLETE");
           int ordinal = previous.isEmpty() ? 1 : (int) n(previous.getFirst(), "ordinal") + 1;
+          materialBody(task, request, ordinal);
           String stepId = id();
           db.update(
               "INSERT INTO step(tenant_id,id,task_id,attempt_id,ordinal,state,request_snapshot,request_digest,model_version) VALUES(?,?,?,?,?,'PREPARED',?,?,?)",
@@ -1175,7 +1223,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           if (!ModelProfiles.digest(model).equals(wire.path("configDigest").asText()))
             throw new TaskFailure(409, "MODEL_CONFIG_UNAVAILABLE");
           checkEvaluation(task, evaluation, model);
-          materialBody(task, s(step, "request_snapshot"));
+          materialBody(task, s(step, "request_snapshot"), (int) n(step, "ordinal"));
           models.checkInput(model, wire.path("requestBody").asText());
           long upper =
               model.paid()

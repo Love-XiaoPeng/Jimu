@@ -22,7 +22,16 @@ EvaluationWorkspaceMain demonstrates this and is absent from the product JAR.
 
 Every complete model body is checked before checkpoint reuse and again before model
 quota/reservation: actual system text, goal, tool descriptions/Schema and fetched outputs
-in history. Tool admission restricts source URLs and task-relative target to the frozen
+in history. For an existing step N, checkpoint reuse and dispatch reconstruct the exact
+assistant/tool prefix through N-1 from persisted response and invocation facts. Preparing
+a new step includes its completed predecessor. The comparison checks every assistant
+content/call, provider ID, function, exact argument bytes, invocation input/output digest,
+successful result and order; missing, repeated, reordered or rolled-back history refuses
+before a new allowance or reservation. A step's own tools may already have committed:
+its original request correctly excludes those results. Missing historical proof is never
+backfilled. This uses existing records without changing migration bytes.
+
+Tool admission restricts source URLs and task-relative target to the frozen
 sample before tool quota. A write also requires the task's own successful model read.
 The canonical model-visible fetch output must match; raw page bytes are supporting
 evidence rather than a replacement for that check. A confirmed nonmatching fetch is
@@ -39,6 +48,14 @@ Schema/description/system/goal/cache changes, real kill/restart, and W4 missing/
 drafts versus frozen positives. These checks establish material binding, not model
 quality, C1/B qualification, real provider billing, or P3 acceptance. Synthetic quality
 predecessors in negative W4 tests are explicitly labelled SQL fixtures.
+
+EvaluationHistoryIT additionally exercises JSON/SSE history faults after actual worker
+exit and control/worker restart. These are private database fault injections, not evidence
+of a naturally occurring truncation or ordinary API access to snapshots. Positive recovery
+includes a completed own-step tool, a partially completed multi-tool response and a fully
+prepared next step, with actual report production and owner download. The argument-change
+case explicitly seeds a prior HELD_UNKNOWN reservation to verify that refusal retains it;
+it does not claim an actual provider produced that synthetic liability.
 
 New model request/response bodies are captured as binary at the HTTP listener. Step
 snapshots are exported as SQL HEX, decoded without a terminal charset, and paired with
