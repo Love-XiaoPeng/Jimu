@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.BuiltinManifestLoader;
+import io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportPolicy;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
+import io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceRuntime;
 import io.github.lovexiaopeng.jimu.adapters.runtime.http.ProviderHttp;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.adapters.runtime.web.FetchRuntime;
@@ -17,6 +19,7 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
+import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchInput;
 import java.io.IOException;
 import java.net.URI;
@@ -73,6 +76,7 @@ public final class DurableAgent implements AutoCloseable {
   private final ExecutionLedger ledger;
   private final ArtifactStore store;
   private final FetchRuntime fetch;
+  private final WorkspaceRuntime workspace;
   private final BoundaryProbe probe;
   private final ModelProfiles models;
   private final OpenAiProtocol protocol = new OpenAiProtocol();
@@ -89,6 +93,18 @@ public final class DurableAgent implements AutoCloseable {
       BoundaryProbe probe,
       ModelProfiles models)
       throws IOException {
+    this(ledger, store, fetch, probe, models, null);
+  }
+
+  public DurableAgent(
+      ExecutionLedger ledger,
+      ArtifactStore store,
+      FetchRuntime fetch,
+      BoundaryProbe probe,
+      ModelProfiles models,
+      WorkspaceRuntime workspace)
+      throws IOException {
+    this.workspace = workspace;
     this.ledger = ledger;
     this.store = store;
     this.fetch = fetch;
@@ -105,19 +121,26 @@ public final class DurableAgent implements AutoCloseable {
   }
 
   public void run(Lease lease) {
-    var pin = ledger.toolSnapshot(lease).pins().get(fetch.descriptor().capability());
-    if (pin == null
-        || !fetch.descriptor().version().equals(pin.version())
-        || !fetch.descriptor().outputSha256().equals(pin.digest()))
-      throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
-    fetch.available();
+    var definitions = definitions(lease);
     var modelSnapshot = ledger.modelSnapshot(lease);
-    Session session = new Session(lease, modelSnapshot);
+    Session session = new Session(lease, modelSnapshot, definitions);
     var previous = ledger.checkpoint(lease);
     List<Message> messages =
         previous
-            .map(step -> restore(Payloads.read(step.request(), Checkpoint.class), modelSnapshot))
-            .orElseGet(() -> List.of(new UserMessage(lease.goal())));
+            .map(
+                step ->
+                    restore(
+                        Payloads.read(step.request(), Checkpoint.class),
+                        modelSnapshot,
+                        definitions))
+            .orElseGet(
+                () ->
+                    fetch.publicMode() && lease.capabilities().contains("present")
+                        ? List.of(
+                            new SystemMessage(
+                                new ReportPolicy().instruction(ledger.reportContext(lease))),
+                            new UserMessage(lease.goal()))
+                        : List.of(new UserMessage(lease.goal())));
     var manager = session.manager();
     var advisor = ToolCallingAdvisor.builder().toolCallingManager(manager).build();
     // This ChatModel performs HTTP only and has no internal tool execution or SDK retries.
@@ -143,7 +166,7 @@ public final class DurableAgent implements AutoCloseable {
     var options =
         ToolCallingChatOptions.builder()
             .model(modelSnapshot.model())
-            .toolCallbacks(session.discoveryCallback())
+            .toolCallbacks(session.discoveryCallbacks())
             .build();
     var request = client.prompt(new Prompt(messages, options));
     var response =
@@ -153,9 +176,12 @@ public final class DurableAgent implements AutoCloseable {
     if (response == null) throw new TaskFailure(502, "MODEL_STREAM_INCOMPLETE");
     if (response.hasToolCalls()) throw new TaskFailure(409, "MODEL_LOOP_INCOMPLETE");
     String summary = response.getResult().getOutput().getText();
-    // Public report mode cannot publish the legacy model-summary artifact. The present
-    // transaction will supply the required report; until assembled, fail closed here.
-    if (fetch.publicMode()) throw new TaskFailure(409, "REPORT_NOT_PUBLISHED");
+    if (fetch.publicMode()) {
+      probe.hit("M3", lease.taskId());
+      ledger.finish(lease, summary); // The ledger requires an actual published present report.
+      probe.hit("DONE", lease.taskId());
+      return;
+    }
     byte[] bytes = summary.getBytes(StandardCharsets.UTF_8);
     // A task without tool output has a summary but no tool-produced artifact.
     if (session.hadTools
@@ -182,7 +208,44 @@ public final class DurableAgent implements AutoCloseable {
     probe.hit("DONE", lease.taskId());
   }
 
-  private List<Message> restore(Checkpoint checkpoint, ModelSnapshot snapshot) {
+  private List<ToolDefinition> definitions(Lease lease) {
+    var pins = ledger.toolSnapshot(lease).pins();
+    var result = new ArrayList<ToolDefinition>();
+    for (String name : lease.capabilities()) {
+      boolean web = name.equals("web_fetch");
+      if (!web && (!fetch.publicMode() || workspace == null))
+        throw new TaskFailure(503, "WORKSPACE_NOT_CONFIGURED");
+      var descriptor = web ? fetch.descriptor() : workspace.contract(name).descriptor();
+      var pin = pins.get(name);
+      if (pin == null
+          || !descriptor.version().equals(pin.version())
+          || !descriptor.outputSha256().equals(pin.digest()))
+        throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+      if (web) {
+        fetch.available();
+        result.add(definition);
+      } else
+        result.add(
+            ToolDefinition.builder()
+                .name(name)
+                .description(
+                    switch (name) {
+                      case "read" ->
+                          "Read a UTF-8 task file with line numbers; observe missing files before write";
+                      case "write" ->
+                          "Create or replace UTF-8 task file using the host's observed version";
+                      case "present" ->
+                          "Publish existing observed Markdown reports as immutable authorized deliverables";
+                      default -> throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
+                    })
+                .inputSchema(workspace.contract(name).input())
+                .build());
+    }
+    return List.copyOf(result);
+  }
+
+  private List<Message> restore(
+      Checkpoint checkpoint, ModelSnapshot snapshot, List<ToolDefinition> definitions) {
     if (checkpoint.version() != 2) throw new TaskFailure(409, "PAYLOAD_VERSION_UNSUPPORTED");
     if (!ModelProfiles.digest(snapshot).equals(checkpoint.configDigest()))
       throw new TaskFailure(409, "MODEL_CONFIG_UNAVAILABLE");
@@ -190,7 +253,7 @@ public final class DurableAgent implements AutoCloseable {
       throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
     if (!checkpoint
         .requestBody()
-        .equals(protocol.body(snapshot, checkpoint.messages(), definition)))
+        .equals(protocol.body(snapshot, checkpoint.messages(), definitions)))
       throw new TaskFailure(409, "MODEL_CONFIG_UNAVAILABLE");
     return checkpoint.messages().stream().map(this::message).toList();
   }
@@ -241,18 +304,20 @@ public final class DurableAgent implements AutoCloseable {
   private final class Session {
     private final Lease lease;
     private final ModelSnapshot modelSnapshot;
+    private final List<ToolDefinition> definitions;
     private ExecutionLedger.Step step;
     private List<Call> calls = List.of();
     private boolean hadTools;
 
-    Session(Lease lease, ModelSnapshot modelSnapshot) {
+    Session(Lease lease, ModelSnapshot modelSnapshot, List<ToolDefinition> definitions) {
+      this.definitions = definitions;
       this.modelSnapshot = modelSnapshot;
       this.lease = lease;
     }
 
     private ChatResponse call(Prompt prompt) {
       var history = prompt.getInstructions().stream().map(DurableAgent.this::wire).toList();
-      String body = protocol.body(modelSnapshot, history, definition);
+      String body = protocol.body(modelSnapshot, history, definitions);
       var checkpoint =
           new Checkpoint(
               2,
@@ -317,18 +382,23 @@ public final class DurableAgent implements AutoCloseable {
       return List.copyOf(result);
     }
 
-    private ToolCallback discoveryCallback() {
-      return new ToolCallback() {
-        @Override
-        public ToolDefinition getToolDefinition() {
-          return definition;
-        }
+    private List<ToolCallback> discoveryCallbacks() {
+      return definitions.stream()
+          .map(
+              definition ->
+                  (ToolCallback)
+                      new ToolCallback() {
+                        @Override
+                        public ToolDefinition getToolDefinition() {
+                          return definition;
+                        }
 
-        @Override
-        public String call(String input) {
-          throw new IllegalStateException("Unbound callback");
-        }
-      };
+                        @Override
+                        public String call(String input) {
+                          throw new IllegalStateException("Unbound callback");
+                        }
+                      })
+          .toList();
     }
 
     private ToolCallingManager manager() {
@@ -341,7 +411,7 @@ public final class DurableAgent implements AutoCloseable {
       return new ToolCallingManager() {
         @Override
         public List<ToolDefinition> resolveToolDefinitions(ToolCallingChatOptions options) {
-          return List.of(definition);
+          return definitions;
         }
 
         @Override
@@ -352,14 +422,17 @@ public final class DurableAgent implements AutoCloseable {
           List<ToolCallback> callbacks = new ArrayList<>();
           byName.forEach(
               (name, slots) -> {
-                if (!definition.name().equals(name))
-                  throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
+                var bound =
+                    definitions.stream()
+                        .filter(d -> d.name().equals(name))
+                        .findFirst()
+                        .orElseThrow(() -> new TaskFailure(403, "TOOL_NOT_AUTHORIZED"));
                 var counter = new AtomicInteger();
                 callbacks.add(
                     new ToolCallback() {
                       @Override
                       public ToolDefinition getToolDefinition() {
-                        return definition;
+                        return bound;
                       }
 
                       @Override
@@ -375,46 +448,74 @@ public final class DurableAgent implements AutoCloseable {
     }
 
     private String invoke(Call call, String input) {
+      boolean file = !call.tool().equals("web_fetch");
+      var descriptor = file ? workspace.contract(call.tool()).descriptor() : fetch.descriptor();
+      var outputContract = file ? workspace.contract(call.tool()).out() : outputSchema;
+      JsonNode args;
       try {
-        inputSchema.validate(json.readTree(input));
-        fetch.validate(Payloads.read(input, FetchInput.class));
+        args = json.readTree(input);
+        if (file) workspace.validate(call.tool(), args);
+        else {
+          inputSchema.validate(args);
+          fetch.validate(Payloads.read(input, FetchInput.class));
+        }
       } catch (IOException | IllegalArgumentException e) {
         throw new TaskFailure(400, "TOOL_INPUT_INVALID");
       }
       probe.hit("T0_BEFORE", lease.taskId());
       var invocation =
-          ledger.admit(
-              lease,
-              step.id(),
-              call,
-              fetch.descriptor().version(),
-              fetch.descriptor().outputSha256());
+          ledger.admit(lease, step.id(), call, descriptor.version(), descriptor.outputSha256());
       if ("SUCCEEDED".equals(invocation.state())) {
-        outputSchema.validate(Payloads.read(invocation.output(), JsonNode.class));
+        outputContract.validate(Payloads.read(invocation.output(), JsonNode.class));
         return invocation.output();
       }
       probe.hit("T0", lease.taskId());
       String output;
       try {
-        FetchInput args = Payloads.read(input, FetchInput.class);
-        var result =
-            fetch.execute(
-                args,
-                lease.tenant(),
-                invocation.effectId(),
-                new ExecutionContext(
-                    invocation.id(), lease.deadline(), () -> ledger.checkpoint(lease)));
-        outputSchema.validateObject(result);
-        output = Payloads.json(result);
+        if (file)
+          output = workspace.execute(call.tool(), args, lease, invocation, ledger, store, probe);
+        else {
+          var result =
+              fetch.execute(
+                  Payloads.read(input, FetchInput.class),
+                  lease.tenant(),
+                  invocation.effectId(),
+                  new ExecutionContext(
+                      invocation.id(), lease.deadline(), () -> ledger.checkpoint(lease)));
+          outputContract.validateObject(result);
+          output = Payloads.json(result);
+        }
         if (output.getBytes(StandardCharsets.UTF_8).length > 2097152)
           throw new TaskFailure(409, "TOOL_OUTPUT_TOO_LARGE");
+      } catch (FileFailure error) {
+        if ("WORKSPACE_UNAVAILABLE".equals(error.code())) {
+          ledger.uncertain(lease, invocation.id());
+          throw new TaskFailure(409, "EFFECT_OUTCOME_UNKNOWN");
+        }
+        ledger.toolFailed(lease, invocation.id(), error.code());
+        throw new TaskFailure(409, error.code());
+      } catch (TaskFailure error) {
+        if (file
+            && (error.code().startsWith("REPORT_")
+                || error.code().equals("NO_EVIDENCE")
+                || error.code().equals("STORAGE_BUDGET_EXCEEDED"))) {
+          ledger.toolFailed(lease, invocation.id(), error.code());
+          throw error;
+        }
+        ledger.uncertain(lease, invocation.id());
+        throw error;
       } catch (RuntimeException error) {
         ledger.uncertain(lease, invocation.id());
         throw new TaskFailure(409, "EFFECT_OUTCOME_UNKNOWN");
       }
+      if (call.tool().equals("present")) {
+        probe.hit("P2", lease.taskId());
+        return output;
+      }
       probe.hit("T1_BEFORE", lease.taskId());
       ledger.toolSucceeded(lease, invocation.id(), output);
       probe.hit("T1", lease.taskId());
+      if (call.tool().equals("write")) probe.hit("W1", lease.taskId());
       return output;
     }
 

@@ -2,6 +2,7 @@ package io.github.lovexiaopeng.jimu.bootstrap;
 
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent;
 import io.github.lovexiaopeng.jimu.adapters.persistence.JdbcLedger;
+import io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceRuntime;
 import io.github.lovexiaopeng.jimu.adapters.runtime.events.DatabaseEventFeed;
 import io.github.lovexiaopeng.jimu.adapters.runtime.health.HttpResourceProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.health.LedgerProbe;
@@ -15,6 +16,7 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.worker.LocalWorkerSupervisor
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.OperationThreads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.WorkerLoop;
 import io.github.lovexiaopeng.jimu.adapters.storage.LocalArtifactStore;
+import io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
@@ -137,7 +139,16 @@ public class DurableConfiguration {
                 FetchRuntime.domains(env),
                 publicReader,
                 env.getProperty("jimu.web.public-dispatch-enabled", Boolean.class, false));
-    return new DurableAgent(ledger, store, fetch, probe, models);
+    String workspaceRoot = env.getProperty("jimu.workspace-root");
+    return new DurableAgent(
+        ledger,
+        store,
+        fetch,
+        probe,
+        models,
+        workspaceRoot == null
+            ? null
+            : new WorkspaceRuntime(new SecureWorkspaceStore(Path.of(workspaceRoot))));
   }
 
   @Bean(initMethod = "start", destroyMethod = "close")

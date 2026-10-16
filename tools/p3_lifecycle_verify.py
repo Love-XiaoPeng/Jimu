@@ -110,6 +110,7 @@ def verify(e):
                   "old successful invocation exists before migration")
     queued = e.submit("snapshot-v4-queued")
     e.stop(e.control)
+    e.sql("ALTER TABLE task DROP COLUMN report_time; ALTER TABLE artifact DROP COLUMN file_receipt,DROP COLUMN receipt_digest,ADD UNIQUE(tenant_id,task_id,producer_invocation),DROP INDEX artifact_producer_receipt; DELETE FROM flyway_schema_history WHERE version='6';")
     e.sql("ALTER TABLE task DROP COLUMN tools_snapshot,DROP COLUMN tools_digest; DELETE FROM flyway_schema_history WHERE version='5';")
     e.control = e.start("snapshot-v5-upgrade-control", "control")
     restored = e.sql("SELECT tools_snapshot FROM task WHERE id='" + cached + "';")

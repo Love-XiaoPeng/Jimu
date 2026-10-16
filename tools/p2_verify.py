@@ -887,6 +887,7 @@ class Experiment:
             if point == "A0" and failure == "deadline":
                 # Reconstruct V2, including removing V5/V4, then exercise the real upgrade.
                 self.stop(self.control)
+                self.sql("ALTER TABLE task DROP COLUMN report_time; ALTER TABLE artifact DROP COLUMN file_receipt,DROP COLUMN receipt_digest,ADD UNIQUE(tenant_id,task_id,producer_invocation),DROP INDEX artifact_producer_receipt; DELETE FROM flyway_schema_history WHERE version='6';")
                 self.sql("ALTER TABLE task DROP COLUMN tools_snapshot,DROP COLUMN tools_digest; DELETE FROM flyway_schema_history WHERE version='5';")
                 self.sql("ALTER TABLE task DROP FOREIGN KEY task_ibfk_2; DROP TABLE model_dispatch; DROP TABLE evaluation_budget; ALTER TABLE task DROP COLUMN model_snapshot,DROP COLUMN model_digest,DROP COLUMN evaluation_run_id,DROP COLUMN cost_held,DROP COLUMN max_cost_micros; ALTER TABLE tenant_budget DROP COLUMN cost_held,DROP COLUMN cost_limit; ALTER TABLE step MODIFY COLUMN model_version VARCHAR(32) NOT NULL DEFAULT 'fixture-v1'; DELETE FROM flyway_schema_history WHERE version='4';")
                 self.sql("ALTER TABLE task_attempt DROP COLUMN quiescent; DELETE FROM flyway_schema_history WHERE version='3';")

@@ -27,6 +27,10 @@ public final class OpenAiProtocol {
           .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
 
   public String body(ModelSnapshot p, List<WireMessage> history, ToolDefinition definition) {
+    return body(p, history, List.of(definition));
+  }
+
+  public String body(ModelSnapshot p, List<WireMessage> history, List<ToolDefinition> definitions) {
     var body = json.createObjectNode();
     body.put("model", p.model());
     body.put("stream", p.stream());
@@ -57,11 +61,14 @@ public final class OpenAiProtocol {
         }
       }
     }
-    var function = body.putArray("tools").addObject().put("type", "function").putObject("function");
-    function.put("name", definition.name());
-    function.put("description", definition.description());
+    var tools = body.putArray("tools");
     try {
-      function.set("parameters", json.readTree(definition.inputSchema()));
+      for (var definition : definitions) {
+        var function = tools.addObject().put("type", "function").putObject("function");
+        function.put("name", definition.name());
+        function.put("description", definition.description());
+        function.set("parameters", json.readTree(definition.inputSchema()));
+      }
       return json.writeValueAsString(body);
     } catch (IOException e) {
       throw new IllegalArgumentException("Invalid tool schema", e);

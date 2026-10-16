@@ -189,7 +189,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               request.budget().maxModelRequests(),
               request.budget().maxToolInvocations());
           db.update(
-              "UPDATE task SET model_snapshot=?,model_digest=?,evaluation_run_id=?,max_cost_micros=?,tools_snapshot=?,tools_digest=? WHERE tenant_id=? AND id=?",
+              "UPDATE task SET model_snapshot=?,model_digest=?,evaluation_run_id=?,max_cost_micros=?,tools_snapshot=?,tools_digest=?,report_time=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
               modelSnapshot,
               Payloads.hash(modelSnapshot),
               model.paid() ? models.evaluationRunId() : null,
@@ -1085,6 +1085,14 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
     tx(
         () -> {
           var task = fenced(lease, false);
+          var producer =
+              one(
+                  "SELECT tool FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
+                  lease.tenant(),
+                  lease.taskId(),
+                  invocationId);
+          if ("present".equals(s(producer, "tool")))
+            throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
           if (db.update(
                   "UPDATE invocation SET state='SUCCEEDED',output_snapshot=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND task_id=? AND state='RUNNING'",
                   output,
@@ -1121,11 +1129,244 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
         });
   }
 
+  private boolean publicReport(Map<String, Object> task) {
+    var pins = tools(task).pins();
+    var pin = pins.get("web_fetch");
+    return pin != null && "0.3.0".equals(pin.version())
+        || pins.keySet().stream()
+            .anyMatch(name -> List.of("read", "write", "present").contains(name));
+  }
+
+  @Override
+  public ReportContext reportContext(Lease lease) {
+    return tx(
+        () -> {
+          var task = fenced(lease, true);
+          if (!publicReport(task) || time(task, "report_time") == null)
+            throw new TaskFailure(409, "REPORT_METADATA_MISSING");
+          var sources =
+              rows(
+                      "SELECT id,output_snapshot,output_digest FROM invocation WHERE tenant_id=? AND task_id=? AND tool='web_fetch' AND plugin_version='0.3.0' AND state='SUCCEEDED' ORDER BY ordinal",
+                      lease.tenant(),
+                      lease.taskId())
+                  .stream()
+                  .map(
+                      row ->
+                          new Source(
+                              s(row, "id"), s(row, "output_snapshot"), s(row, "output_digest")))
+                  .toList();
+          return new ReportContext(time(task, "report_time"), sources);
+        });
+  }
+
+  private void requirePresent(Lease lease, Map<String, Object> task, String invocationId) {
+    if (!publicReport(task)) throw new TaskFailure(409, "REPORT_POLICY_REQUIRED");
+    var invocation =
+        one(
+            "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
+            lease.tenant(),
+            lease.taskId(),
+            invocationId);
+    if (!"present".equals(s(invocation, "tool")) || !"RUNNING".equals(s(invocation, "state")))
+      throw new TaskFailure(409, "INVOCATION_STATE");
+  }
+
+  @Override
+  public List<Upload> stageReports(Lease lease, String invocationId, List<ReportFile> files) {
+    return tx(
+        () -> {
+          var task = fenced(lease, true);
+          requirePresent(lease, task, invocationId);
+          if (files.isEmpty()
+              || files.size() > 4
+              || files.stream().map(ReportFile::path).distinct().count() != files.size())
+            throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+          var input =
+              Payloads.read(
+                  s(
+                      one(
+                          "SELECT input_snapshot FROM invocation WHERE tenant_id=? AND id=?",
+                          lease.tenant(),
+                          invocationId),
+                      "input_snapshot"),
+                  com.fasterxml.jackson.databind.JsonNode.class);
+          var paths = new java.util.ArrayList<String>();
+          input.path("files").forEach(file -> paths.add(file.path("path").asText()));
+          if (!paths.equals(files.stream().map(ReportFile::path).toList()))
+            throw new TaskFailure(409, "INVOCATION_MISMATCH");
+          var result = new java.util.ArrayList<Upload>();
+          for (var file : files) {
+            if (file.version() < 1
+                || file.size() < 1
+                || file.size() > 1048576
+                || !file.sha256().matches("[a-f0-9]{64}")
+                || !"text/markdown; charset=utf-8".equals(file.mediaType()))
+              throw new TaskFailure(400, "REPORT_INVALID");
+            String receipt = Payloads.json(file), digest = Payloads.hash(receipt);
+            var old =
+                rows(
+                    "SELECT * FROM artifact WHERE tenant_id=? AND task_id=? AND producer_invocation=? AND receipt_digest=?",
+                    lease.tenant(),
+                    lease.taskId(),
+                    invocationId,
+                    digest);
+            if (!old.isEmpty()) {
+              var a = old.getFirst();
+              if (!receipt.equals(s(a, "file_receipt")))
+                throw new TaskFailure(409, "ARTIFACT_MISMATCH");
+              result.add(
+                  new Upload(
+                      s(a, "id"),
+                      s(a, "upload_id"),
+                      s(a, "state"),
+                      file.sha256(),
+                      file.size(),
+                      s(a, "snapshot_key")));
+              continue;
+            }
+            if (!rows(
+                    "SELECT id FROM artifact WHERE tenant_id=? AND task_id=? AND producer_invocation<>?",
+                    lease.tenant(),
+                    lease.taskId(),
+                    invocationId)
+                .isEmpty()) throw new TaskFailure(409, "REPORT_ALREADY_STAGED");
+            var budget = bucket(lease.tenant());
+            if (n(budget, "storage_held") + file.size() > n(budget, "storage_limit"))
+              throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
+            String artifact = id(), upload = id();
+            db.update(
+                "INSERT INTO artifact(tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,sha256,size,media_type,file_receipt,receipt_digest) VALUES(?,?,?,?,?,?,'STAGING',?,?,?,?,?)",
+                lease.tenant(),
+                artifact,
+                lease.taskId(),
+                invocationId,
+                upload,
+                lease.fence(),
+                file.sha256(),
+                file.size(),
+                file.mediaType(),
+                receipt,
+                digest);
+            db.update(
+                "UPDATE tenant_budget SET storage_held=storage_held+? WHERE tenant_id=?",
+                file.size(),
+                lease.tenant());
+            reserve(
+                lease.tenant(),
+                lease.taskId(),
+                artifact,
+                null,
+                "STORAGE",
+                file.size(),
+                "RESERVED",
+                "KNOWN");
+            event(task, "staging:" + artifact, "artifact.staging", null);
+            result.add(new Upload(artifact, upload, "STAGING", file.sha256(), file.size(), null));
+          }
+          if (rows(
+                      "SELECT id FROM artifact WHERE tenant_id=? AND task_id=? AND producer_invocation=?",
+                      lease.tenant(),
+                      lease.taskId(),
+                      invocationId)
+                  .size()
+              != files.size()) throw new TaskFailure(409, "ARTIFACT_MISMATCH");
+          return List.copyOf(result);
+        });
+  }
+
+  @Override
+  public void presentSucceeded(
+      Lease lease, String invocationId, List<Publication> publications, String output) {
+    tx(
+        () -> {
+          var task = fenced(lease, true);
+          requirePresent(lease, task, invocationId);
+          var artifacts =
+              rows(
+                  "SELECT * FROM artifact WHERE tenant_id=? AND task_id=? AND producer_invocation=?",
+                  lease.tenant(),
+                  lease.taskId(),
+                  invocationId);
+          if (artifacts.size() != publications.size()
+              || artifacts.isEmpty()
+              || publications.stream().map(Publication::artifactId).distinct().count()
+                  != publications.size()) throw new TaskFailure(409, "ARTIFACT_MISMATCH");
+          var result =
+              Payloads.read(output, com.fasterxml.jackson.databind.JsonNode.class).path("files");
+          if (!result.isArray() || result.size() != publications.size())
+            throw new TaskFailure(409, "TOOL_OUTPUT_INVALID");
+          for (int index = 0; index < publications.size(); index++) {
+            var pub = publications.get(index);
+            var a =
+                artifacts.stream()
+                    .filter(row -> pub.artifactId().equals(s(row, "id")))
+                    .findFirst()
+                    .orElseThrow(() -> new TaskFailure(409, "ARTIFACT_MISMATCH"));
+            var receipt = Payloads.read(s(a, "file_receipt"), ReportFile.class);
+            var item = result.get(index);
+            if (!"STAGING".equals(s(a, "state"))
+                || !pub.key().equals(s(a, "upload_id") + "-" + s(a, "sha256"))
+                || !Payloads.hash(s(a, "file_receipt")).equals(s(a, "receipt_digest"))
+                || !pub.artifactId().equals(item.path("artifactId").asText())
+                || !receipt.path().equals(item.path("path").asText())
+                || receipt.version() != item.path("version").asLong()
+                || !receipt.sha256().equals(item.path("sha256").asText())
+                || receipt.size() != item.path("size").asLong()
+                || !receipt.mediaType().equals(item.path("mediaType").asText()))
+              throw new TaskFailure(409, "ARTIFACT_MISMATCH");
+            db.update(
+                "UPDATE artifact SET state='PUBLISHED',snapshot_key=?,production_fence=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
+                pub.key(),
+                lease.fence(),
+                lease.tenant(),
+                pub.artifactId());
+            db.update(
+                "UPDATE reservation SET state='SETTLED',actual=amount WHERE tenant_id=? AND id=?",
+                lease.tenant(),
+                pub.artifactId());
+            event(task, "published:" + pub.artifactId(), "artifact.created", null);
+          }
+          db.update(
+              "UPDATE invocation SET state='SUCCEEDED',output_snapshot=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
+              output,
+              Payloads.hash(output),
+              lease.tenant(),
+              invocationId);
+          db.update(
+              "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=? AND id=?",
+              lease.tenant(),
+              invocationId);
+          event(task, "result:" + invocationId, "tool.succeeded", null);
+          return null;
+        });
+  }
+
+  @Override
+  public void toolFailed(Lease lease, String invocationId, String code) {
+    tx(
+        () -> {
+          var task = fenced(lease, false);
+          if (db.update(
+                  "UPDATE invocation SET state='FAILED',updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND task_id=? AND state='RUNNING'",
+                  lease.tenant(),
+                  invocationId,
+                  lease.taskId())
+              != 1) throw new TaskFailure(409, "INVOCATION_STATE");
+          db.update(
+              "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=? AND id=?",
+              lease.tenant(),
+              invocationId);
+          event(task, "failure:" + invocationId, "tool.failed", code);
+          return null;
+        });
+  }
+
   @Override
   public Upload stage(Lease lease, String hash, long size) {
     return tx(
         () -> {
           var task = fenced(lease, true);
+          if (publicReport(task)) throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
           var budget = bucket(lease.tenant());
           var existing =
               rows(
@@ -1192,6 +1433,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
     tx(
         () -> {
           var task = fenced(lease, true);
+          if (publicReport(task)) throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
           var artifact =
               one(
                   "SELECT * FROM artifact WHERE tenant_id=? AND id=? AND task_id=?",
@@ -1220,6 +1462,12 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
     tx(
         () -> {
           var task = fenced(lease, true);
+          if (publicReport(task)
+              && rows(
+                      "SELECT a.id FROM artifact a JOIN invocation i ON i.tenant_id=a.tenant_id AND i.id=a.producer_invocation AND i.task_id=a.task_id WHERE a.tenant_id=? AND a.task_id=? AND a.state='PUBLISHED' AND a.file_receipt IS NOT NULL AND i.tool='present' AND i.state='SUCCEEDED'",
+                      lease.tenant(),
+                      lease.taskId())
+                  .isEmpty()) throw new TaskFailure(409, "REPORT_NOT_PUBLISHED");
           if (!rows(
                       "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state<>'SUCCEEDED'",
                       lease.tenant(),
@@ -1412,13 +1660,13 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6') AND success=TRUE",
             Integer.class)
-        != 5) throw new IllegalStateException("Required migration unavailable");
+        != 6) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 5) throw new IllegalStateException("Unsupported schema version");
+        != 6) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override

@@ -78,7 +78,11 @@ public final class LocalTlsWorkerMain {
                   body == null
                       ? null
                       : new FetchOutput(
-                          body.httpStatus(), target.toString(), body.content(), body.truncated()));
+                          body.httpStatus(),
+                          target.toString(),
+                          body.content()
+                              .replace("Source: " + local + "\n\n", "Source: " + target + "\n\n"),
+                          body.truncated()));
             } finally {
               Files.writeString(
                   trace,

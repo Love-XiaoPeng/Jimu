@@ -41,6 +41,23 @@ public interface ExecutionLedger {
 
   record Upload(String id, String uploadId, String state, String hash, long size, String key) {}
 
+  record Source(String invocationId, String output, String digest) {}
+
+  record ReportContext(Instant productionTime, List<Source> sources) {}
+
+  record ReportFile(String path, long version, String sha256, long size, String mediaType) {}
+
+  record Publication(String artifactId, String key) {}
+
+  ReportContext reportContext(Lease lease);
+
+  List<Upload> stageReports(Lease lease, String invocationId, List<ReportFile> files);
+
+  void presentSucceeded(
+      Lease lease, String invocationId, List<Publication> publications, String output);
+
+  void toolFailed(Lease lease, String invocationId, String code);
+
   Optional<Lease> claim(String worker);
 
   boolean renew(Lease lease);
