@@ -2,9 +2,10 @@
 import argparse
 import hashlib
 import json
+import signal
 from pathlib import Path
 
-from p2_verify import Experiment
+from p2_verify import Experiment, eventually
 
 
 def verify(e):
@@ -33,7 +34,10 @@ def verify(e):
                   "task snapshots do not grant cross tenant task visibility")
     worker = e.start("public-pin-unsupported-worker", "worker")
     e.state(public, "FAILED")
-    e.state(other, "SUCCEEDED")
+    eventually(lambda: e.sql("SELECT state FROM task WHERE id='" + other + "';") == "SUCCEEDED",
+               "other tenant fixture completes")
+    e.assert_that(e.http("GET", "/api/tasks/" + other, subject="b")[1]["state"] == "SUCCEEDED",
+                  "owner of the other tenant can read its completed task")
     e.assert_that(e.sql("SELECT code FROM task WHERE id='" + public + "';") == "PLUGIN_PIN_MISMATCH" and
                   e.fixture.models.get("queued-public-pin", 0) == 0 and e.fixture.tools.get("/page/queued-public-pin", 0) == 0,
                   "worker lacking snapshotted public implementation fails before any model or fetch")
@@ -100,6 +104,9 @@ def verify(e):
 
 
 def main():
+    def terminate(signum, frame):
+        raise KeyboardInterrupt("Snapshot test supervisor terminated")
+    signal.signal(signal.SIGTERM, terminate)
     parser = argparse.ArgumentParser()
     parser.add_argument("jar", type=Path)
     parser.add_argument("evidence", type=Path)
