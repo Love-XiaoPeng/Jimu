@@ -1171,6 +1171,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             materialBody(task, request, (int) n(previous.getFirst(), "ordinal"));
             return step(previous.getFirst());
           }
+          int ordinal = previous.isEmpty() ? 1 : (int) n(previous.getFirst(), "ordinal") + 1;
+          materialBody(task, request, ordinal);
           if (!previous.isEmpty()
               && (previous.getFirst().get("response_snapshot") == null
                   || !rows(
@@ -1178,8 +1180,6 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                           lease.tenant(),
                           s(previous.getFirst(), "id"))
                       .isEmpty())) throw new TaskFailure(409, "CHECKPOINT_INCOMPLETE");
-          int ordinal = previous.isEmpty() ? 1 : (int) n(previous.getFirst(), "ordinal") + 1;
-          materialBody(task, request, ordinal);
           String stepId = id();
           db.update(
               "INSERT INTO step(tenant_id,id,task_id,attempt_id,ordinal,state,request_snapshot,request_digest,model_version) VALUES(?,?,?,?,?,'PREPARED',?,?,?)",
