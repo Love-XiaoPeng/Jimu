@@ -81,7 +81,10 @@ def verify(e):
         return view["taskId"]
 
     def pause(task,settings,point):
-        w=worker(settings,point);e.barrier(w);return w
+        w=worker(settings,point)
+        marker=e.barrier(w)
+        e.assert_that(marker.split()[1]==task,"shared-stop boundary belongs to intended task",expectedTask=task,marker=marker)
+        return w
 
     def target_counts(task):
         return e.sql("SELECT models_used,tools_used,(SELECT COUNT(*) FROM artifact WHERE task_id=t.id),(SELECT COUNT(*) FROM artifact WHERE task_id=t.id AND state='PUBLISHED') FROM task t WHERE id='"+task+"';")
@@ -93,7 +96,8 @@ def verify(e):
         bad=accept(label+("-malformed-unknown" if malformed else "-unknown"),public)
         w=pause(bad,settings,point)
         if point in ["MODEL_RESPONSE_COMMITTED","MODEL_FAILURE_COMMITTED"]:
-            e.assert_that(e.sql("SELECT state FROM evaluation_budget WHERE id='"+settings["jimu.model.evaluation-run-id"]+"';")=="STOPPED","unknown response committed run-wide STOPPED")
+            state=e.sql("SELECT state FROM evaluation_budget WHERE id='"+settings["jimu.model.evaluation-run-id"]+"';")
+            e.assert_that(state=="STOPPED","unknown response committed run-wide STOPPED",task=bad,runState=state)
         return bad,w
 
     try:
@@ -112,14 +116,15 @@ def verify(e):
                     w=pause(task,settings,"W1" if public else "T1")
                     e.stop(w,kill=True);e.expire(task)
                     w=pause(task,settings,"MODEL_RESPONSE_COMMITTED")
-                    e.stop(w,kill=True)
-                    e.sql("UPDATE task SET lease_until=CURRENT_TIMESTAMP(6)+INTERVAL 5 MINUTE WHERE id='"+task+"';")
+                    # Keep the cached task's real owner alive until the other task stops the run.
+                    # A future lease cannot park a dead writer: supervisor correctly expires it.
                     before=target_counts(task);before_calls=len(server.calls)
                     if stopped:
                         bad,bw=stop_run(settings,public,run)
                         e.stop(bw,kill=True)
                         held=e.sql("SELECT state,requests_used,cost_held FROM evaluation_budget WHERE id='"+run+"';")
                         before_calls=len(server.calls)
+                    e.stop(w,kill=True)
                     # An actual control restart and two competing worker JVMs use persisted state.
                     control(settings);e.expire(task)
                     if stopped: e.expire(bad)
