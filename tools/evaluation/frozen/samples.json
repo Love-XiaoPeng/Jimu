@@ -1,0 +1,179 @@
+{
+  "samples": [
+    {
+      "id": "W1",
+      "phase": "A",
+      "stream": false,
+      "maxModelDispatches": 7,
+      "maxBillableOutputTokens": 28672,
+      "maxFullContextTokenReservation": 7028672,
+      "request": {
+        "path": "requests/W1.submit.json",
+        "sha256": "05e109243d3f6dc8e9ba2dbac72f9f339f57b12fa23590bb55ee63c213724ee1",
+        "bytes": 2289
+      },
+      "goal": {
+        "path": "prompts/W1.goal.txt",
+        "sha256": "f46e1623106e5a6aa5602d787ec69015653920288bc6f1e6c0774389361bcfd0",
+        "bytes": 2060
+      },
+      "target": "reports/w1.md",
+      "sourceIds": [
+        "rfc768"
+      ],
+      "maxToolInvocations": 7,
+      "perToolMaxInvocations": {
+        "web_fetch": 1,
+        "read": 2,
+        "write": 2,
+        "present": 2
+      },
+      "initialTarget": "must-be-absent",
+      "hanCharacterRange": [
+        600,
+        900
+      ],
+      "requiredSections": [
+        "主题",
+        "摘要",
+        "结论",
+        "来源链接",
+        "生成时间",
+        "局限"
+      ]
+    },
+    {
+      "id": "W2",
+      "phase": "A",
+      "stream": true,
+      "maxModelDispatches": 6,
+      "maxBillableOutputTokens": 24576,
+      "maxFullContextTokenReservation": 6024576,
+      "request": {
+        "path": "requests/W2.submit.json",
+        "sha256": "c6cf6fb59f8b5fcb89863e0d499af2fba0cc090d3fa1f6eb833aa4f62f06bac3",
+        "bytes": 1678
+      },
+      "goal": {
+        "path": "prompts/W2.goal.txt",
+        "sha256": "9e97594303251321fa94953e4543063c32582576a20f55abde1f2534637236fa",
+        "bytes": 1449
+      },
+      "target": "reports/w2.md",
+      "sourceIds": [
+        "colorsys"
+      ],
+      "maxToolInvocations": 7,
+      "perToolMaxInvocations": {
+        "web_fetch": 1,
+        "read": 2,
+        "write": 2,
+        "present": 2
+      },
+      "initialTarget": "must-be-absent",
+      "hanCharacterRange": [
+        800,
+        1200
+      ],
+      "requiredSections": [
+        "主题",
+        "摘要",
+        "结论",
+        "来源链接",
+        "生成时间",
+        "局限"
+      ]
+    },
+    {
+      "id": "W3",
+      "phase": "B",
+      "stream": false,
+      "maxModelDispatches": 6,
+      "maxBillableOutputTokens": 24576,
+      "maxFullContextTokenReservation": 6024576,
+      "request": {
+        "path": "requests/W3.submit.json",
+        "sha256": "972f47a14c7227f83db26ce772f596c71188a948697b3c036cad433013ed582c",
+        "bytes": 1906
+      },
+      "goal": {
+        "path": "prompts/W3.goal.txt",
+        "sha256": "e036feb51d7c23fe794fb83e20807365cb88d0c37149614084053812dcf404d8",
+        "bytes": 1677
+      },
+      "target": "reports/w3.md",
+      "sourceIds": [
+        "rfc768",
+        "colorsys"
+      ],
+      "maxToolInvocations": 8,
+      "perToolMaxInvocations": {
+        "web_fetch": 2,
+        "read": 2,
+        "write": 2,
+        "present": 2
+      },
+      "initialTarget": "must-be-absent",
+      "hanCharacterRange": [
+        1000,
+        1500
+      ],
+      "requiredSections": [
+        "主题",
+        "摘要",
+        "结论",
+        "来源链接",
+        "生成时间",
+        "局限"
+      ]
+    },
+    {
+      "id": "W4",
+      "phase": "B",
+      "stream": true,
+      "maxModelDispatches": 6,
+      "maxBillableOutputTokens": 24576,
+      "maxFullContextTokenReservation": 6024576,
+      "request": {
+        "path": "requests/W4.submit.json",
+        "sha256": "9ad5e639c5d9083133919f5eab6ede89c8796523b2ebc94af96363066c859427",
+        "bytes": 1582
+      },
+      "goal": {
+        "path": "prompts/W4.goal.txt",
+        "sha256": "0bc5c7dd66a793273dfd52526f993ecbbee7d42c1e6dd070b5ac0aeaa5e0a63c",
+        "bytes": 1355
+      },
+      "target": "reports/w4.md",
+      "sourceIds": [
+        "rfc768"
+      ],
+      "maxToolInvocations": 7,
+      "perToolMaxInvocations": {
+        "web_fetch": 1,
+        "read": 2,
+        "write": 2,
+        "present": 2
+      },
+      "initialTarget": "seeded-draft",
+      "hanCharacterRange": [
+        1000,
+        1500
+      ],
+      "requiredSections": [
+        "主题",
+        "摘要",
+        "结论",
+        "来源链接",
+        "生成时间",
+        "局限"
+      ]
+    }
+  ],
+  "C1": {
+    "embeddedIn": "W1",
+    "separateTask": false,
+    "separateDispatch": false
+  },
+  "workspaceIsolation": "one dedicated evaluation tenant and original durable run; separate fresh task workspaces per candidate/sample, same relative target; no cross-task observations"
+}

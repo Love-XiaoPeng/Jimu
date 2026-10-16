@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "filePath",
+    "exists",
+    "version",
+    "sha256",
+    "size",
+    "offset",
+    "totalLines",
+    "content"
+  ],
+  "properties": {
+    "filePath": {
+      "type": "string"
+    },
+    "exists": {
+      "type": "boolean"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sha256": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "totalLines": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "content": {
+      "type": "string"
+    }
+  }
+}

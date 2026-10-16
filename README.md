@@ -15,6 +15,7 @@
 - [XIAO-40 模型核心阶段配置、迁移、预算及限制](docs/implementation-p3-core.md)
 - [XIAO-40 完整输入门禁与计费证明边界](docs/implementation-p3-input-bound.md)
 - [XIAO-40 工作区工具、报告发布与下载装配](docs/implementation-p3-reports.md)
+- [XIAO-40 关闭评测计划、阶段和额度](docs/implementation-p3-evaluation-plans.md)
 - [协作约定](CONTRIBUTING.md)
 - [Agent 约定](AGENTS.md)
 

@@ -1,0 +1,13 @@
+{
+  "sample": "W4",
+  "file": {
+    "path": "drafts/W4.initial.md",
+    "sha256": "5fad02804f7669a6f23d973b0876bfd73c838c62fa9e737e3711a95216448436",
+    "bytes": 241
+  },
+  "logicalPath": "reports/w4.md",
+  "version": null,
+  "versionBinding": "create through existing trusted FilePort/store under exact task scope; record real version/size/hash before worker starts; do not guess version or write OS files behind store",
+  "initialBytesIdenticalAcrossCandidates": true,
+  "legacyArtifactPolicy": "retain any actual old artifact receipts; do not manufacture a prior published artifact"
+}

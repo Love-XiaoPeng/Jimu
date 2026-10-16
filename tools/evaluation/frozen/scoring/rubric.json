@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "scoreScope": "each published W1-W4 report; C1 is an embedded W1 admission check",
+  "allowedScoring": "Only listed discrete scores. Lower score applies if two anchors fit. If no positive anchor is fully satisfied, assign zero and record the unmet conditions. Every deduction needs evidence references. No unlisted interpolation.",
+  "scoringPolicy": {"overlappingAnchors":"lowestMatchingScore","noPositiveAnchorSatisfied":0,"evidenceMissing":0,"unlistedInterpolationAllowed":false},
+  "dimensions": {"chinese": 20, "tools": 30, "sources": 30, "report": 20},
+  "items": [
+    {"id":"C-LANGUAGE","dimension":"chinese","max":5,"anchors":[{"score":5,"when":"解释与建议全部用中文，API/URL/引文保留原词；无明显语病"},{"score":3,"when":"只有1-2处非关键语病或未译短语，不影响理解"},{"score":0,"when":"主要解释使用外语，或超过2处使含义不清的语言问题"}]},
+    {"id":"C-RANGE","dimension":"chinese","max":5,"anchors":[{"score":5,"when":"正文汉字数在样本闭区间内"},{"score":3,"when":"超出最近边界不超过该边界的10%，且未length截断"},{"score":0,"when":"偏离超过10%或输出被length截断"}]},
+    {"id":"C-SCOPE","dimension":"chinese","max":5,"anchors":[{"score":5,"when":"所有样本要求的话题均有独立明确回答，无无关段落"},{"score":3,"when":"一个非关键子问题被合并略述，或只有一段不影响结论的无关文字"},{"score":0,"when":"遗漏两个以上子问题或正文偏题"}]},
+    {"id":"C-READABILITY","dimension":"chinese","max":5,"anchors":[{"score":5,"when":"术语首次解释、段落有序，无重复段落与互相矛盾表述"},{"score":3,"when":"只有一次术语未解释或一个重复段落，事实含义仍清楚"},{"score":0,"when":"两处以上术语/重复问题或结构使主要含义不清"}]},
+    {"id":"T-SCHEMA","dimension":"tools","max":5,"anchors":[{"score":5,"when":"每次调用名称及参数结构都符合冻结Schema和宿主附加约束"},{"score":3,"when":"恰有一次非越权参数结构拒绝，随后在本样本额度内纠正且无未知效果"},{"score":0,"when":"两次以上结构拒绝、未纠正或使用未授权工具/参数权限"}]},
+    {"id":"T-TARGET","dimension":"tools","max":5,"anchors":[{"score":5,"when":"所有URL与路径均为本样本允许目标，未抓取无关来源或修改其他文件"},{"score":0,"when":"任一目标越出样本授权范围；同时触发硬失败"}],"partial":"无：目标授权是硬门禁"},
+    {"id":"T-OBSERVE","dimension":"tools","max":5,"anchors":[{"score":5,"when":"write前有真实read观察目标，且没有多余观察"},{"score":3,"when":"write前有有效观察，另有一次重复read，仍在上限内"},{"score":0,"when":"未观察即写入或复用其他任务观察"}]},
+    {"id":"T-CAS","dimension":"tools","max":5,"anchors":[{"score":5,"when":"一次write取得当前观察绑定的CAS成功收据，未传宿主字段"},{"score":3,"when":"一次确定失败的write后，使用有效观察在额度内完成一次成功write，无未知效果"},{"score":0,"when":"没有有效CAS收据、绕过CAS、两次以上失败或结果未知"}]},
+    {"id":"T-PRESENT","dimension":"tools","max":5,"anchors":[{"score":5,"when":"首次present即对应精确写入版本，最终答复仅引用真实产物"},{"score":3,"when":"一次确定性present拒绝后在额度内纠正，最终版本和产物均正确"},{"score":0,"when":"没有有效present、两次以上拒绝、引用错误版本或虚构产物/下载地址"}]},
+    {"id":"T-ROUNDS","dimension":"tools","max":5,"anchors":[{"score":5,"when":"最多5次模型派发即完成有效报告与最终答复"},{"score":3,"when":"用了6次派发，或W1用了7次派发，但仍完成有效报告"},{"score":0,"when":"超过样本上限或未完成报告"}]},
+    {"id":"S-FACTS","dimension":"sources","max":10,"anchors":[{"score":10,"when":"oracle所列全部事实核对点均准确且有可回溯证据"},{"score":7,"when":"仅遗漏一个核对点，其余准确且有证据；没有矛盾或虚构"},{"score":3,"when":"遗漏两个及以上核对点，其余没有矛盾或虚构"},{"score":0,"when":"任一关键事实与原文相矛盾、虚构或无来源支撑；同时触发硬失败"}]},
+    {"id":"S-COVERAGE","dimension":"sources","max":5,"anchors":[{"score":5,"when":"每条关键事实均紧邻URL及可定位原文；来源全部覆盖样本要求"},{"score":3,"when":"仅一条关键事实需从同段/相邻段引用定位，仍可明确回溯"},{"score":0,"when":"两条以上关键事实无法明确定位或漏掉样本要求的来源"}]},
+    {"id":"S-UNCERTAINTY","dimension":"sources","max":10,"anchors":[{"score":10,"when":"所有oracle要求的证据边界在结论和局限中均明确，事实/建议/未验证结论分开表述"},{"score":5,"when":"边界都披露但只在结论或局限一处明确，另一处没有相反承诺"},{"score":0,"when":"遗漏任一关键边界、把建议当实测事实或保留无证据结论"}]},
+    {"id":"S-QUOTES","dimension":"sources","max":5,"anchors":[{"score":5,"when":"全部直接引文与原文一致，转述标明为转述，未虚构段落号"},{"score":3,"when":"仅有一次不改变含义的省略标点/空格差异，未改变事实"},{"score":0,"when":"引文改变原意、并不存在或混淆转述与直接引文"}]},
+    {"id":"R-SECTIONS","dimension":"report","max":5,"anchors":[{"score":5,"when":"六个规定Markdown主栏目恰各出现一次且非空，产物通过宿主结构检查"},{"score":0,"when":"任一栏目缺失、重复、为空或宿主结构检查失败；同时触发硬失败"}],"partial":"无：六栏目是硬门禁"},
+    {"id":"R-ACTIONABLE","dimension":"report","max":5,"anchors":[{"score":5,"when":"给出至少两条具体且明确标注证据边界的应用建议/修订理由，无空泛重复"},{"score":3,"when":"只有一条具体建议/修订理由，其余正确但概括"},{"score":0,"when":"无可使用建议/修订理由或建议与事实相矛盾"}]},
+    {"id":"R-TIME","dimension":"report","max":5,"anchors":[{"score":5,"when":"生成时间栏目精确等于宿主保留时间，且没有虚构运行或生成时间"},{"score":0,"when":"时间不匹配或虚构已运行测试；前者同时触发硬失败"}],"partial":"无：宿主时间是硬门禁"},
+    {"id":"R-DOWNLOAD","dimension":"report","max":5,"anchors":[{"score":5,"when":"有成功发布收据，授权下载成功且字节哈希等于present的精确文件；W4原版收据仍可核对"},{"score":0,"when":"缺任一必需收据/下载/哈希证据；同时触发硬失败"}],"partial":"无：完整产物证据是硬门禁"}
+  ],
+  "hardFails": ["材料/Schema/提示词摘要不匹配", "关键事实、来源、引文或实测经历虚构", "工具/URL/路径越权", "超过调用/费用/token/工具上限", "无有效来源、六栏目/时间/产物/授权下载失败", "任一账本用量/费用/工具效果为UNKNOWN或run已STOPPED", "W1内C1确定检查未全部通过"],
+  "pass": {"reportTotalMinimum":85,"toolsMinimum":27,"sourcesMinimum":27,"allHardFailsAbsent":true,"W1EmbeddedC1AllChecksRequired":true},
+  "wordCount": "Unicode Han codepoints U+3400-U+4DBF or U+4E00-U+9FFF in visible report body; remove Markdown heading lines, fenced code blocks and URLs before counting; no normalization",
+  "review": {"blindModelAndPrice":true,"independentScorecards":2,"disagreement":"retain both scorecards and evidence; PM adjudicates before gate; no averaged automatic pass","paidJudge":false},
+  "selection": {"A":"all assigned A samples terminal with known outcomes; W1 and W2 both pass; rank eligible by mean report score, then complete-success fraction, then same-sample wall time, then actual known cost; freeze at most two once", "B":"selected finalists must each pass W3 and W4; rank by four-report mean, quality gap>=5 wins; if gap<5 use complete-success fraction, then same-sample wall time, then actual known cost", "noPassingCandidates":"no default model; do not relax gates", "smallSample":"no statistical ranking or p95 claims"}
+}

@@ -1,0 +1,244 @@
+{
+  "kind": "jimu-trusted-evaluation-plan",
+  "version": 1,
+  "planId": "qwen-main-v1",
+  "issueId": "01a14029-5248-7d16-917c-f9ae27b477b2",
+  "enabled": false,
+  "paidDispatchEnabled": false,
+  "searchDispatchEnabled": false,
+  "productionEgressEnabled": false,
+  "authorizationEffective": false,
+  "accountAdmitted": false,
+  "selected": false,
+  "candidateModelIds": [
+    "qwen3.7-plus-2026-05-26",
+    "qwen3.7-flash-2026-07-15",
+    "qwen3.8-max-0902"
+  ],
+  "candidateScopeFreeze": "before first A dispatch; no plan switch or adding candidate after any dispatch",
+  "selectionMode": "exactly one plan bound to original durable run; not two independent allowances",
+  "accountBinding": {
+    "region": null,
+    "plan": null,
+    "deploymentScope": null,
+    "apiHost": null,
+    "credentialRef": null,
+    "credentialVersion": null,
+    "exactModelPermissionsConfirmed": false,
+    "egressRestrictionsConfirmed": false
+  },
+  "requiredPricingScope": "cn-beijing / Alibaba Model Studio deployed / PAYG / CNY / list prices; peak Pro",
+  "originalRunId": null,
+  "isolatedTenantId": null,
+  "approvedExecutionReceipt": null,
+  "acceptedFinalCodeSha": null,
+  "limits": {
+    "currency": "CNY",
+    "cumulativeMaxCostMicros": 500000000,
+    "cumulativeMaxDispatches": 63,
+    "maxBillableOutputPerDispatch": 4096,
+    "httpMaxCompletionTokens": 4086,
+    "outputMarginTokens": 10,
+    "matrixMaxBillableOutputTokens": 258048,
+    "isolatedTenantTokenLimit": 63258048,
+    "perDispatchTokenReservation": 1004096,
+    "maxInflight": 1,
+    "httpRetries": 0,
+    "paidSearchCostMicros": 0,
+    "paidSearchDispatches": 0
+  },
+  "phases": {
+    "A": {
+      "state": "CLOSED_NOT_AUTHORIZED",
+      "maxCostMicros": 260000000,
+      "maxDispatches": 39,
+      "maxBillableOutputTokens": 159744,
+      "tokenLimit": 39159744,
+      "samples": [
+        "W1",
+        "W2"
+      ]
+    },
+    "B": {
+      "state": "LOCKED",
+      "maxCostMicros": 240000000,
+      "maxDispatches": 24,
+      "maxBillableOutputTokens": 98304,
+      "tokenLimit": 24098304,
+      "samples": [
+        "W3",
+        "W4"
+      ],
+      "maxFinalists": 2,
+      "unlockPolicy": {
+        "path": "gates/B-unlock-policy.json",
+        "sha256": "e461fa08012a9ae32181c8a9b94104d42233ec19d8ec7ed08a9ae505df044133",
+        "bytes": 1740
+      }
+    }
+  },
+  "modelLimits": [
+    {
+      "model": "qwen3.7-plus-2026-05-26",
+      "phaseLimits": {
+        "A": {
+          "maxDispatches": 13,
+          "maxCostMicros": 79277952,
+          "maxBillableOutputTokens": 53248,
+          "tokenLimit": 13053248
+        },
+        "B": {
+          "maxDispatches": 12,
+          "maxCostMicros": 73179648,
+          "maxBillableOutputTokens": 49152,
+          "tokenLimit": 12049152
+        }
+      },
+      "maxAcrossPhases": {
+        "dispatches": 25,
+        "costMicros": 152457600,
+        "billableOutputTokens": 102400,
+        "tokenLimit": 25102400
+      },
+      "taskLimits": {
+        "W1": {
+          "maxDispatches": 7,
+          "maxCostMicros": 42688128,
+          "tokenLimit": 7028672
+        },
+        "W2": {
+          "maxDispatches": 6,
+          "maxCostMicros": 36589824,
+          "tokenLimit": 6024576
+        },
+        "W3": {
+          "maxDispatches": 6,
+          "maxCostMicros": 36589824,
+          "tokenLimit": 6024576
+        },
+        "W4": {
+          "maxDispatches": 6,
+          "maxCostMicros": 36589824,
+          "tokenLimit": 6024576
+        }
+      }
+    },
+    {
+      "model": "qwen3.7-flash-2026-07-15",
+      "phaseLimits": {
+        "A": {
+          "maxDispatches": 13,
+          "maxCostMicros": 15855593,
+          "maxBillableOutputTokens": 53248,
+          "tokenLimit": 13053248
+        },
+        "B": {
+          "maxDispatches": 12,
+          "maxCostMicros": 14635932,
+          "maxBillableOutputTokens": 49152,
+          "tokenLimit": 12049152
+        }
+      },
+      "maxAcrossPhases": {
+        "dispatches": 25,
+        "costMicros": 30491525,
+        "billableOutputTokens": 102400,
+        "tokenLimit": 25102400
+      },
+      "taskLimits": {
+        "W1": {
+          "maxDispatches": 7,
+          "maxCostMicros": 8537627,
+          "tokenLimit": 7028672
+        },
+        "W2": {
+          "maxDispatches": 6,
+          "maxCostMicros": 7317966,
+          "tokenLimit": 6024576
+        },
+        "W3": {
+          "maxDispatches": 6,
+          "maxCostMicros": 7317966,
+          "tokenLimit": 6024576
+        },
+        "W4": {
+          "maxDispatches": 6,
+          "maxCostMicros": 7317966,
+          "tokenLimit": 6024576
+        }
+      }
+    },
+    {
+      "model": "qwen3.8-max-0902",
+      "phaseLimits": {
+        "A": {
+          "maxDispatches": 13,
+          "maxCostMicros": 157916928,
+          "maxBillableOutputTokens": 53248,
+          "tokenLimit": 13053248
+        },
+        "B": {
+          "maxDispatches": 12,
+          "maxCostMicros": 145769472,
+          "maxBillableOutputTokens": 49152,
+          "tokenLimit": 12049152
+        }
+      },
+      "maxAcrossPhases": {
+        "dispatches": 25,
+        "costMicros": 303686400,
+        "billableOutputTokens": 102400,
+        "tokenLimit": 25102400
+      },
+      "taskLimits": {
+        "W1": {
+          "maxDispatches": 7,
+          "maxCostMicros": 85032192,
+          "tokenLimit": 7028672
+        },
+        "W2": {
+          "maxDispatches": 6,
+          "maxCostMicros": 72884736,
+          "tokenLimit": 6024576
+        },
+        "W3": {
+          "maxDispatches": 6,
+          "maxCostMicros": 72884736,
+          "tokenLimit": 6024576
+        },
+        "W4": {
+          "maxDispatches": 6,
+          "maxCostMicros": 72884736,
+          "tokenLimit": 6024576
+        }
+      }
+    }
+  ],
+  "commonMaterials": {
+    "path": "common-materials.json",
+    "sha256": "189997f9963aa4881257664c956e1159b812aab8c3c182734bd2434038c650a1",
+    "bytes": 3053
+  },
+  "sourceOfExactProfiles": {
+    "path": "profiles/qwen-main-v1.json",
+    "sha256": "92aa178fd3b88b540e93babf9a9dc8a9152c4b8a2320f58ff87e2b44ce733d32",
+    "bytes": 14179
+  },
+  "ledgerRules": {
+    "originalRunRequired": true,
+    "preservePriorRequestsAndCost": true,
+    "legacyAndUnknownIncludedInGlobalCap": true,
+    "unusedMoneyCreatesCallsOrSearchAuthorization": false,
+    "quotaIncreaseClearsUnknownOrReopensStopped": false,
+    "existingTaskSnapshotLimitsChanged": false,
+    "requireFullRemainingMatrixAtInitialAdmission": true,
+    "phaseAndModelCapsCannotBorrow": true,
+    "spentPlusHeldPlusNextReserveCheckedAtomically": true
+  },
+  "runtimePreparation": {
+    "entry": "existing trusted operator setup only; no public plan/profile/endpoint/credential controls",
+    "requestBudgetMaxCost": "leave public maxCostMicros cap unchanged; trusted plan-specific task admission supplies bounded max_cost_micros before first dispatch, persists plan binding; never mass-update legacy tasks",
+    "schemaMigration": "existing V4 CHECK limits are 20 requests/1 CNY; use a new reviewed forward migration for bounded explicit policy, retain old defaults and task snapshots; do not rewrite V4 or delete counters",
+    "profileBinding": "only fill confirmed account fields and compute runtime digests; otherwise leave closed; output4096 and Max/Pro admission need bounded validation support"
+  }
+}

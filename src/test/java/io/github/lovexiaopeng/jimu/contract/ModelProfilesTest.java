@@ -17,6 +17,49 @@ import org.springframework.core.env.SystemEnvironmentPropertySource;
 
 class ModelProfilesTest {
   @Test
+  void closedPlanNeverEnablesCloudEvenWithDispatchAndTestFlags() {
+    var p = local();
+    p.put("jimu.test-mode", "true");
+    p.put("jimu.model.evaluation-plan-ref", "qwen-main-v1");
+    p.put("jimu.model.evaluation-phase", "A");
+    p.put("jimu.model.evaluation-sample", "W1");
+    p.put("jimu.model.evaluation-run-id", "original-run");
+    p.put("jimu.model.paid-dispatch-enabled", "true");
+    p.put("jimu.model.allowed-origins[0]", "https://dashscope.aliyuncs.com");
+    String prefix = "jimu.model.profiles.local.";
+    Map.ofEntries(
+            Map.entry("base-url", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+            Map.entry("model", "qwen3.7-plus-2026-05-26"),
+            Map.entry("revision", "qwen3.7-plus-2026-05-26"),
+            Map.entry("transport-policy", "cloud-https-v1"),
+            Map.entry("paid", "true"),
+            Map.entry("max-output-tokens", "4096"),
+            Map.entry("output-limit-field", "max_completion_tokens"),
+            Map.entry("output-margin-tokens", "10"),
+            Map.entry("capabilities.context-limit", "1000000"),
+            Map.entry("capabilities.evidence", "modelstudio-nonthinking-v1"),
+            Map.entry("capabilities.stream-text", "true"),
+            Map.entry("capabilities.stream-tools", "true"),
+            Map.entry("capabilities.usage-call", "true"),
+            Map.entry("capabilities.usage-stream", "true"),
+            Map.entry("provider-options.enable_thinking", "false"),
+            Map.entry("provider-options.enable_search", "false"),
+            Map.entry("price.version", "reviewed-list-20261016"),
+            Map.entry("price.currency", "CNY"),
+            Map.entry("price.input-micros-per-million", "6000000"),
+            Map.entry("price.output-micros-per-million", "24000000"),
+            Map.entry("price.input-token-upper", "1000000"),
+            Map.entry("price.bound-evidence", "reviewed-full-context"))
+        .forEach((k, v) -> p.put(prefix + k, v));
+    var profiles = profiles(p);
+    assertEquals(
+        "MODEL_EVALUATION_CLOSED",
+        assertThrows(TaskFailure.class, () -> profiles.admit(profiles.selected("tenant"))).code());
+    p.remove("jimu.model.evaluation-plan-ref");
+    assertThrows(IllegalArgumentException.class, () -> profiles(p));
+  }
+
+  @Test
   void secretEnvironmentNamesAreNotTreatedAsProfileProperties() {
     var env = new StandardEnvironment();
     env.getPropertySources()

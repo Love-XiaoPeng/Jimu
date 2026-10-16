@@ -1,0 +1,18 @@
+manifestVersion: 1
+id: jimu.workspace.write
+version: 0.1.0
+kind: tool
+hostApi: ">=0.1.0 <0.2.0"
+entry: {type: trusted-jvm, class: io.github.lovexiaopeng.jimu.plugins.builtin.workspace.WritePlugin}
+capabilities:
+  - name: write
+    inputSchema: input.schema.json
+    outputSchema: output.schema.json
+    sideEffect: write
+permissions: {filesystem: [host-task-workspace]}
+secretRefs: []
+dependencies: []
+limits: {timeoutMs: 30000, outputBytes: 1048576}
+healthCheck: {operation: workspace-readiness, timeoutMs: 2000}
+errorContract: jimu-invocation-result
+eventTypes: [invocation.started, invocation.completed, invocation.failed]

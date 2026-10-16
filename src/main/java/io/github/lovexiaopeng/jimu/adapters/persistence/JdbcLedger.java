@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
+import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationPlans;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
@@ -132,7 +133,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             models.admit(candidate);
             run = candidate.paid() ? models.evaluationRunId() : null;
           } else run = s(binding.getFirst(), "evaluation_run_id");
-          evaluation(identity.tenant(), run);
+          var evaluation = evaluation(identity.tenant(), run);
           var budget = bucket(identity.tenant());
           identity(identity);
           String snapshot = Payloads.json(request), digest = Payloads.hash(snapshot);
@@ -170,6 +171,18 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           if (request.budget().maxCostMicros() != null && !model.paid())
             throw new TaskFailure(400, "CURRENCY_BUDGET_NOT_CONFIGURED");
           models.admit(model);
+          var evaluationBinding = bindEvaluation(evaluation, model);
+          if (evaluationBinding != null
+              && !request.capabilityIds().equals(List.of("web_fetch", "read", "write", "present")))
+            throw new TaskFailure(400, "INVALID_CAPABILITIES");
+          if (evaluationBinding != null
+              && !rows(
+                      "SELECT id FROM task WHERE tenant_id=? AND evaluation_run_id=? AND evaluation_model=? AND evaluation_sample=? LIMIT 1",
+                      identity.tenant(),
+                      run,
+                      model.model(),
+                      evaluationBinding.sample())
+                  .isEmpty()) throw new TaskFailure(409, "EVALUATION_SAMPLE_ALREADY_BOUND");
           String modelSnapshot = Payloads.json(model);
           if (n(budget, "queued") >= n(budget, "queue_limit"))
             throw new TaskFailure(429, "QUEUE_LIMIT");
@@ -198,6 +211,34 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               Payloads.hash(toolSnapshot),
               identity.tenant(),
               task);
+          if (evaluationBinding != null) {
+            var selection = models.evaluationSelection();
+            var plan = selection.plan();
+            String bindingSnapshot = Payloads.json(evaluationBinding);
+            db.update(
+                "UPDATE task SET evaluation_snapshot=?,evaluation_digest=?,evaluation_phase=?,evaluation_sample=?,evaluation_model=?,max_models=LEAST(max_models,?),max_tokens=?,max_cost_micros=LEAST(max_cost_micros,?) WHERE tenant_id=? AND id=?",
+                bindingSnapshot,
+                Payloads.hash(bindingSnapshot),
+                selection.phase(),
+                selection.sample(),
+                model.model(),
+                selection.sample().equals("W1") ? 7 : 6,
+                (selection.sample().equals("W1") ? 7L : 6L) * 1004096,
+                request.budget().maxCostMicros() == null
+                    ? EvaluationPlans.taskCost(plan, model.model(), selection.sample())
+                    : Math.min(
+                        request.budget().maxCostMicros(),
+                        EvaluationPlans.taskCost(plan, model.model(), selection.sample())),
+                identity.tenant(),
+                task);
+            // The HTTP budget only tightens this host-selected private task ceiling.
+            if (request.budget().maxCostMicros() == null)
+              db.update(
+                  "UPDATE task SET max_cost_micros=? WHERE tenant_id=? AND id=?",
+                  EvaluationPlans.taskCost(plan, model.model(), selection.sample()),
+                  identity.tenant(),
+                  task);
+          }
           db.update(
               "UPDATE tenant_budget SET queued=queued+1 WHERE tenant_id=?", identity.tenant());
           reserve(identity.tenant(), task, task + ":queue", null, "QUEUE", 1, "RESERVED", "KNOWN");
@@ -414,14 +455,24 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   public Optional<Lease> claim(String worker) {
     for (String tenant :
         db.queryForList("SELECT tenant_id FROM tenant_budget ORDER BY tenant_id", String.class)) {
+      // Select without a lock, then recheck this exact candidate under the shared run lock.
+      // Every worker transaction takes run -> tenant -> task, including recovery claims.
+      var ready =
+          rows(
+              "SELECT id,evaluation_run_id FROM task WHERE tenant_id=? AND record_version=1 AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) ORDER BY ready_at,id LIMIT 1",
+              tenant);
+      if (ready.isEmpty()) continue;
+      var candidate = ready.getFirst();
       Optional<Lease> lease =
           tx(
               () -> {
+                var evaluation = evaluation(tenant, s(candidate, "evaluation_run_id"));
                 var budget = bucket(tenant);
                 var candidates =
                     rows(
-                        "SELECT *,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND record_version=1 AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) ORDER BY ready_at,id LIMIT 1 FOR UPDATE SKIP LOCKED",
-                        tenant);
+                        "SELECT *,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND id=? AND record_version=1 AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) FOR UPDATE SKIP LOCKED",
+                        tenant,
+                        s(candidate, "id"));
                 if (candidates.isEmpty()) return Optional.empty();
                 var task = candidates.getFirst();
                 String taskId = s(task, "id");
@@ -448,6 +499,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                   return Optional.empty();
                 }
                 String rejection = modelRejection(task);
+                if (rejection == null) rejection = runRejection(evaluation);
                 if (rejection != null) {
                   terminal(task, "FAILED", rejection);
                   return Optional.empty();
@@ -512,6 +564,9 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   }
 
   private Map<String, Object> fenced(Lease lease, boolean admission) {
+    // Hold through the committing transaction: STOPPED cannot race a cached admission,
+    // publication or successful finish. Settlement of previously admitted effects stays allowed.
+    var evaluation = evaluation(lease);
     bucket(lease.tenant());
     var task = locked(lease.tenant(), lease.taskId());
     if (n(task, "fence") != lease.fence()
@@ -522,6 +577,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
       throw new TaskFailure(409, "FENCE_REJECTED");
     if (admission) {
       String rejection = modelRejection(task);
+      if (rejection == null) rejection = runRejection(evaluation);
       if (rejection != null) throw new TaskFailure(409, rejection);
       access(task);
       if (task.get("cancel_requested_at") != null) throw new TaskFailure(409, "CANCEL_REQUESTED");
@@ -536,6 +592,12 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             lease.fence())
         != 1) throw new TaskFailure(409, "FENCE_REJECTED");
     return task;
+  }
+
+  private String runRejection(Map<String, Object> evaluation) {
+    return evaluation != null && !"OPEN".equals(s(evaluation, "state"))
+        ? "MODEL_BUDGET_EXCEEDED"
+        : null;
   }
 
   // The dispatch fact is the execution decision, including rows written before this fix.
@@ -603,7 +665,14 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public ModelSnapshot modelSnapshot(Lease lease) {
-    return tx(() -> snapshot(fenced(lease, true)));
+    return tx(
+        () -> {
+          var evaluation = evaluation(lease);
+          var task = fenced(lease, true);
+          var snapshot = snapshot(task);
+          checkEvaluation(task, evaluation, snapshot);
+          return snapshot;
+        });
   }
 
   private ToolSnapshot tools(Map<String, Object> task) {
@@ -642,6 +711,185 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
         rows("SELECT * FROM evaluation_budget WHERE tenant_id=? AND id=? FOR UPDATE", tenant, run);
     if (found.isEmpty()) throw new TaskFailure(503, "MODEL_EVALUATION_UNAVAILABLE");
     return found.getFirst();
+  }
+
+  private EvaluationPlans.Plan plan(Map<String, Object> evaluation) {
+    if (evaluation == null || evaluation.get("plan_snapshot") == null) return null;
+    String json = s(evaluation, "plan_snapshot");
+    if (!Payloads.hash(json).equals(s(evaluation, "plan_digest")))
+      throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
+    var stored = Payloads.read(json, EvaluationPlans.Plan.class);
+    var canonical = EvaluationPlans.plan(stored.id());
+    if (!stored.equals(canonical)
+        || n(evaluation, "policy_version") != 2
+        || n(evaluation, "max_requests") > canonical.maxRequests()
+        || n(evaluation, "max_cost_micros") > canonical.maxCostMicros())
+      throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
+    if (!rows(
+            "SELECT id FROM task WHERE tenant_id=? AND evaluation_run_id=? AND evaluation_snapshot IS NOT NULL AND (JSON_UNQUOTE(JSON_EXTRACT(evaluation_snapshot,'$.planDigest'))<>? OR (evaluation_phase='B' AND JSON_UNQUOTE(JSON_EXTRACT(evaluation_snapshot,'$.qualificationDigest'))<>COALESCE(?,''))) LIMIT 1",
+            s(evaluation, "tenant_id"),
+            s(evaluation, "id"),
+            s(evaluation, "plan_digest"),
+            s(evaluation, "phase_b_digest"))
+        .isEmpty()) throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
+    return canonical;
+  }
+
+  private EvaluationPlans.Binding bindEvaluation(
+      Map<String, Object> evaluation, ModelSnapshot model) {
+    var selection = models.evaluationSelection();
+    var plan = plan(evaluation);
+    if (plan == null && selection == null) return null;
+    if (plan == null || selection == null || !plan.equals(selection.plan()) || !model.paid())
+      throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
+    // Same validation as profile admission, including the strictly local test seam.
+    models.checkEvaluationModel(plan, model);
+    boolean initial =
+        rows(
+                "SELECT id FROM task WHERE tenant_id=? AND evaluation_run_id=? AND evaluation_snapshot IS NOT NULL LIMIT 1",
+                s(evaluation, "tenant_id"),
+                s(evaluation, "id"))
+            .isEmpty();
+    if (initial && "OPEN".equals(s(evaluation, "state"))) {
+      var tenant = bucket(s(evaluation, "tenant_id"));
+      if (n(evaluation, "requests_used") + plan.maxRequests() > n(evaluation, "max_requests")
+          || plan.matrixWorstCostMicros()
+              > n(evaluation, "max_cost_micros") - n(evaluation, "cost_held")
+          || plan.matrixWorstCostMicros() > n(tenant, "cost_limit") - n(tenant, "cost_held")
+          || plan.tenantTokenLimit() > n(tenant, "token_limit") - n(tenant, "token_held")
+          || plan.maxRequests() > n(tenant, "model_limit") - n(tenant, "model_used"))
+        throw new TaskFailure(429, "EVALUATION_MATRIX_BUDGET_UNAVAILABLE");
+    }
+    if (model.stream() != List.of("W2", "W4").contains(selection.sample()))
+      throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
+    String qualification = null;
+    if (selection.phase().equals("B")) {
+      if (!"OPEN".equals(s(evaluation, "state"))
+          || !rows(
+                  "SELECT r.id FROM reservation r JOIN task t ON t.tenant_id=r.tenant_id AND t.id=r.task_id WHERE t.tenant_id=? AND t.evaluation_run_id=? AND r.state='HELD_UNKNOWN' LIMIT 1",
+                  s(evaluation, "tenant_id"),
+                  s(evaluation, "id"))
+              .isEmpty()) throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
+      var q =
+          EvaluationPlans.qualify(
+              plan, s(evaluation, "phase_b_snapshot"), s(evaluation, "phase_b_digest"));
+      if (!q.originalRunId().equals(s(evaluation, "id")) || !q.finalists().contains(model.model()))
+        throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
+      var screening =
+          rows(
+              "SELECT evaluation_model,evaluation_sample,state FROM task WHERE tenant_id=? AND evaluation_run_id=? AND evaluation_phase='A'",
+              s(evaluation, "tenant_id"),
+              s(evaluation, "id"));
+      for (String candidate : plan.candidates().keySet())
+        for (String sample : List.of("W1", "W2")) {
+          var match =
+              screening.stream()
+                  .filter(
+                      t ->
+                          candidate.equals(s(t, "evaluation_model"))
+                              && sample.equals(s(t, "evaluation_sample")))
+                  .toList();
+          if (match.size() != 1
+              || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(match.getFirst(), "state"))
+              || q.finalists().contains(candidate)
+                  && !"SUCCEEDED".equals(s(match.getFirst(), "state")))
+            throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
+        }
+      if (rows(
+              "SELECT id FROM task WHERE tenant_id=? AND evaluation_run_id=? AND evaluation_phase='B' LIMIT 1",
+              s(evaluation, "tenant_id"),
+              s(evaluation, "id"))
+          .isEmpty()) {
+        long rounds = 12L * q.finalists().size();
+        long remainingCost =
+            q.finalists().stream()
+                .mapToLong(candidate -> 2 * EvaluationPlans.taskCost(plan, candidate, "W3"))
+                .sum();
+        var tenant = bucket(s(evaluation, "tenant_id"));
+        if (n(evaluation, "requests_used") + rounds > n(evaluation, "max_requests")
+            || remainingCost > n(evaluation, "max_cost_micros") - n(evaluation, "cost_held")
+            || remainingCost > n(tenant, "cost_limit") - n(tenant, "cost_held")
+            || rounds * 1004096 > n(tenant, "token_limit") - n(tenant, "token_held")
+            || rounds > n(tenant, "model_limit") - n(tenant, "model_used"))
+          throw new TaskFailure(429, "EVALUATION_MATRIX_BUDGET_UNAVAILABLE");
+      }
+      qualification = s(evaluation, "phase_b_digest");
+    }
+    return new EvaluationPlans.Binding(
+        plan.id(),
+        s(evaluation, "plan_digest"),
+        selection.phase(),
+        selection.sample(),
+        model.model(),
+        qualification,
+        n(evaluation, "max_requests"),
+        n(evaluation, "max_cost_micros"));
+  }
+
+  private void checkEvaluation(
+      Map<String, Object> task, Map<String, Object> evaluation, ModelSnapshot model) {
+    var configured = bindEvaluation(evaluation, model);
+    if (task.get("evaluation_snapshot") == null) {
+      if (configured != null) throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
+      return;
+    }
+    String json = s(task, "evaluation_snapshot");
+    if (!Payloads.hash(json).equals(s(task, "evaluation_digest")))
+      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    var binding = Payloads.read(json, EvaluationPlans.Binding.class);
+    if (!binding.equals(configured)
+        || !binding.phase().equals(s(task, "evaluation_phase"))
+        || !binding.sample().equals(s(task, "evaluation_sample"))
+        || !binding.model().equals(s(task, "evaluation_model")))
+      throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
+  }
+
+  private void admitPlanDispatch(
+      Map<String, Object> task, Map<String, Object> evaluation, ModelSnapshot model, long cost) {
+    var plan = plan(evaluation);
+    String phase = s(task, "evaluation_phase"), sample = s(task, "evaluation_sample");
+    var usage =
+        rows(
+            "SELECT t.evaluation_phase,t.evaluation_sample,t.evaluation_model,COUNT(*) AS calls,COALESCE(SUM(COALESCE(d.actual_cost,d.reserved_cost)),0) AS cost FROM model_dispatch d JOIN task t ON t.tenant_id=d.tenant_id AND t.id=d.task_id WHERE t.tenant_id=? AND t.evaluation_run_id=? GROUP BY t.evaluation_phase,t.evaluation_sample,t.evaluation_model",
+            s(task, "tenant_id"),
+            s(evaluation, "id"));
+    long phaseCalls = 0,
+        phaseCost = 0,
+        modelCalls = 0,
+        modelCost = 0,
+        phaseModelCalls = 0,
+        phaseModelCost = 0,
+        sampleCalls = 0;
+    for (var row : usage) {
+      boolean sameModel = model.model().equals(s(row, "evaluation_model"));
+      if (sameModel) {
+        modelCalls += n(row, "calls");
+        modelCost += n(row, "cost");
+      }
+      if (phase.equals(s(row, "evaluation_phase"))) {
+        phaseCalls += n(row, "calls");
+        phaseCost += n(row, "cost");
+        if (sameModel) {
+          phaseModelCalls += n(row, "calls");
+          phaseModelCost += n(row, "cost");
+        }
+      }
+      if (sameModel && sample.equals(s(row, "evaluation_sample"))) sampleCalls += n(row, "calls");
+    }
+    int modelPhaseLimit = phase.equals("A") ? 13 : 12;
+    long phaseLimit = phase.equals("A") ? plan.phaseACostMicros() : plan.phaseBCostMicros();
+    if (phaseCalls >= (phase.equals("A") ? 13 * plan.candidates().size() : 24)
+        || phaseCost + cost > phaseLimit
+        || modelCalls >= 25
+        || modelCost + cost > 25 * cost
+        || phaseModelCalls >= modelPhaseLimit
+        || phaseModelCost + cost > modelPhaseLimit * cost
+        || sampleCalls >= (sample.equals("W1") ? 7 : 6)
+        || !rows(
+                "SELECT d.id FROM model_dispatch d JOIN task t ON t.tenant_id=d.tenant_id AND t.id=d.task_id WHERE t.tenant_id=? AND t.evaluation_run_id=? AND d.state='DISPATCHED' LIMIT 1",
+                s(task, "tenant_id"),
+                s(evaluation, "id"))
+            .isEmpty()) throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
   }
 
   @Override
@@ -705,6 +953,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
           if (!ModelProfiles.digest(model).equals(wire.path("configDigest").asText()))
             throw new TaskFailure(409, "MODEL_CONFIG_UNAVAILABLE");
+          checkEvaluation(task, evaluation, model);
           models.checkInput(model, wire.path("requestBody").asText());
           long upper =
               model.paid()
@@ -732,6 +981,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               || n(budget, "token_held") + upper > n(budget, "token_limit")
               || n(task, "token_held") + upper > n(task, "max_tokens"))
             throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
+          if (task.get("evaluation_snapshot") != null)
+            admitPlanDispatch(task, evaluation, model, cost);
           String dispatch = id();
           if (model.paid()) {
             db.update(
@@ -1678,13 +1929,13 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7') AND success=TRUE",
             Integer.class)
-        != 6) throw new IllegalStateException("Required migration unavailable");
+        != 7) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 6) throw new IllegalStateException("Unsupported schema version");
+        != 7) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override

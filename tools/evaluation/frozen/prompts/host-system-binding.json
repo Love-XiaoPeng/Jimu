@@ -1,0 +1,8 @@
+{
+  "template": "prompts/host-system.template.txt",
+  "sha256": "098e9b223328912e9c0d0a7e510a9eb280ef2388aa1dbf5c833a8f3bfd5f3078",
+  "onlyVariable": "HOST_REPORT_TIME",
+  "source": "task.report_time reserved by host at admission, formatted by Java Instant.toString()",
+  "mustNotOverrideWithPlanTime": true,
+  "recordExpandedSystemSha256AtAdmission": true
+}

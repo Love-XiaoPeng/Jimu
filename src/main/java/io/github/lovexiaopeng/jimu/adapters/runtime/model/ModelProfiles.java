@@ -20,7 +20,10 @@ public final class ModelProfiles {
       Map<String, ModelSnapshot> profiles,
       List<String> allowedOrigins,
       boolean paidDispatchEnabled,
-      String evaluationRunId) {}
+      String evaluationRunId,
+      String evaluationPlanRef,
+      String evaluationPhase,
+      String evaluationSample) {}
 
   private final Environment env;
   private final Settings settings;
@@ -59,6 +62,17 @@ public final class ModelProfiles {
 
   public String evaluationRunId() {
     return fixture ? null : settings.evaluationRunId();
+  }
+
+  public EvaluationPlans.Selection evaluationSelection() {
+    if (fixture || settings.evaluationPlanRef() == null) return null;
+    return EvaluationPlans.selection(
+        settings.evaluationPlanRef(), settings.evaluationPhase(), settings.evaluationSample());
+  }
+
+  public void checkEvaluationModel(EvaluationPlans.Plan plan, ModelSnapshot snapshot) {
+    EvaluationPlans.validateModel(
+        plan, snapshot, env.getProperty("jimu.test-mode", Boolean.class, false));
   }
 
   public boolean ready() {
@@ -137,6 +151,13 @@ public final class ModelProfiles {
             || evaluationRunId() == null
             || evaluationRunId().isBlank()))
       throw new TaskFailure(503, "MODEL_COST_BOUND_UNAVAILABLE");
+    var selection = evaluationSelection();
+    if (selection != null
+        && !(env.getProperty("jimu.test-mode", Boolean.class, false)
+            && "trusted-local-v1".equals(snapshot.transportPolicy())
+            && List.of("127.0.0.1", "[::1]").contains(URI.create(snapshot.baseUrl()).getHost()))
+        && (!selection.plan().enabled() || !selection.plan().paidDispatchAuthorized()))
+      throw new TaskFailure(503, "MODEL_EVALUATION_CLOSED");
     credential(snapshot);
   }
 
@@ -197,7 +218,7 @@ public final class ModelProfiles {
         || p.responseBytes() < 1
         || p.responseBytes() > 1048576
         || p.maxOutputTokens() < 1
-        || p.maxOutputTokens() > (p.paid() ? 512 : 2048)
+        || p.maxOutputTokens() > (p.paid() ? (evaluationSelection() == null ? 512 : 4096) : 2048)
         || p.outputMarginTokens() < 0
         || p.outputMarginTokens() >= p.maxOutputTokens()
         || !List.of("max_tokens", "max_completion_tokens").contains(p.outputLimitField()))
@@ -228,7 +249,12 @@ public final class ModelProfiles {
       throw new IllegalArgumentException("Invalid complete input limit");
     if (p.paid()
         && "cloud-https-v1".equals(p.transportPolicy())
-        && List.of("qwen3.7-plus-2026-05-26", "qwen3.7-flash-2026-07-15").contains(p.model())
+        && List.of(
+                "qwen3.7-plus-2026-05-26",
+                "qwen3.7-flash-2026-07-15",
+                "qwen3.8-max-0902",
+                "deepseek-v4-pro-0813")
+            .contains(p.model())
         && (c.contextLimit() != 1000000
             || !"max_completion_tokens".equals(p.outputLimitField())
             || p.outputMarginTokens() < 10
@@ -241,6 +267,9 @@ public final class ModelProfiles {
             && p.providerOptions()
                 .equals(Map.of("enable_thinking", false, "enable_search", false))))
       throw new IllegalArgumentException("Unsupported provider options");
+    if (p.maxOutputTokens() > 512 && p.paid() && evaluationSelection() != null)
+      EvaluationPlans.validateModel(
+          evaluationSelection().plan(), p, env.getProperty("jimu.test-mode", Boolean.class, false));
     if (p.price() != null) {
       if (!p.paid()) throw new IllegalArgumentException("Price requires monetary accounting");
       var price = p.price();

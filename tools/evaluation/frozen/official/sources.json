@@ -1,0 +1,134 @@
+[
+  {
+    "name": "max38",
+    "html_bytes": 33292,
+    "text_chars": 7563,
+    "url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen3-8-max.md",
+    "final_url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen3-8-max.md",
+    "sha256": "66fcd980cb9fc14b69aa2bb9ac8847a9f4cb25cef4d9d50bc80e49322fed9313",
+    "transport_sha256": "66fcd980cb9fc14b69aa2bb9ac8847a9f4cb25cef4d9d50bc80e49322fed9313",
+    "content_encoding": "",
+    "fetched_at_utc": "2026-10-16T14:05:19.178144+00:00"
+  },
+  {
+    "name": "max37",
+    "html_bytes": 31381,
+    "text_chars": 9035,
+    "url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen3-7-max.md",
+    "final_url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen3-7-max.md",
+    "sha256": "cff4c89b3aff81ac95db74b2919de15535ce47ccd352e886bac4c6083cdabaaf",
+    "transport_sha256": "cff4c89b3aff81ac95db74b2919de15535ce47ccd352e886bac4c6083cdabaaf",
+    "content_encoding": "",
+    "fetched_at_utc": "2026-10-16T14:05:19.121688+00:00"
+  },
+  {
+    "name": "plus37",
+    "html_bytes": 29042,
+    "text_chars": 8022,
+    "url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen3-7-plus.md",
+    "final_url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen3-7-plus.md",
+    "sha256": "2605e62bb1a410473666eae05d0ca15805eef65d0d6b943b02b14888c92aea20",
+    "transport_sha256": "2605e62bb1a410473666eae05d0ca15805eef65d0d6b943b02b14888c92aea20",
+    "content_encoding": "",
+    "fetched_at_utc": "2026-10-16T14:05:19.140728+00:00"
+  },
+  {
+    "name": "flash38",
+    "html_bytes": 13674,
+    "text_chars": 4013,
+    "url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen3-8-flash.md",
+    "final_url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen3-8-flash.md",
+    "sha256": "26f794be85b8d9ec7143d6bad79ef97e5f1a20c70c86b96efcd62a17443a2a4c",
+    "transport_sha256": "26f794be85b8d9ec7143d6bad79ef97e5f1a20c70c86b96efcd62a17443a2a4c",
+    "content_encoding": "",
+    "fetched_at_utc": "2026-10-16T14:05:19.094790+00:00"
+  },
+  {
+    "name": "flash37",
+    "html_bytes": 39060,
+    "text_chars": 10886,
+    "url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen3-7-flash.md",
+    "final_url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen3-7-flash.md",
+    "sha256": "f3b84e646aeeb6eb76cc41fafc8dcfa851d2d805c9fd94797fc069b77960bd94",
+    "transport_sha256": "f3b84e646aeeb6eb76cc41fafc8dcfa851d2d805c9fd94797fc069b77960bd94",
+    "content_encoding": "",
+    "fetched_at_utc": "2026-10-16T14:05:19.714208+00:00"
+  },
+  {
+    "name": "pro",
+    "html_bytes": 19285,
+    "text_chars": 5534,
+    "url": "https://docs.bailian.console.aliyun.com/zh/model-studio/deepseek-v4-pro.md",
+    "final_url": "https://docs.bailian.console.aliyun.com/zh/model-studio/deepseek-v4-pro.md",
+    "sha256": "8db45dd845cd1358f26836069f3271723efe3070b2c62135f64b14d52a95fec8",
+    "transport_sha256": "8db45dd845cd1358f26836069f3271723efe3070b2c62135f64b14d52a95fec8",
+    "content_encoding": "",
+    "fetched_at_utc": "2026-10-16T14:05:19.706408+00:00"
+  },
+  {
+    "name": "deepseek-api",
+    "html_bytes": 41043,
+    "text_chars": 21480,
+    "url": "https://docs.bailian.console.aliyun.com/zh/model-studio/deepseek-api.md",
+    "final_url": "https://docs.bailian.console.aliyun.com/zh/model-studio/deepseek-api.md",
+    "sha256": "fd3b5bf1af05de68764b69fba15d5a55f119be1b424ef6e65c835d80e743862d",
+    "transport_sha256": "fd3b5bf1af05de68764b69fba15d5a55f119be1b424ef6e65c835d80e743862d",
+    "content_encoding": "",
+    "fetched_at_utc": "2026-10-16T14:05:19.744595+00:00"
+  },
+  {
+    "name": "pricing",
+    "html_bytes": 649803,
+    "text_chars": 103667,
+    "url": "https://docs.bailian.console.aliyun.com/zh/model-studio/model-pricing.md",
+    "final_url": "https://docs.bailian.console.aliyun.com/zh/model-studio/model-pricing.md",
+    "sha256": "d5c8c84475c958bc95bd56118458fa6b2f51323852bb112821c7fc97e9638ee5",
+    "transport_sha256": "d5c8c84475c958bc95bd56118458fa6b2f51323852bb112821c7fc97e9638ee5",
+    "content_encoding": "",
+    "fetched_at_utc": "2026-10-16T14:05:19.680696+00:00"
+  },
+  {
+    "name": "chat-api",
+    "html_bytes": 131599,
+    "text_chars": 66736,
+    "url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen-api-via-openai-chat-completions.md",
+    "final_url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen-api-via-openai-chat-completions.md",
+    "sha256": "cea699a0250c0f7c9122f5effe0147dedb33f0e1b66d3b120b46ffb39c2aa80b",
+    "transport_sha256": "cea699a0250c0f7c9122f5effe0147dedb33f0e1b66d3b120b46ffb39c2aa80b",
+    "content_encoding": "",
+    "fetched_at_utc": "2026-10-16T14:05:19.967388+00:00"
+  },
+  {
+    "name": "base-url",
+    "html_bytes": 8833,
+    "text_chars": 4897,
+    "url": "https://docs.bailian.console.aliyun.com/zh/model-studio/base-url.md",
+    "final_url": "https://docs.bailian.console.aliyun.com/zh/model-studio/base-url.md",
+    "sha256": "f0357f2679da8c588e144d4c8dfa411b9f42522d22801198184b436bd7faa8d6",
+    "transport_sha256": "f0357f2679da8c588e144d4c8dfa411b9f42522d22801198184b436bd7faa8d6",
+    "content_encoding": "",
+    "fetched_at_utc": "2026-10-16T14:06:49.322528+00:00"
+  },
+  {
+    "name": "deep-thinking",
+    "html_bytes": 122779,
+    "text_chars": 71149,
+    "url": "https://docs.bailian.console.aliyun.com/zh/model-studio/deep-thinking.md",
+    "final_url": "https://docs.bailian.console.aliyun.com/zh/model-studio/deep-thinking.md",
+    "sha256": "0b4fb190ebabf5b50861a3efb94aa93e130daf0d8ed2f42d0fbbedf8ac6fa7fc",
+    "transport_sha256": "0b4fb190ebabf5b50861a3efb94aa93e130daf0d8ed2f42d0fbbedf8ac6fa7fc",
+    "content_encoding": "",
+    "fetched_at_utc": "2026-10-16T14:06:49.298851+00:00"
+  },
+  {
+    "name": "function-calling",
+    "html_bytes": 197627,
+    "text_chars": 116939,
+    "url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen-function-calling.md",
+    "final_url": "https://docs.bailian.console.aliyun.com/zh/model-studio/qwen-function-calling.md",
+    "sha256": "b9da42acf23cae57eeb89b1a5a02b45156205500a08e2121e8a840931bebc310",
+    "transport_sha256": "b9da42acf23cae57eeb89b1a5a02b45156205500a08e2121e8a840931bebc310",
+    "content_encoding": "",
+    "fetched_at_utc": "2026-10-16T14:06:49.361157+00:00"
+  }
+]

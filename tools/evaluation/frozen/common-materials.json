@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "references": [
+    {
+      "path": "contracts/repository-manifest.json",
+      "sha256": "a836c5be36af4091adf32f0ffab13d7a450fd3dcd67ff48f6a01b5a8ac97401b",
+      "bytes": 7755
+    },
+    {
+      "path": "contracts/tools.json",
+      "sha256": "f43788c87cc5d7525b63ae19f5785ca65c437f2435883f6dcc0ff13c5572f65e",
+      "bytes": 3198
+    },
+    {
+      "path": "contracts/tool-pins.json",
+      "sha256": "13eb730b6bebf3ed633c62010237238ccc0f1810d8ffe8abd15548844f047a55",
+      "bytes": 1419
+    },
+    {
+      "path": "prompts/host-system.template.txt",
+      "sha256": "098e9b223328912e9c0d0a7e510a9eb280ef2388aa1dbf5c833a8f3bfd5f3078",
+      "bytes": 524
+    },
+    {
+      "path": "prompts/host-system-binding.json",
+      "sha256": "18f2568054149e7b98ab76454af7233fda4053792c5c6d043bb766201cd00999",
+      "bytes": 359
+    },
+    {
+      "path": "sources/source-manifest.json",
+      "sha256": "87c5b50abf630f43b943e33b93b4a446bd2bc4f53f2865f941011df03c73d1fd",
+      "bytes": 2636
+    },
+    {
+      "path": "drafts/seed-manifest.json",
+      "sha256": "c554b4283b64dcf0b69a5e6033afcc338d60b865a6730b6417a2c3f61a36eac4",
+      "bytes": 589
+    },
+    {
+      "path": "samples.json",
+      "sha256": "26e4ee4cdc8dd288d46778119c3830aa07abf936eb6156ea6e0b4beb58a32f42",
+      "bytes": 4492
+    },
+    {
+      "path": "scoring/rubric.json",
+      "sha256": "d0716fa2e7585a9c8b39e936f21b65b3c0b6921f3f7ef6b00d3710e611c3926c",
+      "bytes": 8169
+    },
+    {
+      "path": "scoring/C1-answer.schema.json",
+      "sha256": "142ef9be0dcb9391114d537aa8765b70d21321f260cc0ca512b13c009b301289",
+      "bytes": 730
+    },
+    {
+      "path": "scoring/oracles.json",
+      "sha256": "f4663d4dc528213eae3cec8bc372249c655558cf1988403e42fad354ca9c20b6",
+      "bytes": 1800
+    },
+    {
+      "path": "scoring/scorecard.template.json",
+      "sha256": "924948672558d7846c971e7d87058753079952f66abbf09ae2c608a7129bdcb1",
+      "bytes": 2485
+    },
+    {
+      "path": "gates/B-unlock-policy.json",
+      "sha256": "e461fa08012a9ae32181c8a9b94104d42233ec19d8ec7ed08a9ae505df044133",
+      "bytes": 1740
+    },
+    {
+      "path": "official/sources.json",
+      "sha256": "e2ee8ee62ee325e07e851411564657a44e3445cbf9b2ad5db5425f2a0629e7b1",
+      "bytes": 6311
+    }
+  ],
+  "dynamicBindings": [
+    "task UUID/owner/private workspace scope",
+    "host-reserved report_time only in system template",
+    "actual authorized installation epochs",
+    "actual W4 initial store version",
+    "confirmed account binding and final independent code SHA"
+  ],
+  "bindingReceiptsRequiredBeforeFirstDispatch": true,
+  "finalHttpBody": "serialize through existing OpenAiProtocol, hash exact complete UTF-8 bytes including all history/tools/results; bind to durable dispatch before send; no whitespace or field mutation after proof/reservation",
+  "materialChange": "digest mismatch rejects and persistently stops further paid plan dispatches; no silent rebaseline; new reviewed plan revision required before fresh admission; existing tasks keep originals"
+}

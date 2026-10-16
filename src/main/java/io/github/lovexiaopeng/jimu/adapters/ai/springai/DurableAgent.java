@@ -499,7 +499,9 @@ public final class DurableAgent implements AutoCloseable {
         if (file
             && (error.code().startsWith("REPORT_")
                 || error.code().equals("NO_EVIDENCE")
-                || error.code().equals("STORAGE_BUDGET_EXCEEDED"))) {
+                || error.code().equals("STORAGE_BUDGET_EXCEEDED")
+                || (call.tool().equals("present")
+                    && error.code().equals("MODEL_BUDGET_EXCEEDED")))) {
           ledger.toolFailed(lease, invocation.id(), error.code());
           throw error;
         }
