@@ -19,6 +19,13 @@ that process. Close reports the incomplete drain. The existing supervisor still 
 state through registered PID plus Linux start ticks, with cancellation grace enforced on that
 exact process. TTL/lease expiry and cancelled futures remain insufficient evidence of exit.
 
+The supervisor consults the persisted cancellation timestamp independently of the task's
+current state. In particular, a transition to `NEEDS_RECONCILIATION` cannot erase the request
+to stop a nonquiescent worker. Confirmed process exit releases concurrency while preserving
+unknown tool accounting. The default process regression uses an actual cancel plus SQL-injected
+unknown outcome behind an admitted-effect barrier; it does not claim end-to-end public DNS
+execution in the worker assembly.
+
 These semantics deliberately allow an uninterruptible resolver to retain a worker until it
 exits or the supervisor stops the process. R4's closed token continues to prevent a late DNS
 answer from starting transport. No new daemon, kill-by-name operation or external privilege is

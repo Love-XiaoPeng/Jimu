@@ -1302,7 +1302,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   @Override
   public List<WorkerProcess> processes(String host) {
     return rows(
-            "SELECT w.*,EXISTS(SELECT 1 FROM task_attempt a JOIN task t ON t.tenant_id=a.tenant_id AND t.id=a.task_id WHERE a.worker_id=w.id AND a.quiescent=FALSE AND t.state='CANCEL_REQUESTED' AND t.cancel_requested_at<CURRENT_TIMESTAMP(6)-INTERVAL 3 SECOND) AS overdue FROM worker_process w WHERE host_id=? AND stopped=FALSE ORDER BY id LIMIT 64",
+            "SELECT w.*,EXISTS(SELECT 1 FROM task_attempt a JOIN task t ON t.tenant_id=a.tenant_id AND t.id=a.task_id WHERE a.worker_id=w.id AND a.quiescent=FALSE AND t.cancel_requested_at<CURRENT_TIMESTAMP(6)-INTERVAL 3 SECOND) AS overdue FROM worker_process w WHERE host_id=? AND stopped=FALSE ORDER BY id LIMIT 64",
             host)
         .stream()
         .map(

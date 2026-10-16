@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import os
 import signal
 from pathlib import Path
 
@@ -55,6 +56,36 @@ def verify(e):
                   "response copies accepted pin rather than current installation and rejects drift before effect")
     e.stop(worker)
     e.sql("UPDATE installation SET plugin_version='0.2.0' WHERE tenant_id='tenant-a';")
+
+    task = e.submit("cancel-unknown-receipt")
+    worker = e.start("cancel-unknown-receipt-worker", "worker", "T0")
+    e.barrier(worker)
+    e.assert_that(e.http("POST", "/api/tasks/" + task + "/cancel")[0] == 202,
+                  "cancel accepted while an admitted effect is not yet resolved")
+    # The paused child represents an uninterruptible operation. Inject the ledger state that
+    # uncertain() commits; this is a supervisor/receipt test, not a public DNS end-to-end test.
+    os.kill(e.control["process"].pid, signal.SIGSTOP)
+    try:
+        e.sql("UPDATE invocation SET state='OUTCOME_UNKNOWN' WHERE task_id='" + task + "';"
+              "UPDATE reservation SET state='HELD_UNKNOWN' WHERE task_id='" + task + "' AND category='TOOL';"
+              "UPDATE task SET state='NEEDS_RECONCILIATION',code='EFFECT_OUTCOME_UNKNOWN' WHERE id='" + task + "';")
+        e.assert_that(worker["process"].poll() is None and
+                      e.sql("SELECT quiescent FROM task_attempt WHERE task_id='" + task + "';") == "0" and
+                      e.sql("SELECT state FROM reservation WHERE id='" + task + ":run';") == "RESERVED",
+                      "unknown outcome retains live attempt and run reservation after cancellation",
+                      faultInjection="SQL unknown outcome after real cancel", workerPid=worker["process"].pid)
+    finally:
+        os.kill(e.control["process"].pid, signal.SIGCONT)
+    eventually(lambda: worker["process"].poll() is not None,
+               "cancel intent still stops nonquiescent worker after unknown outcome", 12)
+    eventually(lambda: e.sql("SELECT state FROM reservation WHERE id='" + task + ":run';") == "RELEASED",
+               "supervisor confirms stopped unknown worker before releasing run", 12)
+    e.assert_that(e.sql("SELECT state FROM task WHERE id='" + task + "';") == "NEEDS_RECONCILIATION" and
+                  e.sql("SELECT state FROM reservation WHERE task_id='" + task + "' AND category='TOOL';") == "HELD_UNKNOWN" and
+                  e.sql("SELECT COUNT(*) FROM task_attempt WHERE task_id='" + task + "' AND quiescent=FALSE;") == "0" and
+                  e.fixture.tools.get("/page/cancel-unknown-receipt", 0) == 0,
+                  "process exit resolves quiescence without erasing unknown effect or starting transport",
+                  exitCode=worker["process"].returncode)
 
     for goal, mutation, code in [
         ("pin-corrupt", "tools_digest='" + "0" * 64 + "'", "SNAPSHOT_CORRUPT"),
