@@ -392,7 +392,10 @@ def verify(e, materials_only=False):
                             elif kind=="missing-tool": del messages[3]
                             elif kind=="duplicate-round": messages[4:4]=json.loads(json.dumps(messages[2:4]))
                             elif kind=="reordered": messages[2:6]=messages[4:6]+messages[2:4]
-                            elif kind=="arguments": messages[2]["calls"][0]["arguments"]='{"url":"https://docs.python.org/3/library/colorsys.html"}'
+                            elif kind=="arguments":
+                                args=json.loads(messages[2]["calls"][0]["arguments"])
+                                args["unexpected_history_parameter"]=True
+                                messages[2]["calls"][0]["arguments"]=json.dumps(args,ensure_ascii=False)
                             elif kind=="assistant-content": messages[2]["content"]+=" changed assistant"
                             elif kind=="call-id":
                                 messages[2]["calls"][0]["id"]="changed_call"
