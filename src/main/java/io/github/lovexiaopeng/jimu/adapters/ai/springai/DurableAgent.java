@@ -7,7 +7,7 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.contract.BuiltinManifestLoad
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
 import io.github.lovexiaopeng.jimu.adapters.runtime.http.ProviderHttp;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
-import io.github.lovexiaopeng.jimu.adapters.runtime.web.ConfiguredOriginReader;
+import io.github.lovexiaopeng.jimu.adapters.runtime.web.FetchRuntime;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.BoundaryProbe;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
@@ -18,7 +18,6 @@ import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchInput;
-import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebFetchPlugin;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -73,12 +72,10 @@ public final class DurableAgent implements AutoCloseable {
 
   private final ExecutionLedger ledger;
   private final ArtifactStore store;
-  private final WebFetchPlugin plugin;
+  private final FetchRuntime fetch;
   private final BoundaryProbe probe;
-  private final URI origin;
   private final ModelProfiles models;
   private final OpenAiProtocol protocol = new OpenAiProtocol();
-  private final java.util.Map<String, String> credentials;
   private final ProviderHttp http = new ProviderHttp();
   private final ObjectMapper json = new ObjectMapper();
   private final SchemaContract inputSchema;
@@ -88,35 +85,32 @@ public final class DurableAgent implements AutoCloseable {
   public DurableAgent(
       ExecutionLedger ledger,
       ArtifactStore store,
-      WebFetchPlugin plugin,
+      FetchRuntime fetch,
       BoundaryProbe probe,
-      URI origin,
-      java.util.Map<String, String> credentials,
       ModelProfiles models)
       throws IOException {
     this.ledger = ledger;
     this.store = store;
-    this.plugin = plugin;
+    this.fetch = fetch;
     this.probe = probe;
-    this.origin = origin;
     this.models = models;
-    this.credentials = java.util.Map.copyOf(credentials);
     inputSchema = new SchemaContract(BuiltinManifestLoader.resource("input.schema.json"));
     outputSchema = new SchemaContract(BuiltinManifestLoader.resource("output.schema.json"));
     definition =
         new ToolDefinitionMapper()
             .map(
-                plugin.descriptor(),
+                fetch.descriptor(),
                 new String(
                     BuiltinManifestLoader.resource("input.schema.json"), StandardCharsets.UTF_8));
   }
 
   public void run(Lease lease) {
-    var pin = ledger.toolSnapshot(lease).pins().get(plugin.descriptor().capability());
+    var pin = ledger.toolSnapshot(lease).pins().get(fetch.descriptor().capability());
     if (pin == null
-        || !plugin.descriptor().version().equals(pin.version())
-        || !plugin.descriptor().outputSha256().equals(pin.digest()))
+        || !fetch.descriptor().version().equals(pin.version())
+        || !fetch.descriptor().outputSha256().equals(pin.digest()))
       throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+    fetch.available();
     var modelSnapshot = ledger.modelSnapshot(lease);
     Session session = new Session(lease, modelSnapshot);
     var previous = ledger.checkpoint(lease);
@@ -159,6 +153,9 @@ public final class DurableAgent implements AutoCloseable {
     if (response == null) throw new TaskFailure(502, "MODEL_STREAM_INCOMPLETE");
     if (response.hasToolCalls()) throw new TaskFailure(409, "MODEL_LOOP_INCOMPLETE");
     String summary = response.getResult().getOutput().getText();
+    // Public report mode cannot publish the legacy model-summary artifact. The present
+    // transaction will supply the required report; until assembled, fail closed here.
+    if (fetch.publicMode()) throw new TaskFailure(409, "REPORT_NOT_PUBLISHED");
     byte[] bytes = summary.getBytes(StandardCharsets.UTF_8);
     // A task without tool output has a summary but no tool-produced artifact.
     if (session.hadTools
@@ -378,10 +375,9 @@ public final class DurableAgent implements AutoCloseable {
     }
 
     private String invoke(Call call, String input) {
-      if (credentials.isEmpty()) throw new TaskFailure(503, "PUBLIC_WEB_NOT_CONFIGURED");
       try {
         inputSchema.validate(json.readTree(input));
-        ConfiguredOriginReader.checkedTarget(origin, Payloads.read(input, FetchInput.class).url());
+        fetch.validate(Payloads.read(input, FetchInput.class));
       } catch (IOException | IllegalArgumentException e) {
         throw new TaskFailure(400, "TOOL_INPUT_INVALID");
       }
@@ -391,26 +387,25 @@ public final class DurableAgent implements AutoCloseable {
               lease,
               step.id(),
               call,
-              plugin.descriptor().version(),
-              plugin.descriptor().outputSha256());
+              fetch.descriptor().version(),
+              fetch.descriptor().outputSha256());
       if ("SUCCEEDED".equals(invocation.state())) {
         outputSchema.validate(Payloads.read(invocation.output(), JsonNode.class));
         return invocation.output();
       }
       probe.hit("T0", lease.taskId());
       String output;
-      try (var reader =
-          new ConfiguredOriginReader(
-              origin, credentials.get(lease.tenant()), invocation.effectId())) {
+      try {
         FetchInput args = Payloads.read(input, FetchInput.class);
         var result =
-            new WebFetchPlugin(reader, plugin.descriptor())
-                .execute(
-                    args,
-                    new ExecutionContext(
-                        invocation.id(), lease.deadline(), () -> ledger.checkpoint(lease)));
-        outputSchema.validateObject(result.output());
-        output = Payloads.json(result.output());
+            fetch.execute(
+                args,
+                lease.tenant(),
+                invocation.effectId(),
+                new ExecutionContext(
+                    invocation.id(), lease.deadline(), () -> ledger.checkpoint(lease)));
+        outputSchema.validateObject(result);
+        output = Payloads.json(result);
         if (output.getBytes(StandardCharsets.UTF_8).length > 2097152)
           throw new TaskFailure(409, "TOOL_OUTPUT_TOO_LARGE");
       } catch (RuntimeException error) {

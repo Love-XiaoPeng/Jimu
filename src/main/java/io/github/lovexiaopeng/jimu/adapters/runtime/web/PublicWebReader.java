@@ -22,7 +22,9 @@ import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
 import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 
-/** Anonymous public HTTPS adapter; not selected by the historical fixture runtime assembly. */
+/**
+ * Anonymous public HTTPS adapter; shares the worker lifecycle tracker in public runtime assembly.
+ */
 public final class PublicWebReader implements WebPageReader {
   @FunctionalInterface
   interface Lookup {

@@ -32,7 +32,7 @@ public final class BuiltinManifestLoader {
     return parse(resource("plugin.yaml"));
   }
 
-  /** Explicit stage assembly only; the default fixture registry still selects load(). */
+  /** Public runtime assembly; the historical fixture registry still selects load(). */
   public ToolDescriptor loadPublic() throws IOException {
     if (!OUTPUT_SHA256.equals(sha256(resource("output.schema.json"))))
       throw new IllegalArgumentException("Canonical output Schema digest mismatch");
