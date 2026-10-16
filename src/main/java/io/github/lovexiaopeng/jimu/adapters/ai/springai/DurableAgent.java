@@ -523,6 +523,7 @@ public final class DurableAgent implements AutoCloseable {
       models.admit(modelSnapshot);
       if (!Payloads.hash(checkpoint.requestBody()).equals(checkpoint.bodyDigest()))
         throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      models.checkInput(modelSnapshot, checkpoint.requestBody());
       Duration remaining = Duration.between(Instant.now(), lease.deadline());
       if (remaining.isNegative() || remaining.isZero())
         throw new TaskFailure(409, "DEADLINE_EXCEEDED");

@@ -27,7 +27,8 @@ public record ModelSnapshot(
     Capabilities capabilities,
     Map<String, Boolean> providerOptions,
     boolean paid,
-    Price price) {
+    Price price,
+    InputLimit inputLimit) {
   public ModelSnapshot {
     if (baseUrl != null) baseUrl = baseUrl.replaceAll("/+$", "");
     providerOptions =
@@ -56,4 +57,9 @@ public record ModelSnapshot(
       long fixedMicros,
       long inputTokenUpper,
       String boundEvidence) {}
+
+  /**
+   * Optional complete-input gate; proof names select host implementations, never operator formulas.
+   */
+  public record InputLimit(int version, long maxTokens, String proof) {}
 }

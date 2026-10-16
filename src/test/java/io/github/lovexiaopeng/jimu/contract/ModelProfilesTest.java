@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.lovexiaopeng.jimu.adapters.persistence.ModelCosts;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import java.util.HashMap;
@@ -114,5 +115,55 @@ class ModelProfilesTest {
     var privateField = local();
     privateField.put(prefix + "provider-options.enable_search", "true");
     assertThrows(RuntimeException.class, () -> profiles(privateField));
+  }
+
+  @Test
+  void bailianContextCannotBeShrunkToClaimSmallInputAndUnknownProofNeverAuthorizesIt() {
+    var p = local();
+    String prefix = "jimu.model.profiles.local.";
+    p.put("jimu.model.allowed-origins[0]", "https://dashscope.aliyuncs.com");
+    Map.ofEntries(
+            Map.entry("base-url", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+            Map.entry("model", "qwen3.7-plus-2026-05-26"),
+            Map.entry("revision", "qwen3.7-plus-2026-05-26"),
+            Map.entry("transport-policy", "cloud-https-v1"),
+            Map.entry("paid", "true"),
+            Map.entry("capabilities.context-limit", "1000000"),
+            Map.entry("capabilities.evidence", "modelstudio-nonthinking-v1"),
+            Map.entry("output-limit-field", "max_completion_tokens"),
+            Map.entry("output-margin-tokens", "10"),
+            Map.entry("provider-options.enable_thinking", "false"),
+            Map.entry("provider-options.enable_search", "false"),
+            Map.entry("price.version", "official-context-20261016"),
+            Map.entry("price.currency", "CNY"),
+            Map.entry("price.input-micros-per-million", "6000000"),
+            Map.entry("price.output-micros-per-million", "24000000"),
+            Map.entry("price.input-token-upper", "1000000"),
+            Map.entry("price.bound-evidence", "official-full-context-1000000"))
+        .forEach((k, v) -> p.put(prefix + k, v));
+    var full = profiles(p).selected("tenant");
+    assertEquals(
+        6012288,
+        ModelCosts.amount(full.price(), full.price().inputTokenUpper(), full.maxOutputTokens()));
+    for (String key : new String[] {"capabilities.context-limit", "price.input-token-upper"}) {
+      var altered = new HashMap<>(p);
+      altered.put(prefix + key, "8192");
+      assertThrows(IllegalArgumentException.class, () -> profiles(altered));
+    }
+    for (String key : new String[] {"output-limit-field", "output-margin-tokens"}) {
+      var altered = new HashMap<>(p);
+      altered.put(prefix + key, key.endsWith("field") ? "max_tokens" : "0");
+      assertThrows(IllegalArgumentException.class, () -> profiles(altered));
+    }
+    p.put(prefix + "price.input-token-upper", "8192");
+    p.put(prefix + "input-limit.version", "1");
+    p.put(prefix + "input-limit.max-tokens", "8192");
+    p.put(prefix + "input-limit.proof", "test-whole-request-utf8-v1");
+    var unproven = profiles(p);
+    assertEquals(
+        "MODEL_INPUT_BOUND_UNAVAILABLE",
+        assertThrows(
+                TaskFailure.class, () -> unproven.checkInput(unproven.selected("tenant"), "{}"))
+            .code());
   }
 }

@@ -170,6 +170,7 @@ class ModelProtocolTest {
             new ModelSnapshot.Capabilities(true, true, true, true, true, true, false, 8192, "test"),
             Map.of(),
             false,
+            null,
             null);
     String body =
         protocol.body(

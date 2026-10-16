@@ -104,6 +104,7 @@ public final class ModelProfiles {
               true, true, true, true, true, true, false, 65536, "p2-fixture-v1"),
           Map.of(),
           false,
+          null,
           null);
     }
     String ref =
@@ -154,6 +155,10 @@ public final class ModelProfiles {
       if (value != null && value.matches("[!-~]{1,4096}")) return value;
     }
     throw new TaskFailure(503, "CREDENTIAL_UNAVAILABLE");
+  }
+
+  public void checkInput(ModelSnapshot snapshot, String body) {
+    ModelInputBounds.check(snapshot, body, env.getProperty("jimu.test-mode", Boolean.class, false));
   }
 
   private void validate(ModelSnapshot p) {
@@ -212,6 +217,25 @@ public final class ModelProfiles {
         || c.evidence().isBlank()
         || p.stream() && (!c.streamText() || !c.streamTools()))
       throw new TaskFailure(503, "MODEL_CAPABILITY_UNSUPPORTED");
+    var input = p.inputLimit();
+    if (input != null
+        && (input.version() != 1
+            || input.maxTokens() < 1
+            || input.maxTokens() > 8192
+            || input.proof() == null
+            || input.proof().isBlank()
+            || input.proof().length() > 160))
+      throw new IllegalArgumentException("Invalid complete input limit");
+    if (p.paid()
+        && "cloud-https-v1".equals(p.transportPolicy())
+        && List.of("qwen3.7-plus-2026-05-26", "qwen3.7-flash-2026-07-15").contains(p.model())
+        && (c.contextLimit() != 1000000
+            || !"max_completion_tokens".equals(p.outputLimitField())
+            || p.outputMarginTokens() < 10
+            || !p.providerOptions()
+                .equals(Map.of("enable_thinking", false, "enable_search", false))))
+      throw new IllegalArgumentException(
+          "Bailian snapshot requires documented full context and total output bounds");
     if (!p.providerOptions().isEmpty()
         && !("modelstudio-nonthinking-v1".equals(c.evidence())
             && p.providerOptions()
@@ -230,7 +254,8 @@ public final class ModelProfiles {
           || price.fixedMicros() < 0
           || price.fixedMicros() > 1000000
           || price.inputTokenUpper() < 1
-          || price.inputTokenUpper() != c.contextLimit()
+          || !(price.inputTokenUpper() == c.contextLimit()
+              || input != null && price.inputTokenUpper() == input.maxTokens())
           || price.inputTokenUpper() > 1000000000
           || price.boundEvidence() == null
           || price.boundEvidence().isBlank())
