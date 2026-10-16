@@ -279,7 +279,19 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           bucket(identity.tenant());
           visible(identity, task);
           var row = locked(identity.tenant(), task);
-          if (view(row).terminal() || row.get("cancel_requested_at") != null) return view(row);
+          if (row.get("cancel_requested_at") != null) return view(row);
+          if (view(row).terminal()) {
+            // Unknown outcome is terminal for business execution, but does not prove the
+            // writer exited. Persist a stop intent without changing that outcome or its cost.
+            if (!"NEEDS_RECONCILIATION".equals(s(row, "state")) || writersQuiescent(row))
+              return view(row);
+            db.update(
+                "UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
+                identity.tenant(),
+                task);
+            event(row, "cancel", "task.cancel_requested", null);
+            return view(locked(identity.tenant(), task));
+          }
           db.update(
               "UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6), state='CANCEL_REQUESTED' WHERE tenant_id=? AND id=?",
               identity.tenant(),
