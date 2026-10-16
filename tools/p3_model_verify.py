@@ -249,15 +249,15 @@ def model_core(e, bounds_only=False):
         for task in tasks:
             e.state(task, "SUCCEEDED")
         with concurrent.futures.ThreadPoolExecutor(4) as pool:
-            submitted = list(pool.map(lambda i: e.submit("cost-second-" + ("unknown" if i == 0 else str(i))), range(10)))
+            submitted = list(pool.map(lambda i: e.submit("cost-second-" + str(i)), range(10)))
         for task in submitted:
             e.state(task, "SUCCEEDED")
         final = e.submit("cost-21st")
         e.state(final, "FAILED")
         e.stop(new); e.stop(other)
         e.assert_that(count("cost-21st") == 0 and e.sql("SELECT requests_used,cost_held FROM evaluation_budget WHERE id='core-evaluation';") == "20\t1000000", "20 requests and one CNY shared across candidates workers and restart")
-        e.assert_that(e.sql("SELECT COUNT(*) FROM model_dispatch d JOIN task t ON t.tenant_id=d.tenant_id AND t.id=d.task_id WHERE t.goal='cost-second-unknown' AND d.actual_cost IS NULL AND d.cost_quality='UNKNOWN' AND d.reserved_cost=50000;") == "1", "unknown cost retains monetary upper bound")
-        e.assert_that(e.sql("SELECT COUNT(*) FROM reservation r JOIN task t ON t.id=r.task_id AND t.tenant_id=r.tenant_id WHERE t.goal='cost-second-unknown' AND r.category='MODEL_COST' AND r.state='HELD_UNKNOWN' AND r.actual IS NULL;") == "1", "unknown reservation is not released or settled to zero")
+        e.assert_that(e.sql("SELECT COUNT(*) FROM model_dispatch d JOIN task t ON t.tenant_id=d.tenant_id AND t.id=d.task_id WHERE t.evaluation_run_id='core-evaluation' AND d.actual_cost=50000 AND d.cost_quality='KNOWN';") == "20", "known component usage settles every admitted request at its price")
+        e.assert_that(e.sql("SELECT COUNT(*) FROM reservation r JOIN task t ON t.id=r.task_id AND t.tenant_id=r.tenant_id WHERE t.evaluation_run_id='core-evaluation' AND r.category='MODEL_COST' AND r.state='SETTLED' AND r.actual=50000;") == "20", "known reservations support the independent twenty-request currency cap control")
 
         # Isolate the currency cap from the request cap, then force an actual bound violation.
         e.sql("UPDATE tenant_budget SET cost_limit=10000000 WHERE tenant_id='tenant-a'; INSERT INTO evaluation_budget(tenant_id,id,max_cost_micros) VALUES('tenant-a','core-small',100000);")

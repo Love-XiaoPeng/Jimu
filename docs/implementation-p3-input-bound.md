@@ -38,7 +38,11 @@ jimu.model.profiles.reviewed.input-limit.proof=bailian-complete-input-unproven
 
 两款百炼云快照同时要求非思考、禁内置搜索、`max_completion_tokens`、output margin ≥10，内部全部计费输出 ≤512；配置 512 时实际发送 ≤502，覆盖架构附件所列官方最多 10 token 误差。context-limit 不是输入限制字段，max_tokens 不是这两个快照的全部输出依据。
 
-显式小输入门禁的计费任务若缺输入/输出 usage 之一，费用仍 HELD_UNKNOWN，保留整个已证明输入+输出预留；在原事务持久记录 `USAGE_UNKNOWN/MODEL_USAGE_UNKNOWN` 并 STOPPED 评测 run，拒绝执行该响应的工具/后续派发。恢复读取这个持久决策；不能在“响应落账后、任务失败前”退出后再次请求。已知输入/输出越界仍记录原始事实并停发，不能钳制或伪造用量。旧无门禁策略的未知费用保留行为不变。
+显式付费评测 run 的任务若缺输入/输出 usage 之一，费用仍 HELD_UNKNOWN，保留整个固定输入上界+输出预留；在原事务持久记录 `USAGE_UNKNOWN/MODEL_USAGE_UNKNOWN` 并 STOPPED 评测 run，拒绝执行该响应的工具/后续派发。该规则同时覆盖未配置 input-limit 的全上下文路径和无 usage 的失败响应。恢复读取这个持久决策；不能在“响应落账后、任务失败前”退出后再次请求。已知输入/输出越界仍记录原始事实并停发，不能钳制或伪造用量。分项均有效且不越界时仍按实际价格结算并允许原 run 继续。
+
+`FullContextUsageIT` 默认回归覆盖普通/SSE 缺输入、缺输出、全缺及截断非法输出，在真实 worker 的响应/失败提交窗口退出后重启 control 和两个竞争 worker，核对原快照、账本、停发及零新增模型/工具/产物；已知分项对照继续执行成功缓存的工具及下一轮。所有计费协议均由本地替身实现，不证明真实提供方计价或输出契约。
+
+隔离预留计划见 `tools/evaluation/full-context-CLOSED-quota-plan.json`，它是关闭的评审数据，不是可加载的运行配置。候选任务四轮全上下文预留分别 133120/526336，租户合计 659456；只允许后续受信的私有数据库准备改变精确选定任务 `max_tokens` 和专用租户 `token_limit`，不得向模型/API 暴露额度参数，不修改生产默认。保留同一原 run 的消费和未知费用，不重开 STOPPED、不清账扩额，输出仍 512、货币仍累计 1000000 micro-CNY、矩阵最多 8 次。默认回归用本地替身实际完成两任务各四轮最坏 token 结算并核对另一租户额度不变；条件费率算得 757764 micro-CNY 不构成真实派发许可。旧快照的精确价目及 max_tokens 全部计费输出/最大误差尚待核准，不能套用新字段十 token 的保证。
 
 ## 验证与使用限制
 

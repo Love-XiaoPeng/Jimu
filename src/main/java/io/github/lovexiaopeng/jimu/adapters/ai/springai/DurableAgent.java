@@ -346,6 +346,7 @@ public final class DurableAgent implements AutoCloseable {
           throw new TaskFailure(502, code);
         } catch (TaskFailure error) {
           ledger.modelFailed(lease, dispatch, error.code(), null);
+          probe.hit("MODEL_FAILURE_COMMITTED", lease.taskId());
           throw error;
         }
         probe.hit("M1_RESPONSE", lease.taskId());

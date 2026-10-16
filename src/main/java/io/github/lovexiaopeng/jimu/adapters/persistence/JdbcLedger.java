@@ -920,10 +920,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
     var model = snapshot(task);
     Long actual = null;
     boolean exceeded = false;
-    boolean unknown =
-        model.paid()
-            && model.inputLimit() != null
-            && (usage.inputTokens() == null || usage.outputTokens() == null);
+    boolean unknown = model.paid() && (usage.inputTokens() == null || usage.outputTokens() == null);
     if (model.paid()) {
       exceeded =
           usage.inputTokens() != null && usage.inputTokens() > model.price().inputTokenUpper()
@@ -1008,7 +1005,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           var task = fenced(lease, false);
           var model = snapshot(task);
           if (usage != null) settleCost(lease, task, evaluation, dispatch, usage);
-          else if (model.paid() && model.inputLimit() != null)
+          else if (model.paid())
             settleCost(
                 lease,
                 task,
