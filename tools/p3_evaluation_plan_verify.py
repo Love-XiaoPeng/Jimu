@@ -263,6 +263,7 @@ def verify(e):
         e.assert_that(e.sql("SELECT requests_used FROM evaluation_budget WHERE id='"+run+"';")=="63" and sum(c["goal"].startswith(run) for c in server.calls)==1,"competing workers consume the final shared request once")
 
         for delta in [-1,0,1]:
+            e.sql("UPDATE tenant_budget SET token_limit=1000000000 WHERE tenant_id='tenant-a';")
             run="token-boundary-"+str(delta).replace("-","minus")
             provision(p,run)
             cfg=settings(p,model,"W1",run)
