@@ -15,7 +15,7 @@
 - Apache 自定义 `DnsResolver` 只返回本跳已检查的地址集，不再查询系统 DNS/反向 DNS。原 host 用于 HTTP Host、TLS SNI 和证书域名验证。匿名 TLS 上下文显式使用空 KeyManager 集合，不继承 JVM 默认客户端证书，保留系统信任校验。每跳新建连接、不复用，不自动重试/认证/带 cookie/重定向；固定直连路由，底层显式 `Socket(Proxy.NO_PROXY)`，不使用系统 HTTP/SOCKS 代理。经典 HTTP/1 客户端不处理 Alt-Svc。
 - 同源手动跟随最多 5 次；每跳重新验证 URL 和 DNS。跨源即使也在域名集合内仍拒绝。
 - 响应最多 64 个头，每行最多 8192；正文传输和解压各最多 2 MiB，流式计数，超出显式失败。只支持 identity/gzip；拒绝其他 Content-Encoding、歧义类型头、非 UTF-8 和非 HTML/plaintext。超界、解码失败或重定向时先 abort，避免底层 entity close 自动排空无限正文。
-- 整次调用使用任务剩余 deadline 与 30 秒较小值，轮询取消并 abort 活跃请求，覆盖慢速响应；固定地址集内的回退每次创建 Socket 前也重查取消/deadline。系统 DNS 的底层阻塞不保证能被 Java 中断：调用者按 deadline 返回，迟到解析结果经过取消/deadline 检查后不能建连。DNS 线程可能晚于调用者退出，故本阶段**不宣称完成任务 quiescence/进程树排空接入**；接入既有 worker supervisor 前需补生命周期证据。
+- 整次调用使用任务剩余 deadline 与 30 秒较小值，轮询取消并 abort 活跃请求，覆盖慢速响应；固定地址集内的回退每次创建 Socket 前也重查取消/deadline。每次调用的关闭状态与原取消 token 组合，调用方退出时先发布关闭状态，再中断 FutureTask 和 abort 请求；DNS 后续、传输与 Socket 检查共享该 token。系统 DNS 的底层阻塞不保证能被 Java 中断：即使解析器吞掉中断，调用方取消返回后迟到结果仍被关闭状态拒绝，不能再发起传输。DNS 线程可能晚于调用者退出，故本阶段**不宣称完成任务 quiescence/进程树排空接入**；接入既有 worker supervisor 前需补生命周期证据。
 - `public-text-v1` 为确定性的纯文本子集，不宣称通用 HTML→Markdown 或 JS 渲染。jsoup 只解析已取得的有界字符串，移除脚本、样式、表单、导航、iframe 等节点，不执行脚本或加载子资源；保留文本并转义 HTML 标签字符。输出有来源及整段不可信标记，最多 200,000 个 UTF-16 单元，按完整 Unicode 边界截断，显式 `truncated` 和 `[TRUNCATED]`。另检查四字段 JSON 序列化总量 ≤1 MiB。
 - 非 2xx 和空正文保留可观察状态；这些结果尚未接入报告有效证据分类。调用者不能把不可信标记或 HTTP 成功本身当成报告证据。
 
@@ -36,15 +36,17 @@ Apache JAR 均含 `META-INF/LICENSE`/`NOTICE`；jsoup 含 `META-INF/jsoup/LICENS
 
 ## 默认回归与证据范围
 
-新增 15 项 JUnit 默认被 Surefire 发现，不使用新 profile/skip；全部原 P2、模型协议和 R1–R3 回归仍在默认 `./mvnw -B -ntp verify`。本地定向命令：
+公共适配器共 19 项 JUnit 默认被 Surefire 发现（原 15 项及 R4 的 4 项），不使用新 profile/skip；全部原 P2、模型协议和 R1–R3 回归仍在默认 `./mvnw -B -ntp verify`。本地定向命令：
 
 ```sh
-./mvnw -B -ntp test -Dtest=PublicWebReaderTest,PublicPageProjectionTest,PinnedHttpsTransportTest
+./mvnw -B -ntp test -Dtest=PublicWebReaderTest,PublicPageProjectionTest,PinnedHttpsTransportTest,ReviewerLateDnsTest,PublicWebCancellationRaceTest
 ```
 
 实际传输测试生成临时自签名 TLS 身份并精确信任该证书，使用回环 fixture、显式地址和随机端口直接测试包内传输层 seam；生产 `PublicWebPolicy` 不放行回环或非 443。测试证明真实 TLS 建连、原 host/SNI、证书域名拒绝、系统代理不被查询、无自动重试/重定向/认证/cookie、响应头/传输/解压上界和慢速响应取消。另有服务端请求客户端证书的对照：带测试密钥的客户端确实发送证书，而公共匿名上下文在 JVM keyStore/trustStore 配置同一测试身份时仍不发送证书。纯策略与组合测试覆盖混合 DNS、重绑定、跨源/5 跳、迟到 DNS 禁建连、Schema/manifest 和 HTML/UTF-8/JSON 上界。它们是本地替身运行证据，**没有执行外部公共网页、真实模型或真实搜索评测**。
 
 首轮新增测试曾发现普通 Socket 仍查询 JVM ProxySelector；显式 NO_PROXY 后复测。另有一处测试把 YAML 通配符写成非法 alias 的断言问题，已修正为合法但不被允许的权限值。保留首轮失败日志，不能把它们称为已有核心阶段回归失败。最终 SHA 的完整门禁结果由本次交付附件单独给出。
+
+R4 的审查原反例作为 `ReviewerLateDnsTest` 纳入默认回归：deadline 未到、原 token 未取消，调用方中断退出后释放吞中断的解析器，断言迟到传输入口计数为零并 join 调用方/解析线程。它观察传输 seam，不证明公网 socket 行为。另以本地传输替身对照中断先于响应、正常响应先完成以及 100 次并发竞争；中断先发生不得交付迟到成功，竞争允许成功或取消，但不得有其他结果。计数、取消观察与线程收敛记录在 `target/r4-evidence/*.json`，原反例记录保留在 JUnit XML 的标准输出。已开始的传输可能先于取消发生；这些测试不宣称取消能撤销已经发生的网络效果或保证原生 DNS 立即退出。
 
 ## 后续必需工作
 

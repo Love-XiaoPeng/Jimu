@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
@@ -65,11 +66,15 @@ public final class PublicWebReader implements WebPageReader {
   @Override
   public FetchOutput fetch(String url, ExecutionContext original) {
     Instant limit = Instant.now().plusSeconds(30);
+    var closed = new AtomicBoolean();
     var context =
         new ExecutionContext(
             original.invocationId(),
             original.deadline().isBefore(limit) ? original.deadline() : limit,
-            original.cancellation());
+            () -> {
+              if (closed.get()) throw new CancellationException("Public fetch closed");
+              original.cancellation().throwIfCancelled();
+            });
     check(context);
     URI first = policy.target(url);
     var active = new AtomicReference<HttpUriRequestBase>();
@@ -94,6 +99,9 @@ public final class PublicWebReader implements WebPageReader {
       if (e.getCause() instanceof RuntimeException runtime) throw runtime;
       throw new IllegalStateException("Public fetch failed", e.getCause());
     } finally {
+      // Publish before interrupt/abort: a platform DNS resolver may consume the interrupt.
+      // The same invocation token is checked after DNS and inside the transport/socket path.
+      closed.set(true);
       operation.cancel(true);
       var request = active.get();
       if (request != null) request.cancel();
