@@ -1,0 +1,382 @@
+package io.github.lovexiaopeng.jimu.adapters.storage;
+
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.StreamReadConstraints;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.plugin.api.Cancellation;
+import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.FilePort;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
+import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.SecureDirectoryStream;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * Native POSIX workspace. A task is one atomic, fsynced document under a pinned directory handle.
+ * Logical model paths never become OS paths. A durable intent fixes the observation before write;
+ * the content and operation receipt then commit together. Locks cover processes as well as threads.
+ */
+public final class SecureWorkspaceStore {
+  public static final int MAX_BYTES = 16 * 1024 * 1024;
+  private static final int MAX_STATE_BYTES = 128 * 1024 * 1024;
+  private static final ObjectMapper STATE_JSON =
+      JsonMapper.builder(
+              JsonFactory.builder()
+                  .streamReadConstraints(
+                      StreamReadConstraints.builder()
+                          .maxStringLength(MAX_STATE_BYTES)
+                          .maxDocumentLength(MAX_STATE_BYTES)
+                          .build())
+                  .build())
+          .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+          .build();
+  private static final Object[] LOCKS = new Object[64];
+
+  static {
+    for (int i = 0; i < LOCKS.length; i++) LOCKS[i] = new Object();
+  }
+
+  public record FileValue(long version, String content, String sha256, long size) {}
+
+  public record Operation(String kind, String inputDigest, long expected, FileValue result) {}
+
+  public record State(
+      int format,
+      String scope,
+      Map<String, FileValue> files,
+      Map<String, Long> observed,
+      Map<String, Operation> operations) {}
+
+  private record Envelope(String digest, String payload) {}
+
+  @FunctionalInterface
+  interface Boundary {
+    void hit(String name);
+  }
+
+  private final Path root;
+  private final Boundary boundary;
+
+  /** The operator must provision a private POSIX root; no model-controlled mkdir occurs here. */
+  public SecureWorkspaceStore(Path root) throws IOException {
+    this(root, name -> {});
+  }
+
+  SecureWorkspaceStore(Path root, Boundary boundary) throws IOException {
+    this.root = root.toAbsolutePath().normalize();
+    this.boundary = boundary;
+    try (var directory = openRoot()) {
+      var permissions =
+          directory
+              .getFileAttributeView(java.nio.file.attribute.PosixFileAttributeView.class)
+              .readAttributes()
+              .permissions();
+      if (!permissions.equals(PosixFilePermissions.fromString("rwx------")))
+        throw new IOException("Workspace requires a private POSIX root");
+      forceDirectory(directory);
+    }
+  }
+
+  /** Called only by the host with its admitted invocation's stable effect identity. */
+  public FilePort bind(String tenant, String task, String operationId, Cancellation cancellation) {
+    if (!tenant.matches("[A-Za-z0-9_-]{1,64}")
+        || !UUID.fromString(task).toString().equals(task)
+        || !UUID.fromString(operationId).toString().equals(operationId))
+      throw new IllegalArgumentException("Invalid workspace scope");
+    String scope = Payloads.hash(tenant + ":" + task);
+    // Freeze the host's observation when binding an admitted operation. Two concurrent writes
+    // cannot silently adopt the version just written by the other operation.
+    Map<String, Long> boundObservations =
+        locked(scope, cancellation, directory -> Map.copyOf(load(directory, scope).observed()));
+    return new FilePort() {
+      @Override
+      public Read read(String path, int offset, int limit) {
+        String name = logicalPath(path);
+        if (offset < 1 || limit < 1 || limit > 2000) throw new FileFailure("INPUT_INVALID");
+        return locked(
+            scope,
+            cancellation,
+            directory -> {
+              State state = load(directory, scope);
+              String input = Payloads.hash(Payloads.json(java.util.List.of(name, offset, limit)));
+              Operation old = operation(state, operationId, "READ", input);
+              FileValue value;
+              if (old != null) value = old.result();
+              else {
+                value = state.files().get(name);
+                state.observed().put(name, value == null ? 0 : value.version());
+                state.operations().put(operationId, new Operation("READ", input, 0, value));
+                save(directory, state);
+              }
+              if (value == null) return new Read(name, false, 0, null, 0, offset, 0, "");
+              String[] lines = value.content().split("\n", -1);
+              StringBuilder selected = new StringBuilder();
+              for (int line = offset - 1;
+                  line < lines.length && (long) line < (long) offset - 1 + limit;
+                  line++) selected.append(line + 1).append(": ").append(lines[line]).append('\n');
+              return new Read(
+                  name,
+                  true,
+                  value.version(),
+                  value.sha256(),
+                  value.size(),
+                  offset,
+                  lines.length,
+                  selected.toString());
+            });
+      }
+
+      @Override
+      public Written write(String path, String content) {
+        String name = logicalPath(path);
+        long size = utf8Size(content);
+        if (size > MAX_BYTES) throw new FileFailure("WORKSPACE_LIMIT");
+        return locked(
+            scope,
+            cancellation,
+            directory -> {
+              State state = load(directory, scope);
+              String input = Payloads.hash(Payloads.json(java.util.List.of(name, content)));
+              Operation intent = operation(state, operationId, "WRITE", input);
+              if (intent != null && intent.result() != null) return written(name, intent.result());
+              if (intent == null) {
+                Long expected = boundObservations.get(name);
+                if (expected == null) throw new FileFailure("FS_NOT_OBSERVED");
+                intent = new Operation("WRITE", input, expected, null);
+                state.operations().put(operationId, intent);
+                save(directory, state);
+                boundary.hit("WRITE_INTENT_DURABLE");
+              }
+              FileValue current = state.files().get(name);
+              long version = current == null ? 0 : current.version();
+              if (version != intent.expected()) throw new FileFailure("FS_STALE_VERSION");
+              long total = state.files().values().stream().mapToLong(FileValue::size).sum();
+              if (total - (current == null ? 0 : current.size()) + size > MAX_BYTES)
+                throw new FileFailure("WORKSPACE_LIMIT");
+              FileValue result = new FileValue(version + 1, content, Payloads.hash(content), size);
+              state.files().put(name, result);
+              state.observed().put(name, result.version());
+              state
+                  .operations()
+                  .put(operationId, new Operation("WRITE", input, intent.expected(), result));
+              cancellation.throwIfCancelled();
+              save(directory, state);
+              boundary.hit("WRITE_COMMITTED");
+              return written(name, result);
+            });
+      }
+
+      @Override
+      public Snapshot snapshot(String path) {
+        String name = logicalPath(path);
+        return locked(
+            scope,
+            cancellation,
+            directory -> {
+              State state = load(directory, scope);
+              String input = Payloads.hash(name);
+              String presentInput = Payloads.hash("present");
+              if (operation(state, operationId, "PRESENT", presentInput) == null)
+                state
+                    .operations()
+                    .put(operationId, new Operation("PRESENT", presentInput, 0, null));
+              // A present call may contain several files; each gets its own immutable subreceipt.
+              String receipt = operationId + ":" + input;
+              Operation old = operation(state, receipt, "PRESENT", input);
+              FileValue value;
+              if (old != null) value = old.result();
+              else {
+                Long observed = boundObservations.get(name);
+                if (observed == null) throw new FileFailure("FS_NOT_OBSERVED");
+                value = state.files().get(name);
+                if (value == null) throw new FileFailure("FS_NOT_FOUND");
+                if (value.version() != observed) throw new FileFailure("FS_STALE_VERSION");
+                state.operations().put(receipt, new Operation("PRESENT", input, observed, value));
+                save(directory, state);
+              }
+              return new Snapshot(
+                  name, value.version(), value.sha256(), value.size(), value.content());
+            });
+      }
+    };
+  }
+
+  private static FilePort.Written written(String name, FileValue value) {
+    return new FilePort.Written(name, value.version(), value.sha256(), value.size());
+  }
+
+  private static Operation operation(State state, String id, String kind, String input) {
+    Operation old = state.operations().get(id);
+    if (old != null && (!old.kind().equals(kind) || !old.inputDigest().equals(input)))
+      throw new FileFailure("FS_OPERATION_MISMATCH");
+    // At most twenty tool calls, with one root and at most four file receipts per present.
+    if (old == null && state.operations().size() >= 100) throw new FileFailure("WORKSPACE_LIMIT");
+    return old;
+  }
+
+  private static long utf8Size(String content) {
+    if (content == null || !StandardCharsets.UTF_8.newEncoder().canEncode(content))
+      throw new FileFailure("INPUT_INVALID");
+    return content.getBytes(StandardCharsets.UTF_8).length;
+  }
+
+  static String logicalPath(String path) {
+    if (path == null
+        || path.isBlank()
+        || path.length() > 512
+        || path.startsWith("/")
+        || path.contains("\\")
+        || path.contains(":")
+        || path.codePoints().anyMatch(c -> c < 32 || c == 127))
+      throw new FileFailure("FS_PATH_DENIED");
+    for (String component : path.split("/", -1))
+      if (component.isEmpty() || component.equals(".") || component.equals(".."))
+        throw new FileFailure("FS_PATH_DENIED");
+    return path;
+  }
+
+  @FunctionalInterface
+  private interface IO<T> {
+    T apply(SecureDirectoryStream<Path> directory) throws IOException;
+  }
+
+  private <T> T locked(String scope, Cancellation cancellation, IO<T> work) {
+    synchronized (LOCKS[Math.floorMod((root + scope).hashCode(), LOCKS.length)]) {
+      cancellation.throwIfCancelled();
+      try (var directory = openRoot();
+          var channel =
+              directory.newByteChannel(
+                  Path.of(scope + ".lock"),
+                  Set.of(
+                      StandardOpenOption.CREATE,
+                      StandardOpenOption.WRITE,
+                      LinkOption.NOFOLLOW_LINKS),
+                  PosixFilePermissions.asFileAttribute(
+                      PosixFilePermissions.fromString("rw-------")))) {
+        if (!(channel instanceof FileChannel file))
+          throw new IOException("POSIX locking unavailable");
+        try (var lock = file.lock()) {
+          if (!lock.isValid()) throw new IOException("Workspace lock unavailable");
+          cancellation.throwIfCancelled();
+          return work.apply(directory);
+        }
+      } catch (IOException e) {
+        throw new FileFailure("WORKSPACE_UNAVAILABLE", e);
+      }
+    }
+  }
+
+  private State load(SecureDirectoryStream<Path> directory, String scope) throws IOException {
+    byte[] bytes;
+    try (var file =
+        directory.newByteChannel(
+            Path.of(scope + ".json"), Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS))) {
+      if (file.size() > MAX_STATE_BYTES) throw new IOException("Workspace state exceeds bound");
+      ByteBuffer buffer = ByteBuffer.allocate((int) file.size());
+      while (buffer.hasRemaining())
+        if (file.read(buffer) < 0) throw new IOException("Truncated workspace");
+      bytes = buffer.array();
+    } catch (NoSuchFileException missing) {
+      return new State(1, scope, new HashMap<>(), new HashMap<>(), new HashMap<>());
+    }
+    try {
+      Envelope envelope = STATE_JSON.readValue(bytes, Envelope.class);
+      if (!Payloads.hash(envelope.payload()).equals(envelope.digest()))
+        throw new IOException("Workspace integrity failure");
+      State state = STATE_JSON.readValue(envelope.payload(), State.class);
+      if (state.format() != 1 || !scope.equals(state.scope()))
+        throw new IOException("Workspace scope mismatch");
+      for (FileValue value : state.files().values()) verify(value);
+      for (Operation operation : state.operations().values())
+        if (operation.result() != null) verify(operation.result());
+      return state;
+    } catch (IllegalArgumentException e) {
+      throw new IOException("Invalid workspace state", e);
+    }
+  }
+
+  private static void verify(FileValue value) throws IOException {
+    if (value.version() < 1
+        || value.size() != utf8Size(value.content())
+        || !Payloads.hash(value.content()).equals(value.sha256()))
+      throw new IOException("Workspace file integrity failure");
+  }
+
+  private void save(SecureDirectoryStream<Path> directory, State state) throws IOException {
+    String payload = Payloads.json(state);
+    byte[] bytes =
+        Payloads.json(new Envelope(Payloads.hash(payload), payload))
+            .getBytes(StandardCharsets.UTF_8);
+    if (bytes.length > MAX_STATE_BYTES) throw new FileFailure("WORKSPACE_LIMIT");
+    Path temporary = Path.of(state.scope() + "." + UUID.randomUUID() + ".part");
+    try {
+      try (var channel =
+          directory.newByteChannel(
+              temporary,
+              Set.of(
+                  StandardOpenOption.CREATE_NEW,
+                  StandardOpenOption.WRITE,
+                  LinkOption.NOFOLLOW_LINKS),
+              PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))) {
+        if (!(channel instanceof FileChannel file))
+          throw new IOException("POSIX durability unavailable");
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        while (buffer.hasRemaining()) file.write(buffer);
+        file.force(true);
+      }
+      boundary.hit("STATE_BEFORE_RENAME");
+      directory.move(temporary, directory, Path.of(state.scope() + ".json"));
+      forceDirectory(directory);
+    } finally {
+      try {
+        directory.deleteFile(temporary);
+      } catch (NoSuchFileException moved) {
+        /* rename consumed it */
+      }
+    }
+  }
+
+  private static void forceDirectory(SecureDirectoryStream<Path> directory) throws IOException {
+    try (var channel =
+        directory.newByteChannel(
+            Path.of("."), Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS))) {
+      if (!(channel instanceof FileChannel file))
+        throw new IOException("POSIX durability unavailable");
+      file.force(true);
+    }
+  }
+
+  /** Walk from the filesystem root using openat-style NOFOLLOW on every component. */
+  private SecureDirectoryStream<Path> openRoot() throws IOException {
+    DirectoryStream<Path> opened = java.nio.file.Files.newDirectoryStream(root.getRoot());
+    if (!(opened instanceof SecureDirectoryStream<Path> current)) {
+      opened.close();
+      throw new IOException("SecureDirectoryStream is required");
+    }
+    try {
+      for (Path part : root) {
+        var next = current.newDirectoryStream(part, LinkOption.NOFOLLOW_LINKS);
+        current.close();
+        current = next;
+      }
+      return current;
+    } catch (IOException | RuntimeException e) {
+      current.close();
+      throw e;
+    }
+  }
+}
