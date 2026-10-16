@@ -123,6 +123,7 @@ public final class DurableAgent implements AutoCloseable {
   public void run(Lease lease) {
     var definitions = definitions(lease);
     var modelSnapshot = ledger.modelSnapshot(lease);
+    if (workspace != null) workspace.prepareEvaluation(lease, ledger);
     Session session = new Session(lease, modelSnapshot, definitions);
     var previous = ledger.checkpoint(lease);
     List<Message> messages =
@@ -330,6 +331,9 @@ public final class DurableAgent implements AutoCloseable {
               body,
               Payloads.hash(body));
       step = ledger.prepare(lease, Payloads.json(checkpoint));
+      if (!history.isEmpty()
+          && history.getLast().replies().stream().anyMatch(reply -> reply.name().equals("read")))
+        probe.hit("READ_MODEL_PREPARED", lease.taskId());
       probe.hit("M0", lease.taskId());
       Response response;
       if (step.response() != null) response = Payloads.read(step.response(), Response.class);

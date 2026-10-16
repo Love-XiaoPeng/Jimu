@@ -190,7 +190,7 @@ class Experiment:
         try:
             # The image's temporary initialization server accepts socket queries but has no TCP listener.
             return run(["docker", "exec", "-i", self.cid, "sh", "-c",
-                        'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql --protocol=TCP -h127.0.0.1 -uroot -N -B --raw jimu'], input=sql)
+                        'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql --default-character-set=utf8mb4 --protocol=TCP -h127.0.0.1 -uroot -N -B --raw jimu'], input=sql)
         except subprocess.CalledProcessError as error:
             with (self.evidence / "mysql-errors.jsonl").open("a") as log:
                 log.write(json.dumps({"exit": error.returncode,
@@ -887,6 +887,7 @@ class Experiment:
             if point == "A0" and failure == "deadline":
                 # Reconstruct V2, including removing V5/V4, then exercise the real upgrade.
                 self.stop(self.control)
+                self.sql("ALTER TABLE task DROP COLUMN material_snapshot,DROP COLUMN material_digest,DROP COLUMN material_system_digest,DROP COLUMN material_file_snapshot,DROP COLUMN material_file_digest; DELETE FROM flyway_schema_history WHERE version='8';")
                 self.sql("ALTER TABLE task DROP COLUMN evaluation_snapshot,DROP COLUMN evaluation_digest,DROP COLUMN evaluation_phase,DROP COLUMN evaluation_sample,DROP COLUMN evaluation_model; ALTER TABLE evaluation_budget DROP CHECK evaluation_budget_chk_1,DROP CHECK evaluation_budget_chk_2,DROP COLUMN plan_snapshot,DROP COLUMN plan_digest,DROP COLUMN phase_b_snapshot,DROP COLUMN phase_b_digest,ADD CHECK(max_requests BETWEEN 1 AND 20 AND requests_used BETWEEN 0 AND max_requests),ADD CHECK(max_cost_micros BETWEEN 1 AND 1000000 AND cost_held>=0); DELETE FROM flyway_schema_history WHERE version='7';")
                 self.sql("ALTER TABLE task DROP COLUMN report_time; ALTER TABLE artifact DROP COLUMN file_receipt,DROP COLUMN receipt_digest,ADD UNIQUE(tenant_id,task_id,producer_invocation),DROP INDEX artifact_producer_receipt; DELETE FROM flyway_schema_history WHERE version='6';")
                 self.sql("ALTER TABLE task DROP COLUMN tools_snapshot,DROP COLUMN tools_digest; DELETE FROM flyway_schema_history WHERE version='5';")

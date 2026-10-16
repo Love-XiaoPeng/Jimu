@@ -64,7 +64,7 @@ class PublicExperiment(Experiment):
         cert, key = self.root / "cert.pem", self.root / "key.pem"
         run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "2",
              "-keyout", str(key), "-out", str(cert), "-subj", "/CN=fixture.example",
-             "-addext", "subjectAltName=DNS:fixture.example"])
+             "-addext", "subjectAltName=" + getattr(self, "certificate_sans", "DNS:fixture.example")])
         os.chmod(key, 0o600)
         self.tls = http.server.ThreadingHTTPServer(("127.0.0.1", 0), TlsHandler)
         self.tls.requests, self.tls.names = [], []

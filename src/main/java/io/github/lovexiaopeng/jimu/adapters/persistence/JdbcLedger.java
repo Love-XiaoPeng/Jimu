@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
+import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationMaterials;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationPlans;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
@@ -41,6 +42,29 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   private <T> T tx(Supplier<T> work) {
     return transactions.execute(status -> work.get());
+  }
+
+  private record AdmissionResult<T>(T value, TaskFailure rejection) {}
+
+  // Material checks precede quota/IO admission. Commit STOPPED with the rejection fact,
+  // then throw outside the transaction; a process exit before task failure cannot undo it.
+  private <T> T leaseTx(Lease lease, Supplier<T> work) {
+    AdmissionResult<T> result =
+        tx(
+            () -> {
+              try {
+                return new AdmissionResult<T>(work.get(), null);
+              } catch (TaskFailure rejection) {
+                if (!rejection.code().equals("EVALUATION_MATERIAL_MISMATCH")) throw rejection;
+                db.update(
+                    "UPDATE evaluation_budget b JOIN task t ON t.tenant_id=b.tenant_id AND t.evaluation_run_id=b.id SET b.state='STOPPED' WHERE t.tenant_id=? AND t.id=?",
+                    lease.tenant(),
+                    lease.taskId());
+                return new AdmissionResult<T>(null, rejection);
+              }
+            });
+    if (result.rejection() != null) throw result.rejection();
+    return result.value();
   }
 
   private List<Map<String, Object>> rows(String sql, Object... args) {
@@ -172,6 +196,12 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             throw new TaskFailure(400, "CURRENCY_BUDGET_NOT_CONFIGURED");
           models.admit(model);
           var evaluationBinding = bindEvaluation(evaluation, model);
+          var material =
+              evaluationBinding == null
+                  ? null
+                  : EvaluationMaterials.load(
+                      models.evaluationSelection().plan(), evaluationBinding.sample());
+          if (material != null) EvaluationMaterials.require(request.goal().equals(material.goal()));
           if (evaluationBinding != null
               && !request.capabilityIds().equals(List.of("web_fetch", "read", "write", "present")))
             throw new TaskFailure(400, "INVALID_CAPABILITIES");
@@ -229,6 +259,19 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                     : Math.min(
                         request.budget().maxCostMicros(),
                         EvaluationPlans.taskCost(plan, model.model(), selection.sample())),
+                identity.tenant(),
+                task);
+            String materialSnapshot = Payloads.json(material);
+            var accepted = locked(identity.tenant(), task);
+            String system =
+                material
+                    .systemTemplate()
+                    .replace("{{HOST_REPORT_TIME}}", time(accepted, "report_time").toString());
+            db.update(
+                "UPDATE task SET material_snapshot=?,material_digest=?,material_system_digest=? WHERE tenant_id=? AND id=?",
+                materialSnapshot,
+                Payloads.hash(materialSnapshot),
+                Payloads.hash(system),
                 identity.tenant(),
                 task);
             // The HTTP budget only tightens this host-selected private task ceiling.
@@ -579,6 +622,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
       String rejection = modelRejection(task);
       if (rejection == null) rejection = runRejection(evaluation);
       if (rejection != null) throw new TaskFailure(409, rejection);
+      checkMaterials(task);
       access(task);
       if (task.get("cancel_requested_at") != null) throw new TaskFailure(409, "CANCEL_REQUESTED");
       if (n(task, "within_deadline") != 1) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
@@ -592,6 +636,174 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             lease.fence())
         != 1) throw new TaskFailure(409, "FENCE_REJECTED");
     return task;
+  }
+
+  private EvaluationMaterials.Material material(Map<String, Object> task) {
+    if (task.get("evaluation_snapshot") == null) return null;
+    String json = s(task, "material_snapshot");
+    EvaluationMaterials.require(
+        json != null && Payloads.hash(json).equals(s(task, "material_digest")));
+    var stored = Payloads.read(json, EvaluationMaterials.Material.class);
+    var binding = Payloads.read(s(task, "evaluation_snapshot"), EvaluationPlans.Binding.class);
+    var expected =
+        EvaluationMaterials.load(EvaluationPlans.plan(binding.planId()), binding.sample());
+    EvaluationMaterials.require(
+        expected.equals(stored)
+            && stored.goal().equals(s(task, "goal"))
+            && Payloads.hash(
+                    stored
+                        .systemTemplate()
+                        .replace("{{HOST_REPORT_TIME}}", time(task, "report_time").toString()))
+                .equals(s(task, "material_system_digest")));
+    return stored;
+  }
+
+  private void checkMaterials(Map<String, Object> task) {
+    var material = material(task);
+    if (material == null) return;
+    for (var invocation :
+        rows(
+            "SELECT input_snapshot,output_snapshot,output_digest FROM invocation WHERE tenant_id=? AND task_id=? AND tool='web_fetch' AND state='SUCCEEDED'",
+            s(task, "tenant_id"),
+            s(task, "id"))) {
+      String output = s(invocation, "output_snapshot");
+      EvaluationMaterials.require(
+          output != null && Payloads.hash(output).equals(s(invocation, "output_digest")));
+      var input =
+          Payloads.read(
+              s(invocation, "input_snapshot"), com.fasterxml.jackson.databind.JsonNode.class);
+      EvaluationMaterials.source(material, input.path("url").asText(), output);
+    }
+    if (task.get("material_file_snapshot") != null) {
+      var initial = initialFile(task);
+      boolean written = false;
+      for (var invocation :
+          rows(
+              "SELECT i.tool,i.output_snapshot,i.output_digest FROM invocation i JOIN step s ON s.tenant_id=i.tenant_id AND s.id=i.step_id WHERE i.tenant_id=? AND i.task_id=? AND i.state='SUCCEEDED' AND i.tool IN ('read','write') ORDER BY s.ordinal,i.slot",
+              s(task, "tenant_id"),
+              s(task, "id"))) {
+        if (s(invocation, "tool").equals("write")) {
+          written = true;
+          continue;
+        }
+        if (written) continue;
+        String output = s(invocation, "output_snapshot");
+        EvaluationMaterials.require(Payloads.hash(output).equals(s(invocation, "output_digest")));
+        var read = Payloads.read(output, com.fasterxml.jackson.databind.JsonNode.class);
+        if (material.initialContent() != null) {
+          var visible = new StringBuilder();
+          String[] lines = material.initialContent().split("\n", -1);
+          for (int index = 0; index < lines.length; index++)
+            visible.append(index + 1).append(": ").append(lines[index]).append('\n');
+          EvaluationMaterials.require(
+              read.path("offset").asInt() == 1
+                  && read.path("content").asText().equals(visible.toString()));
+        }
+        EvaluationMaterials.require(
+            read.path("filePath").asText().equals(initial.path())
+                && read.path("version").asLong() == initial.version()
+                && read.path("size").asLong() == initial.size()
+                && java.util.Objects.equals(
+                    read.path("sha256").isNull() ? null : read.path("sha256").asText(),
+                    initial.sha256()));
+      }
+    }
+  }
+
+  @Override
+  public Optional<String> evaluationFile(Lease lease) {
+    return leaseTx(
+        lease,
+        () -> {
+          var task = fenced(lease, true);
+          var material = material(task);
+          if (material == null) return Optional.empty();
+          boolean written =
+              !rows(
+                      "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND tool='write' AND state='SUCCEEDED' LIMIT 1",
+                      lease.tenant(),
+                      lease.taskId())
+                  .isEmpty();
+          if (written) {
+            initialFile(task);
+            return Optional.empty();
+          }
+          // A restart before first dispatch may inspect again, but may never replace its original
+          // receipt.
+          return Optional.of(material.target());
+        });
+  }
+
+  private ReportFile initialFile(Map<String, Object> task) {
+    String json = s(task, "material_file_snapshot");
+    EvaluationMaterials.require(
+        json != null && Payloads.hash(json).equals(s(task, "material_file_digest")));
+    return Payloads.read(json, ReportFile.class);
+  }
+
+  @Override
+  public void bindEvaluationFile(Lease lease, ReportFile file) {
+    leaseTx(
+        lease,
+        () -> {
+          var task = fenced(lease, true);
+          var material = material(task);
+          EvaluationMaterials.require(material != null && material.target().equals(file.path()));
+          String content = material.initialContent();
+          EvaluationMaterials.require(
+              content == null
+                  ? file.version() == 0 && file.sha256() == null && file.size() == 0
+                  : file.version() > 0
+                      && Payloads.hash(content).equals(file.sha256())
+                      && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length
+                          == file.size());
+          if (task.get("material_file_snapshot") != null)
+            EvaluationMaterials.require(initialFile(task).equals(file));
+          else {
+            EvaluationMaterials.require(
+                rows(
+                        "SELECT id FROM step WHERE tenant_id=? AND task_id=? LIMIT 1",
+                        lease.tenant(),
+                        lease.taskId())
+                    .isEmpty());
+            String json = Payloads.json(file);
+            db.update(
+                "UPDATE task SET material_file_snapshot=?,material_file_digest=? WHERE tenant_id=? AND id=?",
+                json,
+                Payloads.hash(json),
+                lease.tenant(),
+                lease.taskId());
+          }
+          return null;
+        });
+  }
+
+  private void materialBody(Map<String, Object> task, String request) {
+    var material = material(task);
+    if (material == null) return;
+    initialFile(task);
+    var wire = Payloads.read(request, com.fasterxml.jackson.databind.JsonNode.class);
+    EvaluationMaterials.body(
+        material, wire.path("requestBody").asText(), time(task, "report_time").toString());
+    // In particular W4's model-visible read must be the actual original file receipt,
+    // not merely a correct receipt in the DB paired with changed cached HTTP history.
+    var outputs =
+        rows(
+            "SELECT i.provider_id,i.output_snapshot FROM invocation i JOIN step s ON s.tenant_id=i.tenant_id AND s.id=i.step_id WHERE i.tenant_id=? AND i.task_id=? AND i.state='SUCCEEDED' ORDER BY s.ordinal,CAST(SUBSTRING_INDEX(i.slot,':',1) AS UNSIGNED)",
+            s(task, "tenant_id"),
+            s(task, "id"));
+    int index = 0;
+    var body =
+        Payloads.read(
+            wire.path("requestBody").asText(), com.fasterxml.jackson.databind.JsonNode.class);
+    for (var message : body.path("messages")) {
+      if (!message.path("role").asText().equals("tool")) continue;
+      EvaluationMaterials.require(index < outputs.size());
+      var original = outputs.get(index++);
+      EvaluationMaterials.require(
+          message.path("tool_call_id").asText().equals(s(original, "provider_id"))
+              && message.path("content").asText().equals(s(original, "output_snapshot")));
+    }
   }
 
   private String runRejection(Map<String, Object> evaluation) {
@@ -625,15 +837,20 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public Optional<Step> checkpoint(Lease lease) {
-    return tx(
+    return leaseTx(
+        lease,
         () -> {
-          fenced(lease, true);
+          var task = fenced(lease, true);
           return rows(
                   "SELECT * FROM step WHERE tenant_id=? AND task_id=? ORDER BY ordinal DESC LIMIT 1",
                   lease.tenant(),
                   lease.taskId())
               .stream()
-              .map(this::step)
+              .map(
+                  row -> {
+                    materialBody(task, s(row, "request_snapshot"));
+                    return step(row);
+                  })
               .findFirst();
         });
   }
@@ -665,7 +882,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public ModelSnapshot modelSnapshot(Lease lease) {
-    return tx(
+    return leaseTx(
+        lease,
         () -> {
           var evaluation = evaluation(lease);
           var task = fenced(lease, true);
@@ -690,7 +908,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public ToolSnapshot toolSnapshot(Lease lease) {
-    return tx(() -> tools(fenced(lease, true)));
+    return leaseTx(lease, () -> tools(fenced(lease, true)));
   }
 
   // This is always the first lock when a transaction can mutate evaluation accounting.
@@ -894,9 +1112,11 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public Step prepare(Lease lease, String request) {
-    return tx(
+    return leaseTx(
+        lease,
         () -> {
           var task = fenced(lease, true);
+          materialBody(task, request);
           var previous =
               rows(
                   "SELECT * FROM step WHERE tenant_id=? AND task_id=? ORDER BY ordinal DESC LIMIT 1",
@@ -930,7 +1150,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public String dispatchModel(Lease lease, String stepId) {
-    return tx(
+    return leaseTx(
+        lease,
         () -> {
           var evaluation = evaluation(lease);
           var task = fenced(lease, true);
@@ -954,6 +1175,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           if (!ModelProfiles.digest(model).equals(wire.path("configDigest").asText()))
             throw new TaskFailure(409, "MODEL_CONFIG_UNAVAILABLE");
           checkEvaluation(task, evaluation, model);
+          materialBody(task, s(step, "request_snapshot"));
           models.checkInput(model, wire.path("requestBody").asText());
           long upper =
               model.paid()
@@ -1280,7 +1502,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   @Override
   public Invocation admit(
       Lease lease, String stepId, Call call, String pluginVersion, String pluginDigest) {
-    return tx(
+    return leaseTx(
+        lease,
         () -> {
           var task = fenced(lease, true);
           var budget = bucket(lease.tenant());
@@ -1295,6 +1518,30 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               || !call.tool().equals(s(invocation, "tool"))
               || !call.providerId().equals(s(invocation, "provider_id")))
             throw new TaskFailure(409, "INVOCATION_MISMATCH");
+          var material = material(task);
+          if (material != null) {
+            initialFile(task);
+            var input = Payloads.read(call.input(), com.fasterxml.jackson.databind.JsonNode.class);
+            if (call.tool().equals("web_fetch"))
+              EvaluationMaterials.require(
+                  material.sources().containsKey(input.path("url").asText()));
+            if (call.tool().equals("write"))
+              EvaluationMaterials.require(
+                  !rows(
+                          "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND tool='read' AND state='SUCCEEDED' LIMIT 1",
+                          lease.tenant(),
+                          lease.taskId())
+                      .isEmpty());
+            if (call.tool().equals("read") || call.tool().equals("write"))
+              EvaluationMaterials.require(
+                  material.target().equals(input.path("file_path").asText()));
+            if (call.tool().equals("present"))
+              EvaluationMaterials.require(
+                  input.path("files").size() == 1
+                      && material
+                          .target()
+                          .equals(input.path("files").get(0).path("path").asText()));
+          }
           String invocationId = s(invocation, "id");
           var pinned = tools(task).pins().get(call.tool());
           var installation =
@@ -1351,32 +1598,46 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public void toolSucceeded(Lease lease, String invocationId, String output) {
-    tx(
-        () -> {
-          var task = fenced(lease, false);
-          var producer =
-              one(
-                  "SELECT tool FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
+    boolean rejected =
+        tx(
+            () -> {
+              var task = fenced(lease, false);
+              var producer =
+                  one(
+                      "SELECT tool FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
+                      lease.tenant(),
+                      lease.taskId(),
+                      invocationId);
+              if ("present".equals(s(producer, "tool")))
+                throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
+              if (db.update(
+                      "UPDATE invocation SET state='SUCCEEDED',output_snapshot=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND task_id=? AND state='RUNNING'",
+                      output,
+                      Payloads.hash(output),
+                      lease.tenant(),
+                      invocationId,
+                      lease.taskId())
+                  != 1) throw new TaskFailure(409, "INVOCATION_STATE");
+              db.update(
+                  "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=? AND id=?",
                   lease.tenant(),
-                  lease.taskId(),
                   invocationId);
-          if ("present".equals(s(producer, "tool")))
-            throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
-          if (db.update(
-                  "UPDATE invocation SET state='SUCCEEDED',output_snapshot=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND task_id=? AND state='RUNNING'",
-                  output,
-                  Payloads.hash(output),
-                  lease.tenant(),
-                  invocationId,
-                  lease.taskId())
-              != 1) throw new TaskFailure(409, "INVOCATION_STATE");
-          db.update(
-              "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=? AND id=?",
-              lease.tenant(),
-              invocationId);
-          event(task, "result:" + invocationId, "tool.succeeded", null);
-          return null;
-        });
+              event(task, "result:" + invocationId, "tool.succeeded", null);
+              try {
+                checkMaterials(task);
+                return false;
+              } catch (TaskFailure failure) {
+                if (!failure.code().equals("EVALUATION_MATERIAL_MISMATCH")) throw failure;
+                // Preserve the confirmed tool result and settlement, and stop the shared run
+                // atomically. A crash before WorkerLoop.stop cannot open another admission.
+                db.update(
+                    "UPDATE evaluation_budget SET state='STOPPED' WHERE tenant_id=? AND id=?",
+                    lease.tenant(),
+                    s(task, "evaluation_run_id"));
+                return true;
+              }
+            });
+    if (rejected) throw new TaskFailure(409, "EVALUATION_MATERIAL_MISMATCH");
   }
 
   @Override
@@ -1408,7 +1669,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public ReportContext reportContext(Lease lease) {
-    return tx(
+    return leaseTx(
+        lease,
         () -> {
           var task = fenced(lease, true);
           if (!publicReport(task) || time(task, "report_time") == null)
@@ -1442,7 +1704,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public List<Upload> stageReports(Lease lease, String invocationId, List<ReportFile> files) {
-    return tx(
+    return leaseTx(
+        lease,
         () -> {
           var task = fenced(lease, true);
           requirePresent(lease, task, invocationId);
@@ -1546,7 +1809,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   @Override
   public void presentSucceeded(
       Lease lease, String invocationId, List<Publication> publications, String output) {
-    tx(
+    leaseTx(
+        lease,
         () -> {
           var task = fenced(lease, true);
           requirePresent(lease, task, invocationId);
@@ -1632,7 +1896,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public Upload stage(Lease lease, String hash, long size) {
-    return tx(
+    return leaseTx(
+        lease,
         () -> {
           var task = fenced(lease, true);
           if (publicReport(task)) throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
@@ -1682,7 +1947,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public void verified(Lease lease, String artifactId, String key) {
-    tx(
+    leaseTx(
+        lease,
         () -> {
           var task = fenced(lease, true);
           db.update(
@@ -1699,7 +1965,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public void publish(Lease lease, String artifactId) {
-    tx(
+    leaseTx(
+        lease,
         () -> {
           var task = fenced(lease, true);
           if (publicReport(task)) throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
@@ -1728,7 +1995,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public void finish(Lease lease, String summary) {
-    tx(
+    leaseTx(
+        lease,
         () -> {
           var task = fenced(lease, true);
           if (publicReport(task)
@@ -1762,6 +2030,11 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
     tx(
         () -> {
           var task = fenced(lease, false);
+          if (code.equals("EVALUATION_MATERIAL_MISMATCH") && task.get("evaluation_run_id") != null)
+            db.update(
+                "UPDATE evaluation_budget SET state='STOPPED' WHERE tenant_id=? AND id=?",
+                lease.tenant(),
+                s(task, "evaluation_run_id"));
           boolean pendingEffect =
               !rows(
                       "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN')",
@@ -1929,13 +2202,13 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8') AND success=TRUE",
             Integer.class)
-        != 7) throw new IllegalStateException("Required migration unavailable");
+        != 8) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 7) throw new IllegalStateException("Unsupported schema version");
+        != 8) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override

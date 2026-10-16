@@ -49,6 +49,10 @@ public interface ExecutionLedger {
 
   record Publication(String artifactId, String key) {}
 
+  Optional<String> evaluationFile(Lease lease);
+
+  void bindEvaluationFile(Lease lease, ReportFile file);
+
   ReportContext reportContext(Lease lease);
 
   List<Upload> stageReports(Lease lease, String invocationId, List<ReportFile> files);

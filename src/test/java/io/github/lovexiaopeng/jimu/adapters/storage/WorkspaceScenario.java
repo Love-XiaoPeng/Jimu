@@ -71,6 +71,11 @@ public final class WorkspaceScenario {
     Path evidence = Path.of(args[1]);
     try {
       var store = new SecureWorkspaceStore(root);
+      var preflight = store.inspect("tenant-a", TASK, "report.md", () -> {});
+      check(
+          preflight.version() == 0 && preflight.size() == 0,
+          "host preflight sees actual missing file");
+      // A host inspection must not create the model observation required by CAS admission.
       failure("FS_NOT_OBSERVED", () -> port(store).write("report.md", "unobserved"));
       var missing = port(store).read("report.md", 1, 2000);
       check(

@@ -46,6 +46,25 @@ public final class WorkspaceRuntime {
     return contract;
   }
 
+  public void prepareEvaluation(Lease lease, ExecutionLedger ledger) {
+    ledger
+        .evaluationFile(lease)
+        .ifPresent(
+            path -> {
+              var file =
+                  workspace.inspect(
+                      lease.tenant(), lease.taskId(), path, () -> ledger.checkpoint(lease));
+              ledger.bindEvaluationFile(
+                  lease,
+                  new ReportFile(
+                      file.filePath(),
+                      file.version(),
+                      file.sha256(),
+                      file.size(),
+                      ReportPolicy.MEDIA));
+            });
+  }
+
   public void validate(String name, JsonNode input) {
     contract(name).in().validate(input);
     Set<String> allowed =

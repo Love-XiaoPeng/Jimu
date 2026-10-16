@@ -32,7 +32,8 @@ class EvaluationPlanIT {
               linux(script),
               linux(jar),
               linux(evidence),
-              linux(Path.of("target/test-classes"))));
+              linux(Path.of("target/test-classes")),
+              "--plans-only"));
     } else
       command.addAll(
           List.of(
@@ -41,7 +42,8 @@ class EvaluationPlanIT {
               script.toAbsolutePath().toString(),
               jar.toAbsolutePath().toString(),
               evidence.toAbsolutePath().toString(),
-              Path.of("target/test-classes").toAbsolutePath().toString()));
+              Path.of("target/test-classes").toAbsolutePath().toString(),
+              "--plans-only"));
     Path log = evidence.resolve("runner.log");
     var process =
         new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile()).start();

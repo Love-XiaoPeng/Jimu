@@ -92,6 +92,24 @@ public final class SecureWorkspaceStore {
     }
   }
 
+  /** Host preflight, under the same native boundary, without advancing model observations. */
+  public FilePort.Snapshot inspect(
+      String tenant, String task, String path, Cancellation cancellation) {
+    if (!tenant.matches("[A-Za-z0-9_-]{1,64}") || !UUID.fromString(task).toString().equals(task))
+      throw new IllegalArgumentException("Invalid workspace scope");
+    String name = logicalPath(path), scope = Payloads.hash(tenant + ":" + task);
+    return locked(
+        scope,
+        cancellation,
+        directory -> {
+          var value = load(directory, scope).files().get(name);
+          return value == null
+              ? new FilePort.Snapshot(name, 0, null, 0, "")
+              : new FilePort.Snapshot(
+                  name, value.version(), value.sha256(), value.size(), value.content());
+        });
+  }
+
   /** New admission only. The host must use resume for a previously admitted operation. */
   public FilePort bind(String tenant, String task, String operationId, Cancellation cancellation) {
     return bind(tenant, task, operationId, cancellation, false);
