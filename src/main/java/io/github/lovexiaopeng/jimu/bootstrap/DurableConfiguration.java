@@ -10,6 +10,7 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.BoundaryProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.LedgerMaintenance;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.LocalWorkerSupervisor;
+import io.github.lovexiaopeng.jimu.adapters.runtime.worker.OperationThreads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.WorkerLoop;
 import io.github.lovexiaopeng.jimu.adapters.storage.LocalArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
@@ -133,12 +134,23 @@ public class DurableConfiguration {
   @Bean(initMethod = "start", destroyMethod = "close")
   @ConditionalOnProperty(name = "jimu.role", havingValue = "worker")
   WorkerLoop workerLoop(
-      ExecutionLedger ledger, DurableAgent agent, Environment env, LedgerProbe resources) {
+      ExecutionLedger ledger,
+      DurableAgent agent,
+      Environment env,
+      LedgerProbe resources,
+      OperationThreads operations) {
     return new WorkerLoop(
         ledger,
         agent,
         java.util.UUID.fromString(env.getRequiredProperty("jimu.host-id")).toString(),
-        resources);
+        resources,
+        operations);
+  }
+
+  @Bean
+  @ConditionalOnProperty(name = "jimu.role", havingValue = "worker")
+  OperationThreads operationThreads() {
+    return new OperationThreads();
   }
 
   @Bean(destroyMethod = "close")

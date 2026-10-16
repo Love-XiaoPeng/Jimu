@@ -112,6 +112,11 @@ public final class DurableAgent implements AutoCloseable {
   }
 
   public void run(Lease lease) {
+    var pin = ledger.toolSnapshot(lease).pins().get(plugin.descriptor().capability());
+    if (pin == null
+        || !plugin.descriptor().version().equals(pin.version())
+        || !plugin.descriptor().outputSha256().equals(pin.digest()))
+      throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
     var modelSnapshot = ledger.modelSnapshot(lease);
     Session session = new Session(lease, modelSnapshot);
     var previous = ledger.checkpoint(lease);

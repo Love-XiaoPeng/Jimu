@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.BuiltinManifestLoader;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
+import io.github.lovexiaopeng.jimu.adapters.runtime.worker.OperationThreads;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchInput;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchOutput;
@@ -205,6 +206,7 @@ class PublicWebReaderTest {
 
   @Test
   void cancellationAndDeadlineCoverDnsAndNeverPermitALateConnection() throws Exception {
+    var operations = new OperationThreads();
     var entered = new CountDownLatch(1);
     var release = new CountDownLatch(1);
     var exited = new CountDownLatch(1);
@@ -232,7 +234,8 @@ class PublicWebReaderTest {
             (uri, pinned, ctx, active) -> {
               connections.incrementAndGet();
               throw new IOException("must not connect");
-            });
+            },
+            operations);
     long start = System.nanoTime();
     try {
       assertThrows(
@@ -243,12 +246,16 @@ class PublicWebReaderTest {
                   new ExecutionContext("deadline", Instant.now().plusMillis(200), () -> {})));
       assertTrue(entered.await(1, TimeUnit.SECONDS));
       assertTrue(System.nanoTime() - start < TimeUnit.SECONDS.toNanos(2));
+      assertEquals(
+          1, operations.activeCount(), "Cancelled Future is not evidence of resolver exit");
     } finally {
       release.countDown();
     }
     assertTrue(exited.await(1, TimeUnit.SECONDS));
     resolverThread.get().join(1000);
     assertFalse(resolverThread.get().isAlive());
+    operations.awaitDrained();
+    assertEquals(0, operations.activeCount());
     assertEquals(0, connections.get());
     var cancelled = new AtomicBoolean(true);
     assertThrows(

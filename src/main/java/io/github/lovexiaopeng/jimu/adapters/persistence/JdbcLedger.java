@@ -151,6 +151,21 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             return view(old.getFirst());
           }
           long installationEpoch = epoch(identity, request.capabilityIds());
+          var pins = new java.util.LinkedHashMap<String, PluginPin>();
+          for (String capability : request.capabilityIds()) {
+            var installed =
+                one(
+                    "SELECT * FROM installation WHERE tenant_id=? AND plugin_id=?",
+                    identity.tenant(),
+                    capability);
+            pins.put(
+                capability,
+                new PluginPin(
+                    s(installed, "plugin_version"),
+                    s(installed, "plugin_digest"),
+                    n(installed, "epoch")));
+          }
+          String toolSnapshot = Payloads.json(new ToolSnapshot(1, pins));
           var model = models.selected(identity.tenant());
           if (request.budget().maxCostMicros() != null && !model.paid())
             throw new TaskFailure(400, "CURRENCY_BUDGET_NOT_CONFIGURED");
@@ -174,11 +189,13 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               request.budget().maxModelRequests(),
               request.budget().maxToolInvocations());
           db.update(
-              "UPDATE task SET model_snapshot=?,model_digest=?,evaluation_run_id=?,max_cost_micros=? WHERE tenant_id=? AND id=?",
+              "UPDATE task SET model_snapshot=?,model_digest=?,evaluation_run_id=?,max_cost_micros=?,tools_snapshot=?,tools_digest=? WHERE tenant_id=? AND id=?",
               modelSnapshot,
               Payloads.hash(modelSnapshot),
               model.paid() ? models.evaluationRunId() : null,
               request.budget().maxCostMicros() == null ? 1000000 : request.budget().maxCostMicros(),
+              toolSnapshot,
+              Payloads.hash(toolSnapshot),
               identity.tenant(),
               task);
           db.update(
@@ -577,6 +594,24 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
     return tx(() -> snapshot(fenced(lease, true)));
   }
 
+  private ToolSnapshot tools(Map<String, Object> task) {
+    String value = s(task, "tools_snapshot");
+    if (value == null) throw new TaskFailure(409, "PLUGIN_SNAPSHOT_UNAVAILABLE");
+    if (!Payloads.hash(value).equals(s(task, "tools_digest")))
+      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    var snapshot = Payloads.read(value, ToolSnapshot.class);
+    if (snapshot.schemaVersion() != 1) throw new TaskFailure(409, "PLUGIN_SNAPSHOT_UNSUPPORTED");
+    if (!snapshot.pins().keySet().equals(new java.util.HashSet<>(caps(task)))
+        || snapshot.pins().values().stream().mapToLong(PluginPin::installationEpoch).sum()
+            != n(task, "installation_epoch")) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    return snapshot;
+  }
+
+  @Override
+  public ToolSnapshot toolSnapshot(Lease lease) {
+    return tx(() -> tools(fenced(lease, true)));
+  }
+
   // This is always the first lock when a transaction can mutate evaluation accounting.
   private Map<String, Object> evaluation(Lease lease) {
     String run =
@@ -823,11 +858,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           for (Call call : calls) {
             if (!lease.capabilities().contains(call.tool()))
               throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
-            var plugin =
-                one(
-                    "SELECT * FROM installation WHERE tenant_id=? AND plugin_id=?",
-                    lease.tenant(),
-                    call.tool());
+            var plugin = tools(task).pins().get(call.tool());
             db.update(
                 "INSERT INTO invocation(tenant_id,id,task_id,step_id,attempt_id,ordinal,slot,provider_id,effect_intent_id,tool,plugin_version,plugin_digest,installation_epoch,input_snapshot,input_digest,state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'PENDING')",
                 lease.tenant(),
@@ -840,9 +871,9 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                 call.providerId(),
                 id(),
                 call.tool(),
-                s(plugin, "plugin_version"),
-                s(plugin, "plugin_digest"),
-                n(plugin, "epoch"),
+                plugin.version(),
+                plugin.digest(),
+                plugin.installationEpoch(),
                 call.input(),
                 Payloads.hash(call.input()));
           }
@@ -984,6 +1015,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               || !call.providerId().equals(s(invocation, "provider_id")))
             throw new TaskFailure(409, "INVOCATION_MISMATCH");
           String invocationId = s(invocation, "id");
+          var pinned = tools(task).pins().get(call.tool());
           var installation =
               one(
                   "SELECT * FROM installation WHERE tenant_id=? AND plugin_id=?",
@@ -991,6 +1023,9 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                   call.tool());
           if (!pluginVersion.equals(s(invocation, "plugin_version"))
               || !pluginDigest.equals(s(invocation, "plugin_digest"))
+              || !pluginVersion.equals(pinned.version())
+              || !pluginDigest.equals(pinned.digest())
+              || n(invocation, "installation_epoch") != pinned.installationEpoch()
               || !pluginVersion.equals(s(installation, "plugin_version"))
               || !pluginDigest.equals(s(installation, "plugin_digest")))
             throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
@@ -1365,13 +1400,13 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5') AND success=TRUE",
             Integer.class)
-        != 4) throw new IllegalStateException("Required migration unavailable");
+        != 5) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 4) throw new IllegalStateException("Unsupported schema version");
+        != 5) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override

@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.web;
 
+import io.github.lovexiaopeng.jimu.adapters.runtime.worker.OperationThreads;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchOutput;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebPageReader;
@@ -41,15 +42,30 @@ public final class PublicWebReader implements WebPageReader {
   private final PublicWebPolicy policy;
   private final Lookup lookup;
   private final Transport transport;
+  private final OperationThreads operations;
 
   public PublicWebReader(Set<String> allowedDomains) {
-    this(new PublicWebPolicy(allowedDomains), InetAddress::getAllByName, defaultTransport());
+    this(allowedDomains, new OperationThreads());
+  }
+
+  public PublicWebReader(Set<String> allowedDomains, OperationThreads operations) {
+    this(
+        new PublicWebPolicy(allowedDomains),
+        InetAddress::getAllByName,
+        defaultTransport(),
+        operations);
   }
 
   PublicWebReader(PublicWebPolicy policy, Lookup lookup, Transport transport) {
+    this(policy, lookup, transport, new OperationThreads());
+  }
+
+  PublicWebReader(
+      PublicWebPolicy policy, Lookup lookup, Transport transport, OperationThreads operations) {
     this.policy = policy;
     this.lookup = lookup;
     this.transport = transport;
+    this.operations = operations;
   }
 
   static Transport defaultTransport() {
@@ -79,7 +95,7 @@ public final class PublicWebReader implements WebPageReader {
     URI first = policy.target(url);
     var active = new AtomicReference<HttpUriRequestBase>();
     var operation = new FutureTask<>(() -> fetchHops(first, context, active));
-    Thread.ofVirtual().name("jimu-public-fetch").start(operation);
+    operations.start("jimu-public-fetch", operation);
     try {
       while (true) {
         check(context);

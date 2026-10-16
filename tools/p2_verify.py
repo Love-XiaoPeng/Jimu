@@ -865,8 +865,9 @@ class Experiment:
             old = self.start(name + "-old", "worker", point)
             self.barrier(old)
             if point == "A0" and failure == "deadline":
-                # Reconstruct V2, including removing V4, then exercise the real V2 -> V3 -> V4 upgrade.
+                # Reconstruct V2, including removing V5/V4, then exercise the real upgrade.
                 self.stop(self.control)
+                self.sql("ALTER TABLE task DROP COLUMN tools_snapshot,DROP COLUMN tools_digest; DELETE FROM flyway_schema_history WHERE version='5';")
                 self.sql("ALTER TABLE task DROP FOREIGN KEY task_ibfk_2; DROP TABLE model_dispatch; DROP TABLE evaluation_budget; ALTER TABLE task DROP COLUMN model_snapshot,DROP COLUMN model_digest,DROP COLUMN evaluation_run_id,DROP COLUMN cost_held,DROP COLUMN max_cost_micros; ALTER TABLE tenant_budget DROP COLUMN cost_held,DROP COLUMN cost_limit; ALTER TABLE step MODIFY COLUMN model_version VARCHAR(32) NOT NULL DEFAULT 'fixture-v1'; DELETE FROM flyway_schema_history WHERE version='4';")
                 self.sql("ALTER TABLE task_attempt DROP COLUMN quiescent; DELETE FROM flyway_schema_history WHERE version='3';")
                 self.reject_start("v2-worker-rejected", {}, "migration")
