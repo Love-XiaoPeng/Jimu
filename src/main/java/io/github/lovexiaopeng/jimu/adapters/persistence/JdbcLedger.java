@@ -599,6 +599,15 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                         tenant,
                         taskId)
                     .isEmpty()) {
+                  if (modelRejection(task) == null && runRejection(evaluation) == null) {
+                    try {
+                      requireScope(tenant, evaluation, task, null);
+                    } catch (TaskFailure failure) {
+                      // Legacy unbound writers still require reconciliation. A claimed corrupt
+                      // proof must first durably stop the shared run, before any recovery writes.
+                      if (!failure.code().equals("EVALUATION_SCOPE_LEGACY_UNBOUND")) throw failure;
+                    }
+                  }
                   db.update(
                       "UPDATE invocation SET state='OUTCOME_UNKNOWN' WHERE tenant_id=? AND task_id=? AND state='RUNNING'",
                       tenant,

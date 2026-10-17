@@ -123,7 +123,7 @@ def verify(e):
         e.http('POST','/api/tasks/'+legacy+'/cancel',{})
         e.sql("CREATE TABLE jimu_provisioning_receipt(record_version INT NOT NULL,issue_id VARCHAR(64),instance_uuid VARCHAR(64),tenant_id VARCHAR(64),run_id VARCHAR(64),approval_snapshot LONGTEXT,approval_digest CHAR(64),plan_digest CHAR(64),materials_digest CHAR(64)); UPDATE tenant_budget SET model_limit=10000,token_limit=1000000000,cost_limit=10000000000;")
         e.assert_that(e.sql("SELECT COUNT(*) FROM flyway_schema_history WHERE success=1;")=='9' and e.sql('SELECT COUNT(*) FROM evaluation_execution_scope;')=='0','V9 schema only creates no scope or run')
-        if '--settlements-only' not in sys.argv:
+        if not any(flag in sys.argv for flag in ['--settlements-only','--unknown-claim-only']):
             run_id,cfg,binding=provision(bind=False)
             helper('permissions',cfg,binding)
             from evaluation.application_grants import APPLICATION_TABLES, grants
@@ -251,6 +251,17 @@ def verify(e):
                     if published_before=='1':
                         aid=e.sql("SELECT id FROM artifact WHERE task_id='"+task+"' AND state='PUBLISHED';")
                         e.assert_that(e.http('GET','/api/artifacts/'+aid+'/download')[0]==200,'already committed present survives later scope rejection')
+        if '--settlements-only' not in sys.argv:
+            for sample in ['W1','W2']:
+                for proof in ['corrupt','legacy']:
+                    run_id,cfg,binding=provision(sample);task,key=accept(cfg,sample)
+                    w=worker(cfg,'T0');e.barrier(w);e.stop(w,kill=True)
+                    e.sql("UPDATE task SET execution_scope_digest="+("REPEAT('f',64)" if proof=='corrupt' else 'NULL')+" WHERE id='"+task+"';")
+                    before=accounting(run_id);calls=len(server.calls);tls=len(e.tls.requests)
+                    e.expire(task);control(cfg);w=worker(cfg);w2=worker(cfg);e.state(task,'NEEDS_RECONCILIATION');e.stop(w);e.stop(w2)
+                    e.assert_that(accounting(run_id)==before and len(server.calls)==calls and len(e.tls.requests)==tls and e.sql("SELECT state FROM invocation WHERE task_id='"+task+"';")=='OUTCOME_UNKNOWN','unknown old tool retains original accounting without new effects',sample=sample,proof=proof)
+                    e.assert_that(e.sql("SELECT state FROM evaluation_budget WHERE id='"+run_id+"';")==('STOPPED' if proof=='corrupt' else 'OPEN'),'claim checks claimed integrity before unknown recovery; legacy NULL remains reconciliation only',sample=sample,proof=proof)
+        if '--unknown-claim-only' in sys.argv:return
         for sample in ['W1','W2']:
             for result in ['success','failure','unknown']:
                 run_id,cfg,binding=provision(sample);task,key=accept(cfg,sample)
