@@ -199,13 +199,27 @@ public final class ModelProfiles {
   }
 
   private void validate(ModelSnapshot p) {
+    var selection = evaluationSelection();
+    validateStructure(
+        selection == null ? null : selection.plan(),
+        p,
+        env.getProperty("jimu.test-mode", Boolean.class, false));
+    var uri = URI.create(p.baseUrl());
+    if (!settings.allowedOrigins().contains(uri.getScheme() + "://" + uri.getRawAuthority()))
+      throw new IllegalArgumentException("Model origin not allowed");
+  }
+
+  /** Pure validation shared with operator binding; never resolves secrets or enables dispatch. */
+  public static void validateStructure(
+      EvaluationPlans.Plan plan, ModelSnapshot p, boolean testMode) {
+    if (p == null || p.baseUrl() == null || p.profile() == null || p.profile().isBlank())
+      throw new IllegalArgumentException("Invalid model profile");
     URI uri;
     try {
       uri = URI.create(p.baseUrl());
     } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException("Invalid model base URL");
     }
-    String origin = uri.getScheme() + "://" + uri.getRawAuthority();
     if (p.version() != 2
         || !"openai-chat-v1".equals(p.adapter())
         || p.configVersion() < 1
@@ -222,7 +236,6 @@ public final class ModelProfiles {
         || uri.getPath().contains("..")
         || uri.getPath().endsWith("/chat/completions")
         || uri.getRawPath().contains("%")
-        || !settings.allowedOrigins().contains(origin)
         || "cloud-https-v1".equals(p.transportPolicy()) && !p.paid()
         || !("cloud-https-v1".equals(p.transportPolicy()) && "https".equals(uri.getScheme())
             || "trusted-local-v1".equals(p.transportPolicy())
@@ -234,9 +247,10 @@ public final class ModelProfiles {
         || p.responseBytes() < 1
         || p.responseBytes() > 1048576
         || p.maxOutputTokens() < 1
-        || p.maxOutputTokens() > (p.paid() ? (evaluationSelection() == null ? 512 : 4096) : 2048)
+        || p.maxOutputTokens() > (p.paid() ? (plan == null ? 512 : 4096) : 2048)
         || p.outputMarginTokens() < 0
         || p.outputMarginTokens() >= p.maxOutputTokens()
+        || p.outputLimitField() == null
         || !List.of("max_tokens", "max_completion_tokens").contains(p.outputLimitField()))
       throw new IllegalArgumentException("Invalid model profile");
     if (!("none".equals(p.authMode()) && p.credentialRef() == null && p.credentialVersion() == 0
@@ -283,9 +297,8 @@ public final class ModelProfiles {
             && p.providerOptions()
                 .equals(Map.of("enable_thinking", false, "enable_search", false))))
       throw new IllegalArgumentException("Unsupported provider options");
-    if (p.maxOutputTokens() > 512 && p.paid() && evaluationSelection() != null)
-      EvaluationPlans.validateModel(
-          evaluationSelection().plan(), p, env.getProperty("jimu.test-mode", Boolean.class, false));
+    if (p.maxOutputTokens() > 512 && p.paid() && plan != null)
+      EvaluationPlans.validateModel(plan, p, testMode);
     if (p.price() != null) {
       if (!p.paid()) throw new IllegalArgumentException("Price requires monetary accounting");
       var price = p.price();

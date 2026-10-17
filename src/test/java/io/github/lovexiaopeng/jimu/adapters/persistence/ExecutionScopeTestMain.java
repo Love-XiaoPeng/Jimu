@@ -80,6 +80,29 @@ public final class ExecutionScopeTestMain {
       return;
     }
     var profiles = models(config);
+    if (args[0].equals("repin")) {
+      var body =
+          (com.fasterxml.jackson.databind.node.ObjectNode)
+              Payloads.read(Files.readString(file), com.fasterxml.jackson.databind.JsonNode.class);
+      body.path("profiles")
+          .properties()
+          .forEach(
+              entry -> {
+                var model = Payloads.read(Payloads.json(entry.getValue()), ModelSnapshot.class);
+                var pin =
+                    (com.fasterxml.jackson.databind.node.ObjectNode)
+                        body.path("scope").path("profilePins").path(entry.getKey());
+                pin.put("modelSnapshotDigest", ModelProfiles.digest(model));
+              });
+      var account =
+          Payloads.read(
+              Payloads.json(body.path("accountEvidence")), ExecutionScopes.AccountEvidence.class);
+      ((com.fasterxml.jackson.databind.node.ObjectNode) body.path("scope"))
+          .put("accountEvidenceDigest", Payloads.hash(Payloads.json(account)));
+      Files.writeString(file, Payloads.json(body));
+      System.out.println("repinned fixture input");
+      return;
+    }
     if (args[0].equals("generate")) {
       var req = profiles.scopeRequirement();
       var plan = EvaluationPlans.plan("qwen-main-v1");
@@ -169,7 +192,11 @@ public final class ExecutionScopeTestMain {
             };
       }
       try {
-        var row = new ExecutionScopeBinding(bindingSource, profiles).bindOnce(input);
+        var binder =
+            args[0].equals("bind-production")
+                ? new ExecutionScopeBinding(bindingSource, profiles.scopeRequirement())
+                : new ExecutionScopeBinding(bindingSource, profiles);
+        var row = binder.bindOnce(input);
         require(
             Payloads.hash((String) row.get("ledger_readback"))
                 .equals(row.get("ledger_readback_digest")));
@@ -237,7 +264,7 @@ public final class ExecutionScopeTestMain {
       System.out.println("metadata write denials=9");
       return;
     }
-    if (args[0].startsWith("settle-") || args[0].equals("guard-paths")) {
+    if (args[0].startsWith("settle-") || args[0].equals("guard-path")) {
       String taskId = args[3];
       var db = new JdbcTemplate(source);
       var task = db.queryForMap("SELECT * FROM task WHERE id=?", taskId);
@@ -253,7 +280,7 @@ public final class ExecutionScopeTestMain {
               (String) task.get("goal"),
               List.of(((String) task.get("capabilities")).split(",")),
               ((Number) task.get("installation_epoch")).longValue());
-      if (args[0].equals("guard-paths")) {
+      if (args[0].equals("guard-path")) {
         var ledger = new JdbcLedger(source, profiles);
         var actions = new TreeMap<String, Runnable>();
         actions.put("checkpoint", () -> ledger.checkpoint(lease));
@@ -281,20 +308,22 @@ public final class ExecutionScopeTestMain {
         actions.put("verified", () -> ledger.verified(lease, "unused", "unused"));
         actions.put("publish", () -> ledger.publish(lease, "unused"));
         actions.put("finish", () -> ledger.finish(lease, "unused"));
-        var results = new TreeMap<String, String>();
-        actions.forEach(
-            (name, action) -> {
-              try {
-                action.run();
-                throw new AssertionError("Unexpected scope admission: " + name);
-              } catch (TaskFailure failure) {
-                require(
-                    failure.code().startsWith("EVALUATION_SCOPE_")
-                        || failure.code().equals("MODEL_BUDGET_EXCEEDED"));
-                results.put(name, failure.code());
-              }
-            });
-        System.out.println(Payloads.json(results));
+        if (args[4].equals("positive")) {
+          ledger.checkpoint(lease);
+          ledger.modelSnapshot(lease);
+          ledger.toolSnapshot(lease);
+          System.out.println("OPEN_SCOPE_POSITIVE");
+          return;
+        }
+        var action = actions.get(args[4]);
+        require(action != null);
+        try {
+          action.run();
+          throw new AssertionError("Unexpected scope admission: " + args[4]);
+        } catch (TaskFailure failure) {
+          require(failure.code().equals("EVALUATION_SCOPE_MISMATCH"));
+          System.out.println(Payloads.json(Map.of(args[4], failure.code())));
+        }
         return;
       }
       if (args[0].startsWith("settle-tool-")) {

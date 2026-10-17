@@ -1,13 +1,19 @@
 package io.github.lovexiaopeng.jimu.contract;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.lovexiaopeng.jimu.adapters.persistence.ModelCosts;
+import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -102,6 +108,40 @@ class ModelProfilesTest {
     var env = new StandardEnvironment();
     env.getPropertySources().addFirst(new MapPropertySource("test", p));
     return new ModelProfiles(env);
+  }
+
+  @Test
+  void operatorAndRegistryShareFullStructureValidationWithoutCredentialResolution() {
+    var valid = profiles(local()).selected("tenant");
+    assertDoesNotThrow(() -> ModelProfiles.validateStructure(null, valid, false));
+    for (var entry :
+        Map.<String, Object>of(
+                "version",
+                3,
+                "adapter",
+                "unsupported",
+                "configVersion",
+                0,
+                "connectTimeoutMs",
+                0,
+                "outputLimitField",
+                "unsupported")
+            .entrySet()) {
+      var body = (ObjectNode) Payloads.read(Payloads.json(valid), JsonNode.class);
+      body.set(entry.getKey(), new ObjectMapper().valueToTree(entry.getValue()));
+      var invalid = Payloads.read(body.toString(), ModelSnapshot.class);
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> ModelProfiles.validateStructure(null, invalid, false));
+    }
+    assertThrows(
+        IllegalArgumentException.class, () -> ModelProfiles.validateStructure(null, null, false));
+    var auth = local();
+    auth.put("jimu.model.profiles.local.auth-mode", "bearer");
+    auth.put("jimu.model.profiles.local.credential-ref", "env:UNAVAILABLE_SCOPE_FIXTURE_V1");
+    auth.put("jimu.model.profiles.local.credential-version", "1");
+    var closed = profiles(auth).selected("tenant");
+    assertDoesNotThrow(() -> ModelProfiles.validateStructure(null, closed, false));
   }
 
   @Test

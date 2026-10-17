@@ -6,6 +6,7 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -37,20 +38,35 @@ final class JdbcExecutionScopes {
     return rows.isEmpty() ? null : rows.getFirst();
   }
 
+  private List<String> boundRuns(String tenant) {
+    return db.queryForList(
+        "SELECT run_id FROM evaluation_execution_scope WHERE tenant_id=?", String.class, tenant);
+  }
+
   String targetRun(String tenant, String fallback) {
     try {
       var receipt = receipt(tenant);
       if (receipt != null) return (String) receipt.get("run_id");
       var req = models.scopeRequirement();
-      return req != null && tenant.equals(req.tenantId()) ? req.runId() : fallback;
+      if (req != null && tenant.equals(req.tenantId())) return req.runId();
+      var bound = boundRuns(tenant);
+      if (bound.isEmpty()) return fallback;
+      // A known task keeps its original run; new admission must have unambiguous authority.
+      if (fallback != null) {
+        if (bound.contains(fallback)) return fallback;
+        throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
+      }
+      if (bound.size() != 1) throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
+      return bound.getFirst();
     } catch (org.springframework.dao.DataAccessException unavailable) {
       throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
     }
   }
 
   boolean needed(String tenant, Map<String, Object> task) {
-    if (task != null && task.get("execution_scope_digest") != null || receipt(tenant) != null)
-      return true;
+    if (task != null && task.get("execution_scope_digest") != null
+        || receipt(tenant) != null
+        || !boundRuns(tenant).isEmpty()) return true;
     var req = models.scopeRequirement();
     if (req != null) return tenant.equals(req.tenantId());
     return models.evaluationSelection() != null && !models.localEvaluation(models.selected(tenant));
@@ -193,6 +209,7 @@ final class JdbcExecutionScopes {
       var p = entry.getValue();
       if (p == null) fail("EVALUATION_SCOPE_NOT_ALLOWED");
       var pin = scope.profilePins().get(entry.getKey());
+      ModelProfiles.validateStructure(plan, p, scope.localOnly());
       EvaluationPlans.validateModel(plan, p, scope.localOnly());
       if (!scope.allowedModel().equals(p.model())
           || !p.model().equals(p.revision())

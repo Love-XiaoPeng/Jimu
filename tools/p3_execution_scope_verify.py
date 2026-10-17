@@ -127,6 +127,79 @@ def verify(e):
         e.http('POST','/api/tasks/'+legacy+'/cancel',{})
         e.sql("CREATE TABLE jimu_provisioning_receipt(record_version INT NOT NULL,issue_id VARCHAR(64),instance_uuid VARCHAR(64),tenant_id VARCHAR(64),run_id VARCHAR(64),approval_snapshot LONGTEXT,approval_digest CHAR(64),plan_digest CHAR(64),materials_digest CHAR(64)); UPDATE tenant_budget SET model_limit=10000,token_limit=1000000000,cost_limit=10000000000;")
         e.assert_that(e.sql("SELECT COUNT(*) FROM flyway_schema_history WHERE success=1;")=='9' and e.sql('SELECT COUNT(*) FROM evaluation_execution_scope;')=='0','V9 schema only creates no scope or run')
+        if not any(flag in sys.argv for flag in ['--settlements-only','--unknown-claim-only','--guards-only']):
+            old='--review-reproduction' in sys.argv
+            for stream in [False,True]:
+                for authority in ['row','table']:
+                    run_id,cfg,binding=provision('W2' if stream else 'W1')
+                    ordinary=config({'a':server},paid=False,enabled=False)
+                    ordinary.pop('jimu.model.evaluation-run-id',None)
+                    prefix='jimu.model.profiles.a.'
+                    ordinary.update({prefix+'stream':str(stream).lower(),prefix+'capabilities.stream-text':'true',prefix+'capabilities.stream-tools':'true'})
+                    before=totals();scope_before=snapshot_scope(run_id);calls=len(server.calls);tls=len(e.tls.requests)
+                    if authority=='table':e.sql('RENAME TABLE jimu_provisioning_receipt TO fixture_hidden_receipt;')
+                    else:e.sql("UPDATE jimu_provisioning_receipt SET tenant_id='fixture-hidden-tenant';")
+                    try:
+                        goal=e.root/'review-goal.txt';goal.write_text('unfrozen nonpaid local task')
+                        result=helper('submit',ordinary,binding,goal,unique('joint-missing'))
+                    finally:
+                        if authority=='table':e.sql('RENAME TABLE fixture_hidden_receipt TO jimu_provisioning_receipt;')
+                        else:e.sql("UPDATE jimu_provisioning_receipt SET tenant_id='tenant-a';")
+                    if old:
+                        e.assert_that(result.startswith('ACCEPTED:'),'OLD A03 reproduces unscoped task admission only',stream=stream,authority=authority,result=result)
+                        task=result.split(':',1)[1]
+                        e.assert_that(e.sql("SELECT COALESCE(evaluation_run_id,'NULL'),COALESCE(execution_scope_digest,'NULL') FROM task WHERE id='"+task+"';")=='NULL\tNULL','OLD A03 stores no run/scope pointer')
+                        e.sql("UPDATE task SET state='CANCELLED' WHERE id='"+task+"'; UPDATE tenant_budget SET queued=queued-1 WHERE tenant_id='tenant-a'; UPDATE reservation SET state='RELEASED' WHERE task_id='"+task+"' AND category='QUEUE';")
+                    else:
+                        e.assert_that(result=='REFUSED:EVALUATION_SCOPE_UNAVAILABLE' and before==totals(),'joint missing authority refuses before all new quota',stream=stream,authority=authority,result=result)
+                    e.assert_that(scope_before==snapshot_scope(run_id) and len(server.calls)==calls and len(e.tls.requests)==tls,'joint missing authority probe never dispatches HTTP or changes scope')
+            for field,value in ([('version',3),('adapter','unsupported-adapter')] if old else [('version',3),('adapter','unsupported-adapter'),('configVersion',0),('connectTimeoutMs',0),('credentialRef','env:UNVERSIONED'),('outputLimitField',None)]):
+                run_id,cfg,binding=provision(bind=False)
+                original=json.loads(binding.read_text());production=json.loads(canonical(original))
+                production['scope']['localOnly']=False
+                production['accountEvidence'].update(region='cn-beijing',billingScope='modelstudio-payg-cny',apiHost='dashscope.aliyuncs.com')
+                for profile in production['profiles'].values():
+                    profile.update(baseUrl='https://dashscope.aliyuncs.com/compatible-mode/v1',transportPolicy='cloud-https-v1',authMode='bearer',credentialRef='env:UNAVAILABLE_SCOPE_FIXTURE_V1',credentialVersion=1)
+                production['profiles']['a'][field]=value
+                path=e.root/(unique('production-bad-profile')+'.json');path.write_text(canonical(production));helper('repin',cfg,path)
+                (e.evidence/(path.stem+'.json')).write_bytes(path.read_bytes())
+                before=totals();result=helper('bind-production',cfg,path)
+                count=e.sql("SELECT COUNT(*) FROM evaluation_execution_scope WHERE run_id='"+run_id+"';")
+                e.assert_that(('"result":"bound"' in result if old else '"result":"refused"' in result) and count==('1' if old else '0') and before==totals(),('OLD B02 malformed production profile binds' if old else 'malformed production profile refuses before immutable binding'),field=field,result=json.loads(result))
+            if not old:
+                # A different ordinary tenant remains independent of tenant-a's durable scopes.
+                ordinary=config({'a':server},paid=False,enabled=False);ordinary.pop('jimu.model.evaluation-run-id',None)
+                control(ordinary);calls=len(server.calls);tls=len(e.tls.requests)
+                status,view=e.http('POST','/api/tasks',{'goal':'unrelated-ordinary-scope-control','capabilityIds':['web_fetch']},subject='b',key=unique('unrelated'))
+                e.assert_that(status==202 and e.sql("SELECT COALESCE(evaluation_run_id,'NULL'),COALESCE(execution_scope_digest,'NULL') FROM task WHERE id='"+view['taskId']+"';")=='NULL\tNULL','unrelated ordinary tenant still admits without managed scope')
+                e.assert_that(e.http('POST','/api/tasks/'+view['taskId']+'/cancel',subject='b')[0]==200 and len(server.calls)==calls and len(e.tls.requests)==tls,'unrelated positive control cancels with no model or tool dispatch')
+                run_id,cfg,binding=provision(bind=False)
+                production=json.loads(binding.read_text());production['scope']['localOnly']=False
+                production['accountEvidence'].update(region='cn-beijing',billingScope='modelstudio-payg-cny',apiHost='dashscope.aliyuncs.com')
+                for profile in production['profiles'].values():
+                    profile.update(baseUrl='https://dashscope.aliyuncs.com/compatible-mode/v1',transportPolicy='cloud-https-v1',authMode='bearer',credentialRef='env:UNAVAILABLE_SCOPE_FIXTURE_V1',credentialVersion=1)
+                path=e.root/(unique('production-valid-profile')+'.json');path.write_text(canonical(production));helper('repin',cfg,path)
+                (e.evidence/(path.stem+'.json')).write_bytes(path.read_bytes())
+                before=totals();calls=len(server.calls);tls=len(e.tls.requests)
+                result=helper('bind-production',cfg,path);receipt=snapshot_scope(run_id)
+                retry=helper('bind-production',cfg,path)
+                e.assert_that('"result":"bound"' in result and '"result":"bound"' in retry and receipt==snapshot_scope(run_id) and before==totals() and calls==len(server.calls) and tls==len(e.tls.requests),'valid production structure binds/idempotently retries with closed dispatch and unavailable credential; synthetic account facts only')
+            if '--review-reproduction' in sys.argv or '--review-only' in sys.argv:return
+        if '--guards-only' in sys.argv or not any(flag in sys.argv for flag in ['--settlements-only','--unknown-claim-only','--admission-only']):
+            for sample in ['W1','W2']:
+                for action in ['checkpoint','modelSnapshot','toolSnapshot','prepare','dispatch','evaluationFile','bindEvaluationFile','toolAdmission','reportContext','stageReports','presentSucceeded','stage','verified','publish','finish']:
+                    run_id,cfg,binding=provision(sample);task,key=accept(cfg,sample)
+                    w=worker(cfg,'MODEL_RESPONSE_COMMITTED');e.barrier(w)
+                    e.assert_that(helper('guard-path',cfg,binding,task,'positive')=='OPEN_SCOPE_POSITIVE','valid scope admits checkpoint/model/tool snapshot control',sample=sample,action=action)
+                    run_before=e.sql("SELECT state FROM evaluation_budget WHERE id='"+run_id+"';")
+                    observation('independent-guard-before:'+action,e.sql("SELECT id,evaluation_run_id,execution_scope_digest,models_used,token_held,cost_held FROM task WHERE id='"+task+"'; SELECT id,category,state,amount FROM reservation WHERE task_id='"+task+"' ORDER BY id;"))
+                    damage(run_id,'digest',task);before=totals();balance=accounting(run_id);calls=len(server.calls);tls=len(e.tls.requests)
+                    result=helper('guard-path',cfg,binding,task,action)
+                    e.assert_that(run_before=='OPEN' and json.loads(result)=={action:'EVALUATION_SCOPE_MISMATCH'} and e.sql("SELECT state FROM evaluation_budget WHERE id='"+run_id+"';")=='STOPPED','independent OPEN run rejects at exact scope guard',sample=sample,action=action,run=run_id,task=task)
+                    e.assert_that(before==totals() and balance==accounting(run_id) and calls==len(server.calls) and tls==len(e.tls.requests),'independent guard preserves all fees and creates no quota/HTTP/tool/artifact',sample=sample,action=action)
+                    e.stop(w,kill=True);e.expire(task);control(cfg);w=worker(cfg);w2=worker(cfg);e.state(task,'FAILED');e.stop(w);e.stop(w2)
+                    e.assert_that(before==totals() and balance==accounting(run_id) and calls==len(server.calls) and tls==len(e.tls.requests),'independent scope stop persists through actual restart and dual workers',sample=sample,action=action)
+            if '--guards-only' in sys.argv:return
         if not any(flag in sys.argv for flag in ['--settlements-only','--unknown-claim-only']):
             run_id,cfg,binding=provision(bind=False)
             helper('permissions',cfg,binding)
@@ -243,8 +316,8 @@ def verify(e):
                     run_id,cfg,binding=provision(sample);task,key=accept(cfg,sample)
                     w=worker(cfg,'MODEL_RESPONSE_COMMITTED');e.barrier(w)
                     damage(run_id,kind,task);before=totals();baseline=len(server.calls)
-                    helper('guard-paths',cfg,binding,task)
-                    e.assert_that(before==totals() and baseline==len(server.calls),'15 admission APIs reject cached scope corruption before new side effects',sample=sample,kind=kind)
+                    helper('guard-path',cfg,binding,task,'checkpoint')
+                    e.assert_that(before==totals() and baseline==len(server.calls),'checkpoint independently rejects cached scope corruption before new side effects',sample=sample,kind=kind)
                     e.stop(w,kill=True);e.expire(task);control(cfg);w=worker(cfg);w2=worker(cfg);e.state(task,'FAILED');e.stop(w);e.stop(w2)
                     e.assert_that(e.sql("SELECT state FROM evaluation_budget WHERE id='"+run_id+"';")=='STOPPED' and len(server.calls)==baseline,'scope integrity stop survives restart and competing workers',sample=sample,kind=kind)
                 run_id,cfg,binding=provision(sample);task,key=accept(cfg,sample)
@@ -262,7 +335,7 @@ def verify(e):
                     w=worker(cfg,point);e.barrier(w)
                     published_before=e.sql("SELECT COUNT(*) FROM artifact WHERE task_id='"+task+"' AND state='PUBLISHED';")
                     damage(run_id,'digest',task);before=totals();calls=len(server.calls)
-                    helper('guard-paths',cfg,binding,task)
+                    helper('guard-path',cfg,binding,task,'checkpoint')
                     (w['folder']/'release').touch()
                     eventually(lambda:state(task).split('\t')[0] in ['FAILED','NEEDS_RECONCILIATION'],'refused present/finish collected')
                     e.stop(w)
