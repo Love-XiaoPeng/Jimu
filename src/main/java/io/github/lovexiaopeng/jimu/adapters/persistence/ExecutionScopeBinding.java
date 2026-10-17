@@ -65,7 +65,8 @@ public final class ExecutionScopeBinding {
             var row = existing.getFirst();
             if (!json.equals(row.get("scope_snapshot")) || !digest.equals(row.get("scope_digest")))
               throw new TaskFailure(409, "EVALUATION_SCOPE_BINDING_CONFLICT");
-            return row; // First timestamp/actor and all original accounting remain unchanged.
+            return readback(
+                row); // First timestamp/actor and all original accounting remain unchanged.
           }
           var budget =
               db.queryForList(
@@ -88,7 +89,23 @@ public final class ExecutionScopeBinding {
                   scope.runId());
           if (accounted != ((Number) run.get("cost_held")).longValue()
               || db.queryForObject(
-                      "SELECT COUNT(*) FROM model_dispatch d JOIN task t ON t.tenant_id=d.tenant_id AND t.id=d.task_id LEFT JOIN reservation r ON r.tenant_id=d.tenant_id AND r.id=CONCAT(d.id,':cost') WHERE t.tenant_id=? AND t.evaluation_run_id=? AND (r.id IS NULL OR r.task_id<>d.task_id OR r.amount<>d.reserved_cost OR NOT(r.actual <=> d.actual_cost))",
+                      "SELECT COUNT(*) FROM task t WHERE t.tenant_id=? AND t.evaluation_run_id=? AND (t.models_used<>(SELECT COUNT(*) FROM model_dispatch d WHERE d.tenant_id=t.tenant_id AND d.task_id=t.id) OR t.cost_held<>(SELECT COALESCE(SUM(COALESCE(d.actual_cost,d.reserved_cost)),0) FROM model_dispatch d WHERE d.tenant_id=t.tenant_id AND d.task_id=t.id))",
+                      Long.class,
+                      scope.tenantId(),
+                      scope.runId())
+                  != 0
+              || ((Number) budget.getFirst().get("cost_held")).longValue()
+                  != db.queryForObject(
+                      "SELECT COALESCE(SUM(cost_held),0) FROM task WHERE tenant_id=?",
+                      Long.class,
+                      scope.tenantId())
+              || ((Number) budget.getFirst().get("model_used")).longValue()
+                  != db.queryForObject(
+                      "SELECT COALESCE(SUM(models_used),0) FROM task WHERE tenant_id=?",
+                      Long.class,
+                      scope.tenantId())
+              || db.queryForObject(
+                      "SELECT COUNT(*) FROM model_dispatch d JOIN task t ON t.tenant_id=d.tenant_id AND t.id=d.task_id LEFT JOIN reservation r ON r.tenant_id=d.tenant_id AND r.id=CONCAT(d.id,':cost') WHERE t.tenant_id=? AND t.evaluation_run_id=? AND (r.id IS NULL OR r.task_id<>d.task_id OR r.amount<>d.reserved_cost OR NOT(r.actual <=> d.actual_cost) OR NOT(t.model_digest <=> d.config_digest) OR NOT(SHA2(t.model_snapshot,256) <=> t.model_digest))",
                       Long.class,
                       scope.tenantId(),
                       scope.runId())
@@ -101,10 +118,39 @@ public final class ExecutionScopeBinding {
               json,
               digest,
               input.boundBy());
-          return db.queryForMap(
-              "SELECT * FROM evaluation_execution_scope WHERE tenant_id=? AND run_id=?",
-              scope.tenantId(),
-              scope.runId());
+          return readback(
+              db.queryForMap(
+                  "SELECT * FROM evaluation_execution_scope WHERE tenant_id=? AND run_id=?",
+                  scope.tenantId(),
+                  scope.runId()));
         });
+  }
+
+  private Map<String, Object> readback(Map<String, Object> row) {
+    Object tenant = row.get("tenant_id"), run = row.get("run_id");
+    var ledger = new java.util.TreeMap<String, Object>();
+    ledger.put(
+        "tasks",
+        db.queryForList(
+            "SELECT id,state,model_digest,evaluation_digest,material_digest,execution_scope_digest,models_used,tools_used,token_held,cost_held,current_attempt_id,fence FROM task WHERE tenant_id=? AND evaluation_run_id=? ORDER BY id",
+            tenant,
+            run));
+    ledger.put(
+        "dispatches",
+        db.queryForList(
+            "SELECT d.id,d.task_id,d.step_id,d.state,d.config_digest,d.request_digest,d.price_version,d.currency,d.reserved_cost,d.actual_cost,d.cost_quality,d.input_tokens,d.output_tokens,d.total_tokens FROM model_dispatch d JOIN task t ON t.tenant_id=d.tenant_id AND t.id=d.task_id WHERE t.tenant_id=? AND t.evaluation_run_id=? ORDER BY d.id",
+            tenant,
+            run));
+    ledger.put(
+        "reservations",
+        db.queryForList(
+            "SELECT r.id,r.task_id,r.dispatch_id,r.category,r.state,r.amount,r.actual,r.usage_quality,r.cost_quality FROM reservation r JOIN task t ON t.tenant_id=r.tenant_id AND t.id=r.task_id WHERE t.tenant_id=? AND t.evaluation_run_id=? ORDER BY r.id",
+            tenant,
+            run));
+    String snapshot = Payloads.json(ledger);
+    var result = new java.util.HashMap<String, Object>(row);
+    result.put("ledger_readback", snapshot);
+    result.put("ledger_readback_digest", Payloads.hash(snapshot));
+    return result;
   }
 }

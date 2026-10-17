@@ -170,6 +170,9 @@ public final class ExecutionScopeTestMain {
       }
       try {
         var row = new ExecutionScopeBinding(bindingSource, profiles).bindOnce(input);
+        require(
+            Payloads.hash((String) row.get("ledger_readback"))
+                .equals(row.get("ledger_readback_digest")));
         System.out.println(
             Payloads.json(
                 Map.of(
@@ -177,6 +180,10 @@ public final class ExecutionScopeTestMain {
                     "bound",
                     "scopeDigest",
                     row.get("scope_digest"),
+                    "ledgerReadback",
+                    row.get("ledger_readback"),
+                    "ledgerReadbackDigest",
+                    row.get("ledger_readback_digest"),
                     "boundAtUtc",
                     row.get("bound_at_utc").toString(),
                     "boundBy",

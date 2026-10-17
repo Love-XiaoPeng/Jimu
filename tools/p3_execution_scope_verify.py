@@ -197,6 +197,14 @@ def verify(e):
             with concurrent.futures.ThreadPoolExecutor(2) as pool:
                 results=list(pool.map(lambda file:helper('bind',race_cfg,file),[race_binding,conflict_file]))
             e.assert_that(sum('"result":"bound"' in r for r in results)==1 and sum('EVALUATION_SCOPE_BINDING_CONFLICT' in r for r in results)==1 and e.sql("SELECT COUNT(*) FROM evaluation_execution_scope WHERE run_id='"+race_run+"';")=='1','competing different binders serialize to one immutable winner')
+            audit_run,audit_cfg,audit_binding=provision(bind=False)
+            for table,column,where in [('tenant_budget','model_used',"tenant_id='tenant-a'"),('tenant_budget','cost_held',"tenant_id='tenant-a'"),('evaluation_budget','requests_used',"id='"+audit_run+"'"),('evaluation_budget','cost_held',"id='"+audit_run+"'")]:
+                e.sql('UPDATE '+table+' SET '+column+'='+column+'+1 WHERE '+where+';')
+                try:
+                    before=totals();result=helper('bind',audit_cfg,audit_binding)
+                    e.assert_that('"result":"refused"' in result and before==totals() and e.sql("SELECT COUNT(*) FROM evaluation_execution_scope WHERE run_id='"+audit_run+"';")=='0','first binding refuses inconsistent historical counter without resetting it',table=table,column=column)
+                finally:e.sql('UPDATE '+table+' SET '+column+'='+column+'-1 WHERE '+where+';')
+            e.assert_that('ledgerReadbackDigest' in helper('bind',audit_cfg,audit_binding),'operator returns recomputable task/dispatch/reservation readback proof')
             if '--admission-only' in sys.argv:return
             # All 3 recovery classes in ordinary and SSE, with actual process exit and two workers.
             published=[]
