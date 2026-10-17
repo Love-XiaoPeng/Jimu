@@ -65,8 +65,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
       Map<String, Object> evaluation,
       Map<String, Object> task,
       ModelSnapshot model) {
-    if (!executionScopes.needed(tenant, task)) return null;
     try {
+      if (!executionScopes.needed(tenant, task)) return null;
       if (task != null) {
         if (task.get("execution_scope_digest") == null)
           throw new TaskFailure(409, "EVALUATION_SCOPE_LEGACY_UNBOUND");
@@ -86,6 +86,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
         }
       }
       return digest;
+    } catch (org.springframework.dao.DataAccessException unavailable) {
+      throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
     } catch (TaskFailure failure) {
       if (failure.code().equals("EVALUATION_SCOPE_MISMATCH") && evaluation != null) {
         db.update(

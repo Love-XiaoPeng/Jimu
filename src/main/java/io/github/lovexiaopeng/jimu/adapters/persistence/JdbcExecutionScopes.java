@@ -38,10 +38,14 @@ final class JdbcExecutionScopes {
   }
 
   String targetRun(String tenant, String fallback) {
-    var receipt = receipt(tenant);
-    if (receipt != null) return (String) receipt.get("run_id");
-    var req = models.scopeRequirement();
-    return req != null && tenant.equals(req.tenantId()) ? req.runId() : fallback;
+    try {
+      var receipt = receipt(tenant);
+      if (receipt != null) return (String) receipt.get("run_id");
+      var req = models.scopeRequirement();
+      return req != null && tenant.equals(req.tenantId()) ? req.runId() : fallback;
+    } catch (org.springframework.dao.DataAccessException unavailable) {
+      throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
+    }
   }
 
   boolean needed(String tenant, Map<String, Object> task) {

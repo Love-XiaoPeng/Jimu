@@ -38,6 +38,46 @@ class PublicWebReaderTest {
   }
 
   @Test
+  void wallClockRollbackCannotExtendAlreadyAdmittedElapsedBudget() throws Exception {
+    // Admission observed a clock one hour ahead; subsequent wall-clock checks observe now.
+    // This simulates a rollback without modifying the host clock or shortening the old tests.
+    Instant admittedAt = Instant.now().plusSeconds(3600);
+    var operations = new OperationThreads();
+    var reader =
+        new PublicWebReader(
+            policy,
+            host -> new InetAddress[] {InetAddress.getByName("93.184.216.34")},
+            (uri, pinned, ctx, active) -> {
+              try {
+                Thread.sleep(2000);
+              } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new IOException(interrupted);
+              }
+              return new PinnedHttpsTransport.Reply(
+                  200,
+                  null,
+                  PublicPageProjection.project(
+                      200,
+                      uri.toString(),
+                      "text/plain",
+                      "valid body".getBytes(StandardCharsets.UTF_8)));
+            },
+            operations,
+            java.time.Clock.fixed(admittedAt, java.time.ZoneOffset.UTC));
+    long started = System.nanoTime();
+    assertThrows(
+        CancellationException.class,
+        () ->
+            reader.fetch(
+                "https://example.com/",
+                new ExecutionContext("clock-rollback", admittedAt.plusMillis(250), () -> {})));
+    assertTrue(System.nanoTime() - started < TimeUnit.SECONDS.toNanos(2));
+    operations.awaitDrained();
+    assertEquals(0, operations.activeCount());
+  }
+
+  @Test
   void urlPolicyIsExactHttps443AndNeverAcceptsModelCredentialsOrIpLiterals() {
     assertEquals("example.com", policy.target("https://example.com/page?q=中文").getHost());
     assertEquals(443, policy.target("https://EXAMPLE.com:443/").getPort());

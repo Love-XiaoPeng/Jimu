@@ -42,9 +42,13 @@ def verify(e):
     def sqljson(value):return 'CONVERT(0x'+canonical(value).encode().hex()+' USING utf8mb4)'
     def state(task):return e.sql("SELECT state,code FROM task WHERE id='"+task+"';")
     def totals():
-        return e.sql("SELECT (SELECT COUNT(*) FROM task),(SELECT COUNT(*) FROM reservation),(SELECT COUNT(*) FROM model_dispatch),(SELECT COUNT(*) FROM invocation),(SELECT COUNT(*) FROM artifact),SUM(cost_held),SUM(requests_used) FROM evaluation_budget;")
+        return observation('totals',e.sql("SELECT (SELECT COUNT(*) FROM task),(SELECT COUNT(*) FROM reservation),(SELECT COUNT(*) FROM model_dispatch),(SELECT COUNT(*) FROM invocation),(SELECT COUNT(*) FROM artifact),SUM(cost_held),SUM(requests_used) FROM evaluation_budget;"))
+    def observation(label,raw):
+        with (e.evidence/'ledger-observations.jsonl').open('a') as log:
+            log.write(json.dumps({'label':label,'case':server.case,'raw':raw,'sha256':hashlib.sha256(raw.encode()).hexdigest(),'modelHttpCount':len(server.calls),'tlsCount':len(e.tls.requests)},ensure_ascii=False)+'\n')
+        return raw
     def accounting(run_id):
-        return e.sql("SELECT requests_used,cost_held,max_requests,max_cost_micros,COALESCE(phase_b_digest,'LOCKED') FROM evaluation_budget WHERE id='"+run_id+"';")
+        return observation(run_id,e.sql("SELECT requests_used,cost_held,max_requests,max_cost_micros,COALESCE(phase_b_digest,'LOCKED') FROM evaluation_budget WHERE id='"+run_id+"';"))
     def private(cfg):
         path=e.root/(unique('scope-config')+'.properties')
         path.write_text('\n'.join(k+'='+str(v) for k,v in dict(e.common,**cfg).items())+'\n');path.chmod(0o600)
@@ -96,7 +100,7 @@ def verify(e):
         if bind: e.assert_that('"result":"bound"' in helper('bind',cfg,binding),'explicit isolated operator binding')
         cfg['jimu.model.default-profile-ref']='sse' if sample=='W2' else 'a';cfg['jimu.model.evaluation-sample']=sample
         return run_id,cfg,binding
-    def snapshot_scope(run_id):return e.sql("SELECT scope_digest,HEX(scope_snapshot),bound_at_utc,bound_by FROM evaluation_execution_scope WHERE run_id='"+run_id+"';")
+    def snapshot_scope(run_id):return observation('scope:'+run_id,e.sql("SELECT scope_digest,HEX(scope_snapshot),bound_at_utc,bound_by FROM evaluation_execution_scope WHERE run_id='"+run_id+"';"))
     def reject_submit(cfg,binding,label,sample='W1'):
         before=totals();calls=len(server.calls);goal=e.root/'goal.txt';goal.write_text(GOALS[sample])
         result=helper('submit',cfg,binding,goal,unique('refused'))
@@ -148,6 +152,10 @@ def verify(e):
                 count=e.sql("SELECT COUNT(*) FROM evaluation_execution_scope WHERE run_id='"+run_id+"';")
                 e.assert_that(count==('0' if point=='before' else '1') and accounting(run_id)==original_account,'binder exit atomicity '+point)
             receipt=snapshot_scope(run_id)
+            e.sql('RENAME TABLE evaluation_execution_scope TO fixture_hidden_scope;')
+            try:reject_submit(cfg,binding,'unreadable scope table')
+            finally:e.sql('RENAME TABLE fixture_hidden_scope TO evaluation_execution_scope;')
+            e.assert_that(e.sql("SELECT state FROM evaluation_budget WHERE id='"+run_id+"';")=='OPEN','unreadable scope is unavailable without invented STOPPED proof')
             with concurrent.futures.ThreadPoolExecutor(2) as pool:results=list(pool.map(lambda _:helper('bind',cfg,binding),range(2)))
             e.assert_that(all('"result":"bound"' in r for r in results) and snapshot_scope(run_id)==receipt,'identical concurrent retries retain first receipt')
             original=json.loads(binding.read_text())
@@ -161,6 +169,8 @@ def verify(e):
             for sample in ['W1','W2']:
                 base=dict(cfg,**{'jimu.model.default-profile-ref':'a' if sample=='W1' else 'sse','jimu.model.evaluation-sample':sample})
                 prefix='jimu.model.profiles.'+('a' if sample=='W1' else 'sse')+'.'
+                bad=dict(base);bad[prefix+'base-url']='http://[::1]:'+str(server.server_port)+'/compatible-mode/v1';bad['jimu.model.allowed-origins[0]']='http://[::1]:'+str(server.server_port)
+                reject_submit(bad,binding,sample+' changed API host',sample)
                 for field,value in [('model','qwen3.7-flash-2026-07-15'),('model','qwen3.8-max-0902'),('revision','alias'),('base-url',server.origin+'/other'),('price.version','changed'),('credential-version','1'),('stream',str(sample=='W1').lower()),('provider-options.enable_thinking','true')]:
                     bad=dict(base);bad[prefix+field]=value
                     if field=='model':
@@ -187,6 +197,7 @@ def verify(e):
             with concurrent.futures.ThreadPoolExecutor(2) as pool:
                 results=list(pool.map(lambda file:helper('bind',race_cfg,file),[race_binding,conflict_file]))
             e.assert_that(sum('"result":"bound"' in r for r in results)==1 and sum('EVALUATION_SCOPE_BINDING_CONFLICT' in r for r in results)==1 and e.sql("SELECT COUNT(*) FROM evaluation_execution_scope WHERE run_id='"+race_run+"';")=='1','competing different binders serialize to one immutable winner')
+            if '--admission-only' in sys.argv:return
             # All 3 recovery classes in ordinary and SSE, with actual process exit and two workers.
             published=[]
             for sample in ['W1','W2']:

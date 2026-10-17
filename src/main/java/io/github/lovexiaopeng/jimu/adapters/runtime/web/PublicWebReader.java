@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.security.GeneralSecurityException;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
@@ -45,6 +46,7 @@ public final class PublicWebReader implements WebPageReader {
   private final Lookup lookup;
   private final Transport transport;
   private final OperationThreads operations;
+  private final Clock admissionClock;
 
   public PublicWebReader(Set<String> allowedDomains) {
     this(allowedDomains, new OperationThreads());
@@ -64,10 +66,20 @@ public final class PublicWebReader implements WebPageReader {
 
   PublicWebReader(
       PublicWebPolicy policy, Lookup lookup, Transport transport, OperationThreads operations) {
+    this(policy, lookup, transport, operations, Clock.systemUTC());
+  }
+
+  PublicWebReader(
+      PublicWebPolicy policy,
+      Lookup lookup,
+      Transport transport,
+      OperationThreads operations,
+      Clock admissionClock) {
     this.policy = policy;
     this.lookup = lookup;
     this.transport = transport;
     this.operations = operations;
+    this.admissionClock = admissionClock;
   }
 
   static Transport defaultTransport() {
@@ -83,15 +95,21 @@ public final class PublicWebReader implements WebPageReader {
 
   @Override
   public FetchOutput fetch(String url, ExecutionContext original) {
-    Instant limit = Instant.now().plusSeconds(30);
+    Instant admittedAt = admissionClock.instant();
+    Instant limit = admittedAt.plusSeconds(30);
+    Instant deadline = original.deadline().isBefore(limit) ? original.deadline() : limit;
+    long budget = Math.max(0, Duration.between(admittedAt, deadline).toNanos());
+    long started = System.nanoTime();
     var closed = new AtomicBoolean();
     var context =
         new ExecutionContext(
             original.invocationId(),
-            original.deadline().isBefore(limit) ? original.deadline() : limit,
+            deadline,
             () -> {
               if (closed.get()) throw new CancellationException("Public fetch closed");
               original.cancellation().throwIfCancelled();
+              if (System.nanoTime() - started >= budget)
+                throw new CancellationException("Public fetch elapsed deadline expired");
             });
     check(context);
     URI first = policy.target(url);
