@@ -1,0 +1,35 @@
+{
+  "purpose": "anonymous source material freeze only; not application web-tool acceptance",
+  "sources": [
+    {
+      "id": "rfc768",
+      "url": "https://www.rfc-editor.org/rfc/rfc768.txt",
+      "finalUrl": "https://www.rfc-editor.org/rfc/rfc768.txt",
+      "httpStatus": 200,
+      "contentType": "text/plain;charset=utf-8",
+      "etag": "W/\"02fa166a0ac0a2ce526ed3bb4bf241f1\"",
+      "lastModified": null,
+      "fetchedAtUtc": "2026-10-16T14:38:27.524936+00:00",
+      "rawPath": "sources/rfc768.raw",
+      "rawSha256": "7dc8880e1ecef9c3f9da0db4b876a16e96bfa4f0953cc9d977d414f8f680c2f0",
+      "rawBytes": 5896,
+      "authorizationUsed": false,
+      "cookiesUsed": false
+    },
+    {
+      "id": "colorsys",
+      "url": "https://docs.python.org/3/library/colorsys.html",
+      "finalUrl": "https://docs.python.org/3/library/colorsys.html",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "etag": "\"6ad2344d-566c\"",
+      "lastModified": "Fri, 16 Oct 2026 14:27:25 GMT",
+      "fetchedAtUtc": "2026-10-16T14:38:27.407536+00:00",
+      "rawPath": "sources/colorsys.raw",
+      "rawSha256": "06cf848052167e898b062c466217fc196354aeefdfe5bfa50b890477d35b219d",
+      "rawBytes": 22124,
+      "authorizationUsed": false,
+      "cookiesUsed": false
+    }
+  ]
+}

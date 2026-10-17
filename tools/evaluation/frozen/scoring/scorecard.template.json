@@ -1,0 +1,125 @@
+{
+  "planId": null,
+  "policyDigest": null,
+  "sampleId": null,
+  "blindCandidateId": null,
+  "reviewer": null,
+  "items": [
+    {
+      "id": "C-LANGUAGE",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "C-RANGE",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "C-SCOPE",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "C-READABILITY",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "T-SCHEMA",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "T-TARGET",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "T-OBSERVE",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "T-CAS",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "T-PRESENT",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "T-ROUNDS",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "S-FACTS",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "S-COVERAGE",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "S-UNCERTAINTY",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "S-QUOTES",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "R-SECTIONS",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "R-ACTIONABLE",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "R-TIME",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    },
+    {
+      "id": "R-DOWNLOAD",
+      "score": null,
+      "evidenceReferences": [],
+      "anchorMatched": null
+    }
+  ],
+  "hardFails": [],
+  "C1AllChecksPassed": null,
+  "hostStructurePassed": null,
+  "publishedDownloadHashPassed": null,
+  "usageAndAllEffectsKnown": null,
+  "adjudicated": false,
+  "totals": null,
+  "passing": false
+}

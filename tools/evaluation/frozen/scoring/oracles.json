@@ -1,0 +1,59 @@
+{
+  "C1": {
+    "parentSample": "W1",
+    "extraction": "exactly one json fenced block in 摘要; strict duplicate-key rejection; validate C1-answer.schema.json",
+    "manualChecks": [
+      "结论为中文且无虚构原因",
+      "局限明确缺停机、质量、人员数据且不能推断原因"
+    ],
+    "allChecksRequired": true
+  },
+  "W1": {
+    "facts": [
+      "Source Port、Destination Port、Length、Checksum四字段",
+      "Length单位为octets且minimum为8",
+      "UDP不保证delivery或duplicate protection"
+    ],
+    "boundaries": [
+      "不从RFC768推断现代性能排行",
+      "不将checksum等同于可靠交付",
+      "不据此断言IPv6行为或当前价格"
+    ]
+  },
+  "W2": {
+    "facts": [
+      "RGB与YIQ/HLS/HSV的双向API名称及转换方向",
+      "一般坐标为0到1，YIQ的I/Q可正可负",
+      "红色RGB(1,0,0)手工HSV为(0,1,1)"
+    ],
+    "boundaries": [
+      "无Python运行证据",
+      "无速度或精度排名证据",
+      "手工例子与实际执行结果明确区分"
+    ]
+  },
+  "W3": {
+    "facts": [
+      "至少一个RFC768明示事实且引用匹配",
+      "至少一个colorsys明示事实且引用匹配",
+      "两条性能断言都不能由当前来源证明"
+    ],
+    "boundaries": [
+      "UDP始终比TCP快无本业务实测依据",
+      "colorsys最快实现无比较证据",
+      "建议不能作为已验证结论"
+    ]
+  },
+  "W4": {
+    "facts": [
+      "纠正UDP保证可靠送达的说法",
+      "纠正已经生产压测/总比其他传输快的说法",
+      "修订理由可追溯到本次实际抓取的RFC768"
+    ],
+    "boundaries": [
+      "没有生产压测证据",
+      "旧草稿不是证据来源",
+      "真实read的旧版本与最终CAS/present收据一致"
+    ]
+  }
+}

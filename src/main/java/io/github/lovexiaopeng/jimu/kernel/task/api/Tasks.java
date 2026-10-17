@@ -7,7 +7,8 @@ import java.util.List;
 public interface Tasks {
   record Identity(String tenant, String actor) {}
 
-  record Budget(int deadlineSeconds, int maxModelRequests, int maxToolInvocations) {}
+  record Budget(
+      int deadlineSeconds, int maxModelRequests, int maxToolInvocations, Long maxCostMicros) {}
 
   record Request(String goal, List<String> capabilityIds, List<String> resourceIds, Budget budget) {
     public Request {

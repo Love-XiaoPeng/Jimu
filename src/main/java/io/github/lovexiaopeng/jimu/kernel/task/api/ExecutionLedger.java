@@ -1,7 +1,10 @@
 package io.github.lovexiaopeng.jimu.kernel.task.api;
 
+import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
+import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /** All mutations are short, fenced transactions. No connection escapes this port. */
@@ -28,13 +31,46 @@ public interface ExecutionLedger {
 
   record Invocation(String id, String effectId, String state, String output) {}
 
+  record PluginPin(String version, String digest, long installationEpoch) {}
+
+  record ToolSnapshot(int schemaVersion, Map<String, PluginPin> pins) {
+    public ToolSnapshot {
+      pins = Map.copyOf(pins);
+    }
+  }
+
   record Upload(String id, String uploadId, String state, String hash, long size, String key) {}
+
+  record Source(String invocationId, String output, String digest) {}
+
+  record ReportContext(Instant productionTime, List<Source> sources) {}
+
+  record ReportFile(String path, long version, String sha256, long size, String mediaType) {}
+
+  record Publication(String artifactId, String key) {}
+
+  Optional<String> evaluationFile(Lease lease);
+
+  void bindEvaluationFile(Lease lease, ReportFile file);
+
+  ReportContext reportContext(Lease lease);
+
+  List<Upload> stageReports(Lease lease, String invocationId, List<ReportFile> files);
+
+  void presentSucceeded(
+      Lease lease, String invocationId, List<Publication> publications, String output);
+
+  void toolFailed(Lease lease, String invocationId, String code);
 
   Optional<Lease> claim(String worker);
 
   boolean renew(Lease lease);
 
   Optional<Step> checkpoint(Lease lease);
+
+  ModelSnapshot modelSnapshot(Lease lease);
+
+  ToolSnapshot toolSnapshot(Lease lease);
 
   Step prepare(Lease lease, String request);
 
@@ -46,7 +82,10 @@ public interface ExecutionLedger {
       String dispatchId,
       String response,
       List<Call> calls,
-      Integer tokens);
+      Integer tokens,
+      ModelUsage usage);
+
+  void modelFailed(Lease lease, String dispatchId, String code, ModelUsage usage);
 
   Invocation admit(
       Lease lease, String stepId, Call call, String pluginVersion, String pluginDigest);

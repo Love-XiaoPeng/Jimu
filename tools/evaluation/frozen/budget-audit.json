@@ -1,0 +1,378 @@
+{
+  "unit": "integer micro-CNY; per dispatch ceil; expected scenario 12K full input and 2048 total output, no discounts; forecast not admission",
+  "plans": [
+    {
+      "planId": "qwen-main-v1",
+      "phaseAReserveMicros": 253050473,
+      "phaseAExpectedMicros": 3407963,
+      "phaseALedgerScenarioMicros": 4720443,
+      "branches": [
+        {
+          "finalists": [],
+          "BMaxDispatches": 0,
+          "BReserveMicros": 0,
+          "totalReserveMicros": 253050473,
+          "remainingForLegacyAndUnallocatedMicros": 246949527,
+          "knownUsageListPriceForecastMicros": 3407963,
+          "configuredFlatRateLedgerForecastMicros": 4720443
+        },
+        {
+          "finalists": [
+            "qwen3.7-plus-2026-05-26"
+          ],
+          "BMaxDispatches": 12,
+          "BReserveMicros": 73179648,
+          "totalReserveMicros": 326230121,
+          "remainingForLegacyAndUnallocatedMicros": 173769879,
+          "knownUsageListPriceForecastMicros": 3892571,
+          "configuredFlatRateLedgerForecastMicros": 6174267
+        },
+        {
+          "finalists": [
+            "qwen3.7-flash-2026-07-15"
+          ],
+          "BMaxDispatches": 12,
+          "BReserveMicros": 14635932,
+          "totalReserveMicros": 267686405,
+          "remainingForLegacyAndUnallocatedMicros": 232313595,
+          "knownUsageListPriceForecastMicros": 3456431,
+          "configuredFlatRateLedgerForecastMicros": 5011215
+        },
+        {
+          "finalists": [
+            "qwen3.8-max-0902"
+          ],
+          "BMaxDispatches": 12,
+          "BReserveMicros": 145769472,
+          "totalReserveMicros": 398819945,
+          "remainingForLegacyAndUnallocatedMicros": 101180055,
+          "knownUsageListPriceForecastMicros": 6020699,
+          "configuredFlatRateLedgerForecastMicros": 7333179
+        },
+        {
+          "finalists": [
+            "qwen3.7-plus-2026-05-26",
+            "qwen3.7-flash-2026-07-15"
+          ],
+          "BMaxDispatches": 24,
+          "BReserveMicros": 87815580,
+          "totalReserveMicros": 340866053,
+          "remainingForLegacyAndUnallocatedMicros": 159133947,
+          "knownUsageListPriceForecastMicros": 3941039,
+          "configuredFlatRateLedgerForecastMicros": 6465039
+        },
+        {
+          "finalists": [
+            "qwen3.7-plus-2026-05-26",
+            "qwen3.8-max-0902"
+          ],
+          "BMaxDispatches": 24,
+          "BReserveMicros": 218949120,
+          "totalReserveMicros": 471999593,
+          "remainingForLegacyAndUnallocatedMicros": 28000407,
+          "knownUsageListPriceForecastMicros": 6505307,
+          "configuredFlatRateLedgerForecastMicros": 8787003
+        },
+        {
+          "finalists": [
+            "qwen3.7-flash-2026-07-15",
+            "qwen3.8-max-0902"
+          ],
+          "BMaxDispatches": 24,
+          "BReserveMicros": 160405404,
+          "totalReserveMicros": 413455877,
+          "remainingForLegacyAndUnallocatedMicros": 86544123,
+          "knownUsageListPriceForecastMicros": 6069167,
+          "configuredFlatRateLedgerForecastMicros": 7623951
+        }
+      ],
+      "worst": {
+        "finalists": [
+          "qwen3.7-plus-2026-05-26",
+          "qwen3.8-max-0902"
+        ],
+        "BMaxDispatches": 24,
+        "BReserveMicros": 218949120,
+        "totalReserveMicros": 471999593,
+        "remainingForLegacyAndUnallocatedMicros": 28000407,
+        "knownUsageListPriceForecastMicros": 6505307,
+        "configuredFlatRateLedgerForecastMicros": 8787003
+      },
+      "candidateRows": [
+        {
+          "model": "qwen3.7-plus-2026-05-26",
+          "perDispatchReserveMicros": 6098304,
+          "phaseLimits": {
+            "A": {
+              "maxDispatches": 13,
+              "maxCostMicros": 79277952,
+              "maxBillableOutputTokens": 53248,
+              "tokenLimit": 13053248
+            },
+            "B": {
+              "maxDispatches": 12,
+              "maxCostMicros": 73179648,
+              "maxBillableOutputTokens": 49152,
+              "tokenLimit": 12049152
+            }
+          }
+        },
+        {
+          "model": "qwen3.7-flash-2026-07-15",
+          "perDispatchReserveMicros": 1219661,
+          "phaseLimits": {
+            "A": {
+              "maxDispatches": 13,
+              "maxCostMicros": 15855593,
+              "maxBillableOutputTokens": 53248,
+              "tokenLimit": 13053248
+            },
+            "B": {
+              "maxDispatches": 12,
+              "maxCostMicros": 14635932,
+              "maxBillableOutputTokens": 49152,
+              "tokenLimit": 12049152
+            }
+          }
+        },
+        {
+          "model": "qwen3.8-max-0902",
+          "perDispatchReserveMicros": 12147456,
+          "phaseLimits": {
+            "A": {
+              "maxDispatches": 13,
+              "maxCostMicros": 157916928,
+              "maxBillableOutputTokens": 53248,
+              "tokenLimit": 13053248
+            },
+            "B": {
+              "maxDispatches": 12,
+              "maxCostMicros": 145769472,
+              "maxBillableOutputTokens": 49152,
+              "tokenLimit": 12049152
+            }
+          }
+        }
+      ]
+    },
+    {
+      "planId": "qwen-pro-optional-v1",
+      "phaseAReserveMicros": 371488169,
+      "phaseAExpectedMicros": 5530811,
+      "phaseALedgerScenarioMicros": 6843291,
+      "branches": [
+        {
+          "finalists": [],
+          "BMaxDispatches": 0,
+          "BReserveMicros": 0,
+          "totalReserveMicros": 371488169,
+          "remainingForLegacyAndUnallocatedMicros": 278511831,
+          "knownUsageListPriceForecastMicros": 5530811,
+          "configuredFlatRateLedgerForecastMicros": 6843291
+        },
+        {
+          "finalists": [
+            "qwen3.7-plus-2026-05-26"
+          ],
+          "BMaxDispatches": 12,
+          "BReserveMicros": 73179648,
+          "totalReserveMicros": 444667817,
+          "remainingForLegacyAndUnallocatedMicros": 205332183,
+          "knownUsageListPriceForecastMicros": 6015419,
+          "configuredFlatRateLedgerForecastMicros": 8297115
+        },
+        {
+          "finalists": [
+            "qwen3.7-flash-2026-07-15"
+          ],
+          "BMaxDispatches": 12,
+          "BReserveMicros": 14635932,
+          "totalReserveMicros": 386124101,
+          "remainingForLegacyAndUnallocatedMicros": 263875899,
+          "knownUsageListPriceForecastMicros": 5579279,
+          "configuredFlatRateLedgerForecastMicros": 7134063
+        },
+        {
+          "finalists": [
+            "qwen3.8-max-0902"
+          ],
+          "BMaxDispatches": 12,
+          "BReserveMicros": 145769472,
+          "totalReserveMicros": 517257641,
+          "remainingForLegacyAndUnallocatedMicros": 132742359,
+          "knownUsageListPriceForecastMicros": 8143547,
+          "configuredFlatRateLedgerForecastMicros": 9456027
+        },
+        {
+          "finalists": [
+            "deepseek-v4-pro-0813"
+          ],
+          "BMaxDispatches": 12,
+          "BReserveMicros": 109327104,
+          "totalReserveMicros": 480815273,
+          "remainingForLegacyAndUnallocatedMicros": 169184727,
+          "knownUsageListPriceForecastMicros": 7490363,
+          "configuredFlatRateLedgerForecastMicros": 8802843
+        },
+        {
+          "finalists": [
+            "qwen3.7-plus-2026-05-26",
+            "qwen3.7-flash-2026-07-15"
+          ],
+          "BMaxDispatches": 24,
+          "BReserveMicros": 87815580,
+          "totalReserveMicros": 459303749,
+          "remainingForLegacyAndUnallocatedMicros": 190696251,
+          "knownUsageListPriceForecastMicros": 6063887,
+          "configuredFlatRateLedgerForecastMicros": 8587887
+        },
+        {
+          "finalists": [
+            "qwen3.7-plus-2026-05-26",
+            "qwen3.8-max-0902"
+          ],
+          "BMaxDispatches": 24,
+          "BReserveMicros": 218949120,
+          "totalReserveMicros": 590437289,
+          "remainingForLegacyAndUnallocatedMicros": 59562711,
+          "knownUsageListPriceForecastMicros": 8628155,
+          "configuredFlatRateLedgerForecastMicros": 10909851
+        },
+        {
+          "finalists": [
+            "qwen3.7-plus-2026-05-26",
+            "deepseek-v4-pro-0813"
+          ],
+          "BMaxDispatches": 24,
+          "BReserveMicros": 182506752,
+          "totalReserveMicros": 553994921,
+          "remainingForLegacyAndUnallocatedMicros": 96005079,
+          "knownUsageListPriceForecastMicros": 7974971,
+          "configuredFlatRateLedgerForecastMicros": 10256667
+        },
+        {
+          "finalists": [
+            "qwen3.7-flash-2026-07-15",
+            "qwen3.8-max-0902"
+          ],
+          "BMaxDispatches": 24,
+          "BReserveMicros": 160405404,
+          "totalReserveMicros": 531893573,
+          "remainingForLegacyAndUnallocatedMicros": 118106427,
+          "knownUsageListPriceForecastMicros": 8192015,
+          "configuredFlatRateLedgerForecastMicros": 9746799
+        },
+        {
+          "finalists": [
+            "qwen3.7-flash-2026-07-15",
+            "deepseek-v4-pro-0813"
+          ],
+          "BMaxDispatches": 24,
+          "BReserveMicros": 123963036,
+          "totalReserveMicros": 495451205,
+          "remainingForLegacyAndUnallocatedMicros": 154548795,
+          "knownUsageListPriceForecastMicros": 7538831,
+          "configuredFlatRateLedgerForecastMicros": 9093615
+        },
+        {
+          "finalists": [
+            "qwen3.8-max-0902",
+            "deepseek-v4-pro-0813"
+          ],
+          "BMaxDispatches": 24,
+          "BReserveMicros": 255096576,
+          "totalReserveMicros": 626584745,
+          "remainingForLegacyAndUnallocatedMicros": 23415255,
+          "knownUsageListPriceForecastMicros": 10103099,
+          "configuredFlatRateLedgerForecastMicros": 11415579
+        }
+      ],
+      "worst": {
+        "finalists": [
+          "qwen3.8-max-0902",
+          "deepseek-v4-pro-0813"
+        ],
+        "BMaxDispatches": 24,
+        "BReserveMicros": 255096576,
+        "totalReserveMicros": 626584745,
+        "remainingForLegacyAndUnallocatedMicros": 23415255,
+        "knownUsageListPriceForecastMicros": 10103099,
+        "configuredFlatRateLedgerForecastMicros": 11415579
+      },
+      "candidateRows": [
+        {
+          "model": "qwen3.7-plus-2026-05-26",
+          "perDispatchReserveMicros": 6098304,
+          "phaseLimits": {
+            "A": {
+              "maxDispatches": 13,
+              "maxCostMicros": 79277952,
+              "maxBillableOutputTokens": 53248,
+              "tokenLimit": 13053248
+            },
+            "B": {
+              "maxDispatches": 12,
+              "maxCostMicros": 73179648,
+              "maxBillableOutputTokens": 49152,
+              "tokenLimit": 12049152
+            }
+          }
+        },
+        {
+          "model": "qwen3.7-flash-2026-07-15",
+          "perDispatchReserveMicros": 1219661,
+          "phaseLimits": {
+            "A": {
+              "maxDispatches": 13,
+              "maxCostMicros": 15855593,
+              "maxBillableOutputTokens": 53248,
+              "tokenLimit": 13053248
+            },
+            "B": {
+              "maxDispatches": 12,
+              "maxCostMicros": 14635932,
+              "maxBillableOutputTokens": 49152,
+              "tokenLimit": 12049152
+            }
+          }
+        },
+        {
+          "model": "qwen3.8-max-0902",
+          "perDispatchReserveMicros": 12147456,
+          "phaseLimits": {
+            "A": {
+              "maxDispatches": 13,
+              "maxCostMicros": 157916928,
+              "maxBillableOutputTokens": 53248,
+              "tokenLimit": 13053248
+            },
+            "B": {
+              "maxDispatches": 12,
+              "maxCostMicros": 145769472,
+              "maxBillableOutputTokens": 49152,
+              "tokenLimit": 12049152
+            }
+          }
+        },
+        {
+          "model": "deepseek-v4-pro-0813",
+          "perDispatchReserveMicros": 9110592,
+          "phaseLimits": {
+            "A": {
+              "maxDispatches": 13,
+              "maxCostMicros": 118437696,
+              "maxBillableOutputTokens": 53248,
+              "tokenLimit": 13053248
+            },
+            "B": {
+              "maxDispatches": 12,
+              "maxCostMicros": 109327104,
+              "maxBillableOutputTokens": 49152,
+              "tokenLimit": 12049152
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

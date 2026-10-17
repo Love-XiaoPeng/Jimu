@@ -2,27 +2,35 @@ package io.github.lovexiaopeng.jimu.bootstrap;
 
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent;
 import io.github.lovexiaopeng.jimu.adapters.persistence.JdbcLedger;
+import io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceRuntime;
 import io.github.lovexiaopeng.jimu.adapters.runtime.events.DatabaseEventFeed;
 import io.github.lovexiaopeng.jimu.adapters.runtime.health.HttpResourceProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.health.LedgerProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.identity.SignedIdentity;
+import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
+import io.github.lovexiaopeng.jimu.adapters.runtime.web.FetchRuntime;
+import io.github.lovexiaopeng.jimu.adapters.runtime.web.PublicWebReader;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.BoundaryProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.LedgerMaintenance;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.LocalWorkerSupervisor;
+import io.github.lovexiaopeng.jimu.adapters.runtime.worker.OperationThreads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.WorkerLoop;
 import io.github.lovexiaopeng.jimu.adapters.storage.LocalArtifactStore;
+import io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Identity;
-import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebFetchPlugin;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
+import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebPageReader;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.HashMap;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,6 +41,11 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 @ConditionalOnProperty(name = "jimu.durable.enabled", havingValue = "true")
 public class DurableConfiguration {
   @Bean
+  ModelProfiles modelProfiles(Environment env) {
+    return new ModelProfiles(env);
+  }
+
+  @Bean
   DataSource ledgerDataSource(Environment env) {
     return new DriverManagerDataSource(
         env.getRequiredProperty("jimu.db.url"),
@@ -41,7 +54,7 @@ public class DurableConfiguration {
   }
 
   @Bean
-  JdbcLedger ledger(DataSource source, Environment env) {
+  JdbcLedger ledger(DataSource source, Environment env, ModelProfiles models) {
     if ("control".equals(env.getRequiredProperty("jimu.role"))) {
       Flyway.configure()
           .dataSource(
@@ -53,7 +66,7 @@ public class DurableConfiguration {
           .migrate();
     }
     Flyway.configure().dataSource(source).cleanDisabled(true).load().validate();
-    var ledger = new JdbcLedger(source);
+    var ledger = new JdbcLedger(source, models);
     ledger.check();
     return ledger;
   }
@@ -78,14 +91,16 @@ public class DurableConfiguration {
   }
 
   @Bean(destroyMethod = "close")
-  LedgerProbe durableReadiness(ExecutionLedger ledger, ArtifactStore store, Environment env) {
+  LedgerProbe durableReadiness(
+      ExecutionLedger ledger, ArtifactStore store, Environment env, ModelProfiles models) {
     return new LedgerProbe(
         ledger,
         store,
-        "worker".equals(env.getRequiredProperty("jimu.role"))
+        models.fixture() && "worker".equals(env.getRequiredProperty("jimu.role"))
             ? new HttpResourceProbe(
                 URI.create(env.getRequiredProperty("jimu.provider-origin")), false)
-            : null);
+            : null,
+        models::ready);
   }
 
   @Bean
@@ -101,34 +116,67 @@ public class DurableConfiguration {
   DurableAgent durableAgent(
       ExecutionLedger ledger,
       ArtifactStore store,
-      WebFetchPlugin plugin,
+      ToolDescriptor descriptor,
+      @Qualifier("publicWebReader") WebPageReader publicReader,
       BoundaryProbe probe,
+      ModelProfiles models,
       Environment env)
       throws IOException {
     var credentials = new HashMap<String, String>();
-    for (String entry : env.getRequiredProperty("jimu.fixture.credentials").split(";")) {
-      String[] pair = entry.split(":", 2);
-      credentials.put(pair[0], pair[1]);
-    }
+    if (env.getProperty("jimu.test-mode", Boolean.class, false))
+      for (String entry : env.getRequiredProperty("jimu.fixture.credentials").split(";")) {
+        String[] pair = entry.split(":", 2);
+        credentials.put(pair[0], pair[1]);
+      }
+    FetchRuntime fetch =
+        FetchRuntime.fixtureMode(env)
+            ? new FetchRuntime(
+                descriptor,
+                URI.create(env.getRequiredProperty("jimu.provider-origin")),
+                credentials)
+            : new FetchRuntime(
+                descriptor,
+                FetchRuntime.domains(env),
+                publicReader,
+                env.getProperty("jimu.web.public-dispatch-enabled", Boolean.class, false));
+    String workspaceRoot = env.getProperty("jimu.workspace-root");
     return new DurableAgent(
         ledger,
         store,
-        plugin,
+        fetch,
         probe,
-        URI.create(env.getRequiredProperty("jimu.provider-origin")),
-        credentials,
-        env.getProperty("jimu.model-stream", Boolean.class, false));
+        models,
+        workspaceRoot == null
+            ? null
+            : new WorkspaceRuntime(new SecureWorkspaceStore(Path.of(workspaceRoot))));
   }
 
   @Bean(initMethod = "start", destroyMethod = "close")
   @ConditionalOnProperty(name = "jimu.role", havingValue = "worker")
   WorkerLoop workerLoop(
-      ExecutionLedger ledger, DurableAgent agent, Environment env, LedgerProbe resources) {
+      ExecutionLedger ledger,
+      DurableAgent agent,
+      Environment env,
+      LedgerProbe resources,
+      OperationThreads operations) {
     return new WorkerLoop(
         ledger,
         agent,
         java.util.UUID.fromString(env.getRequiredProperty("jimu.host-id")).toString(),
-        resources);
+        resources,
+        operations);
+  }
+
+  @Bean
+  @ConditionalOnProperty(name = "jimu.role", havingValue = "worker")
+  WebPageReader publicWebReader(Environment env, OperationThreads operations) {
+    return new PublicWebReader(FetchRuntime.domains(env), operations);
+  }
+
+  @Bean
+  @ConditionalOnProperty(name = "jimu.role", havingValue = "worker")
+  OperationThreads operationThreads() {
+    return new OperationThreads();
   }
 
   @Bean(destroyMethod = "close")

@@ -70,21 +70,23 @@ public final class TaskController {
             ? List.of("web_fetch")
             : request.capabilityIds().stream().distinct().toList();
     if (capabilities.isEmpty()
-        || capabilities.size() > 1
-        || !List.of("web_fetch").containsAll(capabilities))
-      throw new TaskFailure(400, "INVALID_CAPABILITIES");
-    // P2 grants access to the operator-bound fixture only; no user-supplied connection or
-    // credential handles.
+        || capabilities.size() > 5
+        || !List.of("web_fetch", "read", "write", "present", "web_search")
+            .containsAll(capabilities)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
+    // Resources remain operator-bound; no user-supplied connection or credential handles.
     if (request.resourceIds() != null && !request.resourceIds().isEmpty())
       throw new TaskFailure(403, "RESOURCE_NOT_AUTHORIZED");
     BudgetRequest b = request.budget();
-    if (b != null && b.maxCostMicros() != null)
-      throw new TaskFailure(400, "CURRENCY_BUDGET_NOT_CONFIGURED");
+    if (b != null
+        && b.maxCostMicros() != null
+        && (b.maxCostMicros() < 1 || b.maxCostMicros() > 1000000))
+      throw new TaskFailure(400, "INVALID_BUDGET");
     var budget =
         new Tasks.Budget(
             bound(b == null ? null : b.deadlineSeconds(), 180),
             bound(b == null ? null : b.maxModelRequests(), 8),
-            bound(b == null ? null : b.maxToolInvocations(), 20));
+            bound(b == null ? null : b.maxToolInvocations(), 20),
+            b == null ? null : b.maxCostMicros());
     var result =
         tasks.submit(
             identity, key, new Tasks.Request(request.goal(), capabilities, List.of(), budget));
@@ -145,7 +147,12 @@ public final class TaskController {
         .contentLength(bytes.length)
         .header(
             HttpHeaders.CONTENT_DISPOSITION,
-            "attachment; filename=\"" + result.artifact().artifactId() + ".txt\"")
+            "attachment; filename=\""
+                + result.artifact().artifactId()
+                + (result.artifact().mediaType().equals("text/markdown; charset=utf-8")
+                    ? ".md\""
+                    : ".txt\""))
+        .header("X-Content-Type-Options", "nosniff")
         .eTag(result.artifact().sha256())
         .body(bytes);
   }

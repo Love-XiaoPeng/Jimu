@@ -1,0 +1,15 @@
+{
+  "result": "PASS",
+  "scope": "offline delivered configuration/material verification only; not backend default verify, fault testing, live models, search or application downloads",
+  "checkedAtUtc": "2026-10-16T14:54:00.279643+00:00",
+  "checks": [
+    "qwen-main-v1: exact closed schema, exclusive candidates, monetary/token/output/sample/phase bounds and all finalist branches",
+    "qwen-pro-optional-v1: exact closed schema, exclusive candidates, monetary/token/output/sample/phase bounds and all finalist branches",
+    "four complete goal/request files; C1 embedded in W1; actual public request shape and limits retained",
+    "24 exact repository source/schema/manifest/migration files equal read-only baseline git blobs",
+    "two frozen raw and exact-projected source outputs/content hashes; no live application acceptance claimed",
+    "18 explicit discrete scoring items sum to 100; C1 schema and all material references valid",
+    "existing recognized paid/public-dispatch switches false; no activation operation executed"
+  ],
+  "sourceGitSha": "a20cefbf9004561bd14806c83e20c2c8940b9408"
+}

@@ -1,0 +1,38 @@
+{
+  "enabled": false,
+  "paidDispatchEnabled": false,
+  "searchDispatchEnabled": false,
+  "productionEgressEnabled": false,
+  "status": "CLOSED_CONDITIONAL_DRAFT_NOT_RUNTIME_CONFIGURATION",
+  "sourceAttachment": "01a144d5-6ac5-72ce-8b67-5f9c8a724f94",
+  "scope": "trusted isolated evaluation database only; existing tenant and original durable run",
+  "prerequisites": [
+    "PM authorization and account region/plan/API host/model permissions/egress facts",
+    "exact fixed snapshot price mapping approved",
+    "provider contract proves all billed output <=512 including max_tokens error",
+    "same-SHA independent review and testing"
+  ],
+  "maxBilledOutputTokens": 512,
+  "evaluationMaxCostMicros": 1000000,
+  "authorizedRequestCeiling": 20,
+  "matrixMaxRequests": 8,
+  "matrixConditionalCostMicros": 757764,
+  "tenantTokenLimit": 659456,
+  "tasks": [
+    {"label": "max", "candidate": "qwen-max-2025-01-25", "contextTokens": 32768,
+     "maxModelRequests": 4, "maxToolInvocations": 6, "taskTokenLimit": 133120,
+     "conditionalInputRateMicros": 2400000, "conditionalOutputRateMicros": 9600000},
+    {"label": "plus", "candidate": "qwen-plus-2025-01-25", "contextTokens": 131072,
+     "maxModelRequests": 4, "maxToolInvocations": 6, "taskTokenLimit": 526336,
+     "conditionalInputRateMicros": 800000, "conditionalOutputRateMicros": 2000000}
+  ],
+  "trustedSetup": {
+    "workers": "stopped and collected before setup; no active leases or dispatches on queued selected tasks",
+    "transaction": "lock exact tenant_budget, original evaluation_budget and two tenant-scoped queued task rows FOR UPDATE; abort on identity/profile/state mismatch",
+    "changes": "only tenant_budget.token_limit and selected task.max_tokens; matrix request ceiling may only tighten original remaining authorization",
+    "preserve": "all spent/held including UNKNOWN, run identity/state, task snapshots, output512, currency1CNY; never clear or reopen STOPPED",
+    "allowance": "existing token holds plus worst remaining dispatches must fit quota; original monetary/request remaining allowance must cover matrix; otherwise refuse or reduce plan",
+    "isolation": "dedicated private tenant; no API/model quota parameters, shared DB changes or production loading",
+    "cleanup": "export rows and receipts; collect owned processes; remove private evaluation environment; never delete accounting to regain allowance"
+  }
+}
