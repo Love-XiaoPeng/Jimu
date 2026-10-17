@@ -115,13 +115,16 @@ class Model(http.server.BaseHTTPRequestHandler):
         if body["stream"]:
             delta = dict(message)
             if name:
-                for index,call in enumerate(delta["tool_calls"]): call["index"] = index
+                for call_index,call in enumerate(delta["tool_calls"]): call["index"] = call_index
             chunks = [{"id": "closed-local", "choices": [{"index": 0,"delta": delta,"finish_reason": reason}]}, {"choices": [],"usage": usage}]
             data = ("".join("data: " + json.dumps(c,ensure_ascii=False) + "\n\n" for c in chunks) + "data: [DONE]\n\n").encode()
         else:
             data = json.dumps({"id": "closed-local", "choices": [{"index": 0,"message": message,"finish_reason": reason}],"usage": usage},ensure_ascii=False).encode()
         self.send_response(200)
         (self.server.evidence/("http-response-%04d.bin"%index)).write_bytes(data)
+        with self.server.lock:
+            self.server.calls[index]["responseSha256"]=hashlib.sha256(data).hexdigest()
+            self.server.calls[index]["responseBytes"]=len(data)
         self.send_header("Content-Type", "text/event-stream" if body["stream"] else "application/json")
         self.send_header("Content-Length",str(len(data)))
         self.end_headers()
@@ -695,6 +698,12 @@ def verify(e, materials_only=False):
         if "--history-only" in sys.argv:
             (e.evidence/"history-step.tsv").write_text(e.sql("SELECT id,task_id,ordinal,state,request_digest,HEX(request_snapshot),response_digest,HEX(response_snapshot) FROM step ORDER BY task_id,ordinal;"),encoding="utf-8")
             (e.evidence/"history-invocation.tsv").write_text(e.sql("SELECT id,task_id,step_id,slot,provider_id,tool,state,input_digest,HEX(input_snapshot),output_digest,HEX(output_snapshot) FROM invocation ORDER BY task_id,step_id,slot;"),encoding="utf-8")
+        for index,call in enumerate(server.calls):
+            request=(e.evidence/("http-request-%04d.bin"%index)).read_bytes()
+            response=(e.evidence/("http-response-%04d.bin"%index)).read_bytes()
+            assert hashlib.sha256(request).hexdigest()==call["bodySha256"]
+            assert hashlib.sha256(response).hexdigest()==call["responseSha256"] and len(response)==call["responseBytes"]
+        e.assert_that(True,"all HTTP request and response bytes retain their own dispatch index",pairs=len(server.calls))
 
 
 if __name__=="__main__":

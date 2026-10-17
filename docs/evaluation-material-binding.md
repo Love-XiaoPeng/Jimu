@@ -61,3 +61,7 @@ New model request/response bodies are captured as binary at the HTTP listener. S
 snapshots are exported as SQL HEX, decoded without a terminal charset, and paired with
 complete UTF-8 body hashes. The mysql client also explicitly uses utf8mb4. Old corrupted
 TSV exports stay unchanged; new captures do not retroactively prove missing old bytes.
+HTTP capture indices are independent of SSE tool-call indices. Each produced response
+records its own hash and size, and the default plan, material and history regressions
+verify every request/response file against its own call record. Earlier captures affected
+by the SSE index overwrite remain unchanged with their response gaps listed separately.
