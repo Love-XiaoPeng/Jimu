@@ -142,21 +142,47 @@ def verify(e):
     worker = e.start("barrier-observation", "worker", "M0", extra=enabled)
     eventually(lambda: (worker["folder"] / "reached").exists(), "observation worker remains paused")
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        for seconds, persistent in [(2, False), (8, True)]:
-            future = executor.submit(e.sql, "START TRANSACTION; SELECT * FROM tenant_budget WHERE tenant_id='tenant-b' FOR UPDATE; DO SLEEP(" + str(seconds) + "); COMMIT;")
-            eventually(lambda: e.sql("SELECT COUNT(*) FROM information_schema.innodb_trx;") != "0", "known unrelated transaction becomes visible")
+        future = executor.submit(e.sql, "START TRANSACTION; SELECT tenant_id FROM tenant_budget WHERE tenant_id='tenant-b' FOR UPDATE; DO SLEEP(2); COMMIT;")
+        eventually(lambda: e.sql("SELECT COUNT(*) FROM information_schema.innodb_trx;") != "0", "known short transaction becomes visible")
+        e.assert_that(e.sql("SELECT COUNT(*) FROM information_schema.innodb_trx;") != "0",
+                      "original instantaneous global assertion rejects known unrelated transaction", persistent=False)
+        e.barrier(worker)
+        future.result()
+    # Hold the negative control until observation finishes, rather than assuming an SQL
+    # sleep still has five seconds remaining after subprocess startup and visibility probes.
+    held_log = e.root / "held-transaction.log"
+    with held_log.open("w") as output:
+        holder = subprocess.Popen(["docker", "exec", "-i", e.cid, "sh", "-c",
+            'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql --unbuffered --default-character-set=utf8mb4 --protocol=TCP -h127.0.0.1 -uroot -N -B --raw jimu'],
+            stdin=subprocess.PIPE, stdout=output, stderr=subprocess.STDOUT, text=True)
+        e.children.append(holder)
+        e.results.append({"process": "held-transaction-negative-control", "pid": holder.pid})
+        try:
+            holder.stdin.write("START TRANSACTION; SELECT tenant_id FROM tenant_budget WHERE tenant_id='tenant-b' FOR UPDATE; SELECT CONCAT('HELD:',CONNECTION_ID());\n")
+            holder.stdin.flush()
+            def visible():
+                if holder.poll() is not None: raise AssertionError("Transaction holder exited before observation")
+                match = re.search(r"HELD:(\d+)", held_log.read_text())
+                if not match: return False
+                thread_id = match.group(1)
+                return thread_id if e.sql("SELECT COUNT(*) FROM information_schema.innodb_trx WHERE trx_mysql_thread_id=" + thread_id + ";") == "1" else False
+            thread_id = eventually(visible, "specific held transaction becomes visible")
             e.assert_that(e.sql("SELECT COUNT(*) FROM information_schema.innodb_trx;") != "0",
-                          "original instantaneous global assertion rejects known unrelated transaction", persistent=persistent)
-            if persistent:
-                try:
-                    e.barrier(worker)
-                except AssertionError as error:
-                    e.assert_that("database quiet point" in str(error), "bounded observation still rejects persistent transaction", error=str(error))
-                else:
-                    raise AssertionError("Persistent transaction must fail the gate")
-            else:
+                          "original instantaneous global assertion rejects known unrelated transaction", persistent=True, threadId=thread_id)
+            e.assert_that(holder.poll() is None, "explicit transaction holder stays live before bounded observation", threadId=thread_id)
+            try:
                 e.barrier(worker)
-            future.result()
+            except AssertionError as error:
+                e.assert_that("database quiet point" in str(error), "bounded observation still rejects persistent transaction", error=str(error))
+            else:
+                raise AssertionError("Persistent transaction must fail the gate")
+            e.assert_that(holder.poll() is None and e.sql("SELECT COUNT(*) FROM information_schema.innodb_trx WHERE trx_mysql_thread_id=" + thread_id + ";") == "1",
+                          "same transaction remains held after negative observation until explicit commit", threadId=thread_id)
+        finally:
+            holder.communicate(input="COMMIT;\n", timeout=20)
+            e.assert_that(holder.returncode == 0, "owned transaction holder committed and exited")
+            shutil.copyfile(held_log, e.evidence / "held-transaction.log")
+    e.barrier(worker)
     (worker["folder"] / "release").touch()
     e.state(task, "FAILED")
     e.assert_that(not e.tls.requests and e.sql("SELECT code FROM task WHERE id='" + task + "';") == "TOOL_INPUT_INVALID",
