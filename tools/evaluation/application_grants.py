@@ -1,0 +1,26 @@
+"""Generate reviewable SQL only. Never connects; scope/history/approval are SELECT-only."""
+import argparse
+import re
+
+APPLICATION_TABLES = (
+    'actor_access', 'artifact', 'evaluation_budget', 'event', 'installation', 'invocation',
+    'model_dispatch', 'reservation', 'step', 'task', 'task_attempt', 'tenant_budget', 'worker_process',
+)
+
+
+def grants(database, user, host, partial_revokes=False):
+    if not re.fullmatch(r'[a-z][a-z0-9_]*', database) or not re.fullmatch(r'[a-z][a-z0-9_]*', user) or not re.fullmatch(r'[A-Za-z0-9.:-]+', host):
+        raise ValueError('Explicit database, account and bound source required')
+    account = "'" + user + "'@'" + host + "'"
+    pattern = database if partial_revokes else database.replace('_', r'\_')
+    return ['GRANT SELECT ON `' + pattern + '`.* TO ' + account + ';'] + [
+        'GRANT INSERT,UPDATE,DELETE ON `' + database + '`.`' + table + '` TO ' + account + ';'
+        for table in APPLICATION_TABLES]
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('database'); parser.add_argument('user'); parser.add_argument('host')
+    parser.add_argument('--partial-revokes', action='store_true')
+    args = parser.parse_args()
+    print('\n'.join(grants(args.database, args.user, args.host, args.partial_revokes)))

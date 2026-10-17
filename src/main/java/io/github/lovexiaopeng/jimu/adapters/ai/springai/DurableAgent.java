@@ -363,6 +363,10 @@ public final class DurableAgent implements AutoCloseable {
               slots(response),
               response.tokens(),
               response.usage());
+        } catch (TaskFailure rejected) {
+          if (rejected.code().equals("EVALUATION_SCOPE_MISMATCH"))
+            probe.hit("SCOPE_REJECTION_COMMITTED", lease.taskId());
+          throw rejected;
         } finally {
           // Also reached on the post-commit rejection, before WorkerLoop can persist failure.
           probe.hit("MODEL_RESPONSE_COMMITTED", lease.taskId());

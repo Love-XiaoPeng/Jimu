@@ -30,18 +30,77 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   private final JdbcTemplate db;
   private final TransactionTemplate transactions;
   private final ModelProfiles models;
+  private final JdbcExecutionScopes executionScopes;
 
   public JdbcLedger(DataSource source, ModelProfiles models) {
     this.models = models;
     db = new JdbcTemplate(source);
     db.setQueryTimeout(5);
+    executionScopes = new JdbcExecutionScopes(db, models);
     transactions = new TransactionTemplate(new DataSourceTransactionManager(source));
     transactions.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     transactions.setTimeout(10);
   }
 
   private <T> T tx(Supplier<T> work) {
-    return transactions.execute(status -> work.get());
+    AdmissionResult<T> result =
+        transactions.execute(
+            status -> {
+              try {
+                return new AdmissionResult<T>(work.get(), null);
+              } catch (TaskFailure failure) {
+                // Scope checks run before admission writes. Only the deliberate persistent
+                // integrity rejection (or already admitted settlement) commits here.
+                if (!List.of("EVALUATION_SCOPE_MISMATCH", "MODEL_SETTLEMENT_PROOF_INVALID")
+                    .contains(failure.code())) throw failure;
+                return new AdmissionResult<T>(null, failure);
+              }
+            });
+    if (result.rejection() != null) throw result.rejection();
+    return result.value();
+  }
+
+  private String requireScope(
+      String tenant,
+      Map<String, Object> evaluation,
+      Map<String, Object> task,
+      ModelSnapshot model) {
+    if (!executionScopes.needed(tenant, task)) return null;
+    try {
+      if (task != null) {
+        if (task.get("execution_scope_digest") == null)
+          throw new TaskFailure(409, "EVALUATION_SCOPE_LEGACY_UNBOUND");
+        try {
+          model = historicalSnapshot(task);
+        } catch (TaskFailure | IllegalArgumentException corrupt) {
+          throw new TaskFailure(409, "EVALUATION_SCOPE_MISMATCH");
+        }
+      }
+      String digest = executionScopes.require(tenant, evaluation, task, model);
+      if (task != null) {
+        try {
+          models.available(model);
+          checkEvaluation(task, evaluation, model);
+        } catch (TaskFailure | IllegalArgumentException corrupt) {
+          throw new TaskFailure(409, "EVALUATION_SCOPE_MISMATCH");
+        }
+      }
+      return digest;
+    } catch (TaskFailure failure) {
+      if (failure.code().equals("EVALUATION_SCOPE_MISMATCH") && evaluation != null) {
+        db.update(
+            "UPDATE evaluation_budget SET state='STOPPED' WHERE tenant_id=? AND id=?",
+            tenant,
+            s(evaluation, "id"));
+        if (task != null)
+          event(
+              task,
+              "scope-rejected:" + n(task, "fence"),
+              "evaluation.scope_rejected",
+              failure.code());
+      }
+      throw failure;
+    }
   }
 
   private record AdmissionResult<T>(T value, TaskFailure rejection) {}
@@ -153,9 +212,11 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                   key);
           String run;
           if (binding.isEmpty()) {
-            var candidate = models.selected(identity.tenant());
-            models.admit(candidate);
-            run = candidate.paid() ? models.evaluationRunId() : null;
+            run = executionScopes.targetRun(identity.tenant(), null);
+            if (run == null) {
+              var candidate = models.selected(identity.tenant());
+              run = candidate.paid() ? models.evaluationRunId() : null;
+            }
           } else run = s(binding.getFirst(), "evaluation_run_id");
           var evaluation = evaluation(identity.tenant(), run);
           var budget = bucket(identity.tenant());
@@ -192,6 +253,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           }
           String toolSnapshot = Payloads.json(new ToolSnapshot(1, pins));
           var model = models.selected(identity.tenant());
+          String scopeDigest = requireScope(identity.tenant(), evaluation, null, model);
           if (request.budget().maxCostMicros() != null && !model.paid())
             throw new TaskFailure(400, "CURRENCY_BUDGET_NOT_CONFIGURED");
           models.admit(model);
@@ -232,13 +294,14 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               request.budget().maxModelRequests(),
               request.budget().maxToolInvocations());
           db.update(
-              "UPDATE task SET model_snapshot=?,model_digest=?,evaluation_run_id=?,max_cost_micros=?,tools_snapshot=?,tools_digest=?,report_time=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
+              "UPDATE task SET model_snapshot=?,model_digest=?,evaluation_run_id=?,max_cost_micros=?,tools_snapshot=?,tools_digest=?,execution_scope_digest=?,report_time=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
               modelSnapshot,
               Payloads.hash(modelSnapshot),
               model.paid() ? models.evaluationRunId() : null,
               request.budget().maxCostMicros() == null ? 1000000 : request.budget().maxCostMicros(),
               toolSnapshot,
               Payloads.hash(toolSnapshot),
+              scopeDigest,
               identity.tenant(),
               task);
           if (evaluationBinding != null) {
@@ -509,7 +572,10 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
       Optional<Lease> lease =
           tx(
               () -> {
-                var evaluation = evaluation(tenant, s(candidate, "evaluation_run_id"));
+                var evaluation =
+                    evaluation(
+                        tenant,
+                        executionScopes.targetRun(tenant, s(candidate, "evaluation_run_id")));
                 var budget = bucket(tenant);
                 var candidates =
                     rows(
@@ -518,15 +584,14 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                         s(candidate, "id"));
                 if (candidates.isEmpty()) return Optional.empty();
                 var task = candidates.getFirst();
+                if (!java.util.Objects.equals(
+                    candidate.get("evaluation_run_id"), task.get("evaluation_run_id")))
+                  return Optional
+                      .empty(); // Retry under the correct parent lock; never change lock order.
                 String taskId = s(task, "id");
                 boolean queued = "QUEUED".equals(s(task, "state"));
                 if (queued && n(budget, "running") >= n(budget, "running_limit"))
                   return Optional.empty();
-                if (!queued)
-                  db.update(
-                      "UPDATE task_attempt SET state='EXPIRED',ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND state='ACTIVE'",
-                      tenant,
-                      s(task, "current_attempt_id"));
                 // An expired writer might have caused an effect. Never infer safety from an absent
                 // result.
                 if (!rows(
@@ -547,6 +612,18 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                   terminal(task, "FAILED", rejection);
                   return Optional.empty();
                 }
+                try {
+                  requireScope(tenant, evaluation, task, null);
+                } catch (TaskFailure failure) {
+                  if (failure.code().equals("EVALUATION_SCOPE_MISMATCH")) throw failure;
+                  terminal(task, "FAILED", failure.code());
+                  return Optional.empty();
+                }
+                if (!queued)
+                  db.update(
+                      "UPDATE task_attempt SET state='EXPIRED',ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND state='ACTIVE'",
+                      tenant,
+                      s(task, "current_attempt_id"));
                 if (n(task, "within_deadline") != 1) {
                   terminal(task, "FAILED", "DEADLINE_EXCEEDED");
                   return Optional.empty();
@@ -609,7 +686,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   private Map<String, Object> fenced(Lease lease, boolean admission) {
     // Hold through the committing transaction: STOPPED cannot race a cached admission,
     // publication or successful finish. Settlement of previously admitted effects stays allowed.
-    var evaluation = evaluation(lease);
+    var evaluation = evaluation(lease, admission);
     bucket(lease.tenant());
     var task = locked(lease.tenant(), lease.taskId());
     if (n(task, "fence") != lease.fence()
@@ -622,6 +699,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
       String rejection = modelRejection(task);
       if (rejection == null) rejection = runRejection(evaluation);
       if (rejection != null) throw new TaskFailure(409, rejection);
+      requireScope(lease.tenant(), evaluation, task, null);
       checkMaterials(task);
       access(task);
       if (task.get("cancel_requested_at") != null) throw new TaskFailure(409, "CANCEL_REQUESTED");
@@ -917,12 +995,17 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   }
 
   private ModelSnapshot snapshot(Map<String, Object> task) {
+    var snapshot = historicalSnapshot(task);
+    models.available(snapshot);
+    return snapshot;
+  }
+
+  private ModelSnapshot historicalSnapshot(Map<String, Object> task) {
     String value = s(task, "model_snapshot");
     if (value == null) throw new TaskFailure(409, "MODEL_SNAPSHOT_MISSING");
     if (!Payloads.hash(value).equals(s(task, "model_digest")))
       throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
     var snapshot = Payloads.read(value, ModelSnapshot.class);
-    models.available(snapshot);
     return snapshot;
   }
 
@@ -959,6 +1042,10 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   // This is always the first lock when a transaction can mutate evaluation accounting.
   private Map<String, Object> evaluation(Lease lease) {
+    return evaluation(lease, true);
+  }
+
+  private Map<String, Object> evaluation(Lease lease, boolean admission) {
     String run =
         s(
             one(
@@ -966,7 +1053,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                 lease.tenant(),
                 lease.taskId()),
             "evaluation_run_id");
-    return evaluation(lease.tenant(), run);
+    return evaluation(
+        lease.tenant(), admission ? executionScopes.targetRun(lease.tenant(), run) : run);
   }
 
   private Map<String, Object> evaluation(String tenant, String run) {
@@ -1334,7 +1422,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
       ModelUsage usage) {
     tx(
         () -> {
-          var evaluation = evaluation(lease);
+          var evaluation = evaluation(lease, false);
           var task = fenced(lease, false);
           var step =
               one(
@@ -1392,6 +1480,24 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                 "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND id=?",
                 lease.tenant(),
                 dispatch);
+          try {
+            String rejection = modelRejection(task);
+            if (rejection == null) rejection = runRejection(evaluation);
+            if (rejection != null) throw new TaskFailure(409, rejection);
+            requireScope(lease.tenant(), evaluation, task, null);
+          } catch (TaskFailure rejected) {
+            db.update(
+                "UPDATE step SET state='REJECTED' WHERE tenant_id=? AND id=?",
+                lease.tenant(),
+                stepId);
+            db.update(
+                "UPDATE model_dispatch SET code=? WHERE tenant_id=? AND id=?",
+                rejected.code(),
+                lease.tenant(),
+                dispatch);
+            event(task, "response:" + stepId, "model.rejected", rejected.code());
+            return null; // Audit/usage committed; no executable tool intents from this response.
+          }
           int ordinal =
               db.queryForObject(
                   "SELECT COUNT(*) FROM invocation WHERE tenant_id=? AND attempt_id=?",
@@ -1430,6 +1536,42 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             dispatch);
     if (List.of("BOUND_EXCEEDED", "USAGE_UNKNOWN").contains(s(outcome, "state")))
       throw new TaskFailure(409, s(outcome, "code"));
+    if (s(outcome, "code") != null) throw new TaskFailure(409, s(outcome, "code"));
+  }
+
+  private ModelSnapshot settlementModel(Lease lease, Map<String, Object> task, String dispatch) {
+    var row =
+        one(
+            "SELECT * FROM model_dispatch WHERE tenant_id=? AND id=? AND task_id=?",
+            lease.tenant(),
+            dispatch,
+            lease.taskId());
+    if (!"DISPATCHED".equals(s(row, "state"))) throw new TaskFailure(409, "DISPATCH_REJECTED");
+    try {
+      var model = historicalSnapshot(task);
+      if (!s(task, "model_digest").equals(s(row, "config_digest"))
+          || !ModelProfiles.digest(model).equals(s(row, "config_digest"))
+          || model.paid()
+              && (model.price() == null
+                  || !model.price().version().equals(s(row, "price_version"))
+                  || !model.price().currency().equals(s(row, "currency"))
+                  || ModelCosts.amount(
+                          model.price(), model.price().inputTokenUpper(), model.maxOutputTokens())
+                      != n(row, "reserved_cost")))
+        throw new IllegalArgumentException("Historical price binding mismatch");
+      return model;
+    } catch (TaskFailure | IllegalArgumentException corrupt) {
+      db.update(
+          "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN',cost_quality='UNKNOWN' WHERE tenant_id=? AND dispatch_id=? AND state='RESERVED'",
+          lease.tenant(),
+          dispatch);
+      if (task.get("evaluation_run_id") != null)
+        db.update(
+            "UPDATE evaluation_budget SET state='STOPPED' WHERE tenant_id=? AND id=?",
+            lease.tenant(),
+            s(task, "evaluation_run_id"));
+      throw new TaskFailure(409, "MODEL_SETTLEMENT_PROOF_INVALID");
+    }
   }
 
   private boolean settleCost(
@@ -1438,7 +1580,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
       Map<String, Object> evaluation,
       String dispatch,
       ModelUsage usage) {
-    var model = snapshot(task);
+    var model = settlementModel(lease, task, dispatch);
     Long actual = null;
     boolean exceeded = false;
     boolean unknown = model.paid() && (usage.inputTokens() == null || usage.outputTokens() == null);
@@ -1522,9 +1664,9 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   public void modelFailed(Lease lease, String dispatch, String code, ModelUsage usage) {
     tx(
         () -> {
-          var evaluation = evaluation(lease);
+          var evaluation = evaluation(lease, false);
           var task = fenced(lease, false);
-          var model = snapshot(task);
+          var model = settlementModel(lease, task, dispatch);
           if (usage != null) settleCost(lease, task, evaluation, dispatch, usage);
           else if (model.paid())
             settleCost(
@@ -2089,7 +2231,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                       lease.tenant(),
                       lease.taskId())
                   .isEmpty();
-          if (pendingEffect || "SNAPSHOT_CORRUPT".equals(code))
+          if (pendingEffect
+              || List.of("SNAPSHOT_CORRUPT", "MODEL_SETTLEMENT_PROOF_INVALID").contains(code))
             terminal(task, "NEEDS_RECONCILIATION", code);
           else
             terminal(task, task.get("cancel_requested_at") != null ? "CANCELLED" : "FAILED", code);
@@ -2250,13 +2393,13 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9') AND success=TRUE",
             Integer.class)
-        != 8) throw new IllegalStateException("Required migration unavailable");
+        != 9) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 8) throw new IllegalStateException("Unsupported schema version");
+        != 9) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override

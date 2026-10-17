@@ -236,7 +236,7 @@ class Experiment:
         version = eventually(ready, "private MySQL", 80)
         self.assert_that(version == "8.0.46", "real pinned MySQL", version=version)
         self.dbport = int(run(["docker", "port", self.cid, "3306/tcp"]).split(":")[-1])
-        self.sql("CREATE USER 'runtime'@'%' IDENTIFIED BY '" + self.password + "'; GRANT SELECT,INSERT,UPDATE,DELETE ON jimu.* TO 'runtime'@'%';")
+        self.sql("CREATE USER 'runtime'@'%' IDENTIFIED BY '" + self.password + "'; GRANT SELECT ON jimu.* TO 'runtime'@'%';")
         (self.root / "objects").mkdir()
         common = {
             "jimu.durable.enabled": "true", "jimu.db.url": "jdbc:mysql://127.0.0.1:" + str(self.dbport) + "/jimu?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true",
@@ -250,6 +250,9 @@ class Experiment:
         self.common = common
         self.control = self.start("control", "control")
         self.schema_ready = True
+        from evaluation.application_grants import APPLICATION_TABLES
+        for table in APPLICATION_TABLES:
+            self.sql("GRANT INSERT,UPDATE,DELETE ON jimu.`" + table + "` TO 'runtime'@'%';")
         digest = "08a144489ed9ea37b5b33a5ffdc815237f31d4f229b76ba1d5e465b9e13f9ff8"
         self.sql("INSERT INTO tenant_budget(tenant_id) VALUES('tenant-a'),('tenant-b');"
                  "INSERT INTO actor_access(tenant_id,actor_id) VALUES('tenant-a','alice'),('tenant-b','bob'),('tenant-a','carol');"
@@ -887,6 +890,7 @@ class Experiment:
             if point == "A0" and failure == "deadline":
                 # Reconstruct V2, including removing V5/V4, then exercise the real upgrade.
                 self.stop(self.control)
+                self.sql("DROP TABLE evaluation_execution_scope; ALTER TABLE task DROP COLUMN execution_scope_digest; DELETE FROM flyway_schema_history WHERE version='9';")
                 self.sql("ALTER TABLE task DROP COLUMN material_snapshot,DROP COLUMN material_digest,DROP COLUMN material_system_digest,DROP COLUMN material_file_snapshot,DROP COLUMN material_file_digest; DELETE FROM flyway_schema_history WHERE version='8';")
                 self.sql("ALTER TABLE task DROP COLUMN evaluation_snapshot,DROP COLUMN evaluation_digest,DROP COLUMN evaluation_phase,DROP COLUMN evaluation_sample,DROP COLUMN evaluation_model; ALTER TABLE evaluation_budget DROP CHECK evaluation_budget_chk_1,DROP CHECK evaluation_budget_chk_2,DROP COLUMN plan_snapshot,DROP COLUMN plan_digest,DROP COLUMN phase_b_snapshot,DROP COLUMN phase_b_digest,ADD CHECK(max_requests BETWEEN 1 AND 20 AND requests_used BETWEEN 0 AND max_requests),ADD CHECK(max_cost_micros BETWEEN 1 AND 1000000 AND cost_held>=0); DELETE FROM flyway_schema_history WHERE version='7';")
                 self.sql("ALTER TABLE task DROP COLUMN report_time; ALTER TABLE artifact DROP COLUMN file_receipt,DROP COLUMN receipt_digest,ADD UNIQUE(tenant_id,task_id,producer_invocation),DROP INDEX artifact_producer_receipt; DELETE FROM flyway_schema_history WHERE version='6';")

@@ -60,6 +60,22 @@ public final class ModelProfiles {
     return fixture;
   }
 
+  public ExecutionScopes.Requirement scopeRequirement() {
+    String json = env.getProperty("jimu.execution-scope.requirement");
+    if (json == null) return null;
+    try {
+      return Payloads.read(json, ExecutionScopes.Requirement.class);
+    } catch (IllegalArgumentException invalid) {
+      throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
+    }
+  }
+
+  public boolean localEvaluation(ModelSnapshot model) {
+    return env.getProperty("jimu.test-mode", Boolean.class, false)
+        && "trusted-local-v1".equals(model.transportPolicy())
+        && List.of("127.0.0.1", "[::1]").contains(URI.create(model.baseUrl()).getHost());
+  }
+
   public String evaluationRunId() {
     return fixture ? null : settings.evaluationRunId();
   }

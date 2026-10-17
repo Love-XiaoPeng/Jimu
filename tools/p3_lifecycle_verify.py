@@ -110,6 +110,7 @@ def verify(e):
                   "old successful invocation exists before migration")
     queued = e.submit("snapshot-v4-queued")
     e.stop(e.control)
+    e.sql("DROP TABLE evaluation_execution_scope; ALTER TABLE task DROP COLUMN execution_scope_digest; DELETE FROM flyway_schema_history WHERE version='9';")
     e.sql("ALTER TABLE task DROP COLUMN material_snapshot,DROP COLUMN material_digest,DROP COLUMN material_system_digest,DROP COLUMN material_file_snapshot,DROP COLUMN material_file_digest; DELETE FROM flyway_schema_history WHERE version='8';")
     e.sql("ALTER TABLE task DROP COLUMN evaluation_snapshot,DROP COLUMN evaluation_digest,DROP COLUMN evaluation_phase,DROP COLUMN evaluation_sample,DROP COLUMN evaluation_model; ALTER TABLE evaluation_budget DROP CHECK evaluation_budget_chk_1,DROP CHECK evaluation_budget_chk_2,DROP COLUMN plan_snapshot,DROP COLUMN plan_digest,DROP COLUMN phase_b_snapshot,DROP COLUMN phase_b_digest,ADD CHECK(max_requests BETWEEN 1 AND 20 AND requests_used BETWEEN 0 AND max_requests),ADD CHECK(max_cost_micros BETWEEN 1 AND 1000000 AND cost_held>=0); DELETE FROM flyway_schema_history WHERE version='7';")
     e.sql("ALTER TABLE task DROP COLUMN report_time; ALTER TABLE artifact DROP COLUMN file_receipt,DROP COLUMN receipt_digest,ADD UNIQUE(tenant_id,task_id,producer_invocation),DROP INDEX artifact_producer_receipt; DELETE FROM flyway_schema_history WHERE version='6';")
