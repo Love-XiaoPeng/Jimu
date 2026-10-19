@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -97,6 +100,51 @@ public final class ExecutionScopeTestMain {
       return;
     }
     var profiles = models(config);
+    if (args[0].equals("budget-race")) {
+      var db = new JdbcTemplate(source);
+      var gate = new CountDownLatch(1);
+      var ledger = new JdbcLedger(source, profiles);
+      try (var pool = Executors.newFixedThreadPool(2)) {
+        var futures = new java.util.ArrayList<java.util.concurrent.Future<String>>();
+        for (String taskId : List.of(args[3], args[4])) {
+          var task = db.queryForMap("SELECT * FROM task WHERE id=?", taskId);
+          var lease =
+              new ExecutionLedger.Lease(
+                  (String) task.get("tenant_id"),
+                  (String) task.get("owner_actor_id"),
+                  taskId,
+                  (String) task.get("current_attempt_id"),
+                  ((Number) task.get("fence")).longValue(),
+                  (String) task.get("worker_id"),
+                  ((java.time.LocalDateTime) task.get("deadline"))
+                      .toInstant(java.time.ZoneOffset.UTC),
+                  (String) task.get("goal"),
+                  List.of(((String) task.get("capabilities")).split(",")),
+                  ((Number) task.get("installation_epoch")).longValue());
+          String step =
+              db.queryForObject(
+                  "SELECT id FROM step WHERE task_id=? AND ordinal=1", String.class, taskId);
+          futures.add(
+              pool.submit(
+                  () -> {
+                    gate.await();
+                    try {
+                      ledger.dispatchModel(lease, step);
+                      return "ADMITTED";
+                    } catch (TaskFailure failure) {
+                      return failure.code();
+                    }
+                  }));
+        }
+        gate.countDown();
+        var results = new java.util.ArrayList<String>();
+        for (var future : futures) results.add(future.get(20, TimeUnit.SECONDS));
+        require(results.stream().filter("ADMITTED"::equals).count() == 1);
+        require(results.stream().filter("MODEL_BUDGET_EXCEEDED"::equals).count() == 1);
+        System.out.println(Payloads.json(results));
+      }
+      return;
+    }
     if (args[0].equals("repin")) {
       var body =
           (com.fasterxml.jackson.databind.node.ObjectNode)

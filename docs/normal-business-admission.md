@@ -63,3 +63,25 @@ scope, plans, material/history, settlement and shared STOPPED regressions. These
 do not validate actual DeepSeek pricing, alias quality, account access, credential revocation,
 private secret delivery, production TLS, or a real business task. No persistent project DB is
 connected, migrated or bound; B and real model/search dispatch stay closed.
+
+New BUSINESS task budgets are derived at acceptance from the trusted, fixed model snapshot
+and the HTTP round limit (default and maximum 8; an explicit limit can only reduce it). For
+each round, reserve `inputTokenUpper + maxOutputTokens` tokens and the upward-rounded
+`ModelCosts.amount(price, inputTokenUpper, maxOutputTokens)` cost, including any fixed price.
+The task token ceiling is that complete per-round bound times the round limit. The default
+cost ceiling is the smaller of the same cost product and the original run's fixed cost limit.
+An explicit HTTP cost must be positive and no larger than that derived ceiling; a cost below
+one complete round is rejected before creating a task or queue reservation. Unrepresentable
+arithmetic fails closed. A task ceiling is not an up-front fee reservation or actual usage:
+each dispatch still locks and checks the original run, tenant and task balances, including
+historical usage and UNKNOWN occupancy, before reserving that round. Concurrent tasks cannot
+increase the original run's 500 CNY / 63-dispatch limits.
+
+For the approved conservative full-context envelope, 1,000,000 input tokens at 2 CNY/million
+plus 4,096 total billable output tokens at 8 CNY/million gives 1,004,096 tokens and
+2,032,768 micro-CNY per round. Eight rounds give 8,032,768 tokens and 16,262,144 micro-CNY.
+The HTTP output field remains 4,086; its safety margin does not reduce the billed reserve.
+These are ceilings, not observed provider consumption. Accepted limits are persisted with
+the task snapshots: identical submission, restart and recovery reuse them without recalculation
+or increases. Existing tasks and ordinary/evaluation-mode defaults retain their prior budgets
+(ordinary: 65,536 tokens / 1,000,000 micro-CNY); HTTP cannot promote a task to BUSINESS.

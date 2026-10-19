@@ -307,10 +307,38 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           String toolSnapshot = Payloads.json(new ToolSnapshot(1, pins));
           var model = models.selected(identity.tenant());
           String scopeDigest = requireScope(identity.tenant(), evaluation, null, model);
+          var businessPolicy = models.businessPolicy();
+          Long explicitCost = request.budget().maxCostMicros();
+          if (explicitCost != null
+              && (explicitCost < 1 || businessPolicy == null && explicitCost > 1000000))
+            throw new TaskFailure(400, "INVALID_BUDGET");
           if (request.budget().maxCostMicros() != null && !model.paid())
             throw new TaskFailure(400, "CURRENCY_BUDGET_NOT_CONFIGURED");
           models.admit(model);
-          var businessPolicy = models.businessPolicy();
+          long taskCost = explicitCost == null ? 1000000 : explicitCost;
+          long taskTokens = 65536;
+          if (businessPolicy != null) {
+            long singleCost;
+            long hostCost;
+            try {
+              long singleTokens =
+                  Math.addExact(model.price().inputTokenUpper(), model.maxOutputTokens());
+              singleCost =
+                  ModelCosts.amount(
+                      model.price(), model.price().inputTokenUpper(), model.maxOutputTokens());
+              taskTokens = Math.multiplyExact(singleTokens, request.budget().maxModelRequests());
+              hostCost =
+                  Math.min(
+                      Math.multiplyExact(singleCost, request.budget().maxModelRequests()),
+                      n(evaluation, "max_cost_micros"));
+            } catch (ArithmeticException unrepresentable) {
+              throw new TaskFailure(503, "MODEL_COST_BOUND_UNAVAILABLE");
+            }
+            if (explicitCost != null && explicitCost > hostCost)
+              throw new TaskFailure(400, "INVALID_BUDGET");
+            taskCost = explicitCost == null ? hostCost : explicitCost;
+            if (taskCost < singleCost) throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
+          }
           var evaluationBinding = businessPolicy == null ? bindEvaluation(evaluation, model) : null;
           var material =
               evaluationBinding == null
@@ -352,7 +380,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               modelSnapshot,
               Payloads.hash(modelSnapshot),
               model.paid() ? run : null,
-              request.budget().maxCostMicros() == null ? 1000000 : request.budget().maxCostMicros(),
+              taskCost,
               toolSnapshot,
               Payloads.hash(toolSnapshot),
               scopeDigest,
@@ -361,9 +389,10 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           if (businessPolicy != null) {
             String policyJson = BusinessPolicies.canonical(businessPolicy);
             db.update(
-                "UPDATE task SET record_version=2,business_policy_snapshot=?,business_policy_digest=? WHERE tenant_id=? AND id=?",
+                "UPDATE task SET record_version=2,business_policy_snapshot=?,business_policy_digest=?,max_tokens=? WHERE tenant_id=? AND id=?",
                 policyJson,
                 Payloads.hash(policyJson),
+                taskTokens,
                 identity.tenant(),
                 task);
           }

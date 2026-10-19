@@ -1,5 +1,6 @@
 """Normal business admission on owned MySQL, local model + TLS only; no real configuration."""
 import copy
+import concurrent.futures
 import hashlib
 import http.server
 import json
@@ -127,7 +128,7 @@ def verify(e):
                 result[prefix + key] = str(value).lower() if isinstance(value, bool) else str(value)
         return result
 
-    def provision():
+    def provision(full_context=False, input_rate=2000000):
         run_id = unique('original-run')
         e.sql("INSERT INTO evaluation_budget(tenant_id,id,policy_version,max_requests,max_cost_micros,cost_held,requests_used,plan_snapshot,plan_digest) VALUES('tenant-a','" + run_id + "',2,63,500000000,7000,2," + sqljson(plan) + ",'" + digest(plan) + "');")
         approval = {'activeCandidateOnly': 'qwen3.7-plus-2026-05-26', 'fixtureOnly': True}
@@ -144,6 +145,13 @@ def verify(e):
                 'max-output-tokens': 4096, 'output-limit-field': 'max_tokens', 'stream': name == 'b',
                 'capabilities.stream-text': True, 'capabilities.stream-tools': True, 'capabilities.usage-stream': True,
                 'capabilities.evidence': 'deepseek-nonthinking-v1'}.items()})
+            if full_context:
+                # Documented production-sized envelope with synthetic local billing only.
+                cfg.update({prefix + key: str(value) for key, value in {
+                    'capabilities.context-limit': 1000000, 'price.input-token-upper': 1000000,
+                    'price.input-micros-per-million': input_rate,
+                    'price.output-micros-per-million': 8000000, 'price.fixed-micros': 0,
+                    'price.bound-evidence': 'local-full-context-budget-regression'}.items()})
         pins = json.loads(helper('business-pins', cfg))
         policies = {name: {'version': 1, 'id': name, 'mode': 'BUSINESS', 'anchor': anchor,
                     'instruction-digest': hashlib.sha256(('member business instruction ' + name).encode()).hexdigest(),
@@ -170,6 +178,13 @@ def verify(e):
 
     try:
         legacy_task = e.submit('business-v9-legacy-migration-control')
+        legacy_before = totals()
+        status, view = e.http('POST', '/api/tasks', {'goal': 'legacy-over-budget',
+            'budget': {'maxCostMicros': 1000001}}, key='legacy-over-budget')
+        e.assert_that(status == 400 and view['code'] == 'INVALID_BUDGET' and legacy_before == totals(),
+                      'ordinary mode retains HTTP one-yuan ceiling before task reservation')
+        e.assert_that(e.sql("SELECT record_version,max_tokens,max_cost_micros FROM task WHERE id='" + legacy_task + "';") == '1\t65536\t1000000',
+                      'ordinary task retains original token/cost defaults')
         e.http('POST', '/api/tasks/' + legacy_task + '/cancel', {})
         legacy_unfinished = e.submit('business-v9-unfinished-migration-control')
         e.stop(e.control)
@@ -182,13 +197,26 @@ def verify(e):
         after = e.sql('SELECT tenant_id,id,request_digest,model_digest,tools_digest FROM task; SELECT * FROM evaluation_budget; SELECT * FROM reservation;')
         (e.evidence / 'migration-v10-after.utf8').write_bytes(after.encode())
         e.assert_that(before == after and e.sql('SELECT COUNT(*) FROM task WHERE business_policy_snapshot IS NOT NULL;') == '0', 'V10 forward migration changes structure only')
+        # Private fixture permits the full-context bound; production tenant budgets stay intact.
+        e.sql("UPDATE tenant_budget SET token_limit=16777216,cost_limit=500000000 WHERE tenant_id='tenant-a';")
         for stream in [False, True]:
-            run_id, cfg = provision()
+            run_id, cfg = provision(full_context=True)
             cfg['jimu.model.default-profile-ref'] = 'b' if stream else 'a'
             control(cfg)
             goal = unique('normal-report')
             task = e.submit(goal)
-            pinned = e.sql("SELECT HEX(business_policy_snapshot),business_policy_digest,model_digest,tools_digest FROM task WHERE id='" + task + "';")
+            limits = 'max_models,max_tokens,max_cost_micros'
+            pinned = e.sql("SELECT HEX(business_policy_snapshot),business_policy_digest,model_digest,tools_digest," + limits + " FROM task WHERE id='" + task + "';")
+            actual_limits = e.sql('SELECT ' + limits + " FROM task WHERE id='" + task + "';")
+            e.assert_that(actual_limits == '8\t8032768\t16262144',
+                          'full-context default = eight conservative rounds; output margin never lowers reservation',
+                          stream=stream, actualLimits=actual_limits)
+            body = {'goal': goal, 'capabilityIds': ['web_fetch', 'read', 'write', 'present']}
+            before = totals()
+            with concurrent.futures.ThreadPoolExecutor(6) as pool:
+                retries = list(pool.map(lambda _: e.http('POST', '/api/tasks', body, key=goal), range(6)))
+            e.assert_that(all(s == 202 and v['taskId'] == task for s, v in retries) and before == totals(),
+                          'concurrent idempotent BUSINESS submission creates no extra quota or task', stream=stream)
             # Current-step results are committed but next request not prepared: recovery must allow it.
             old = worker(cfg, 'T1')
             e.barrier(old); e.stop(old, kill=True); e.expire(task)
@@ -197,7 +225,10 @@ def verify(e):
             new = worker(switched)
             view = e.state(task, 'SUCCEEDED'); e.stop(new)
             e.assert_that(e.sql("SELECT record_version,business_policy_snapshot,business_policy_digest,evaluation_run_id,code FROM task WHERE id='" + legacy_unfinished + "';") == '1\tNULL\tNULL\tNULL\tEVALUATION_SCOPE_LEGACY_UNBOUND', 'old unfinished task never acquires BUSINESS policy or original run')
-            e.assert_that(pinned == e.sql("SELECT HEX(business_policy_snapshot),business_policy_digest,model_digest,tools_digest FROM task WHERE id='" + task + "';"), 'restart/default/policy change retains original task bytes', stream=stream)
+            e.assert_that(pinned == e.sql("SELECT HEX(business_policy_snapshot),business_policy_digest,model_digest,tools_digest," + limits + " FROM task WHERE id='" + task + "';"), 'restart/default/policy change retains original task and budget bytes', stream=stream)
+            before = totals()
+            e.assert_that(e.http('POST', '/api/tasks', body, key=goal)[1]['taskId'] == task and before == totals(),
+                          'finished-task HTTP retry after configuration change does not derive a new budget', stream=stream)
             calls = [c for c in server.calls if c['goal'] == goal]
             e.assert_that(len(calls) == 5 and all(c['stream'] == stream for c in calls), 'normal/SSE final usage + tool history replay without extra HTTP', stream=stream)
             aid = view['artifacts'][0]['artifactId']
@@ -211,12 +242,55 @@ def verify(e):
             e.assert_that(e.http('GET', '/api/artifacts/' + aid + '/download', subject='b')[0] == 404 and e.http('GET', '/api/artifacts/' + aid + '/download', subject='c')[0] == 404, 'tenant and owner download isolation', stream=stream)
             e.assert_that(e.sql("SELECT record_version,evaluation_snapshot,execution_scope_digest FROM task WHERE id='" + task + "';") == '2\tNULL\tNULL' and e.sql("SELECT requests_used,phase_b_digest FROM evaluation_budget WHERE id='" + run_id + "';") == '7\tNULL', 'original occupancy retained; no evaluation matrix, B or old scope rebound')
             e.assert_that(e.sql("SELECT COUNT(*) FROM model_dispatch WHERE task_id='" + task + "' AND cost_quality='KNOWN' AND input_tokens=100 AND output_tokens=50;") == '5', 'provider fixture usage separately settled for all turns')
+            e.assert_that(e.sql("SELECT COUNT(*),SUM(reserved_cost),SUM(actual_cost) FROM model_dispatch WHERE task_id='" + task + "';") == '5\t10163840\t3000',
+                          'per-round full reserve settles only synthetic provider usage, not task ceiling', stream=stream)
             fresh = e.submit(unique('new-default'))
             e.assert_that(e.sql("SELECT JSON_UNQUOTE(JSON_EXTRACT(model_snapshot,'$.profile')),JSON_UNQUOTE(JSON_EXTRACT(business_policy_snapshot,'$.id')) FROM task WHERE id='" + fresh + "';") == ('a' if stream else 'b') + '\tv2', 'only new task follows new profile and policy')
             e.http('POST', '/api/tasks/' + fresh + '/cancel', {})
             # Historical downloads survive removal of current business authority and profile registry.
             e.stop(e.control); e.control = e.start(unique('historical-download'), 'control')
             e.assert_that(e.http('GET', '/api/artifacts/' + aid + '/download')[0] == 200, 'committed download independent of current policy/configuration')
+        run_id, cfg = provision(full_context=True)
+        control(cfg)
+        for submitted, expected in [
+                ({'maxCostMicros': 0}, (400, 'INVALID_BUDGET')),
+                ({'maxCostMicros': -1}, (400, 'INVALID_BUDGET')),
+                ({'maxCostMicros': 2032767}, (429, 'MODEL_BUDGET_EXCEEDED')),
+                ({'maxCostMicros': 16262145}, (400, 'INVALID_BUDGET')),
+                ({'maxCostMicros': 9223372036854775807}, (400, 'INVALID_BUDGET')),
+                ({'maxModelRequests': 9}, (400, 'INVALID_BUDGET'))]:
+            before, count = totals(), len(server.calls)
+            status, view = e.http('POST', '/api/tasks', {'goal': 'budget-refusal',
+                'capabilityIds': ['web_fetch', 'read', 'write', 'present'], 'budget': submitted}, key=unique('budget-refusal'))
+            e.assert_that((status, view.get('code')) == expected and before == totals() and count == len(server.calls),
+                          'invalid or insufficient BUSINESS budget rejected before reservation/HTTP', budget=submitted, status=status, code=view.get('code'))
+        for submitted, expected in [
+                ({'maxModelRequests': 1, 'maxCostMicros': 2032768}, '1\t1004096\t2032768'),
+                ({'maxModelRequests': 2, 'maxCostMicros': 2032768}, '2\t2008192\t2032768'),
+                ({'maxModelRequests': 3}, '3\t3012288\t6098304')]:
+            body = {'goal': unique('bounded-task'), 'capabilityIds': ['web_fetch', 'read', 'write', 'present'], 'budget': submitted}
+            status, view = e.http('POST', '/api/tasks', body, key=body['goal'])
+            e.assert_that(status == 202, 'explicit BUSINESS budget above old HTTP limit accepted only within derived ceiling', budget=submitted, status=status)
+            task = view['taskId']
+            e.assert_that(e.sql("SELECT max_models,max_tokens,max_cost_micros FROM task WHERE id='" + task + "';") == expected,
+                          'round limit derives complete token ceiling; explicit cost only tightens', budget=submitted)
+            before = totals()
+            changed = copy.deepcopy(body); changed['budget']['maxCostMicros'] = 16262144
+            e.assert_that(e.http('POST', '/api/tasks', changed, key=body['goal'])[0] == 409 and before == totals(),
+                          'HTTP retry cannot increase persisted task budget')
+            e.http('POST', '/api/tasks/' + task + '/cancel', {})
+        (e.evidence / 'budget-http-cases.json').write_text(json.dumps(e.results[-15:], ensure_ascii=False, indent=2))
+        run_id, cfg = provision(full_context=True, input_rate=100000000)
+        control(cfg)
+        before = totals()
+        status, view = e.http('POST', '/api/tasks', {'goal': 'over-original-cap',
+            'budget': {'maxCostMicros': 500000001}}, key=unique('over-original-cap'))
+        e.assert_that(status == 400 and view['code'] == 'INVALID_BUDGET' and before == totals(),
+                      'derived task ceiling cannot expand original run cost limit')
+        task = e.submit(unique('clamped-to-original-cap'))
+        e.assert_that(e.sql("SELECT max_models,max_tokens,max_cost_micros FROM task WHERE id='" + task + "';") == '8\t8032768\t500000000',
+                      'expensive synthetic profile clamps task cost at original run ceiling, without changing run')
+        e.http('POST', '/api/tasks/' + task + '/cancel', {})
         run_id, cfg = provision()
         legacy = {k: v for k, v in cfg.items() if not k.startswith('jimu.business.') and not k.startswith('jimu.model.profiles.')}
         legacy.update({k: v for k, v in config({'a': server}, paid=True, run_id=run_id).items() if k.startswith('jimu.model.profiles.')})
@@ -305,8 +379,44 @@ def verify(e):
             e.stop(w)
             e.state(task, 'FAILED')
             e.assert_that('historical settlement fixture completed' in result and e.sql("SELECT cost_quality,input_tokens,output_tokens FROM model_dispatch WHERE task_id='" + task + "';") == 'KNOWN\t100\t50' and e.sql("SELECT requests_used FROM evaluation_budget WHERE id='" + run_id + "';") == before, 'known admitted usage settles after profile removal with no second request', stream=stream)
+        for boundary in ['requests', 'cost']:
+            run_id, cfg = provision(full_context=True); control(cfg)
+            e.sql("UPDATE tenant_budget SET running_limit=2 WHERE tenant_id='tenant-a';")
+            if boundary == 'requests':
+                e.sql("UPDATE evaluation_budget SET requests_used=62 WHERE id='" + run_id + "';")
+            else:
+                e.sql("UPDATE evaluation_budget SET cost_held=497967232 WHERE id='" + run_id + "';")
+            tasks = []
+            for i in range(2):
+                goal = unique('concurrent-' + boundary)
+                status, view = e.http('POST', '/api/tasks', {'goal': goal,
+                    'capabilityIds': ['web_fetch', 'read', 'write', 'present'], 'budget': {'maxModelRequests': 1}}, key=goal)
+                e.assert_that(status == 202, 'bounded task accepted for concurrent run-cap race', boundary=boundary)
+                tasks.append(view['taskId'])
+            a, b = worker(cfg, 'M0'), worker(cfg, 'M0'); e.barrier(a); e.barrier(b)
+            count = len(server.calls)
+            result = helper('budget-race', cfg, *tasks)
+            accounting = e.sql("SELECT requests_used,cost_held FROM evaluation_budget WHERE id='" + run_id + "';")
+            expected = '63\t2039768' if boundary == 'requests' else '3\t500000000'
+            e.assert_that(accounting == expected and 'ADMITTED' in result and 'MODEL_BUDGET_EXCEEDED' in result and len(server.calls) == count,
+                          'concurrent dispatch admits exactly one at original 63-request/500-yuan boundary', boundary=boundary)
+            limits = e.sql("SELECT id,max_models,max_tokens,max_cost_micros FROM task WHERE evaluation_run_id='" + run_id + "' ORDER BY id;")
+            e.stop(a, kill=True); e.stop(b, kill=True)
+            for task in tasks: e.expire(task)
+            # A dispatch committed before process loss is UNKNOWN, never a fresh reservation.
+            w = worker(cfg)
+            from p2_verify import eventually
+            eventually(lambda: e.sql("SELECT state FROM evaluation_budget WHERE id='" + run_id + "';") == 'STOPPED', 'lost dispatch retains UNKNOWN and stops original run')
+            eventually(lambda: e.sql("SELECT COUNT(*) FROM task WHERE evaluation_run_id='" + run_id + "' AND state NOT IN ('FAILED','CANCELLED','NEEDS_RECONCILIATION','SUCCEEDED');") == '0', 'both race tasks reach a terminal state')
+            e.stop(w)
+            e.assert_that(e.sql("SELECT requests_used,cost_held FROM evaluation_budget WHERE id='" + run_id + "';") == accounting
+                and e.sql("SELECT id,max_models,max_tokens,max_cost_micros FROM task WHERE evaluation_run_id='" + run_id + "' ORDER BY id;") == limits
+                and e.sql("SELECT COUNT(*) FROM model_dispatch WHERE task_id IN ('" + "','".join(tasks) + "');") == '1'
+                and len(server.calls) == count,
+                'restart retains UNKNOWN occupancy and fixed task ceilings without extra dispatch/HTTP', boundary=boundary)
+            e.sql("UPDATE tenant_budget SET running_limit=1 WHERE tenant_id='tenant-a';")
         (e.evidence / 'http-facts.json').write_text(json.dumps(server.calls, ensure_ascii=False, indent=2))
-        for table, fields in [('task', 'tenant_id,id,record_version,HEX(business_policy_snapshot),business_policy_digest,model_digest,evaluation_run_id,execution_scope_digest,models_used,cost_held'), ('evaluation_budget', '*'), ('model_dispatch', '*')]:
+        for table, fields in [('task', 'tenant_id,id,record_version,HEX(business_policy_snapshot),business_policy_digest,model_digest,evaluation_run_id,execution_scope_digest,max_models,max_tokens,max_cost_micros,models_used,cost_held'), ('evaluation_budget', '*'), ('model_dispatch', '*')]:
             (e.evidence / ('business-' + table + '.tsv')).write_text(e.sql('SELECT ' + fields + ' FROM ' + table + ';'))
     finally:
         server.shutdown(); server.server_close(); listener.join()

@@ -77,9 +77,7 @@ public final class TaskController {
     if (request.resourceIds() != null && !request.resourceIds().isEmpty())
       throw new TaskFailure(403, "RESOURCE_NOT_AUTHORIZED");
     BudgetRequest b = request.budget();
-    if (b != null
-        && b.maxCostMicros() != null
-        && (b.maxCostMicros() < 1 || b.maxCostMicros() > 1000000))
+    if (b != null && b.maxCostMicros() != null && b.maxCostMicros() < 1)
       throw new TaskFailure(400, "INVALID_BUDGET");
     var budget =
         new Tasks.Budget(
