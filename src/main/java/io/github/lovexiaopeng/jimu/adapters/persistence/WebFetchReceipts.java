@@ -11,6 +11,7 @@ import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchOutput;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -73,7 +74,8 @@ final class WebFetchReceipts {
           .validate(Payloads.read(output, JsonNode.class));
       var result = Payloads.read(output, FetchOutput.class);
       var input = Payloads.read((String) invocation.get("input_snapshot"), FetchInput.class);
-      new PublicWebPolicy(Set.of(URI.create(input.url()).getHost())).target(result.sourceUrl());
+      new PublicWebPolicy(Set.of(URI.create(input.url()).getHost().toLowerCase(Locale.ROOT)))
+          .target(result.sourceUrl());
       var receipt = new TreeMap<String, Object>();
       receipt.put("version", 1);
       receipt.put("outputDigest", Payloads.hash(output));
