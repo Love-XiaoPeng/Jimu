@@ -403,15 +403,24 @@ def verify(e):
             limits = e.sql("SELECT id,max_models,max_tokens,max_cost_micros FROM task WHERE evaluation_run_id='" + run_id + "' ORDER BY id;")
             e.stop(a, kill=True); e.stop(b, kill=True)
             for task in tasks: e.expire(task)
-            # A dispatch committed before process loss is UNKNOWN, never a fresh reservation.
+            # A committed dispatch lost before HTTP retains UNKNOWN. Budget denial prevents
+            # replay; unlike a committed unknown provider result, it need not stop the run.
             w = worker(cfg)
             from p2_verify import eventually
-            eventually(lambda: e.sql("SELECT state FROM evaluation_budget WHERE id='" + run_id + "';") == 'STOPPED', 'lost dispatch retains UNKNOWN and stops original run')
             eventually(lambda: e.sql("SELECT COUNT(*) FROM task WHERE evaluation_run_id='" + run_id + "' AND state NOT IN ('FAILED','CANCELLED','NEEDS_RECONCILIATION','SUCCEEDED');") == '0', 'both race tasks reach a terminal state')
             e.stop(w)
+            recovery = {
+                'boundary': boundary,
+                'run': e.sql("SELECT state,requests_used,cost_held FROM evaluation_budget WHERE id='" + run_id + "';"),
+                'tasks': e.sql("SELECT id,state,code,max_models,max_tokens,max_cost_micros,models_used,cost_held FROM task WHERE evaluation_run_id='" + run_id + "' ORDER BY id;"),
+                'dispatch': e.sql("SELECT state,cost_quality,reserved_cost,actual_cost FROM model_dispatch WHERE task_id IN ('" + "','".join(tasks) + "');"),
+                'costReservation': e.sql("SELECT state,amount,actual,usage_quality FROM reservation WHERE category='MODEL_COST' AND task_id IN ('" + "','".join(tasks) + "');")}
+            (e.evidence / ('budget-race-' + boundary + '-recovery.json')).write_text(json.dumps(recovery, indent=2))
             e.assert_that(e.sql("SELECT requests_used,cost_held FROM evaluation_budget WHERE id='" + run_id + "';") == accounting
                 and e.sql("SELECT id,max_models,max_tokens,max_cost_micros FROM task WHERE evaluation_run_id='" + run_id + "' ORDER BY id;") == limits
                 and e.sql("SELECT COUNT(*) FROM model_dispatch WHERE task_id IN ('" + "','".join(tasks) + "');") == '1'
+                and recovery['dispatch'] == 'DISPATCHED\tUNKNOWN\t2032768\tNULL'
+                and recovery['costReservation'] == 'HELD_UNKNOWN\t2032768\tNULL\tUNKNOWN'
                 and len(server.calls) == count,
                 'restart retains UNKNOWN occupancy and fixed task ceilings without extra dispatch/HTTP', boundary=boundary)
             e.sql("UPDATE tenant_budget SET running_limit=1 WHERE tenant_id='tenant-a';")
