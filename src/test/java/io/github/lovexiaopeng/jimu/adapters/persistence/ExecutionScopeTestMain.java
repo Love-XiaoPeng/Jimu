@@ -178,8 +178,8 @@ public final class ExecutionScopeTestMain {
       System.out.println(Payloads.hash(ExecutionScopes.canonical(scope)));
       return;
     }
-    var input = Payloads.read(Files.readString(file), ExecutionScopeBinding.Input.class);
     if (args[0].startsWith("bind")) {
+      var input = Payloads.read(Files.readString(file), ExecutionScopeBinding.Input.class);
       javax.sql.DataSource bindingSource = source;
       if (args[0].startsWith("bind-crash-")) {
         String point = args[0].substring("bind-crash-".length());

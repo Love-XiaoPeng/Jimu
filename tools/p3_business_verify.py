@@ -6,13 +6,13 @@ import json
 from pathlib import Path
 import re
 import signal
+import subprocess
 import sys
 import threading
 import urllib.request
 
 sys.dont_write_bytecode = True
 
-from p2_verify import run
 from p3_model_verify import config
 from p3_report_verify import ReportExperiment
 from p3_evaluation_plan_verify import canonical
@@ -106,10 +106,15 @@ def verify(e):
         return path
 
     def helper(action, cfg, *args):
-        output = run([e.java, '-Dloader.path=' + str(e.classes),
+        command = [e.java, '-Dloader.path=' + str(e.classes),
             '-Dloader.main=io.github.lovexiaopeng.jimu.adapters.persistence.ExecutionScopeTestMain',
             '-cp', str(e.jar), 'org.springframework.boot.loader.launch.PropertiesLauncher',
-            action, str(private(cfg)), str(e.root / 'unused'), *map(str, args)])
+            action, str(private(cfg)), str(e.root / 'unused'), *map(str, args)]
+        result = subprocess.run(command, text=True, capture_output=True, timeout=120)
+        (e.evidence / (unique(action) + '-result.json')).write_text(json.dumps({
+            'exit': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr}, ensure_ascii=False))
+        if result.returncode != 0: raise AssertionError('Local synthetic helper failed: ' + action)
+        output = result.stdout.strip()
         (e.evidence / (unique(action) + '.txt')).write_text(output)
         return output.splitlines()[-1]
 
@@ -287,7 +292,8 @@ def verify(e):
             e.sql("UPDATE task SET business_policy_digest=REPEAT('f',64) WHERE id='" + task + "';")
             before, count = totals(), len(server.calls)
             result = helper('guard-path', cfg, task, action, 'BUSINESS_POLICY_CONFLICT')
-            e.stop(w, kill=True)
+            e.stop(w)
+            e.state(task, 'FAILED')
             e.assert_that('BUSINESS_POLICY_CONFLICT' in result and before == totals() and count == len(server.calls), 'entrypoint policy denial precedes new quota/IO', entry=action)
         for stream in [False, True]:
             run_id, cfg = provision()
@@ -296,7 +302,8 @@ def verify(e):
             w = worker(cfg, 'M1'); e.barrier(w)
             before = e.sql("SELECT requests_used FROM evaluation_budget WHERE id='" + run_id + "';")
             result = helper('settle-known', cfg, task)
-            e.stop(w, kill=True)
+            e.stop(w)
+            e.state(task, 'FAILED')
             e.assert_that('historical settlement fixture completed' in result and e.sql("SELECT cost_quality,input_tokens,output_tokens FROM model_dispatch WHERE task_id='" + task + "';") == 'KNOWN\t100\t50' and e.sql("SELECT requests_used FROM evaluation_budget WHERE id='" + run_id + "';") == before, 'known admitted usage settles after profile removal with no second request', stream=stream)
         (e.evidence / 'http-facts.json').write_text(json.dumps(server.calls, ensure_ascii=False, indent=2))
         for table, fields in [('task', 'tenant_id,id,record_version,HEX(business_policy_snapshot),business_policy_digest,model_digest,evaluation_run_id,execution_scope_digest,models_used,cost_held'), ('evaluation_budget', '*'), ('model_dispatch', '*')]:
