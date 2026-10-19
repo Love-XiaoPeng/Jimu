@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.web;
 
+import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation.Phase;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchOutput;
 import java.io.FilterInputStream;
@@ -13,6 +14,7 @@ import java.net.UnknownHostException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.zip.GZIPInputStream;
 import javax.net.ssl.SSLContext;
 import org.apache.hc.client5.http.DnsResolver;
@@ -49,6 +51,16 @@ final class PinnedHttpsTransport {
       InetAddress[] addresses,
       ExecutionContext context,
       AtomicReference<HttpUriRequestBase> active)
+      throws IOException {
+    return get(target, addresses, context, active, phase -> {});
+  }
+
+  Reply get(
+      URI target,
+      InetAddress[] addresses,
+      ExecutionContext context,
+      AtomicReference<HttpUriRequestBase> active,
+      Consumer<Phase> progress)
       throws IOException {
     PublicWebReader.check(context);
     long remaining = Math.max(1, Duration.between(Instant.now(), context.deadline()).toMillis());
@@ -122,6 +134,7 @@ final class PinnedHttpsTransport {
           response -> {
             try {
               PublicWebReader.check(context);
+              progress.accept(Phase.HEADERS);
               int status = response.getCode();
               if (status == 301
                   || status == 302
@@ -147,6 +160,7 @@ final class PinnedHttpsTransport {
                 throw new IOException("Unsupported public page content encoding");
               var entity = response.getEntity();
               byte[] body;
+              progress.accept(Phase.BODY);
               if (entity == null) {
                 body = new byte[0];
               } else {
@@ -160,6 +174,7 @@ final class PinnedHttpsTransport {
                 }
               }
               PublicWebReader.check(context);
+              progress.accept(Phase.PROJECTION);
               return new Reply(
                   status,
                   null,

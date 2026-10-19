@@ -8,6 +8,7 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
+import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import java.time.Instant;
@@ -1908,6 +1909,78 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   }
 
   @Override
+  public void observeWebFetch(Lease lease, String invocationId, WebFetchObservation observation) {
+    tx(
+        () -> {
+          var task = fenced(lease, false);
+          var invocation =
+              one(
+                  "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
+                  lease.tenant(),
+                  lease.taskId(),
+                  invocationId);
+          if (!"web_fetch".equals(invocation.get("tool"))
+              || !"0.3.0".equals(invocation.get("plugin_version"))
+              || !"RUNNING".equals(invocation.get("state")))
+            throw new TaskFailure(409, "INVOCATION_STATE");
+          boolean failed = observation.failure() != WebFetchObservation.Failure.NONE;
+          event(
+              task,
+              (failed ? "web-failure:" : "web-phase:") + invocationId + ":" + observation.phase(),
+              failed ? "web.fetch_failed" : "web.fetch_phase",
+              observation.phase() + "_" + observation.failure());
+          return null;
+        });
+  }
+
+  @Override
+  public void preserveWebFetchResult(Lease lease, String invocationId, String output) {
+    tx(
+        () -> {
+          var task = fenced(lease, false);
+          var invocation =
+              one(
+                  "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
+                  lease.tenant(),
+                  lease.taskId(),
+                  invocationId);
+          if (!"RUNNING".equals(invocation.get("state")))
+            throw new TaskFailure(409, "INVOCATION_STATE");
+          var step =
+              one(
+                  "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=?",
+                  lease.tenant(),
+                  lease.taskId(),
+                  invocation.get("step_id"));
+          String digest = WebFetchReceipts.digest(task, step, invocation, output);
+          var existing =
+              rows(
+                  "SELECT code FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
+                  lease.tenant(),
+                  lease.taskId(),
+                  "web-result:" + invocationId);
+          if (!existing.isEmpty()) {
+            if (!digest.equals(existing.getFirst().get("code"))
+                || !output.equals(invocation.get("output_snapshot"))
+                || !Payloads.hash(output).equals(invocation.get("output_digest")))
+              throw new TaskFailure(409, "WEB_RESULT_PROOF_INVALID");
+            return null;
+          }
+          if (invocation.get("output_snapshot") != null || invocation.get("output_digest") != null)
+            throw new TaskFailure(409, "WEB_RESULT_PROOF_INVALID");
+          db.update(
+              "UPDATE invocation SET output_snapshot=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND task_id=? AND id=?",
+              output,
+              Payloads.hash(output),
+              lease.tenant(),
+              lease.taskId(),
+              invocationId);
+          event(task, "web-result:" + invocationId, "web.result_preserved", digest);
+          return null;
+        });
+  }
+
+  @Override
   public void toolSucceeded(Lease lease, String invocationId, String output) {
     boolean rejected =
         tx(
@@ -1915,12 +1988,31 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               var task = fenced(lease, false);
               var producer =
                   one(
-                      "SELECT tool FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
+                      "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
                       lease.tenant(),
                       lease.taskId(),
                       invocationId);
               if ("present".equals(s(producer, "tool")))
                 throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
+              var receipts =
+                  rows(
+                      "SELECT code FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
+                      lease.tenant(),
+                      lease.taskId(),
+                      "web-result:" + invocationId);
+              if (!receipts.isEmpty()) {
+                var step =
+                    one(
+                        "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=?",
+                        lease.tenant(),
+                        lease.taskId(),
+                        producer.get("step_id"));
+                if (!output.equals(producer.get("output_snapshot"))
+                    || !Payloads.hash(output).equals(producer.get("output_digest"))
+                    || !WebFetchReceipts.digest(task, step, producer, output)
+                        .equals(receipts.getFirst().get("code")))
+                  throw new TaskFailure(409, "WEB_RESULT_PROOF_INVALID");
+              }
               if (db.update(
                       "UPDATE invocation SET state='SUCCEEDED',output_snapshot=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND task_id=? AND state='RUNNING'",
                       output,

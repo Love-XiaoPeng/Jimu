@@ -52,7 +52,7 @@ public final class LocalTlsWorkerMain {
       return new PublicWebReader(
           new PublicWebPolicy(FetchRuntime.domains(env)),
           host -> new InetAddress[] {InetAddress.getByName("93.184.216.34")},
-          (target, pinned, context, active) -> {
+          (target, pinned, context, active, progress) -> {
             if (pinned.length != 1 || !pinned[0].getHostAddress().equals("93.184.216.34"))
               throw new IllegalStateException("Unexpected policy pins");
             Files.writeString(
@@ -70,7 +70,11 @@ public final class LocalTlsWorkerMain {
                   URI.create("https://" + target.getHost() + ":" + port + target.getRawPath());
               var reply =
                   transport.get(
-                      local, new InetAddress[] {InetAddress.getLoopbackAddress()}, context, active);
+                      local,
+                      new InetAddress[] {InetAddress.getLoopbackAddress()},
+                      context,
+                      active,
+                      progress);
               var body = reply.output();
               return new PinnedHttpsTransport.Reply(
                   reply.status(),

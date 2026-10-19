@@ -47,7 +47,7 @@ class PublicWebReaderTest {
         new PublicWebReader(
             policy,
             host -> new InetAddress[] {InetAddress.getByName("93.184.216.34")},
-            (uri, pinned, ctx, active) -> {
+            (uri, pinned, ctx, active, progress) -> {
               try {
                 Thread.sleep(2000);
               } catch (InterruptedException interrupted) {
@@ -182,7 +182,7 @@ class PublicWebReaderTest {
                     : new InetAddress[] {
                       InetAddress.getByName("93.184.216.34"), InetAddress.getLoopbackAddress()
                     },
-            (uri, pinned, ctx, active) -> {
+            (uri, pinned, ctx, active, progress) -> {
               requests.incrementAndGet();
               assertEquals("93.184.216.34", pinned[0].getHostAddress());
               return new PinnedHttpsTransport.Reply(302, "/next", null);
@@ -198,7 +198,7 @@ class PublicWebReaderTest {
                 new InetAddress[] {
                   InetAddress.getByName("93.184.216.34"), InetAddress.getLoopbackAddress()
                 },
-            (uri, pinned, ctx, active) -> {
+            (uri, pinned, ctx, active, progress) -> {
               requests.incrementAndGet();
               throw new IOException("must not connect");
             });
@@ -215,7 +215,7 @@ class PublicWebReaderTest {
         new PublicWebReader(
             policy,
             host -> new InetAddress[] {InetAddress.getByName("93.184.216.34")},
-            (uri, pinned, ctx, active) ->
+            (uri, pinned, ctx, active, progress) ->
                 calls.incrementAndGet() <= 5
                     ? new PinnedHttpsTransport.Reply(302, "/" + calls.get(), null)
                     : new PinnedHttpsTransport.Reply(
@@ -235,7 +235,7 @@ class PublicWebReaderTest {
           new PublicWebReader(
               policy,
               host -> new InetAddress[] {InetAddress.getByName("93.184.216.34")},
-              (uri, pinned, ctx, active) -> {
+              (uri, pinned, ctx, active, progress) -> {
                 calls.incrementAndGet();
                 return new PinnedHttpsTransport.Reply(302, location, null);
               });
@@ -271,7 +271,7 @@ class PublicWebReaderTest {
               exited.countDown();
               return new InetAddress[] {InetAddress.getByName("93.184.216.34")};
             },
-            (uri, pinned, ctx, active) -> {
+            (uri, pinned, ctx, active, progress) -> {
               connections.incrementAndGet();
               throw new IOException("must not connect");
             },
@@ -324,7 +324,7 @@ class PublicWebReaderTest {
         new PublicWebReader(
             policy,
             host -> new InetAddress[] {InetAddress.getByName("93.184.216.34")},
-            (uri, pinned, ctx, active) ->
+            (uri, pinned, ctx, active, progress) ->
                 new PinnedHttpsTransport.Reply(
                     503,
                     null,

@@ -1,6 +1,9 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.web;
 
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.OperationThreads;
+import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation;
+import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation.Failure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation.Phase;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchOutput;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebPageReader;
@@ -19,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
 import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
@@ -38,7 +42,8 @@ public final class PublicWebReader implements WebPageReader {
         URI uri,
         InetAddress[] pinned,
         ExecutionContext context,
-        AtomicReference<HttpUriRequestBase> active)
+        AtomicReference<HttpUriRequestBase> active,
+        Consumer<Phase> progress)
         throws IOException;
   }
 
@@ -95,6 +100,43 @@ public final class PublicWebReader implements WebPageReader {
 
   @Override
   public FetchOutput fetch(String url, ExecutionContext original) {
+    return fetch(url, original, observation -> {});
+  }
+
+  public FetchOutput fetch(
+      String url, ExecutionContext original, Consumer<WebFetchObservation> observer) {
+    var phase = new AtomicReference<>(Phase.ADMISSION);
+    Consumer<Phase> progress =
+        next -> {
+          observer.accept(new WebFetchObservation(next, Failure.NONE));
+          phase.set(next);
+        };
+    try {
+      progress.accept(Phase.ADMISSION);
+      return fetchObserved(url, original, progress);
+    } catch (RuntimeException error) {
+      observer.accept(new WebFetchObservation(phase.get(), failure(error)));
+      throw error;
+    }
+  }
+
+  private static Failure failure(Throwable error) {
+    // Inspect types only, never parse or persist throwable messages or response content.
+    Failure fallback = Failure.INTERNAL;
+    for (int depth = 0; error != null && depth < 8; depth++, error = error.getCause()) {
+      if (error instanceof CancellationException || error instanceof InterruptedException)
+        return Failure.CANCELLED;
+      if (error instanceof java.net.SocketTimeoutException) return Failure.TIMEOUT;
+      if (error instanceof java.net.UnknownHostException) return Failure.DNS;
+      if (error instanceof javax.net.ssl.SSLException) return Failure.TLS;
+      if (error instanceof IOException) fallback = Failure.IO;
+      if (error instanceof IllegalArgumentException) fallback = Failure.POLICY;
+    }
+    return fallback;
+  }
+
+  private FetchOutput fetchObserved(
+      String url, ExecutionContext original, Consumer<Phase> progress) {
     Instant admittedAt = admissionClock.instant();
     Instant limit = admittedAt.plusSeconds(30);
     Instant deadline = original.deadline().isBefore(limit) ? original.deadline() : limit;
@@ -114,7 +156,7 @@ public final class PublicWebReader implements WebPageReader {
     check(context);
     URI first = policy.target(url);
     var active = new AtomicReference<HttpUriRequestBase>();
-    var operation = new FutureTask<>(() -> fetchHops(first, context, active));
+    var operation = new FutureTask<>(() -> fetchHops(first, context, active, progress));
     operations.start("jimu-public-fetch", operation);
     try {
       while (true) {
@@ -145,17 +187,23 @@ public final class PublicWebReader implements WebPageReader {
   }
 
   private FetchOutput fetchHops(
-      URI first, ExecutionContext context, AtomicReference<HttpUriRequestBase> active)
+      URI first,
+      ExecutionContext context,
+      AtomicReference<HttpUriRequestBase> active,
+      Consumer<Phase> progress)
       throws IOException {
     URI target = first;
     for (int redirects = 0; ; redirects++) {
       check(context);
+      progress.accept(Phase.DNS);
       InetAddress[] pinned = PublicWebPolicy.publicAnswers(lookup.resolve(target.getHost()));
       check(context); // A late system DNS completion must never start a connection after
       // cancellation.
-      var reply = transport.get(target, pinned, context, active);
+      progress.accept(Phase.CONNECT_TLS);
+      var reply = transport.get(target, pinned, context, active, progress);
       check(context);
       if (reply.location() == null) return reply.output();
+      progress.accept(Phase.REDIRECT);
       if (redirects == 5) throw new IOException("Public fetch redirect limit exceeded");
       URI next = policy.target(target.resolve(reply.location()).toString());
       if (!first.getHost().equalsIgnoreCase(next.getHost()))

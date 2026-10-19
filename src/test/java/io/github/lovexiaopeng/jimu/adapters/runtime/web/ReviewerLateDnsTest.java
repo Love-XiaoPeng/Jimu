@@ -44,7 +44,7 @@ class ReviewerLateDnsTest {
                 InetAddress.getByAddress(new byte[] {93, (byte) 184, (byte) 216, 34})
               };
             },
-            (uri, addresses, ctx, active) -> {
+            (uri, addresses, ctx, active, progress) -> {
               connections.incrementAndGet();
               return new PinnedHttpsTransport.Reply(
                   200, null, new FetchOutput(200, uri.toString(), "late", false));

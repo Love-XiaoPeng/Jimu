@@ -322,7 +322,8 @@ class PinnedHttpsTransportTest {
                   fixture.target("/anonymous"),
                   new InetAddress[] {InetAddress.getByName("127.0.0.1")},
                   PublicWebReaderTest.context(),
-                  new AtomicReference<>());
+                  new AtomicReference<>(),
+                  phase -> {});
       assertEquals(200, reply.status());
       assertEquals(2, fixture.requests.get());
       assertEquals(
@@ -392,7 +393,7 @@ class PinnedHttpsTransportTest {
             new PublicWebReader(
                 new PublicWebPolicy(java.util.Set.of("fixture.example")),
                 host -> new InetAddress[] {InetAddress.getByName("93.184.216.34")},
-                (uri, pinned, ctx, request) -> {
+                (uri, pinned, ctx, request, progress) -> {
                   transportThread.set(Thread.currentThread());
                   // Test only: route to the TLS fixture after reader policy has checked a public
                   // answer.
@@ -401,7 +402,8 @@ class PinnedHttpsTransportTest {
                           fixture.target("/slow"),
                           new InetAddress[] {InetAddress.getByName("127.0.0.1")},
                           ctx,
-                          request);
+                          request,
+                          progress);
                 });
         var context =
             new ExecutionContext(

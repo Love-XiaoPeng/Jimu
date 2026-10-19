@@ -92,6 +92,10 @@ public interface ExecutionLedger {
 
   void toolSucceeded(Lease lease, String invocationId, String output);
 
+  void observeWebFetch(Lease lease, String invocationId, WebFetchObservation observation);
+
+  void preserveWebFetchResult(Lease lease, String invocationId, String output);
+
   void uncertain(Lease lease, String invocationId);
 
   Upload stage(Lease lease, String hash, long size);

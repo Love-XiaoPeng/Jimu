@@ -77,7 +77,7 @@ class PublicWebCancellationRaceTest {
                 InetAddress.getByAddress(new byte[] {93, (byte) 184, (byte) 216, 34})
               };
             },
-            (uri, addresses, context, active) -> {
+            (uri, addresses, context, active, progress) -> {
               entries.incrementAndGet();
               if (callerDone.get()) lateEntries.incrementAndGet();
               workerContext.set(context);

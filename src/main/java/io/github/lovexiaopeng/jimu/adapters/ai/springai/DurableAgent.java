@@ -490,12 +490,17 @@ public final class DurableAgent implements AutoCloseable {
                   lease.tenant(),
                   invocation.effectId(),
                   new ExecutionContext(
-                      invocation.id(), lease.deadline(), () -> ledger.checkpoint(lease)));
+                      invocation.id(), lease.deadline(), () -> ledger.checkpoint(lease)),
+                  observation -> ledger.observeWebFetch(lease, invocation.id(), observation));
           outputContract.validateObject(result);
           output = Payloads.json(result);
         }
         if (output.getBytes(StandardCharsets.UTF_8).length > 2097152)
           throw new TaskFailure(409, "TOOL_OUTPUT_TOO_LARGE");
+        if (!file && fetch.publicMode()) {
+          ledger.preserveWebFetchResult(lease, invocation.id(), output);
+          probe.hit("WEB_RESULT", lease.taskId());
+        }
       } catch (FileFailure error) {
         if ("WORKSPACE_UNAVAILABLE".equals(error.code())) {
           ledger.uncertain(lease, invocation.id());

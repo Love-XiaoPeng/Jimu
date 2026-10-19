@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.web;
 
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchInput;
@@ -10,6 +11,7 @@ import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebPageReader;
 import java.net.URI;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import org.springframework.core.env.Environment;
 
 /** Selects reviewed execution policy; the model cannot select transport or supply credentials. */
@@ -75,7 +77,18 @@ public final class FetchRuntime {
 
   public FetchOutput execute(
       FetchInput input, String tenant, String effectId, ExecutionContext context) {
+    return execute(input, tenant, effectId, context, observation -> {});
+  }
+
+  public FetchOutput execute(
+      FetchInput input,
+      String tenant,
+      String effectId,
+      ExecutionContext context,
+      Consumer<WebFetchObservation> observer) {
     available();
+    if (publicReader instanceof PublicWebReader reader)
+      return reader.fetch(input.url(), context, observer);
     if (publicReader != null)
       return new WebFetchPlugin(publicReader, descriptor).execute(input, context).output();
     if (!credentials.containsKey(tenant)) throw new TaskFailure(403, "ACCESS_DENIED");
