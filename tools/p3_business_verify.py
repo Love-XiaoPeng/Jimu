@@ -319,6 +319,11 @@ def verify(e):
                 goal = unique(kind)
                 task = e.submit(goal)
                 queued = e.submit(unique('stopped-sibling'))
+                # This probe requires the violating task first. Admission timestamps can order
+                # the sibling earlier, in which case its prior five valid rounds are billable.
+                e.sql("UPDATE task SET ready_at=CASE WHEN id='" + task + "' THEN '2000-01-01 00:00:00' ELSE '2000-01-01 00:00:01' END WHERE id IN ('" + task + "','" + queued + "');")
+                e.assert_that(e.sql("SELECT id FROM task WHERE id IN ('" + task + "','" + queued + "') ORDER BY ready_at,id;") == task + '\n' + queued,
+                              'usage-bound probe fixes violating task before queued sibling', kind=kind, stream=stream)
                 w = worker(cfg); e.state(task, 'FAILED'); e.stop(w)
                 boundary = {
                     'kind': kind, 'stream': stream,
