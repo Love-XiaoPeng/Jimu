@@ -117,7 +117,7 @@ def verify(e):
     try:
         legacy=e.submit('scope-forward-migration-legacy')
         e.stop(e.control)
-        e.sql("DROP TABLE evaluation_execution_scope; ALTER TABLE task DROP COLUMN execution_scope_digest; DELETE FROM flyway_schema_history WHERE version='9';")
+        e.sql("ALTER TABLE task DROP COLUMN business_policy_snapshot,DROP COLUMN business_policy_digest; DROP TABLE evaluation_execution_scope; ALTER TABLE task DROP COLUMN execution_scope_digest; DELETE FROM flyway_schema_history WHERE version IN ('9','10');")
         migration_before=e.sql('SELECT tenant_id,id,state,model_digest,tools_digest,models_used,token_held,cost_held FROM task; SELECT * FROM evaluation_budget; SELECT * FROM reservation;')
         (e.evidence/'migration-v8-before.tsv').write_text(migration_before)
         e.control=e.start(unique('scope-v9-migration'),'control')
@@ -126,7 +126,7 @@ def verify(e):
         e.assert_that(migration_before==migration_after and e.sql('SELECT COUNT(*) FROM task WHERE execution_scope_digest IS NOT NULL;')=='0','V8 to V9 retains legacy snapshots/receipts and never backfills')
         e.http('POST','/api/tasks/'+legacy+'/cancel',{})
         e.sql("CREATE TABLE jimu_provisioning_receipt(record_version INT NOT NULL,issue_id VARCHAR(64),instance_uuid VARCHAR(64),tenant_id VARCHAR(64),run_id VARCHAR(64),approval_snapshot LONGTEXT,approval_digest CHAR(64),plan_digest CHAR(64),materials_digest CHAR(64)); UPDATE tenant_budget SET model_limit=10000,token_limit=1000000000,cost_limit=10000000000;")
-        e.assert_that(e.sql("SELECT COUNT(*) FROM flyway_schema_history WHERE success=1;")=='9' and e.sql('SELECT COUNT(*) FROM evaluation_execution_scope;')=='0','V9 schema only creates no scope or run')
+        e.assert_that(e.sql("SELECT COUNT(*) FROM flyway_schema_history WHERE success=1;")=='10' and e.sql('SELECT COUNT(*) FROM evaluation_execution_scope;')=='0','V9/V10 forward schema only creates no scope or run')
         if not any(flag in sys.argv for flag in ['--settlements-only','--unknown-claim-only','--guards-only']):
             old='--review-reproduction' in sys.argv
             for stream in [False,True]:

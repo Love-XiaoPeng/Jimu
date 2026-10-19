@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
+import io.github.lovexiaopeng.jimu.adapters.runtime.model.BusinessPolicies;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationMaterials;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationPlans;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
@@ -51,7 +52,10 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               } catch (TaskFailure failure) {
                 // Scope checks run before admission writes. Only the deliberate persistent
                 // integrity rejection (or already admitted settlement) commits here.
-                if (!List.of("EVALUATION_SCOPE_MISMATCH", "MODEL_SETTLEMENT_PROOF_INVALID")
+                if (!List.of(
+                        "EVALUATION_SCOPE_MISMATCH",
+                        "MODEL_SETTLEMENT_PROOF_INVALID",
+                        "BUSINESS_POLICY_CONFLICT")
                     .contains(failure.code())) throw failure;
                 return new AdmissionResult<T>(null, failure);
               }
@@ -66,6 +70,10 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
       Map<String, Object> task,
       ModelSnapshot model) {
     try {
+      if (task == null && models.businessPolicy() != null || task != null && businessTask(task)) {
+        requireBusiness(tenant, evaluation, task, model);
+        return null;
+      }
       if (!executionScopes.needed(tenant, task)) return null;
       if (task != null) {
         if (task.get("execution_scope_digest") == null)
@@ -89,7 +97,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
     } catch (org.springframework.dao.DataAccessException unavailable) {
       throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
     } catch (TaskFailure failure) {
-      if (failure.code().equals("EVALUATION_SCOPE_MISMATCH") && evaluation != null) {
+      if (List.of("EVALUATION_SCOPE_MISMATCH", "BUSINESS_POLICY_CONFLICT").contains(failure.code())
+          && evaluation != null) {
         db.update(
             "UPDATE evaluation_budget SET state='STOPPED' WHERE tenant_id=? AND id=?",
             tenant,
@@ -102,6 +111,48 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               failure.code());
       }
       throw failure;
+    }
+  }
+
+  private boolean businessTask(Map<String, Object> task) {
+    return n(task, "record_version") == 2
+        || task.get("business_policy_snapshot") != null
+        || task.get("business_policy_digest") != null;
+  }
+
+  private void requireBusiness(
+      String tenant, Map<String, Object> run, Map<String, Object> task, ModelSnapshot model) {
+    BusinessPolicies.Policy policy;
+    try {
+      if (task == null) policy = models.businessPolicy();
+      else {
+        String json = s(task, "business_policy_snapshot");
+        if (n(task, "record_version") != 2
+            || json == null
+            || !Payloads.hash(json).equals(task.get("business_policy_digest"))
+            || task.get("execution_scope_digest") != null
+            || task.get("evaluation_snapshot") != null
+            || !java.util.Objects.equals(
+                task.get("evaluation_run_id"), run == null ? null : run.get("id")))
+          throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+        policy = Payloads.read(json, BusinessPolicies.Policy.class);
+        if (!BusinessPolicies.canonical(policy).equals(json))
+          throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+        model = historicalSnapshot(task);
+      }
+      BusinessPolicies.validate(policy);
+      models.retainedBusiness(policy);
+      if (!tenant.equals(policy.anchor().tenantId()))
+        throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+      executionScopes.businessAnchor(policy, run);
+      if (plan(run) == null) throw new TaskFailure(503, "BUSINESS_POLICY_UNAVAILABLE");
+      BusinessPolicies.profile(policy, model, models.localEvaluation(model));
+      models.available(model);
+    } catch (IllegalArgumentException corrupt) {
+      throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+    } catch (TaskFailure invalid) {
+      if (invalid.status() == 409) throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+      throw invalid;
     }
   }
 
@@ -259,7 +310,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           if (request.budget().maxCostMicros() != null && !model.paid())
             throw new TaskFailure(400, "CURRENCY_BUDGET_NOT_CONFIGURED");
           models.admit(model);
-          var evaluationBinding = bindEvaluation(evaluation, model);
+          var businessPolicy = models.businessPolicy();
+          var evaluationBinding = businessPolicy == null ? bindEvaluation(evaluation, model) : null;
           var material =
               evaluationBinding == null
                   ? null
@@ -299,13 +351,22 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               "UPDATE task SET model_snapshot=?,model_digest=?,evaluation_run_id=?,max_cost_micros=?,tools_snapshot=?,tools_digest=?,execution_scope_digest=?,report_time=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
               modelSnapshot,
               Payloads.hash(modelSnapshot),
-              model.paid() ? models.evaluationRunId() : null,
+              model.paid() ? run : null,
               request.budget().maxCostMicros() == null ? 1000000 : request.budget().maxCostMicros(),
               toolSnapshot,
               Payloads.hash(toolSnapshot),
               scopeDigest,
               identity.tenant(),
               task);
+          if (businessPolicy != null) {
+            String policyJson = BusinessPolicies.canonical(businessPolicy);
+            db.update(
+                "UPDATE task SET record_version=2,business_policy_snapshot=?,business_policy_digest=? WHERE tenant_id=? AND id=?",
+                policyJson,
+                Payloads.hash(policyJson),
+                identity.tenant(),
+                task);
+          }
           if (evaluationBinding != null) {
             var selection = models.evaluationSelection();
             var plan = selection.plan();
@@ -567,7 +628,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
       // Every worker transaction takes run -> tenant -> task, including recovery claims.
       var ready =
           rows(
-              "SELECT id,evaluation_run_id FROM task WHERE tenant_id=? AND record_version=1 AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) ORDER BY ready_at,id LIMIT 1",
+              "SELECT id,evaluation_run_id FROM task WHERE tenant_id=? AND record_version IN (1,2) AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) ORDER BY ready_at,id LIMIT 1",
               tenant);
       if (ready.isEmpty()) continue;
       var candidate = ready.getFirst();
@@ -581,7 +642,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                 var budget = bucket(tenant);
                 var candidates =
                     rows(
-                        "SELECT *,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND id=? AND record_version=1 AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) FOR UPDATE SKIP LOCKED",
+                        "SELECT *,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND id=? AND record_version IN (1,2) AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) FOR UPDATE SKIP LOCKED",
                         tenant,
                         s(candidate, "id"));
                 if (candidates.isEmpty()) return Optional.empty();
@@ -626,7 +687,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
                 try {
                   requireScope(tenant, evaluation, task, null);
                 } catch (TaskFailure failure) {
-                  if (failure.code().equals("EVALUATION_SCOPE_MISMATCH")) throw failure;
+                  if (List.of("EVALUATION_SCOPE_MISMATCH", "BUSINESS_POLICY_CONFLICT")
+                      .contains(failure.code())) throw failure;
                   terminal(task, "FAILED", failure.code());
                   return Optional.empty();
                 }
@@ -869,11 +931,14 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   private void materialBody(Map<String, Object> task, String request, int ordinal) {
     var material = material(task);
-    if (material == null) return;
-    initialFile(task);
+    boolean business = businessTask(task);
+    if (material == null && !business) return;
     var wire = Payloads.read(request, com.fasterxml.jackson.databind.JsonNode.class);
-    EvaluationMaterials.body(
-        material, wire.path("requestBody").asText(), time(task, "report_time").toString());
+    if (material != null) {
+      initialFile(task);
+      EvaluationMaterials.body(
+          material, wire.path("requestBody").asText(), time(task, "report_time").toString());
+    }
     // Step N's request contains exactly the confirmed history through N-1. Its own
     // outputs may already be committed on recovery and must not enter this prefix.
     var preceding =
@@ -887,8 +952,20 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
         Payloads.read(
             wire.path("requestBody").asText(), com.fasterxml.jackson.databind.JsonNode.class);
     var expected = Payloads.read("[]", com.fasterxml.jackson.databind.node.ArrayNode.class);
-    expected.add(body.path("messages").get(0));
-    expected.add(body.path("messages").get(1));
+    if (business) {
+      if (caps(task).contains("present"))
+        expected
+            .addObject()
+            .put("role", "system")
+            .put(
+                "content",
+                new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportPolicy()
+                    .instruction(new ReportContext(time(task, "report_time"), List.of())));
+      expected.addObject().put("role", "user").put("content", s(task, "goal"));
+    } else {
+      expected.add(body.path("messages").get(0));
+      expected.add(body.path("messages").get(1));
+    }
     int position = 0;
     for (var prior : preceding) {
       String response = s(prior, "response_snapshot");
@@ -1191,6 +1268,10 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   private void checkEvaluation(
       Map<String, Object> task, Map<String, Object> evaluation, ModelSnapshot model) {
+    if (businessTask(task)) {
+      requireBusiness(s(task, "tenant_id"), evaluation, task, model);
+      return;
+    }
     var configured = bindEvaluation(evaluation, model);
     if (task.get("evaluation_snapshot") == null) {
       if (configured != null) throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
@@ -2404,13 +2485,13 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10') AND success=TRUE",
             Integer.class)
-        != 9) throw new IllegalStateException("Required migration unavailable");
+        != 10) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 9) throw new IllegalStateException("Unsupported schema version");
+        != 10) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override

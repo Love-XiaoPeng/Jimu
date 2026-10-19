@@ -28,9 +28,29 @@ public final class ModelProfiles {
   private final Environment env;
   private final Settings settings;
   private final boolean fixture;
+  private final BusinessPolicies.Settings business;
 
   public ModelProfiles(Environment env) {
     this.env = env;
+    business =
+        Binder.get(env)
+            .bind(
+                "jimu.business",
+                Bindable.of(BusinessPolicies.Settings.class),
+                new NoUnboundElementsBindHandler(BindHandler.DEFAULT))
+            .orElse(null);
+    if (business != null) {
+      if (business.policies() == null || !business.policies().containsKey(business.currentRef()))
+        throw new IllegalArgumentException("Business policy versions required");
+      business
+          .policies()
+          .forEach(
+              (id, policy) -> {
+                BusinessPolicies.validate(policy);
+                if (!id.equals(policy.id()))
+                  throw new IllegalArgumentException("Business policy identity mismatch");
+              });
+    }
     settings =
         Binder.get(env)
             .bind(
@@ -58,6 +78,27 @@ public final class ModelProfiles {
 
   public boolean fixture() {
     return fixture;
+  }
+
+  public BusinessPolicies.Policy businessPolicy() {
+    return business == null ? null : business.policies().get(business.currentRef());
+  }
+
+  public void retainedBusiness(BusinessPolicies.Policy policy) {
+    if (business == null || !business.policies().containsKey(policy.id()))
+      throw new TaskFailure(503, "BUSINESS_POLICY_UNAVAILABLE");
+    if (!policy.equals(business.policies().get(policy.id())))
+      throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+  }
+
+  private boolean businessProfile(ModelSnapshot snapshot) {
+    return business != null
+        && business.policies().values().stream()
+            .anyMatch(
+                p ->
+                    ModelProfiles.digest(snapshot)
+                            .equals(p.profileDigests().get(snapshot.profile()))
+                        && snapshot.adapter().equals(p.requestStrategy()));
   }
 
   public ExecutionScopes.Requirement scopeRequirement() {
@@ -147,7 +188,9 @@ public final class ModelProfiles {
   }
 
   public void available(ModelSnapshot snapshot) {
-    if (snapshot == null || snapshot.version() != 2 || !"openai-chat-v1".equals(snapshot.adapter()))
+    if (snapshot == null
+        || snapshot.version() != 2
+        || !List.of("openai-chat-v1", BusinessPolicies.STRATEGY).contains(snapshot.adapter()))
       throw new TaskFailure(503, "MODEL_CONFIG_UNAVAILABLE");
     if (fixture) {
       if (!"p2-fixture".equals(snapshot.profile()))
@@ -168,7 +211,8 @@ public final class ModelProfiles {
             || evaluationRunId().isBlank()))
       throw new TaskFailure(503, "MODEL_COST_BOUND_UNAVAILABLE");
     var selection = evaluationSelection();
-    if (selection != null
+    if (!BusinessPolicies.STRATEGY.equals(snapshot.adapter())
+        && selection != null
         && !(env.getProperty("jimu.test-mode", Boolean.class, false)
             && "trusted-local-v1".equals(snapshot.transportPolicy())
             && List.of("127.0.0.1", "[::1]").contains(URI.create(snapshot.baseUrl()).getHost()))
@@ -203,7 +247,8 @@ public final class ModelProfiles {
     validateStructure(
         selection == null ? null : selection.plan(),
         p,
-        env.getProperty("jimu.test-mode", Boolean.class, false));
+        env.getProperty("jimu.test-mode", Boolean.class, false),
+        businessProfile(p));
     var uri = URI.create(p.baseUrl());
     if (!settings.allowedOrigins().contains(uri.getScheme() + "://" + uri.getRawAuthority()))
       throw new IllegalArgumentException("Model origin not allowed");
@@ -212,6 +257,11 @@ public final class ModelProfiles {
   /** Pure validation shared with operator binding; never resolves secrets or enables dispatch. */
   public static void validateStructure(
       EvaluationPlans.Plan plan, ModelSnapshot p, boolean testMode) {
+    validateStructure(plan, p, testMode, false);
+  }
+
+  private static void validateStructure(
+      EvaluationPlans.Plan plan, ModelSnapshot p, boolean testMode, boolean business) {
     if (p == null || p.baseUrl() == null || p.profile() == null || p.profile().isBlank())
       throw new IllegalArgumentException("Invalid model profile");
     URI uri;
@@ -221,7 +271,8 @@ public final class ModelProfiles {
       throw new IllegalArgumentException("Invalid model base URL");
     }
     if (p.version() != 2
-        || !"openai-chat-v1".equals(p.adapter())
+        || !("openai-chat-v1".equals(p.adapter())
+            || business && BusinessPolicies.STRATEGY.equals(p.adapter()))
         || p.configVersion() < 1
         || p.model() == null
         || p.model().isBlank()
@@ -247,7 +298,7 @@ public final class ModelProfiles {
         || p.responseBytes() < 1
         || p.responseBytes() > 1048576
         || p.maxOutputTokens() < 1
-        || p.maxOutputTokens() > (p.paid() ? (plan == null ? 512 : 4096) : 2048)
+        || p.maxOutputTokens() > (p.paid() ? (plan == null && !business ? 512 : 4096) : 2048)
         || p.outputMarginTokens() < 0
         || p.outputMarginTokens() >= p.maxOutputTokens()
         || p.outputLimitField() == null
@@ -268,6 +319,23 @@ public final class ModelProfiles {
         || c.evidence().isBlank()
         || p.stream() && (!c.streamText() || !c.streamTools()))
       throw new TaskFailure(503, "MODEL_CAPABILITY_UNSUPPORTED");
+    if (BusinessPolicies.STRATEGY.equals(p.adapter())
+        && (!business
+            || !p.paid()
+            || !"deepseek-flash".equals(p.model())
+            || !"max_tokens".equals(p.outputLimitField())
+            || p.outputMarginTokens() < 10
+            || !p.providerOptions().isEmpty()
+            || c.parallelToolField()
+            || !c.usageCall()
+            || !c.usageStream()
+            || !"deepseek-nonthinking-v1".equals(c.evidence())
+            || !(testMode
+                    && "trusted-local-v1".equals(p.transportPolicy())
+                    && List.of("127.0.0.1", "[::1]").contains(uri.getHost())
+                || "cloud-https-v1".equals(p.transportPolicy())
+                    && "https://api.deepseek.com".equals(p.baseUrl()))))
+      throw new IllegalArgumentException("Unsupported DeepSeek request strategy");
     var input = p.inputLimit();
     if (input != null
         && (input.version() != 1
@@ -297,7 +365,7 @@ public final class ModelProfiles {
             && p.providerOptions()
                 .equals(Map.of("enable_thinking", false, "enable_search", false))))
       throw new IllegalArgumentException("Unsupported provider options");
-    if (p.maxOutputTokens() > 512 && p.paid() && plan != null)
+    if (!business && p.maxOutputTokens() > 512 && p.paid() && plan != null)
       EvaluationPlans.validateModel(plan, p, testMode);
     if (p.price() != null) {
       if (!p.paid()) throw new IllegalArgumentException("Price requires monetary accounting");

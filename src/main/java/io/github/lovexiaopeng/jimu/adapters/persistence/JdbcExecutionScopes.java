@@ -107,6 +107,23 @@ final class JdbcExecutionScopes {
     return req;
   }
 
+  void businessAnchor(
+      io.github.lovexiaopeng.jimu.adapters.runtime.model.BusinessPolicies.Policy policy,
+      Map<String, Object> run) {
+    var req = requirement(policy.anchor().tenantId());
+    var r = receipt(req.tenantId());
+    if (!req.equals(policy.anchor())
+        || run == null
+        || !req.runId().equals(run.get("id"))
+        || !req.runId().equals(models.evaluationRunId())
+        || !java.util.Objects.equals(r.get("plan_digest"), run.get("plan_digest")))
+      throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+    var plan = EvaluationPlans.plan("qwen-main-v1");
+    if (!EvaluationPlans.digest(plan).equals(r.get("plan_digest"))
+        || !plan.materialsDigest().equals(r.get("materials_digest")))
+      throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+  }
+
   String require(
       String tenant, Map<String, Object> run, Map<String, Object> task, ModelSnapshot model) {
     boolean claimed = task != null && task.get("execution_scope_digest") != null;

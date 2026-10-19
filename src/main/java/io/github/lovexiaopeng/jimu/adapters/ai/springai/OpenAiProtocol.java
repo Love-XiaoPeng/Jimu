@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Response;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.ToolCall;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.WireMessage;
+import io.github.lovexiaopeng.jimu.adapters.runtime.model.BusinessPolicies;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import java.io.IOException;
@@ -34,7 +35,9 @@ public final class OpenAiProtocol {
     var body = json.createObjectNode();
     body.put("model", p.model());
     body.put("stream", p.stream());
-    body.put("n", 1);
+    if (BusinessPolicies.STRATEGY.equals(p.adapter())) {
+      body.putObject("thinking").put("type", "disabled");
+    } else body.put("n", 1);
     body.put(p.outputLimitField(), p.maxOutputTokens() - p.outputMarginTokens());
     if (p.capabilities().parallelToolField()) body.put("parallel_tool_calls", false);
     if (p.stream() && p.capabilities().usageStream())
@@ -193,11 +196,15 @@ public final class OpenAiProtocol {
                 .add(java.math.BigInteger.valueOf(output))
                 .compareTo(java.math.BigInteger.valueOf(total))
             != 0) throw new IOException("Conflicting usage");
+    Long cached = count(u.path("prompt_tokens_details"), "cached_tokens");
+    Long deepseekCached = count(u, "prompt_cache_hit_tokens");
+    if (cached != null && deepseekCached != null && !cached.equals(deepseekCached))
+      throw new IOException("Conflicting cached usage");
     return new ModelUsage(
         input,
         output,
         total,
-        count(u.path("prompt_tokens_details"), "cached_tokens"),
+        cached == null ? deepseekCached : cached,
         count(u.path("completion_tokens_details"), "reasoning_tokens"),
         safeId(root, "id"),
         safeId(root, "model"),

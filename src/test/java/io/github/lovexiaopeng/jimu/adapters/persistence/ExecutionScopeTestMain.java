@@ -48,6 +48,23 @@ public final class ExecutionScopeTestMain {
     }
     var config = new HashMap<String, Object>();
     p.forEach((k, v) -> config.put(k.toString(), v));
+    if (args[0].equals("business-pins")) {
+      var env = new StandardEnvironment();
+      env.getPropertySources().remove("systemEnvironment");
+      env.getPropertySources().remove("systemProperties");
+      env.getPropertySources().addFirst(new MapPropertySource("fixture", config));
+      var settings =
+          org.springframework.boot.context.properties.bind.Binder.get(env)
+              .bind(
+                  "jimu.model",
+                  org.springframework.boot.context.properties.bind.Bindable.of(
+                      ModelProfiles.Settings.class))
+              .get();
+      var pins = new TreeMap<String, String>();
+      settings.profiles().forEach((ref, model) -> pins.put(ref, ModelProfiles.digest(model)));
+      System.out.println(Payloads.json(pins));
+      return;
+    }
     var source =
         new DriverManagerDataSource(
             p.getProperty("jimu.db.url"),
@@ -321,7 +338,7 @@ public final class ExecutionScopeTestMain {
           action.run();
           throw new AssertionError("Unexpected scope admission: " + args[4]);
         } catch (TaskFailure failure) {
-          require(failure.code().equals("EVALUATION_SCOPE_MISMATCH"));
+          require(failure.code().equals(args.length > 5 ? args[5] : "EVALUATION_SCOPE_MISMATCH"));
           System.out.println(Payloads.json(Map.of(args[4], failure.code())));
         }
         return;
@@ -360,9 +377,19 @@ public final class ExecutionScopeTestMain {
       removed.keySet().removeIf(k -> k.startsWith("jimu.model."));
       var ledger = new JdbcLedger(source, models(removed));
       ModelUsage usage =
-          args[0].equals("settle-unknown")
-              ? new ModelUsage(1000000L, null, null, null, null, null, null, null)
-              : new ModelUsage(1000000L, 4096L, 1004096L, null, null, null, null, null);
+          ((Number) task.get("record_version")).intValue() == 2
+              ? new ModelUsage(
+                  100L,
+                  args[0].equals("settle-unknown") ? null : 50L,
+                  args[0].equals("settle-unknown") ? null : 150L,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null)
+              : args[0].equals("settle-unknown")
+                  ? new ModelUsage(1000000L, null, null, null, null, null, null, null)
+                  : new ModelUsage(1000000L, 4096L, 1004096L, null, null, null, null, null);
       try {
         ledger.modelResponded(
             lease,
@@ -370,7 +397,7 @@ public final class ExecutionScopeTestMain {
             (String) dispatch.get("id"),
             "{\"hostFixtureAuditOnly\":true}",
             List.of(),
-            1004096,
+            ((Number) task.get("record_version")).intValue() == 2 ? 150 : 1004096,
             usage);
       } catch (TaskFailure rejected) {
         System.out.println("settlement post-commit rejection=" + rejected.code());
