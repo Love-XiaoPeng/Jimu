@@ -88,7 +88,9 @@ public final class FetchRuntime {
       Consumer<WebFetchObservation> observer) {
     available();
     if (publicReader instanceof PublicWebReader reader)
-      return reader.fetch(input.url(), context, observer);
+      return new WebFetchPlugin((url, token) -> reader.fetch(url, token, observer), descriptor)
+          .execute(input, context)
+          .output();
     if (publicReader != null)
       return new WebFetchPlugin(publicReader, descriptor).execute(input, context).output();
     if (!credentials.containsKey(tenant)) throw new TaskFailure(403, "ACCESS_DENIED");
