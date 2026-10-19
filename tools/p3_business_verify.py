@@ -320,7 +320,14 @@ def verify(e):
                 task = e.submit(goal)
                 queued = e.submit(unique('stopped-sibling'))
                 w = worker(cfg); e.state(task, 'FAILED'); e.stop(w)
-                e.assert_that(e.sql("SELECT state,requests_used FROM evaluation_budget WHERE id='" + run_id + "';") == 'STOPPED\t3', 'UNKNOWN/over-bound durably stops original run', kind=kind, stream=stream)
+                boundary = {
+                    'kind': kind, 'stream': stream,
+                    'run': e.sql("SELECT id,state,requests_used,cost_held FROM evaluation_budget WHERE id='" + run_id + "';"),
+                    'tasks': e.sql("SELECT id,state,code,models_used,ready_at FROM task WHERE evaluation_run_id='" + run_id + "' ORDER BY ready_at,id;"),
+                    'dispatch': e.sql("SELECT task_id,state,code,input_tokens,output_tokens,total_tokens,cost_quality FROM model_dispatch WHERE task_id IN ('" + task + "','" + queued + "') ORDER BY started_at,id;"),
+                    'fixtureCalls': len(server.calls), 'alternateFixtureModels': dict(e.fixture.models)}
+                (e.evidence / ('usage-bound-' + kind + '-' + str(stream).lower() + '.json')).write_text(json.dumps(boundary, indent=2))
+                e.assert_that(e.sql("SELECT state,requests_used FROM evaluation_budget WHERE id='" + run_id + "';") == 'STOPPED\t3', 'UNKNOWN/over-bound durably stops original run', **boundary)
                 held = e.sql("SELECT cost_held FROM evaluation_budget WHERE id='" + run_id + "';")
                 if kind == 'unknown':
                     e.assert_that(e.sql("SELECT state,actual FROM reservation WHERE task_id='" + task + "' AND category='MODEL_COST';") == 'HELD_UNKNOWN\tNULL', 'unknown fee never zeroed or released')
