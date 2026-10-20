@@ -58,7 +58,7 @@ def report_draft(goal):
         'conclusions': [{'kind': 'endpoint', 'protocol': 'https', 'identifier': 'api.example.test/anthropic', 'sourceRef': SOURCE, 'evidence': EVIDENCE}],
         'limitations': ['仅验证本地替身，未验证真实模型质量。']}
     if 'bad-url' in goal: draft['summary'][0]['text'] = '`https://unfetched.example/path`，不得删除后放行。'
-    if 'bad-source' in goal: draft['summary'][0]['sourceRef'] = SOURCE + '/foreign'
+    if goal.startswith('bad-source-'): draft['summary'][0]['sourceRef'] = SOURCE + '/foreign'
     if 'bad-quote' in goal: draft['summary'][0]['evidence'] = '未曾抓取的虚构原文'
     if 'bad-prefix' in goal:
         draft['conclusions'][0].update(identifier='api.example.test/anth', evidence='https://api.example.test/anth')
@@ -654,6 +654,8 @@ def verify_composition(e, provision, control, worker, helper, unique, server):
     for case in ['missing', 'forged-hash', 'forged-binding', 'bad-input-digest', 'bad-output-digest', 'wrong-version', 'wrong-file-hash', 'cross-task', 'wrong-pin', 'wrong-source-pin', 'bad-source-digest']:
         _, cfg = provision(); control(cfg)
         task = e.submit(unique('receipt-' + case)); w = worker(cfg, 'P_BEFORE_STAGE'); e.barrier(w)
+        e.assert_that(e.sql("SELECT COUNT(*) FROM invocation WHERE task_id='" + task + "' AND tool='compose_report' AND state='SUCCEEDED';") == '1',
+            'confirmed composition reaches present barrier before receipt tampering', case=case)
         file = e.receipts(task)['files']['report.md']
         report = {'path': 'report.md', 'version': file['version'], 'sha256': file['sha256'], 'size': file['size'], 'mediaType': 'text/markdown; charset=utf-8'}
         row = json.loads(e.sql("SELECT output_snapshot FROM invocation WHERE task_id='" + task + "' AND tool='compose_report';"))
