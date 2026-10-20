@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Response;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.ToolCall;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.WireMessage;
+import io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.BusinessPolicies;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
@@ -163,16 +164,23 @@ public final class OpenAiProtocol {
       String id = c.path("id").asText();
       var function = c.path("function");
       var arguments = function.path("arguments");
+      boolean composition = "compose_report".equals(function.path("name").asText());
       if (calls.size() >= 20
           || !id.matches("[A-Za-z0-9_-]{1,128}")
           || !ids.add(id)
           || !"function".equals(c.path("type").asText())
           || !authorizedTools.contains(function.path("name").asText())
           || !arguments.isTextual()
-          || arguments.asText().getBytes(StandardCharsets.UTF_8).length > 16384)
+          || arguments.asText().getBytes(StandardCharsets.UTF_8).length
+              > (composition ? ReportComposer.INPUT_MAX_BYTES : 16384))
         throw new IOException("Invalid tool slot");
-      var parsed = json.readTree(arguments.asText());
-      if (parsed == null || !parsed.isObject()) throw new IOException("Invalid tool arguments");
+      // Bound raw bytes before a MySQL TEXT invocation snapshot can be planned. Strict draft
+      // parsing remains at the gateway, before executable admission.
+      // Retain raw argument bytes so duplicate keys are not erased by a JsonNode conversion.
+      if (!composition) {
+        var parsed = json.readTree(arguments.asText());
+        if (parsed == null || !parsed.isObject()) throw new IOException("Invalid tool arguments");
+      }
       calls.add(new ToolCall(id, "function", function.path("name").asText(), arguments.asText()));
     }
     if ("tool_calls".equals(finish) == calls.isEmpty())

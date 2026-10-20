@@ -329,7 +329,9 @@ public final class ExecutionScopeTestMain {
       System.out.println("metadata write denials=9");
       return;
     }
-    if (args[0].startsWith("settle-") || args[0].equals("guard-path")) {
+    if (args[0].startsWith("settle-")
+        || args[0].equals("guard-path")
+        || args[0].equals("compose-stage")) {
       String taskId = args[3];
       var db = new JdbcTemplate(source);
       var task = db.queryForMap("SELECT * FROM task WHERE id=?", taskId);
@@ -345,6 +347,23 @@ public final class ExecutionScopeTestMain {
               (String) task.get("goal"),
               List.of(((String) task.get("capabilities")).split(",")),
               ((Number) task.get("installation_epoch")).longValue());
+      if (args[0].equals("compose-stage")) {
+        var ledger = new JdbcLedger(source, profiles);
+        String invocation =
+            db.queryForObject(
+                "SELECT id FROM invocation WHERE task_id=? AND tool='present' AND state='RUNNING'",
+                String.class,
+                taskId);
+        var report = Payloads.read(args[4], ExecutionLedger.ReportFile.class);
+        try {
+          ledger.stageReports(lease, invocation, List.of(report));
+          throw new AssertionError("Unexpected composition admission");
+        } catch (TaskFailure failure) {
+          require(failure.code().equals(args[5]));
+          System.out.println(Payloads.json(Map.of("compose-stage", failure.code())));
+        }
+        return;
+      }
       if (args[0].equals("guard-path")) {
         var ledger = new JdbcLedger(source, profiles);
         var actions = new TreeMap<String, Runnable>();

@@ -4,6 +4,10 @@ The configured model execution path remains ModelProfiles → OpenAiProtocol →
 the existing plugin gateway and JdbcLedger. No evaluation batch is started by selecting a model.
 The HTTP task API cannot select a provider, policy, secret, model, endpoint or execution mode.
 
+New BUSINESS report tasks use the source-bound `compose_report` capability instead of free
+`write`; see [composition v1](source-bound-report-composition.md) for installation, schema,
+receipt validation and recovery. Existing task pins and frozen evaluation tools remain valid.
+
 The new `deepseek-nonthinking-v1` adapter is a versioned request strategy for official
 `deepseek-flash` at `https://api.deepseek.com/chat/completions`. It sends
 `thinking: {"type":"disabled"}` and `max_tokens`, omits `n`, `parallel_tool_calls` and Qwen

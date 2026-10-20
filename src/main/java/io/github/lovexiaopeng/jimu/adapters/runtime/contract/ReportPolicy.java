@@ -54,26 +54,8 @@ public final class ReportPolicy {
     Set<String> valid = new HashSet<>();
     boolean partial = false;
     for (var source : context.sources()) {
-      if (!Payloads.hash(source.output()).equals(source.digest()))
-        throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-      var output = Payloads.read(source.output(), FetchOutput.class);
-      String prefix =
-          "[UNTRUSTED_WEB_CONTENT public-text-v1]\nSource: " + output.sourceUrl() + "\n\n";
-      // The projection's marker/source URL is metadata, never evidence body. In particular an
-      // empty 200 page still has a long wrapper and must remain NO_EVIDENCE.
-      String content =
-          output.content().startsWith(prefix)
-              ? output.content().substring(prefix.length()).strip()
-              : "";
-      String lower = content.toLowerCase(Locale.ROOT);
-      boolean usable =
-          output.httpStatus() >= 200
-              && output.httpStatus() < 300
-              && !output.truncated()
-              && content.codePointCount(0, content.length()) >= 32
-              && !lower.matches(
-                  "(?s).*(sign in|log in|login|authentication required|access denied|captcha|search results|search snippet|error page|not found|service unavailable|something went wrong|登录|访问被拒绝|验证码|错误页面|页面不存在).*");
-      if (usable) valid.add(output.sourceUrl());
+      var evidence = evidence(source);
+      if (evidence.usable()) valid.add(evidence.sourceUrl());
       else partial = true;
     }
     if (valid.isEmpty()) throw new TaskFailure(409, "NO_EVIDENCE");
@@ -103,6 +85,30 @@ public final class ReportPolicy {
       throw new TaskFailure(409, "REPORT_CITATION_INVALID");
     if (partial && !sections.get("局限").contains("部分来源失败"))
       throw new TaskFailure(409, "REPORT_LIMITATION_REQUIRED");
+  }
+
+  public record Evidence(String sourceUrl, String body, boolean usable) {}
+
+  /** One shared predicate for legacy publication and source-bound composition. */
+  public Evidence evidence(
+      io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Source source) {
+    if (!Payloads.hash(source.output()).equals(source.digest()))
+      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    var output = Payloads.read(source.output(), FetchOutput.class);
+    String prefix =
+        "[UNTRUSTED_WEB_CONTENT public-text-v1]\nSource: " + output.sourceUrl() + "\n\n";
+    String body =
+        output.content().startsWith(prefix) ? output.content().substring(prefix.length()) : "";
+    String content = body.strip();
+    String lower = content.toLowerCase(Locale.ROOT);
+    boolean usable =
+        output.httpStatus() >= 200
+            && output.httpStatus() < 300
+            && !output.truncated()
+            && content.codePointCount(0, content.length()) >= 32
+            && !lower.matches(
+                "(?s).*(sign in|log in|login|authentication required|access denied|captcha|search results|search snippet|error page|not found|service unavailable|something went wrong|登录|访问被拒绝|验证码|错误页面|页面不存在).*");
+    return new Evidence(output.sourceUrl(), body, usable);
   }
 
   private Set<String> links(String content) {
