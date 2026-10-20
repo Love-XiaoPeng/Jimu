@@ -18,8 +18,11 @@ URLs. Endpoint segments preserve an explicit `http`/`https` protocol and host/pa
 their full endpoint must be a complete token in the quoted saved source, including the
 surrounding source characters. Credentials, query/fragment, whitespace and active markup
 are unsupported. All invalid fields reject the complete draft; no sentence is deleted or
-repaired. Raw calls over 64 KiB, duplicate keys and trailing JSON values are rejected before
-tool admission, as are schema violations. Diagnostics contain stable codes, not source text.
+repaired. Raw calls exceeding 65,535 UTF-8 bytes are refused at the provider boundary before
+planning a MySQL TEXT snapshot, preserving independently verified usage. Duplicate keys,
+trailing JSON values and schema violations are refused before executable tool admission;
+the response plan remains PENDING without output or TOOL quota. Diagnostics contain stable
+codes, not source text.
 
 `ReportComposer` shares the original `ReportPolicy` usable-source predicate: confirmed,
 same-task/tenant, pinned public `web_fetch` output with a verified digest, successful status,

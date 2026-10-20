@@ -257,7 +257,9 @@ class ReportComposerTest {
   @Test
   void ordinaryAndSsePreserveRawDraftForStrictGatewayWithoutChangingOldTools() throws Exception {
     String duplicate = "{\"draft\":{\"version\":1,\"version\":1}}";
-    for (String arguments : List.of(duplicate, " ".repeat(65537))) {
+    for (String arguments :
+        List.of(duplicate, " ", "{}" + " ".repeat(65533), " ".repeat(65536), "中".repeat(22000))) {
+      boolean oversized = arguments.getBytes(StandardCharsets.UTF_8).length > 65535;
       var call =
           Map.of(
               "id",
@@ -276,16 +278,19 @@ class ReportComposerTest {
                       "message",
                       Map.of("tool_calls", List.of(call)),
                       "finish_reason",
-                      "tool_calls")));
+                      "tool_calls")),
+              "usage",
+              Map.of("prompt_tokens", 2, "completion_tokens", 1, "total_tokens", 3));
       byte[] ordinary = Payloads.json(response).getBytes(StandardCharsets.UTF_8);
       var protocol = new OpenAiProtocol();
-      assertEquals(
-          arguments,
-          protocol
-              .parse(ordinary, false, List.of("compose_report"))
-              .calls()
-              .getFirst()
-              .arguments());
+      if (!oversized)
+        assertEquals(
+            arguments,
+            protocol
+                .parse(ordinary, false, List.of("compose_report"))
+                .calls()
+                .getFirst()
+                .arguments());
       var stream =
           Map.of(
               "choices",
@@ -308,23 +313,35 @@ class ReportComposerTest {
                                   call.get("function")))),
                       "finish_reason",
                       "tool_calls")));
-      assertEquals(
-          arguments,
-          protocol
-              .parse(
-                  ("data: " + Payloads.json(stream) + "\n\ndata: [DONE]\n\n")
-                      .getBytes(StandardCharsets.UTF_8),
-                  true,
-                  List.of("compose_report"))
-              .calls()
-              .getFirst()
-              .arguments());
-      assertThrows(Exception.class, () -> ReportComposer.parse(arguments));
+      byte[] sse =
+          ("data: "
+                  + Payloads.json(stream)
+                  + "\n\ndata: "
+                  + Payloads.json(Map.of("choices", List.of(), "usage", response.get("usage")))
+                  + "\n\ndata: [DONE]\n\n")
+              .getBytes(StandardCharsets.UTF_8);
+      if (oversized) {
+        for (boolean streaming : List.of(false, true)) {
+          var failure =
+              assertThrows(
+                  OpenAiProtocol.InvalidResponse.class,
+                  () ->
+                      protocol.parse(
+                          streaming ? sse : ordinary, streaming, List.of("compose_report")));
+          assertEquals(3, failure.usage().totalTokens());
+        }
+      } else
+        assertEquals(
+            arguments,
+            protocol.parse(sse, true, List.of("compose_report")).calls().getFirst().arguments());
+      if (arguments.startsWith("{}")) assertDoesNotThrow(() -> ReportComposer.parse(arguments));
+      else assertThrows(Exception.class, () -> ReportComposer.parse(arguments));
       String legacy =
           new String(ordinary, StandardCharsets.UTF_8).replace("compose_report", "write");
-      assertThrows(
-          java.io.IOException.class,
-          () -> protocol.parse(legacy.getBytes(StandardCharsets.UTF_8), false, List.of("write")));
+      if (!arguments.startsWith("{}"))
+        assertThrows(
+            java.io.IOException.class,
+            () -> protocol.parse(legacy.getBytes(StandardCharsets.UTF_8), false, List.of("write")));
     }
   }
 

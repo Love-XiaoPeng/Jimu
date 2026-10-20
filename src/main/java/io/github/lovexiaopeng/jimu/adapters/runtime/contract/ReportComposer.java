@@ -29,6 +29,10 @@ import java.util.regex.Pattern;
 /** Pure v1 assembly. Never repairs a raw report or treats a draft as trusted Markdown. */
 public final class ReportComposer {
   public static final String RENDERER = "source-bound-report-v1";
+
+  /** Raw invocation snapshots use the existing MySQL TEXT byte capacity. */
+  public static final int INPUT_MAX_BYTES = 65535;
+
   private static final ObjectMapper STRICT =
       new ObjectMapper()
           .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
@@ -45,7 +49,7 @@ public final class ReportComposer {
   }
 
   public static JsonNode parse(String raw) throws IOException {
-    if (raw.getBytes(StandardCharsets.UTF_8).length > 65536)
+    if (raw.getBytes(StandardCharsets.UTF_8).length > INPUT_MAX_BYTES)
       throw new IllegalArgumentException("Report input too large");
     var value = STRICT.readTree(raw);
     if (value == null || !value.isObject())
@@ -79,7 +83,9 @@ public final class ReportComposer {
             && draft.conclusions().size() <= 8,
         "BLOCKS_INVALID");
     require(draft.limitations() != null && draft.limitations().size() <= 4, "BLOCKS_INVALID");
-    require(Payloads.json(draft).getBytes(StandardCharsets.UTF_8).length <= 65536, "TOO_LARGE");
+    require(
+        Payloads.json(draft).getBytes(StandardCharsets.UTF_8).length <= INPUT_MAX_BYTES,
+        "TOO_LARGE");
     Map<String, Source> sources = new LinkedHashMap<>();
     boolean partial = false;
     for (Source source : context.sources()) {

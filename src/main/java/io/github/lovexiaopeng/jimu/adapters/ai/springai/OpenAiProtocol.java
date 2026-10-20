@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Response;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.ToolCall;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.WireMessage;
+import io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.BusinessPolicies;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
@@ -170,9 +171,11 @@ public final class OpenAiProtocol {
           || !"function".equals(c.path("type").asText())
           || !authorizedTools.contains(function.path("name").asText())
           || !arguments.isTextual()
-          || !composition && arguments.asText().getBytes(StandardCharsets.UTF_8).length > 16384)
+          || arguments.asText().getBytes(StandardCharsets.UTF_8).length
+              > (composition ? ReportComposer.INPUT_MAX_BYTES : 16384))
         throw new IOException("Invalid tool slot");
-      // The new draft boundary owns strict raw parsing and its 64-KiB limit, before admission.
+      // Bound raw bytes before a MySQL TEXT invocation snapshot can be planned. Strict draft
+      // parsing remains at the gateway, before executable admission.
       // Retain raw argument bytes so duplicate keys are not erased by a JsonNode conversion.
       if (!composition) {
         var parsed = json.readTree(arguments.asText());

@@ -587,13 +587,13 @@ def verify_composition(e, provision, control, worker, helper, unique, server):
             ('bad-endpoint', 'REPORT_DRAFT_ENDPOINT_INVALID'), ('bad-field', 'TOOL_INPUT_INVALID'),
             ('bad-version', 'TOOL_INPUT_INVALID'), ('bad-duplicate', 'TOOL_INPUT_INVALID'),
             ('bad-duplicate-sse', 'TOOL_INPUT_INVALID'), ('bad-empty', 'TOOL_INPUT_INVALID'),
-            ('bad-oversize', 'TOOL_INPUT_INVALID'),
+            ('bad-oversize', 'MODEL_RESPONSE_INVALID'), ('bad-oversize-sse', 'MODEL_STREAM_INCOMPLETE'),
             ('bad-injection', 'REPORT_DRAFT_RAW_URL_FORBIDDEN'), ('unobserved-compose', 'FS_NOT_OBSERVED'),
             ('ambiguous-source', 'REPORT_DRAFT_SOURCE_AMBIGUOUS'), ('login-source', 'REPORT_DRAFT_SOURCE_UNKNOWN'),
             ('empty-source', 'REPORT_DRAFT_SOURCE_UNKNOWN'),
             ('unauthorized-write', 'MODEL_RESPONSE_INVALID')]:
         _, cfg = provision(); control(cfg)
-        if case == 'bad-duplicate-sse':
+        if case in ['bad-duplicate-sse', 'bad-oversize-sse']:
             cfg['jimu.model.default-profile-ref'] = 'b'; control(cfg)
         if case == 'ambiguous-source': e.tls.source_bodies = [EVIDENCE, EVIDENCE + ' 本地第二个版本。']
         elif case == 'login-source': e.tls.source_bodies = ['Login required before accessing this page and all its contents.']
@@ -615,6 +615,9 @@ def verify_composition(e, provision, control, worker, helper, unique, server):
             e.assert_that(e.sql("SELECT COUNT(*),SUM(state='PENDING'),SUM(output_snapshot IS NOT NULL) FROM invocation WHERE task_id='" + task + "' AND tool='compose_report';") == '1\t1\t0'
                 and e.sql("SELECT COUNT(*) FROM reservation r JOIN invocation i ON r.dispatch_id=i.id WHERE i.task_id='" + task + "' AND i.tool='compose_report' AND r.category='TOOL';") == '0',
                 'raw/schema rejection preserves planned input without composer admission/output/quota', case=case)
+        if case.startswith('bad-oversize'):
+            e.assert_that(e.sql("SELECT COUNT(*) FROM invocation WHERE task_id='" + task + "' AND tool='compose_report';") == '0',
+                'oversize rejection precedes raw TEXT snapshot planning and retains known model accounting', case=case)
     for boundary in ['C0', 'C1', 'C2', 'P0', 'P1', 'P2']:
         run_id, cfg = provision(); control(cfg)
         task = e.submit(unique('compose-recover-' + boundary)); w = worker(cfg, boundary)
