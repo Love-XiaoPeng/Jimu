@@ -137,6 +137,10 @@ def verify(e):
                   'schema': 'jimu', 'tenantId': 'tenant-a', 'runId': run_id, 'approvalDigest': digest(approval)}
         e.sql("DELETE FROM jimu_provisioning_receipt; INSERT INTO jimu_provisioning_receipt VALUES(1,'" + anchor['issueId'] + "','" + anchor['instanceUuid'] + "','tenant-a','" + run_id + "'," + sqljson(approval) + ",'" + digest(approval) + "','" + digest(plan) + "','" + plan['materialsDigest'] + "');")
         cfg = config({'a': server, 'b': server}, paid=True, run_id=run_id)
+        # Production retains frozen evaluation metadata beside BUSINESS authority.
+        # Its presence must not select the frozen report instruction for a new business task.
+        cfg.update({'jimu.model.evaluation-plan-ref': 'qwen-main-v1',
+                    'jimu.model.evaluation-phase': 'A', 'jimu.model.evaluation-sample': 'W1'})
         cfg['jimu.execution-scope.requirement'] = canonical(anchor)
         for name in ['a', 'b']:
             prefix = 'jimu.model.profiles.' + name + '.'
@@ -251,6 +255,11 @@ def verify(e):
             # Historical downloads survive removal of current business authority and profile registry.
             e.stop(e.control); e.control = e.start(unique('historical-download'), 'control')
             e.assert_that(e.http('GET', '/api/artifacts/' + aid + '/download')[0] == 200, 'committed download independent of current policy/configuration')
+        if '--report-config-only' in sys.argv[4:]:
+            (e.evidence / 'http-facts.json').write_text(json.dumps(server.calls, ensure_ascii=False, indent=2))
+            e.assert_that(len(server.calls) == 10,
+                          'retained evaluation selection: normal/SSE reports, recovery and downloads use current business instruction')
+            return
         run_id, cfg = provision(full_context=True)
         control(cfg)
         for submitted, expected in [
