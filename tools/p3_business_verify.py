@@ -612,8 +612,9 @@ def verify_composition(e, provision, control, worker, helper, unique, server):
         e.assert_that(e.sql("SELECT COUNT(*) FROM model_dispatch WHERE task_id='" + task + "' AND cost_quality='KNOWN';") != '0',
                       'rejection retains actual synthetic model accounting', case=case)
         if code == 'TOOL_INPUT_INVALID':
-            e.assert_that(e.sql("SELECT COUNT(*) FROM invocation WHERE task_id='" + task + "' AND tool='compose_report';") == '0',
-                          'raw/schema rejection precedes composer invocation admission', case=case)
+            e.assert_that(e.sql("SELECT COUNT(*),SUM(state='PENDING'),SUM(output_snapshot IS NOT NULL) FROM invocation WHERE task_id='" + task + "' AND tool='compose_report';") == '1\t1\t0'
+                and e.sql("SELECT COUNT(*) FROM reservation r JOIN invocation i ON r.dispatch_id=i.id WHERE i.task_id='" + task + "' AND i.tool='compose_report' AND r.category='TOOL';") == '0',
+                'raw/schema rejection preserves planned input without composer admission/output/quota', case=case)
     for boundary in ['C0', 'C1', 'C2', 'P0', 'P1', 'P2']:
         run_id, cfg = provision(); control(cfg)
         task = e.submit(unique('compose-recover-' + boundary)); w = worker(cfg, boundary)
