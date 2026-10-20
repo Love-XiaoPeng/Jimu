@@ -1,0 +1,64 @@
+package io.github.lovexiaopeng.jimu.integration;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.Test;
+
+class ComposeReportIT {
+  @Test
+  void sourceBoundCompositionPublishesOnlyConfirmedFilesAndRecoversSafely() throws Exception {
+    Path evidence = Path.of("target/failsafe-reports/compose-evidence").toAbsolutePath();
+    Files.createDirectories(evidence);
+    var command = new ArrayList<String>();
+    boolean windows = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows");
+    if (windows) command.addAll(List.of("wsl.exe", "-d", "Ubuntu", "--"));
+    command.addAll(List.of("python3", "-u"));
+    for (Path path :
+        List.of(
+            Path.of("tools/p3_business_verify.py"),
+            Path.of(System.getProperty("jimu.jar")),
+            evidence,
+            Path.of("target/test-classes"))) {
+      String value = path.toAbsolutePath().toString().replace('\\', '/');
+      command.add(
+          windows ? "/mnt/" + Character.toLowerCase(value.charAt(0)) + value.substring(2) : value);
+    }
+    command.add("--compose-only");
+    var process =
+        new ProcessBuilder(command)
+            .redirectErrorStream(true)
+            .redirectOutput(evidence.resolve("runner.log").toFile())
+            .start();
+    try {
+      assertTrue(process.waitFor(45, TimeUnit.MINUTES));
+      assertEquals(
+          0,
+          process.exitValue(),
+          () -> {
+            try {
+              return Files.readString(evidence.resolve("runner.log"));
+            } catch (java.io.IOException failure) {
+              return "Composition evidence unavailable";
+            }
+          });
+      assertTrue(
+          Files.readString(evidence.resolve("cleanup.json"))
+              .contains("\"allChildrenExited\": true"));
+    } finally {
+      if (process.isAlive()) {
+        process.destroy();
+        if (!process.waitFor(15, TimeUnit.SECONDS)) {
+          process.destroyForcibly();
+          process.waitFor();
+        }
+      }
+    }
+  }
+}

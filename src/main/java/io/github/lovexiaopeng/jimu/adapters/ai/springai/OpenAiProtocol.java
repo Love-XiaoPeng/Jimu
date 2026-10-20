@@ -163,16 +163,21 @@ public final class OpenAiProtocol {
       String id = c.path("id").asText();
       var function = c.path("function");
       var arguments = function.path("arguments");
+      boolean composition = "compose_report".equals(function.path("name").asText());
       if (calls.size() >= 20
           || !id.matches("[A-Za-z0-9_-]{1,128}")
           || !ids.add(id)
           || !"function".equals(c.path("type").asText())
           || !authorizedTools.contains(function.path("name").asText())
           || !arguments.isTextual()
-          || arguments.asText().getBytes(StandardCharsets.UTF_8).length > 16384)
+          || !composition && arguments.asText().getBytes(StandardCharsets.UTF_8).length > 16384)
         throw new IOException("Invalid tool slot");
-      var parsed = json.readTree(arguments.asText());
-      if (parsed == null || !parsed.isObject()) throw new IOException("Invalid tool arguments");
+      // The new draft boundary owns strict raw parsing and its 64-KiB limit, before admission.
+      // Retain raw argument bytes so duplicate keys are not erased by a JsonNode conversion.
+      if (!composition) {
+        var parsed = json.readTree(arguments.asText());
+        if (parsed == null || !parsed.isObject()) throw new IOException("Invalid tool arguments");
+      }
       calls.add(new ToolCall(id, "function", function.path("name").asText(), arguments.asText()));
     }
     if ("tool_calls".equals(finish) == calls.isEmpty())

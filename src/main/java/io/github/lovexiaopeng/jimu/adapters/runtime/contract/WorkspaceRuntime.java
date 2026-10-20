@@ -15,6 +15,7 @@ import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
 import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.FilePort;
 import io.github.lovexiaopeng.jimu.plugin.api.ReportPort;
+import io.github.lovexiaopeng.jimu.plugins.builtin.workspace.ComposeReportPlugin;
 import io.github.lovexiaopeng.jimu.plugins.builtin.workspace.PresentPlugin;
 import io.github.lovexiaopeng.jimu.plugins.builtin.workspace.ReadPlugin;
 import io.github.lovexiaopeng.jimu.plugins.builtin.workspace.WritePlugin;
@@ -72,6 +73,7 @@ public final class WorkspaceRuntime {
           case "read" -> Set.of("file_path", "offset", "limit");
           case "write" -> Set.of("file_path", "content");
           case "present" -> Set.of("files");
+          case "compose_report" -> Set.of("file_path", "draft");
           default -> throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
         };
     input
@@ -142,6 +144,20 @@ public final class WorkspaceRuntime {
                           input.path("file_path").asText(), input.path("content").asText()),
                       context)
                   .output();
+          case "compose_report" ->
+              new ComposeReportPlugin(
+                      (path, draft) -> {
+                        var composed =
+                            new ReportComposer().compose(path, draft, ledger.reportContext(lease));
+                        probe.hit("C0", lease.taskId());
+                        var written = port.write(path, composed.markdown());
+                        probe.hit("C1", lease.taskId());
+                        return composed.receipt(written);
+                      },
+                      descriptor)
+                  .execute(
+                      Payloads.read(input.toString(), ComposeReportPlugin.Input.class), context)
+                  .output();
           case "present" ->
               new PresentPlugin(
                       port,
@@ -167,6 +183,7 @@ public final class WorkspaceRuntime {
       BoundaryProbe probe) {
     var context = ledger.reportContext(lease);
     files.forEach(file -> reports.validate(file, context));
+    probe.hit("P_BEFORE_STAGE", lease.taskId());
     var receipts =
         files.stream()
             .map(

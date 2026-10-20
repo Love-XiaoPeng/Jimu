@@ -12,11 +12,19 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 
-/** Only the three packaged reviewed entries, never model-selected classes or paths. */
+/** Only packaged entries, never model-selected classes or paths. */
 public final class WorkspaceContracts {
-  public static final List<String> NAMES = List.of("read", "write", "present");
+  public static final List<String> NAMES = List.of("read", "write", "present", "compose_report");
   private static final Map<String, String> ENTRIES =
-      Map.of("read", "ReadPlugin", "write", "WritePlugin", "present", "PresentPlugin");
+      Map.of(
+          "read",
+          "ReadPlugin",
+          "write",
+          "WritePlugin",
+          "present",
+          "PresentPlugin",
+          "compose_report",
+          "ComposeReportPlugin");
 
   public record Contract(
       ToolDescriptor descriptor, String input, SchemaContract in, SchemaContract out) {}

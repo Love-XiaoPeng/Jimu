@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.BuiltinManifestLoader;
+import io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportPolicy;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceRuntime;
@@ -139,11 +140,14 @@ public final class DurableAgent implements AutoCloseable {
                     fetch.publicMode() && lease.capabilities().contains("present")
                         ? List.of(
                             new SystemMessage(
-                                models.businessPolicy() != null
-                                        || models.evaluationSelection() == null
-                                    ? new ReportPolicy()
-                                        .currentInstruction(ledger.reportContext(lease))
-                                    : new ReportPolicy().instruction(ledger.reportContext(lease))),
+                                lease.capabilities().contains("compose_report")
+                                    ? new ReportComposer().instruction(ledger.reportContext(lease))
+                                    : models.businessPolicy() != null
+                                            || models.evaluationSelection() == null
+                                        ? new ReportPolicy()
+                                            .currentInstruction(ledger.reportContext(lease))
+                                        : new ReportPolicy()
+                                            .instruction(ledger.reportContext(lease))),
                             new UserMessage(lease.goal()))
                         : List.of(new UserMessage(lease.goal())));
     var manager = session.manager();
@@ -239,6 +243,8 @@ public final class DurableAgent implements AutoCloseable {
                           "Read a UTF-8 task file with line numbers; observe missing files before write";
                       case "write" ->
                           "Create or replace UTF-8 task file using the host's observed version";
+                      case "compose_report" ->
+                          "Compose a source-bound report from typed fields and exact fetched evidence; read target first";
                       case "present" ->
                           "Publish existing observed Markdown reports as immutable authorized deliverables";
                       default -> throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
@@ -466,7 +472,10 @@ public final class DurableAgent implements AutoCloseable {
       var outputContract = file ? workspace.contract(call.tool()).out() : outputSchema;
       JsonNode args;
       try {
-        args = json.readTree(input);
+        args =
+            call.tool().equals("compose_report")
+                ? ReportComposer.parse(input)
+                : json.readTree(input);
         if (file) workspace.validate(call.tool(), args);
         else {
           inputSchema.validate(args);
@@ -534,6 +543,7 @@ public final class DurableAgent implements AutoCloseable {
       }
       probe.hit("T1_BEFORE", lease.taskId());
       ledger.toolSucceeded(lease, invocation.id(), output);
+      if (call.tool().equals("compose_report")) probe.hit("C2", lease.taskId());
       probe.hit("T1", lease.taskId());
       if (call.tool().equals("write")) probe.hit("W1", lease.taskId());
       return output;

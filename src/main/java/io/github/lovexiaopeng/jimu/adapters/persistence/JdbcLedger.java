@@ -309,6 +309,15 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           var model = models.selected(identity.tenant());
           String scopeDigest = requireScope(identity.tenant(), evaluation, null, model);
           var businessPolicy = models.businessPolicy();
+          if (request.capabilityIds().contains("compose_report")
+              && request.capabilityIds().contains("write"))
+            throw new TaskFailure(400, "INVALID_CAPABILITIES");
+          if (businessPolicy != null
+              && request.capabilityIds().contains("present")
+              && !request
+                  .capabilityIds()
+                  .equals(List.of("web_fetch", "read", "compose_report", "present")))
+            throw new TaskFailure(400, "INVALID_CAPABILITIES");
           Long explicitCost = request.budget().maxCostMicros();
           if (explicitCost != null
               && (explicitCost < 1 || businessPolicy == null && explicitCost > 1000000))
@@ -989,8 +998,12 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
         String instruction = body.path("messages").path(0).path("content").asText();
         // Recovery retains the original fixed template; no model-selected instruction is allowed.
         EvaluationMaterials.require(
-            List.of(reports.instruction(context), reports.currentInstruction(context))
-                .contains(instruction));
+            tools(task).pins().containsKey("compose_report")
+                ? new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer()
+                    .instruction(context)
+                    .equals(instruction)
+                : List.of(reports.instruction(context), reports.currentInstruction(context))
+                    .contains(instruction));
         if (!preceding.isEmpty()) {
           String first = s(preceding.getFirst(), "request_snapshot");
           EvaluationMaterials.require(
@@ -2081,7 +2094,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
     var pin = pins.get("web_fetch");
     return pin != null && "0.3.0".equals(pin.version())
         || pins.keySet().stream()
-            .anyMatch(name -> List.of("read", "write", "present").contains(name));
+            .anyMatch(name -> List.of("read", "write", "present", "compose_report").contains(name));
   }
 
   @Override
@@ -2092,19 +2105,34 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
           var task = fenced(lease, true);
           if (!publicReport(task) || time(task, "report_time") == null)
             throw new TaskFailure(409, "REPORT_METADATA_MISSING");
-          var sources =
-              rows(
-                      "SELECT id,output_snapshot,output_digest FROM invocation WHERE tenant_id=? AND task_id=? AND tool='web_fetch' AND plugin_version='0.3.0' AND state='SUCCEEDED' ORDER BY ordinal",
-                      lease.tenant(),
-                      lease.taskId())
-                  .stream()
-                  .map(
-                      row ->
-                          new Source(
-                              s(row, "id"), s(row, "output_snapshot"), s(row, "output_digest")))
-                  .toList();
-          return new ReportContext(time(task, "report_time"), sources);
+          return reportContext(task);
         });
+  }
+
+  private ReportContext reportContext(Map<String, Object> task) {
+    boolean composed = tools(task).pins().containsKey("compose_report");
+    var fetchPin = tools(task).pins().get("web_fetch");
+    var sources =
+        rows(
+                "SELECT id,output_snapshot,output_digest,plugin_version,plugin_digest FROM invocation WHERE tenant_id=? AND task_id=? AND tool='web_fetch' AND state='SUCCEEDED'"
+                    + (composed ? "" : " AND plugin_version='0.3.0'")
+                    + " ORDER BY ordinal",
+                s(task, "tenant_id"),
+                s(task, "id"))
+            .stream()
+            .map(
+                row -> {
+                  if (composed
+                      && (fetchPin == null
+                          || !"0.3.0".equals(fetchPin.version())
+                          || !fetchPin.version().equals(s(row, "plugin_version"))
+                          || !fetchPin.digest().equals(s(row, "plugin_digest"))))
+                    throw new TaskFailure(409, "REPORT_COMPOSITION_INVALID");
+                  return new Source(
+                      s(row, "id"), s(row, "output_snapshot"), s(row, "output_digest"));
+                })
+            .toList();
+    return new ReportContext(time(task, "report_time"), sources);
   }
 
   private void requirePresent(Lease lease, Map<String, Object> task, String invocationId) {
@@ -2145,6 +2173,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             throw new TaskFailure(409, "INVOCATION_MISMATCH");
           var result = new java.util.ArrayList<Upload>();
           for (var file : files) {
+            requireComposition(task, file);
             if (file.version() < 1
                 || file.size() < 1
                 || file.size() > 1048576
@@ -2221,6 +2250,28 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               != files.size()) throw new TaskFailure(409, "ARTIFACT_MISMATCH");
           return List.copyOf(result);
         });
+  }
+
+  private void requireComposition(Map<String, Object> task, ReportFile file) {
+    var pin = tools(task).pins().get("compose_report");
+    if (pin == null) return;
+    var confirmed =
+        rows(
+            "SELECT input_snapshot,input_digest,output_snapshot,output_digest,plugin_version,plugin_digest FROM invocation WHERE tenant_id=? AND task_id=? AND tool='compose_report' AND state='SUCCEEDED' ORDER BY ordinal",
+            s(task, "tenant_id"),
+            s(task, "id"));
+    for (var row : confirmed) {
+      String input = s(row, "input_snapshot"), output = s(row, "output_snapshot");
+      if (!Payloads.hash(input).equals(s(row, "input_digest"))
+          || output == null
+          || !Payloads.hash(output).equals(s(row, "output_digest"))
+          || !pin.version().equals(s(row, "plugin_version"))
+          || !pin.digest().equals(s(row, "plugin_digest")))
+        throw new TaskFailure(409, "REPORT_COMPOSITION_INVALID");
+      if (new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer()
+          .matches(input, output, file, reportContext(task))) return;
+    }
+    throw new TaskFailure(409, "REPORT_COMPOSITION_REQUIRED");
   }
 
   @Override

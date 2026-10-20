@@ -71,7 +71,7 @@ public final class TaskController {
             : request.capabilityIds().stream().distinct().toList();
     if (capabilities.isEmpty()
         || capabilities.size() > 5
-        || !List.of("web_fetch", "read", "write", "present", "web_search")
+        || !List.of("web_fetch", "read", "write", "present", "web_search", "compose_report")
             .containsAll(capabilities)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
     // Resources remain operator-bound; no user-supplied connection or credential handles.
     if (request.resourceIds() != null && !request.resourceIds().isEmpty())

@@ -18,6 +18,56 @@ from p3_model_verify import config
 from p3_report_verify import ReportExperiment
 from p3_evaluation_plan_verify import canonical
 
+EVIDENCE = '中文本地证据：文档说明接口 https://api.example.test/anthropic，支持普通及流式调用；本页仅为隔离替身。'
+SOURCE = 'https://fixture.example/business-source'
+
+
+class BusinessTls(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def do_GET(self):
+        self.server.requests.append({'path': self.path, 'authorization': self.headers.get('Authorization'), 'cookie': self.headers.get('Cookie')})
+        bodies = getattr(self.server, 'source_bodies', [])
+        raw = (bodies.pop(0) if bodies else EVIDENCE).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/plain; charset=utf-8')
+        self.send_header('Content-Length', str(len(raw)))
+        self.end_headers()
+        self.wfile.write(raw)
+
+
+class BusinessExperiment(ReportExperiment):
+    def prepare(self):
+        super().prepare()
+        self.tls.RequestHandlerClass = BusinessTls
+        resource = Path(__file__).resolve().parents[1] / 'src/main/resources/plugins/builtin/compose_report/output.schema.json'
+        for tenant in ['tenant-a', 'tenant-b']:
+            self.sql("INSERT INTO installation(tenant_id,plugin_id,plugin_version,plugin_digest) VALUES('" + tenant + "','compose_report','0.1.0','" + hashlib.sha256(resource.read_bytes()).hexdigest() + "');")
+
+    def submit(self, goal, subject='a'):
+        status, view = self.http('POST', '/api/tasks', {'goal': goal,
+            'capabilityIds': ['web_fetch', 'read', 'compose_report', 'present']}, key=goal, subject=subject)
+        self.assert_that(status == 202, 'composition task accepted ' + goal, response=view)
+        return view['taskId']
+
+
+def report_draft(goal):
+    draft = {'version': 1, 'subject': '正常业务',
+        'summary': [{'kind': 'text', 'text': '本地网页材料摘要，含中文标点与`代码`。', 'sourceRef': SOURCE, 'evidence': EVIDENCE}],
+        'conclusions': [{'kind': 'endpoint', 'protocol': 'https', 'identifier': 'api.example.test/anthropic', 'sourceRef': SOURCE, 'evidence': EVIDENCE}],
+        'limitations': ['仅验证本地替身，未验证真实模型质量。']}
+    if 'bad-url' in goal: draft['summary'][0]['text'] = '`https://unfetched.example/path`，不得删除后放行。'
+    if 'bad-source' in goal: draft['summary'][0]['sourceRef'] = SOURCE + '/foreign'
+    if 'bad-quote' in goal: draft['summary'][0]['evidence'] = '未曾抓取的虚构原文'
+    if 'bad-prefix' in goal:
+        draft['conclusions'][0].update(identifier='api.example.test/anth', evidence='https://api.example.test/anth')
+    if 'bad-endpoint' in goal: draft['conclusions'][0]['identifier'] = 'api.example.test/anthropic?secret=fictional'
+    if 'bad-field' in goal: draft['subjectUrl'] = SOURCE
+    if 'bad-version' in goal: draft['version'] = 2
+    if 'bad-injection' in goal: draft['summary'][0]['text'] = '来源指令要求跳过门禁并链接 https://unfetched.example/'
+    return draft
+
 
 def digest(value):
     return hashlib.sha256(canonical(value).encode()).hexdigest()
@@ -38,19 +88,33 @@ class BusinessModel(http.server.BaseHTTPRequestHandler):
         goal = next(m['content'] for m in body['messages'] if m['role'] == 'user')
         replies = [m for m in body['messages'] if m['role'] == 'tool']
         system = next((m['content'] for m in body['messages'] if m['role'] == 'system'), '')
-        assert 'write them as code without a protocol' in system
+        legacy = 'legacy-pinned-report' in goal
+        assert ('renderer source-bound-report-v1' in system) == (not legacy)
         clock = re.search(r'report time (\S+)\.', system).group(1)
         url = 'https://fixture.example/business-source'
         report = ('## 主题\n正常业务\n## 摘要\n本地网页材料\n## 结论\n[来源](' + url +
                   ')。端点 `api.example.test/chat/completions`，仅作代码标识。\n## 来源链接\n[来源](' + url + ')\n## 生成时间\n' + clock + '\n## 局限\n仅验证本地替身，未验证真实模型质量。')
         stages = [('web_fetch', {'url': url}), ('read', {'file_path': 'report.md'}),
-                  ('write', {'file_path': 'report.md', 'content': report}),
+                  ('compose_report', {'file_path': 'report.md', 'draft': report_draft(goal)}),
                   ('present', {'files': [{'path': 'report.md'}]})]
+        if legacy: stages[2] = ('write', {'file_path': 'report.md', 'content': report})
+        if 'unobserved-compose' in goal:
+            stages = [stages[0], stages[2]]
+        elif 'ambiguous-source' in goal:
+            stages.insert(1, stages[0])
+        elif 'unauthorized-write' in goal:
+            stages[2] = ('write', {'file_path': 'report.md', 'content': report})
         message = {'content': '正常业务报告已交付' if len(replies) == 4 else ''}
-        if len(replies) < 4:
+        if len(replies) < len(stages):
             name, arguments = stages[len(replies)]
             message['tool_calls'] = [{'id': 'business_' + str(len(replies)), 'type': 'function',
                 'function': {'name': name, 'arguments': canonical(arguments)}}]
+            if 'bad-duplicate' in goal and name == 'compose_report':
+                message['tool_calls'][0]['function']['arguments'] = canonical(arguments).replace('"version":1', '"version":1,"version":1')
+            elif 'bad-empty' in goal and name == 'compose_report':
+                message['tool_calls'][0]['function']['arguments'] = ' '
+            elif 'bad-oversize' in goal and name == 'compose_report':
+                message['tool_calls'][0]['function']['arguments'] = ' ' * 65537
         usage = {'prompt_tokens': 100, 'completion_tokens': 50, 'total_tokens': 150}
         if 'unknown' in goal:
             usage = {'prompt_tokens': 100}
@@ -177,7 +241,7 @@ def verify(e):
     def denied(cfg, label, goal=None, extra=None, subject='a'):
         control(cfg)
         before, count = totals(), len(server.calls)
-        status, view = e.http('POST', '/api/tasks', dict({'goal': goal or label, 'capabilityIds': ['web_fetch', 'read', 'write', 'present']}, **(extra or {})), key=unique('refused'), subject=subject)
+        status, view = e.http('POST', '/api/tasks', dict({'goal': goal or label, 'capabilityIds': ['web_fetch', 'read', 'compose_report', 'present']}, **(extra or {})), key=unique('refused'), subject=subject)
         e.assert_that(status in [400, 409, 503] and before == totals() and count == len(server.calls),
                       'rejected before reservation/HTTP: ' + label, status=status, code=view.get('code'))
 
@@ -216,7 +280,7 @@ def verify(e):
             e.assert_that(actual_limits == '8\t8032768\t16262144',
                           'full-context default = eight conservative rounds; output margin never lowers reservation',
                           stream=stream, actualLimits=actual_limits)
-            body = {'goal': goal, 'capabilityIds': ['web_fetch', 'read', 'write', 'present']}
+            body = {'goal': goal, 'capabilityIds': ['web_fetch', 'read', 'compose_report', 'present']}
             before = totals()
             with concurrent.futures.ThreadPoolExecutor(6) as pool:
                 retries = list(pool.map(lambda _: e.http('POST', '/api/tasks', body, key=goal), range(6)))
@@ -244,6 +308,15 @@ def verify(e):
                 raw = response.read()
             (e.evidence / ('download-' + task + '.bin')).write_bytes(raw)
             e.assert_that(hashlib.sha256(raw).hexdigest() == view['artifacts'][0]['sha256'], 'download raw bytes match committed artifact digest', stream=stream)
+            receipt = json.loads(e.sql("SELECT output_snapshot FROM invocation WHERE task_id='" + task + "' AND tool='compose_report' AND state='SUCCEEDED';"))
+            (e.evidence / ('composition-' + task + '.json')).write_text(canonical(receipt), encoding='utf-8')
+            source_id, source_hash = e.sql("SELECT id,output_digest FROM invocation WHERE task_id='" + task + "' AND tool='web_fetch' AND state='SUCCEEDED';").split('\t')
+            e.assert_that(receipt['version'] == 1 and receipt['rendererVersion'] == 'source-bound-report-v1'
+                and receipt['file']['sha256'] == hashlib.sha256(raw).hexdigest() and receipt['file']['size'] == len(raw)
+                and all(b['invocationId'] == source_id and b['outputDigest'] == source_hash and b['sourceUrl'] == SOURCE for b in receipt['bindings'])
+                and set(re.findall(r'https?://[^\s<>\[\]()]+', raw.decode())) == {SOURCE}
+                and raw.decode().count('## ') == 6 and '协议 `https`' in raw.decode(),
+                'ordinary/SSE authorized bytes match confirmed source bindings and deterministic six-section output', stream=stream)
             e.assert_that(e.http('GET', '/api/artifacts/' + aid + '/download', subject='b')[0] == 404 and e.http('GET', '/api/artifacts/' + aid + '/download', subject='c')[0] == 404, 'tenant and owner download isolation', stream=stream)
             e.assert_that(e.sql("SELECT record_version,evaluation_snapshot,execution_scope_digest FROM task WHERE id='" + task + "';") == '2\tNULL\tNULL' and e.sql("SELECT requests_used,phase_b_digest FROM evaluation_budget WHERE id='" + run_id + "';") == '7\tNULL', 'original occupancy retained; no evaluation matrix, B or old scope rebound')
             e.assert_that(e.sql("SELECT COUNT(*) FROM model_dispatch WHERE task_id='" + task + "' AND cost_quality='KNOWN' AND input_tokens=100 AND output_tokens=50;") == '5', 'provider fixture usage separately settled for all turns')
@@ -255,6 +328,9 @@ def verify(e):
             # Historical downloads survive removal of current business authority and profile registry.
             e.stop(e.control); e.control = e.start(unique('historical-download'), 'control')
             e.assert_that(e.http('GET', '/api/artifacts/' + aid + '/download')[0] == 200, 'committed download independent of current policy/configuration')
+        if '--compose-only' in sys.argv[4:]:
+            verify_composition(e, provision, control, worker, helper, unique, server)
+            return
         if '--report-config-only' in sys.argv[4:]:
             (e.evidence / 'http-facts.json').write_text(json.dumps(server.calls, ensure_ascii=False, indent=2))
             e.assert_that(len(server.calls) == 10,
@@ -271,14 +347,14 @@ def verify(e):
                 ({'maxModelRequests': 9}, (400, 'INVALID_BUDGET'))]:
             before, count = totals(), len(server.calls)
             status, view = e.http('POST', '/api/tasks', {'goal': 'budget-refusal',
-                'capabilityIds': ['web_fetch', 'read', 'write', 'present'], 'budget': submitted}, key=unique('budget-refusal'))
+                'capabilityIds': ['web_fetch', 'read', 'compose_report', 'present'], 'budget': submitted}, key=unique('budget-refusal'))
             e.assert_that((status, view.get('code')) == expected and before == totals() and count == len(server.calls),
                           'invalid or insufficient BUSINESS budget rejected before reservation/HTTP', budget=submitted, status=status, code=view.get('code'))
         for submitted, expected in [
                 ({'maxModelRequests': 1, 'maxCostMicros': 2032768}, '1\t1004096\t2032768'),
                 ({'maxModelRequests': 2, 'maxCostMicros': 2032768}, '2\t2008192\t2032768'),
                 ({'maxModelRequests': 3}, '3\t3012288\t6098304')]:
-            body = {'goal': unique('bounded-task'), 'capabilityIds': ['web_fetch', 'read', 'write', 'present'], 'budget': submitted}
+            body = {'goal': unique('bounded-task'), 'capabilityIds': ['web_fetch', 'read', 'compose_report', 'present'], 'budget': submitted}
             status, view = e.http('POST', '/api/tasks', body, key=body['goal'])
             e.assert_that(status == 202, 'explicit BUSINESS budget above old HTTP limit accepted only within derived ceiling', budget=submitted, status=status)
             task = view['taskId']
@@ -412,7 +488,7 @@ def verify(e):
             for i in range(2):
                 goal = unique('concurrent-' + boundary)
                 status, view = e.http('POST', '/api/tasks', {'goal': goal,
-                    'capabilityIds': ['web_fetch', 'read', 'write', 'present'], 'budget': {'maxModelRequests': 1}}, key=goal)
+                    'capabilityIds': ['web_fetch', 'read', 'compose_report', 'present'], 'budget': {'maxModelRequests': 1}}, key=goal)
                 e.assert_that(status == 202, 'bounded task accepted for concurrent run-cap race', boundary=boundary)
                 tasks.append(view['taskId'])
             a, b = worker(cfg, 'M0'), worker(cfg, 'M0'); e.barrier(a); e.barrier(b)
@@ -451,11 +527,173 @@ def verify(e):
             (e.evidence / ('business-' + table + '.tsv')).write_text(e.sql('SELECT ' + fields + ' FROM ' + table + ';'))
     finally:
         server.shutdown(); server.server_close(); listener.join()
+        e.assert_that(not listener.is_alive(), 'business local model listener stopped', calls=len(server.calls))
+
+
+def verify_composition(e, provision, control, worker, helper, unique, server):
+    """Actual tool/ledger boundaries; every task uses its own private BUSINESS run."""
+    from p2_verify import eventually
+    # Seed an isolated historical v2 BUSINESS row with the original request/tool contract.
+    # This is fixture setup, never a migration/backfill of an existing environment.
+    _, cfg = provision(full_context=True); control(cfg)
+    goal = unique('legacy-pinned-report'); task = e.submit(goal)
+    request = json.loads(e.sql("SELECT request_snapshot FROM task WHERE id='" + task + "';"))
+    tools = json.loads(e.sql("SELECT tools_snapshot FROM task WHERE id='" + task + "';"))
+    request['capabilityIds'] = ['web_fetch', 'read', 'write', 'present']
+    tools['pins']['write'] = tools['pins'].pop('compose_report')
+    tools['pins']['write']['digest'] = e.sql("SELECT plugin_digest FROM installation WHERE tenant_id='tenant-a' AND plugin_id='write';")
+    columns = []
+    for column, value in [('request_snapshot', request), ('tools_snapshot', tools)]:
+        raw = canonical(value)
+        columns.extend([column + '=CONVERT(0x' + raw.encode().hex() + ' USING utf8mb4)',
+                        column.replace('_snapshot', '_digest') + "='" + hashlib.sha256(raw.encode()).hexdigest() + "'"])
+    e.sql("UPDATE task SET capabilities='web_fetch,read,write,present'," + ','.join(columns) + " WHERE id='" + task + "';")
+    before = e.sql("SELECT HEX(request_snapshot),request_digest,HEX(tools_snapshot),tools_digest,HEX(model_snapshot),model_digest,HEX(business_policy_snapshot),business_policy_digest FROM task WHERE id='" + task + "';")
+    w = worker(cfg, 'W1'); e.barrier(w)
+    history = e.sql("SELECT HEX(request_snapshot),request_digest FROM step WHERE task_id='" + task + "' ORDER BY ordinal;")
+    files = e.receipts(task)['files']
+    e.stop(w, kill=True); e.expire(task)
+    w = worker(dict(cfg, **{'jimu.business.current-ref': 'v2', 'jimu.model.default-profile-ref': 'b'}))
+    view = e.state(task, 'SUCCEEDED'); e.stop(w)
+    e.assert_that(before == e.sql("SELECT HEX(request_snapshot),request_digest,HEX(tools_snapshot),tools_digest,HEX(model_snapshot),model_digest,HEX(business_policy_snapshot),business_policy_digest FROM task WHERE id='" + task + "';")
+        and e.sql("SELECT HEX(request_snapshot),request_digest FROM step WHERE task_id='" + task + "' ORDER BY ordinal;").startswith(history)
+        and e.receipts(task)['files'] == files,
+        'old BUSINESS request/tool/model/policy and HTTP checkpoint bytes recover unchanged')
+    e.assert_that(e.sql("SELECT COUNT(*) FROM invocation WHERE task_id='" + task + "' AND tool='compose_report';") == '0'
+        and len([c for c in server.calls if c['goal'] == goal]) == 5
+        and e.http('POST', '/api/tasks', {'goal': goal, 'capabilityIds': request['capabilityIds']}, key=goal)[1]['taskId'] == task
+        and e.http('GET', '/api/artifacts/' + view['artifacts'][0]['artifactId'] + '/download')[0] == 200,
+        'old free-write pins/cache/idempotency/download remain valid without extra model charge')
+    for case in ['uninstalled', 'wrong-pin', 'free-write']:
+        _, cfg = provision(); control(cfg)
+        before = len(server.calls)
+        original = e.sql("SELECT plugin_digest FROM installation WHERE tenant_id='tenant-a' AND plugin_id='compose_report';")
+        if case == 'uninstalled': e.sql("UPDATE installation SET enabled=FALSE WHERE tenant_id='tenant-a' AND plugin_id='compose_report';")
+        elif case == 'wrong-pin': e.sql("UPDATE installation SET plugin_digest=REPEAT('f',64) WHERE tenant_id='tenant-a' AND plugin_id='compose_report';")
+        caps = ['web_fetch', 'read', 'write', 'present'] if case == 'free-write' else ['web_fetch', 'read', 'compose_report', 'present']
+        status, view = e.http('POST', '/api/tasks', {'goal': unique(case), 'capabilityIds': caps}, key=unique('admission'))
+        if case == 'wrong-pin':
+            e.assert_that(status == 202, 'wrong installed pin is snapshotted for worker verification')
+            task = view['taskId']; w = worker(cfg)
+            view = e.state(task, 'FAILED'); e.stop(w)
+            e.assert_that(view['code'] == 'PLUGIN_PIN_MISMATCH' and not view['artifacts'], 'wrong packaged pin rejected before model HTTP')
+        else:
+            e.assert_that(status == (403 if case == 'uninstalled' else 400), 'missing installation/free-write admission refused', case=case, response=view)
+        e.assert_that(len(server.calls) == before, 'admission or pin failure adds no model call', case=case)
+        e.sql("UPDATE installation SET enabled=TRUE,plugin_digest='" + original + "' WHERE tenant_id='tenant-a' AND plugin_id='compose_report';")
+    for case, code in [
+            ('bad-url', 'REPORT_DRAFT_RAW_URL_FORBIDDEN'), ('bad-source', 'REPORT_DRAFT_SOURCE_UNKNOWN'),
+            ('bad-quote', 'REPORT_DRAFT_EVIDENCE_MISMATCH'), ('bad-prefix', 'REPORT_DRAFT_ENDPOINT_UNSUPPORTED'),
+            ('bad-endpoint', 'REPORT_DRAFT_ENDPOINT_INVALID'), ('bad-field', 'TOOL_INPUT_INVALID'),
+            ('bad-version', 'TOOL_INPUT_INVALID'), ('bad-duplicate', 'TOOL_INPUT_INVALID'),
+            ('bad-duplicate-sse', 'TOOL_INPUT_INVALID'), ('bad-empty', 'TOOL_INPUT_INVALID'),
+            ('bad-oversize', 'TOOL_INPUT_INVALID'),
+            ('bad-injection', 'REPORT_DRAFT_RAW_URL_FORBIDDEN'), ('unobserved-compose', 'FS_NOT_OBSERVED'),
+            ('ambiguous-source', 'REPORT_DRAFT_SOURCE_AMBIGUOUS'), ('login-source', 'REPORT_DRAFT_SOURCE_UNKNOWN'),
+            ('empty-source', 'REPORT_DRAFT_SOURCE_UNKNOWN'),
+            ('unauthorized-write', 'MODEL_RESPONSE_INVALID')]:
+        _, cfg = provision(); control(cfg)
+        if case == 'bad-duplicate-sse':
+            cfg['jimu.model.default-profile-ref'] = 'b'; control(cfg)
+        if case == 'ambiguous-source': e.tls.source_bodies = [EVIDENCE, EVIDENCE + ' 本地第二个版本。']
+        elif case == 'login-source': e.tls.source_bodies = ['Login required before accessing this page and all its contents.']
+        elif case == 'empty-source': e.tls.source_bodies = ['']
+        objects = sorted(str(p.relative_to(e.root / 'objects')) for p in (e.root / 'objects').rglob('*') if p.is_file())
+        task = e.submit(unique(case)); w = worker(cfg)
+        view = e.state(task, 'FAILED'); e.stop(w)
+        scope = hashlib.sha256(('tenant-a:' + task).encode()).hexdigest()
+        workspace = e.root / 'workspace' / (scope + '.json')
+        files = e.receipts(task)['files'] if workspace.exists() else {}
+        e.assert_that(view['code'] == code and not files and not view['artifacts'] and
+            e.sql("SELECT COUNT(*) FROM artifact WHERE task_id='" + task + "';") == '0',
+            'whole draft rejected before file/upload/publication', case=case, actual=view['code'])
+        e.assert_that(objects == sorted(str(p.relative_to(e.root / 'objects')) for p in (e.root / 'objects').rglob('*') if p.is_file()),
+                      'negative adds no object store file', case=case)
+        e.assert_that(e.sql("SELECT COUNT(*) FROM model_dispatch WHERE task_id='" + task + "' AND cost_quality='KNOWN';") != '0',
+                      'rejection retains actual synthetic model accounting', case=case)
+        if code == 'TOOL_INPUT_INVALID':
+            e.assert_that(e.sql("SELECT COUNT(*) FROM invocation WHERE task_id='" + task + "' AND tool='compose_report';") == '0',
+                          'raw/schema rejection precedes composer invocation admission', case=case)
+    for boundary in ['C0', 'C1', 'C2', 'P0', 'P1', 'P2']:
+        run_id, cfg = provision(); control(cfg)
+        task = e.submit(unique('compose-recover-' + boundary)); w = worker(cfg, boundary)
+        e.barrier(w)
+        files = e.receipts(task)['files']
+        old = e.sql("SELECT request_digest,response_digest FROM step WHERE task_id='" + task + "' ORDER BY ordinal;")
+        known = e.sql("SELECT COUNT(*),SUM(actual_cost) FROM model_dispatch WHERE task_id='" + task + "';")
+        calls, fetches = len(server.calls), len(e.tls.requests)
+        if boundary == 'C0': e.assert_that(not files, 'C0 validated draft has no file write')
+        else: e.assert_that(files['report.md']['version'] == 1, 'single CAS write at boundary', boundary=boundary)
+        e.stop(w, kill=True); e.expire(task)
+        one, two = worker(cfg), worker(cfg)
+        success = boundary in ['C2', 'P2']
+        view = e.state(task, 'SUCCEEDED' if success else 'NEEDS_RECONCILIATION')
+        e.stop(one); e.stop(two)
+        e.assert_that(e.receipts(task)['files'] == files and len(e.tls.requests) == fetches,
+                      'two workers never repeat compose/CAS or old fetch', boundary=boundary)
+        if success:
+            e.assert_that(len(view['artifacts']) == 1 and e.sql("SELECT COUNT(*) FROM invocation WHERE task_id='" + task + "' AND tool='compose_report';") == '1'
+                and e.sql("SELECT COUNT(*) FROM event WHERE task_id='" + task + "' AND type='artifact.created';") == '1',
+                'confirmed result recovers exactly one publication', boundary=boundary)
+            e.assert_that(e.sql("SELECT COUNT(*) FROM model_dispatch WHERE task_id='" + task + "';") == '5',
+                          'confirmed recovery retains five total model rounds', boundary=boundary)
+            e.assert_that(e.sql("SELECT request_digest,response_digest FROM step WHERE task_id='" + task + "' ORDER BY ordinal;").startswith(old),
+                          'confirmed checkpoint prefix bytes unchanged', boundary=boundary)
+        else:
+            e.assert_that(not view['artifacts'] and len(server.calls) == calls and
+                e.sql("SELECT COUNT(*),SUM(actual_cost) FROM model_dispatch WHERE task_id='" + task + "';") == known and
+                e.sql("SELECT COUNT(*) FROM reservation WHERE task_id='" + task + "' AND state='HELD_UNKNOWN';") != '0',
+                'unconfirmed IO retains UNKNOWN and cost without blind replay', boundary=boundary)
+            e.assert_that(e.sql("SELECT COUNT(*) FROM artifact WHERE task_id='" + task + "' AND state='PUBLISHED';") == '0',
+                          'unknown never publishes', boundary=boundary)
+    # Each bypass starts with a real, confirmed compose and a live, fenced present lease.
+    for case in ['missing', 'forged-hash', 'forged-binding', 'bad-input-digest', 'bad-output-digest', 'wrong-version', 'wrong-file-hash', 'cross-task', 'wrong-pin', 'wrong-source-pin', 'bad-source-digest']:
+        _, cfg = provision(); control(cfg)
+        task = e.submit(unique('receipt-' + case)); w = worker(cfg, 'P_BEFORE_STAGE'); e.barrier(w)
+        file = e.receipts(task)['files']['report.md']
+        report = {'path': 'report.md', 'version': file['version'], 'sha256': file['sha256'], 'size': file['size'], 'mediaType': 'text/markdown; charset=utf-8'}
+        row = json.loads(e.sql("SELECT output_snapshot FROM invocation WHERE task_id='" + task + "' AND tool='compose_report';"))
+        code = 'REPORT_COMPOSITION_REQUIRED'
+        if case == 'missing':
+            e.sql("UPDATE invocation SET state='OUTCOME_UNKNOWN' WHERE task_id='" + task + "' AND tool='compose_report';")
+        elif case == 'cross-task':
+            foreign = e.submit(unique('foreign-receipt-holder'))
+            e.http('POST', '/api/tasks/' + foreign + '/cancel', {})
+            e.sql("UPDATE invocation SET task_id='" + foreign + "' WHERE task_id='" + task + "' AND tool='compose_report';")
+        elif case == 'wrong-version': report['version'] += 1
+        elif case == 'wrong-file-hash': report['sha256'] = 'f' * 64
+        elif case == 'wrong-pin':
+            code = 'REPORT_COMPOSITION_INVALID'
+            e.sql("UPDATE invocation SET plugin_digest=REPEAT('f',64) WHERE task_id='" + task + "' AND tool='compose_report';")
+        elif case == 'wrong-source-pin':
+            code = 'REPORT_COMPOSITION_INVALID'
+            e.sql("UPDATE invocation SET plugin_digest=REPEAT('f',64) WHERE task_id='" + task + "' AND tool='web_fetch';")
+        elif case == 'bad-output-digest':
+            code = 'REPORT_COMPOSITION_INVALID'
+            e.sql("UPDATE invocation SET output_digest=REPEAT('f',64) WHERE task_id='" + task + "' AND tool='compose_report';")
+        elif case == 'bad-input-digest':
+            code = 'REPORT_COMPOSITION_INVALID'
+            e.sql("UPDATE invocation SET input_digest=REPEAT('f',64) WHERE task_id='" + task + "' AND tool='compose_report';")
+        elif case == 'bad-source-digest':
+            code = 'SNAPSHOT_CORRUPT'
+            e.sql("UPDATE invocation SET output_digest=REPEAT('f',64) WHERE task_id='" + task + "' AND tool='web_fetch';")
+        else:
+            if case == 'forged-hash': row['draftSha256'] = 'f' * 64
+            else: row['bindings'][0]['invocationId'] = 'fictional-other-fetch'
+            raw = canonical(row)
+            e.sql("UPDATE invocation SET output_snapshot=CONVERT(0x" + raw.encode().hex() + " USING utf8mb4),output_digest='" + hashlib.sha256(raw.encode()).hexdigest() + "' WHERE task_id='" + task + "' AND tool='compose_report';")
+        calls = len(server.calls)
+        result = helper('compose-stage', cfg, task, canonical(report), code)
+        e.assert_that(code in result and e.sql("SELECT COUNT(*) FROM artifact WHERE task_id='" + task + "';") == '0'
+            and len(server.calls) == calls and e.receipts(task)['files']['report.md'] == file,
+            'staging rejects bypass with zero new file/upload/publication', case=case)
+        e.http('POST', '/api/tasks/' + task + '/cancel', {}); e.stop(w)
+        eventually(lambda: e.sql("SELECT COUNT(*) FROM reservation WHERE task_id='" + task + "' AND category='RUNNING' AND state='RELEASED';") == '1', 'cancelled private worker stopped')
 
 
 if __name__ == '__main__':
     signal.signal(signal.SIGTERM, lambda *args: sys.exit(143))
-    experiment = ReportExperiment(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]))
+    experiment = BusinessExperiment(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]))
     try:
         experiment.prepare()
         verify(experiment)

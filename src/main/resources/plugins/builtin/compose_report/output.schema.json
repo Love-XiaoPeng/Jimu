@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "rendererVersion", "draftSha256", "reportTime", "bindings", "file"],
+  "properties": {
+    "version": {"const": 1},
+    "rendererVersion": {"const": "source-bound-report-v1"},
+    "draftSha256": {"$ref": "#/$defs/digest"},
+    "reportTime": {"type": "string", "format": "date-time"},
+    "bindings": {
+      "type": "array", "minItems": 2, "maxItems": 16,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["invocationId", "outputDigest", "sourceUrl", "evidenceOffset", "evidenceLength", "quoteSha256"],
+        "properties": {
+          "invocationId": {"type": "string", "minLength": 1},
+          "outputDigest": {"$ref": "#/$defs/digest"},
+          "sourceUrl": {"type": "string", "format": "uri"},
+          "evidenceOffset": {"type": "integer", "minimum": 0},
+          "evidenceLength": {"type": "integer", "minimum": 1},
+          "quoteSha256": {"$ref": "#/$defs/digest"}
+        }
+      }
+    },
+    "file": {
+      "type": "object", "additionalProperties": false,
+      "required": ["filePath", "version", "sha256", "size"],
+      "properties": {
+        "filePath": {"type": "string", "minLength": 1},
+        "version": {"type": "integer", "minimum": 1},
+        "sha256": {"$ref": "#/$defs/digest"},
+        "size": {"type": "integer", "minimum": 1}
+      }
+    }
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}
