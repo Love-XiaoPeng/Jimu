@@ -139,7 +139,8 @@ public final class DurableAgent implements AutoCloseable {
                     fetch.publicMode() && lease.capabilities().contains("present")
                         ? List.of(
                             new SystemMessage(
-                                models.evaluationSelection() == null
+                                models.businessPolicy() != null
+                                        || models.evaluationSelection() == null
                                     ? new ReportPolicy()
                                         .currentInstruction(ledger.reportContext(lease))
                                     : new ReportPolicy().instruction(ledger.reportContext(lease))),
