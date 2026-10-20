@@ -1939,6 +1939,10 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   public void observeWebFetch(Lease lease, String invocationId, WebFetchObservation observation) {
     tx(
         () -> {
+          if (observation.cancellation() != null) {
+            observeWebCancellation(lease, invocationId, observation);
+            return null;
+          }
           var task = fenced(lease, false);
           var invocation =
               one(
@@ -1958,6 +1962,50 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               observation.phase() + "_" + observation.failure());
           return null;
         });
+  }
+
+  /** Diagnostic append only: an expired original fence cannot authorize execution or settlement. */
+  private void observeWebCancellation(
+      Lease lease, String invocationId, WebFetchObservation observation) {
+    var cancellation = observation.cancellation();
+    var task =
+        one(
+            "SELECT * FROM task WHERE tenant_id=? AND id=? FOR UPDATE",
+            lease.tenant(),
+            lease.taskId());
+    var bindings =
+        rows(
+            "SELECT i.id FROM invocation i JOIN task_attempt a ON a.tenant_id=i.tenant_id AND a.task_id=i.task_id AND a.id=i.attempt_id WHERE i.tenant_id=? AND i.task_id=? AND i.id=? AND i.attempt_id=? AND a.worker_id=? AND a.fence=? AND i.tool='web_fetch' AND i.plugin_version='0.3.0' AND i.state IN ('RUNNING','OUTCOME_UNKNOWN')",
+            lease.tenant(),
+            lease.taskId(),
+            invocationId,
+            lease.attemptId(),
+            lease.worker(),
+            lease.fence());
+    if (bindings.size() != 1) throw new TaskFailure(409, "WEB_OBSERVATION_BINDING_REJECTED");
+    String fact = "web-cancel:" + invocationId + ":" + lease.fence();
+    if (!rows(
+            "SELECT seq FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
+            lease.tenant(),
+            lease.taskId(),
+            fact)
+        .isEmpty()) return;
+    event(task, fact, "web.fetch_cancelled", cancellation.phase() + "_" + cancellation.reason());
+    event(
+        task,
+        fact + ":elapsed",
+        "web.cancel_elapsed_ms",
+        Long.toString(cancellation.elapsedMillis()));
+    event(
+        task,
+        fact + ":checkpoint",
+        "web.checkpoint_rejected",
+        cancellation.checkpointCode() + ":" + cancellation.checkpointMillis());
+    event(
+        task,
+        "web-failure:" + invocationId + ":" + observation.phase(),
+        "web.fetch_failed",
+        observation.phase() + "_" + observation.failure());
   }
 
   @Override
