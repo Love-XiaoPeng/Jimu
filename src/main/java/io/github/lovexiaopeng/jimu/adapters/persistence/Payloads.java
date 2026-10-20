@@ -1,9 +1,11 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -12,7 +14,16 @@ import java.util.HexFormat;
 /** Versioned JSON snapshots contain wire values, never framework classes. */
 public final class Payloads {
   private static final ObjectMapper MAPPER =
-      JsonMapper.builder().enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY).build();
+      JsonMapper.builder()
+          .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+          .addMixIn(ModelSnapshot.class, ModelSnapshotJson.class)
+          .build();
+
+  // Missing optional policy must retain the exact v2 canonical bytes/digest on old tasks.
+  private abstract static class ModelSnapshotJson {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    abstract ModelSnapshot.InputLimit inputLimit();
+  }
 
   private Payloads() {}
 

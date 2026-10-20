@@ -1,0 +1,15 @@
+{
+  "goal": "请使用 web_fetch 读取 https://docs.python.org/3/library/colorsys.html ，为中文读者编写 800–1200 个汉字的「颜色空间转换接口选用说明」Markdown 报告，保存为 reports/w2.md。\n\n报告恰有六个非空主栏目，标题逐字使用「## 主题」「## 摘要」「## 结论」「## 来源链接」「## 生成时间」「## 局限」。汉字数不计标题、代码块与URL。解释RGB与HSV/HLS/YIQ转换接口的名称及方向，准确说明坐标取值范围与例外，给出RGB红色(1,0,0)转HSV的简单手工示例。关键事实逐项标明实际抓取的来源URL，并给原文短引文或原文位置；结论栏目必须包含来源链接。\n\n没有代码执行或性能测试工具，不能声称执行过Python、验证过运行结果或测得性能。区分官方文档说明、手工推导及尚未验证的建议，不补造第三方来源、精度或速度排名。\n\n生成时间栏目只填写宿主system消息中保留的报告时间，逐字一致。先真实read观察 reports/w2.md 的状态及版本，再write由宿主按观察版本CAS写入，随后present该精确版本，交宿主校验、登记和发布。工具只接收已提供Schema中的字段，不传租户、CAS版本或操作ID；可在确有必要时再次read，不绕过网关。最终答复简短引用宿主确实登记的产物ID，不虚构下载URL或成功记录。不得使用搜索或任何未提供工具。\n",
+  "capabilityIds": [
+    "web_fetch",
+    "read",
+    "write",
+    "present"
+  ],
+  "resourceIds": [],
+  "budget": {
+    "deadlineSeconds": 180,
+    "maxModelRequests": 6,
+    "maxToolInvocations": 7
+  }
+}

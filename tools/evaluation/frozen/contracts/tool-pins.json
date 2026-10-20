@@ -1,0 +1,40 @@
+{
+  "orderedCapabilities": [
+    "web_fetch",
+    "read",
+    "write",
+    "present"
+  ],
+  "pins": [
+    {
+      "name": "web_fetch",
+      "pluginId": "jimu.web.fetch",
+      "version": "0.3.0",
+      "inputSchemaSha256": "a08d14641ebb1101f0f95757c569035cf134a17d8faced55ccf11baee1e2163a",
+      "outputSchemaSha256": "08a144489ed9ea37b5b33a5ffdc815237f31d4f229b76ba1d5e465b9e13f9ff8"
+    },
+    {
+      "name": "read",
+      "pluginId": "jimu.workspace.read",
+      "version": "0.1.0",
+      "inputSchemaSha256": "dd957a70a488c9167ee4b1ff79e65790f073492b05c9933919e89adf0dd26cec",
+      "outputSchemaSha256": "3afdd8ce04586f381583d26eb91f3000745bf519a3571f702fd8da5b6cfaf4a9"
+    },
+    {
+      "name": "write",
+      "pluginId": "jimu.workspace.write",
+      "version": "0.1.0",
+      "inputSchemaSha256": "26fbf190900805f120cfdc5f112526fa8b4c683a8f76a629619dcd4a24eeb0b7",
+      "outputSchemaSha256": "b80d38a29e6fe4f73bf070971bfdd49bfc06d3f7fbd0e07b41890aef853020af"
+    },
+    {
+      "name": "present",
+      "pluginId": "jimu.artifact.present",
+      "version": "0.1.0",
+      "inputSchemaSha256": "5ee1eecd2798c0795be14c6430133251e56b48f36ea12ab12500a74739401190",
+      "outputSchemaSha256": "29533528d028fa1d254fcbe73b189c6500c21202e6b52055382a42ad17a0886a"
+    }
+  ],
+  "installationEpoch": null,
+  "epochBinding": "bind actual authorized installation epochs once at trusted task admission; never guess"
+}

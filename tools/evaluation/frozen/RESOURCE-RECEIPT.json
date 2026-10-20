@@ -1,0 +1,16 @@
+{
+  "recordedAtUtc": "2026-10-16T14:54:02.148756+00:00",
+  "publicAnonymousSourceGets": 2,
+  "paidModelRequests": 0,
+  "paidSearchRequests": 0,
+  "applicationToolInvocations": 0,
+  "credentialsReadOrCopied": false,
+  "productFilesModified": false,
+  "productWorktreeClean": true,
+  "ownedLiveProcessesServicesContainersDatabases": [],
+  "offlineJavaCompilerAndProjection": "foreground commands completed; cached jars read only, no download or install",
+  "retained": "research sources/config/scripts intentionally retained; compiled helper classes excluded from deliverable",
+  "temporaryCommentBody": "remove only after successful final comment post",
+  "issueStatus": "in_progress",
+  "PR": "unmerged; no merge attempted"
+}

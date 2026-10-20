@@ -1,0 +1,440 @@
+{
+  "sourceGitSha": "a20cefbf9004561bd14806c83e20c2c8940b9408",
+  "templatesAreClosedUntilAccountBinding": true,
+  "models": [
+    {
+      "tier": "Plus",
+      "model": "qwen3.7-plus-2026-05-26",
+      "profileTemplates": [
+        {
+          "version": 2,
+          "profile": "eval-plus-call-v1",
+          "configVersion": 1,
+          "adapter": "openai-chat-v1",
+          "baseUrl": null,
+          "model": "qwen3.7-plus-2026-05-26",
+          "revision": "qwen3.7-plus-2026-05-26",
+          "authMode": "bearer",
+          "credentialRef": null,
+          "credentialVersion": 0,
+          "transportPolicy": "cloud-https-v1",
+          "connectTimeoutMs": 10000,
+          "requestTimeoutMs": 120000,
+          "responseBytes": 1048576,
+          "stream": false,
+          "maxOutputTokens": 4096,
+          "outputLimitField": "max_completion_tokens",
+          "outputMarginTokens": 10,
+          "capabilities": {
+            "call": true,
+            "tools": true,
+            "streamText": true,
+            "streamTools": true,
+            "usageCall": true,
+            "usageStream": true,
+            "parallelToolField": false,
+            "contextLimit": 1000000,
+            "evidence": "modelstudio-nonthinking-v1"
+          },
+          "providerOptions": {
+            "enable_search": false,
+            "enable_thinking": false
+          },
+          "paid": true,
+          "price": {
+            "version": "bailian-beijing-payg-list-20261016-plus",
+            "currency": "CNY",
+            "inputMicrosPerMillion": 6000000,
+            "outputMicrosPerMillion": 24000000,
+            "fixedMicros": 0,
+            "inputTokenUpper": 1000000,
+            "boundEvidence": "official-sources-sha256; full-context + total-output 4086+10; no paid extras"
+          }
+        },
+        {
+          "version": 2,
+          "profile": "eval-plus-sse-v1",
+          "configVersion": 1,
+          "adapter": "openai-chat-v1",
+          "baseUrl": null,
+          "model": "qwen3.7-plus-2026-05-26",
+          "revision": "qwen3.7-plus-2026-05-26",
+          "authMode": "bearer",
+          "credentialRef": null,
+          "credentialVersion": 0,
+          "transportPolicy": "cloud-https-v1",
+          "connectTimeoutMs": 10000,
+          "requestTimeoutMs": 120000,
+          "responseBytes": 1048576,
+          "stream": true,
+          "maxOutputTokens": 4096,
+          "outputLimitField": "max_completion_tokens",
+          "outputMarginTokens": 10,
+          "capabilities": {
+            "call": true,
+            "tools": true,
+            "streamText": true,
+            "streamTools": true,
+            "usageCall": true,
+            "usageStream": true,
+            "parallelToolField": false,
+            "contextLimit": 1000000,
+            "evidence": "modelstudio-nonthinking-v1"
+          },
+          "providerOptions": {
+            "enable_search": false,
+            "enable_thinking": false
+          },
+          "paid": true,
+          "price": {
+            "version": "bailian-beijing-payg-list-20261016-plus",
+            "currency": "CNY",
+            "inputMicrosPerMillion": 6000000,
+            "outputMicrosPerMillion": 24000000,
+            "fixedMicros": 0,
+            "inputTokenUpper": 1000000,
+            "boundEvidence": "official-sources-sha256; full-context + total-output 4086+10; no paid extras"
+          }
+        }
+      ],
+      "tariffEvidence": "plus37.html snapshot section; pricing.html exact model row",
+      "perDispatchReserveMicros": 6098304,
+      "phaseLimits": {
+        "A": {
+          "maxDispatches": 13,
+          "maxCostMicros": 79277952,
+          "maxBillableOutputTokens": 53248,
+          "tokenLimit": 13053248
+        },
+        "B": {
+          "maxDispatches": 12,
+          "maxCostMicros": 73179648,
+          "maxBillableOutputTokens": 49152,
+          "tokenLimit": 12049152
+        }
+      },
+      "maxAcrossPhases": {
+        "dispatches": 25,
+        "costMicros": 152457600,
+        "billableOutputTokens": 102400,
+        "tokenLimit": 25102400
+      },
+      "taskLimits": {
+        "W1": {
+          "maxDispatches": 7,
+          "maxCostMicros": 42688128,
+          "tokenLimit": 7028672
+        },
+        "W2": {
+          "maxDispatches": 6,
+          "maxCostMicros": 36589824,
+          "tokenLimit": 6024576
+        },
+        "W3": {
+          "maxDispatches": 6,
+          "maxCostMicros": 36589824,
+          "tokenLimit": 6024576
+        },
+        "W4": {
+          "maxDispatches": 6,
+          "maxCostMicros": 36589824,
+          "tokenLimit": 6024576
+        }
+      },
+      "forecastPerDispatch": {
+        "knownUsageListPriceEstimateMicros": 40384,
+        "configuredFlatRateLedgerDebitMicros": 121152
+      }
+    },
+    {
+      "tier": "Flash",
+      "model": "qwen3.7-flash-2026-07-15",
+      "profileTemplates": [
+        {
+          "version": 2,
+          "profile": "eval-flash-call-v1",
+          "configVersion": 1,
+          "adapter": "openai-chat-v1",
+          "baseUrl": null,
+          "model": "qwen3.7-flash-2026-07-15",
+          "revision": "qwen3.7-flash-2026-07-15",
+          "authMode": "bearer",
+          "credentialRef": null,
+          "credentialVersion": 0,
+          "transportPolicy": "cloud-https-v1",
+          "connectTimeoutMs": 10000,
+          "requestTimeoutMs": 120000,
+          "responseBytes": 1048576,
+          "stream": false,
+          "maxOutputTokens": 4096,
+          "outputLimitField": "max_completion_tokens",
+          "outputMarginTokens": 10,
+          "capabilities": {
+            "call": true,
+            "tools": true,
+            "streamText": true,
+            "streamTools": true,
+            "usageCall": true,
+            "usageStream": true,
+            "parallelToolField": false,
+            "contextLimit": 1000000,
+            "evidence": "modelstudio-nonthinking-v1"
+          },
+          "providerOptions": {
+            "enable_search": false,
+            "enable_thinking": false
+          },
+          "paid": true,
+          "price": {
+            "version": "bailian-beijing-payg-list-20261016-flash",
+            "currency": "CNY",
+            "inputMicrosPerMillion": 1200000,
+            "outputMicrosPerMillion": 4800000,
+            "fixedMicros": 0,
+            "inputTokenUpper": 1000000,
+            "boundEvidence": "official-sources-sha256; full-context + total-output 4086+10; no paid extras"
+          }
+        },
+        {
+          "version": 2,
+          "profile": "eval-flash-sse-v1",
+          "configVersion": 1,
+          "adapter": "openai-chat-v1",
+          "baseUrl": null,
+          "model": "qwen3.7-flash-2026-07-15",
+          "revision": "qwen3.7-flash-2026-07-15",
+          "authMode": "bearer",
+          "credentialRef": null,
+          "credentialVersion": 0,
+          "transportPolicy": "cloud-https-v1",
+          "connectTimeoutMs": 10000,
+          "requestTimeoutMs": 120000,
+          "responseBytes": 1048576,
+          "stream": true,
+          "maxOutputTokens": 4096,
+          "outputLimitField": "max_completion_tokens",
+          "outputMarginTokens": 10,
+          "capabilities": {
+            "call": true,
+            "tools": true,
+            "streamText": true,
+            "streamTools": true,
+            "usageCall": true,
+            "usageStream": true,
+            "parallelToolField": false,
+            "contextLimit": 1000000,
+            "evidence": "modelstudio-nonthinking-v1"
+          },
+          "providerOptions": {
+            "enable_search": false,
+            "enable_thinking": false
+          },
+          "paid": true,
+          "price": {
+            "version": "bailian-beijing-payg-list-20261016-flash",
+            "currency": "CNY",
+            "inputMicrosPerMillion": 1200000,
+            "outputMicrosPerMillion": 4800000,
+            "fixedMicros": 0,
+            "inputTokenUpper": 1000000,
+            "boundEvidence": "official-sources-sha256; full-context + total-output 4086+10; no paid extras"
+          }
+        }
+      ],
+      "tariffEvidence": "flash37.html snapshot section; pricing.html exact model row",
+      "perDispatchReserveMicros": 1219661,
+      "phaseLimits": {
+        "A": {
+          "maxDispatches": 13,
+          "maxCostMicros": 15855593,
+          "maxBillableOutputTokens": 53248,
+          "tokenLimit": 13053248
+        },
+        "B": {
+          "maxDispatches": 12,
+          "maxCostMicros": 14635932,
+          "maxBillableOutputTokens": 49152,
+          "tokenLimit": 12049152
+        }
+      },
+      "maxAcrossPhases": {
+        "dispatches": 25,
+        "costMicros": 30491525,
+        "billableOutputTokens": 102400,
+        "tokenLimit": 25102400
+      },
+      "taskLimits": {
+        "W1": {
+          "maxDispatches": 7,
+          "maxCostMicros": 8537627,
+          "tokenLimit": 7028672
+        },
+        "W2": {
+          "maxDispatches": 6,
+          "maxCostMicros": 7317966,
+          "tokenLimit": 6024576
+        },
+        "W3": {
+          "maxDispatches": 6,
+          "maxCostMicros": 7317966,
+          "tokenLimit": 6024576
+        },
+        "W4": {
+          "maxDispatches": 6,
+          "maxCostMicros": 7317966,
+          "tokenLimit": 6024576
+        }
+      },
+      "forecastPerDispatch": {
+        "knownUsageListPriceEstimateMicros": 4039,
+        "configuredFlatRateLedgerDebitMicros": 24231
+      }
+    },
+    {
+      "tier": "Max",
+      "model": "qwen3.8-max-0902",
+      "profileTemplates": [
+        {
+          "version": 2,
+          "profile": "eval-max-call-v1",
+          "configVersion": 1,
+          "adapter": "openai-chat-v1",
+          "baseUrl": null,
+          "model": "qwen3.8-max-0902",
+          "revision": "qwen3.8-max-0902",
+          "authMode": "bearer",
+          "credentialRef": null,
+          "credentialVersion": 0,
+          "transportPolicy": "cloud-https-v1",
+          "connectTimeoutMs": 10000,
+          "requestTimeoutMs": 120000,
+          "responseBytes": 1048576,
+          "stream": false,
+          "maxOutputTokens": 4096,
+          "outputLimitField": "max_completion_tokens",
+          "outputMarginTokens": 10,
+          "capabilities": {
+            "call": true,
+            "tools": true,
+            "streamText": true,
+            "streamTools": true,
+            "usageCall": true,
+            "usageStream": true,
+            "parallelToolField": false,
+            "contextLimit": 1000000,
+            "evidence": "modelstudio-nonthinking-v1"
+          },
+          "providerOptions": {
+            "enable_search": false,
+            "enable_thinking": false
+          },
+          "paid": true,
+          "price": {
+            "version": "bailian-beijing-payg-list-20261016-max",
+            "currency": "CNY",
+            "inputMicrosPerMillion": 12000000,
+            "outputMicrosPerMillion": 36000000,
+            "fixedMicros": 0,
+            "inputTokenUpper": 1000000,
+            "boundEvidence": "official-sources-sha256; full-context + total-output 4086+10; no paid extras"
+          }
+        },
+        {
+          "version": 2,
+          "profile": "eval-max-sse-v1",
+          "configVersion": 1,
+          "adapter": "openai-chat-v1",
+          "baseUrl": null,
+          "model": "qwen3.8-max-0902",
+          "revision": "qwen3.8-max-0902",
+          "authMode": "bearer",
+          "credentialRef": null,
+          "credentialVersion": 0,
+          "transportPolicy": "cloud-https-v1",
+          "connectTimeoutMs": 10000,
+          "requestTimeoutMs": 120000,
+          "responseBytes": 1048576,
+          "stream": true,
+          "maxOutputTokens": 4096,
+          "outputLimitField": "max_completion_tokens",
+          "outputMarginTokens": 10,
+          "capabilities": {
+            "call": true,
+            "tools": true,
+            "streamText": true,
+            "streamTools": true,
+            "usageCall": true,
+            "usageStream": true,
+            "parallelToolField": false,
+            "contextLimit": 1000000,
+            "evidence": "modelstudio-nonthinking-v1"
+          },
+          "providerOptions": {
+            "enable_search": false,
+            "enable_thinking": false
+          },
+          "paid": true,
+          "price": {
+            "version": "bailian-beijing-payg-list-20261016-max",
+            "currency": "CNY",
+            "inputMicrosPerMillion": 12000000,
+            "outputMicrosPerMillion": 36000000,
+            "fixedMicros": 0,
+            "inputTokenUpper": 1000000,
+            "boundEvidence": "official-sources-sha256; full-context + total-output 4086+10; no paid extras"
+          }
+        }
+      ],
+      "tariffEvidence": "max38.html fixed-version declaration; pricing.html exact model row",
+      "perDispatchReserveMicros": 12147456,
+      "phaseLimits": {
+        "A": {
+          "maxDispatches": 13,
+          "maxCostMicros": 157916928,
+          "maxBillableOutputTokens": 53248,
+          "tokenLimit": 13053248
+        },
+        "B": {
+          "maxDispatches": 12,
+          "maxCostMicros": 145769472,
+          "maxBillableOutputTokens": 49152,
+          "tokenLimit": 12049152
+        }
+      },
+      "maxAcrossPhases": {
+        "dispatches": 25,
+        "costMicros": 303686400,
+        "billableOutputTokens": 102400,
+        "tokenLimit": 25102400
+      },
+      "taskLimits": {
+        "W1": {
+          "maxDispatches": 7,
+          "maxCostMicros": 85032192,
+          "tokenLimit": 7028672
+        },
+        "W2": {
+          "maxDispatches": 6,
+          "maxCostMicros": 72884736,
+          "tokenLimit": 6024576
+        },
+        "W3": {
+          "maxDispatches": 6,
+          "maxCostMicros": 72884736,
+          "tokenLimit": 6024576
+        },
+        "W4": {
+          "maxDispatches": 6,
+          "maxCostMicros": 72884736,
+          "tokenLimit": 6024576
+        }
+      },
+      "forecastPerDispatch": {
+        "knownUsageListPriceEstimateMicros": 217728,
+        "configuredFlatRateLedgerDebitMicros": 217728
+      }
+    }
+  ],
+  "inputLimit": "omitted; full context only",
+  "binding": "confirmed account fields only; compute actual ModelProfiles.digest after binding; do not use artifact hash as runtime model digest"
+}

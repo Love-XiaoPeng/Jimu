@@ -1,0 +1,45 @@
+{
+  "initialState": "LOCKED",
+  "automaticOnBudgetIncrease": false,
+  "eligibility": {
+    "requiredASamples": [
+      "W1",
+      "W2"
+    ],
+    "minimumReportScore": 85,
+    "minimumToolsScore": 27,
+    "minimumSourcesScore": 27,
+    "embeddedC1AllChecksRequired": true,
+    "everyRequiredReportMustPass": true,
+    "hardFailCountMustEqual": 0,
+    "adjudicationRequired": true,
+    "originalRunStateMustEqual": "OPEN",
+    "globalUnknownCountMustEqual": 0,
+    "allPhaseATasksTerminalWithKnownOutcome": true,
+    "maxFinalists": 2
+  },
+  "conditions": [
+    "selected plan/candidate set frozen before first dispatch and unchanged",
+    "all assigned A tasks terminal with known outcomes",
+    "no UNKNOWN usage/cost/tool outcome anywhere on original run; run remains OPEN",
+    "for every finalist: W1 and W2 both pass adjudicated rubric, embedded C1 all checks pass",
+    "exact prompt/tool/source/draft hashes match and final code independently accepted",
+    "original cumulative money, phase, model, sample, token and dispatch remaining allowance all suffice"
+  ],
+  "transition": "trusted transaction locks original run/plan phase/model counters; verify score/evidence digests; select zero, one or two eligible finalists once; persist immutable unlock receipt; no reselect or add Pro",
+  "receiptFields": [
+    "planId",
+    "planSha256",
+    "originalRunId",
+    "AResultDigest",
+    "adjudicatedScorecardDigests",
+    "evidenceManifestDigest",
+    "finalistModelIds",
+    "actor",
+    "timestamp",
+    "fenceOrRowVersion"
+  ],
+  "zeroFinalists": "no B dispatch; report no passing model",
+  "oneFinalist": "only that finalist receives its 12-dispatch B envelope; no backfill",
+  "twoFinalists": "24 global B dispatches maximum"
+}

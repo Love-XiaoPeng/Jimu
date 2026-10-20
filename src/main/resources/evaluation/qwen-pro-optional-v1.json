@@ -1,0 +1,36 @@
+{
+  "id": "qwen-pro-optional-v1",
+  "version": 1,
+  "enabled": false,
+  "paidDispatchAuthorized": false,
+  "maxRequests": 76,
+  "maxCostMicros": 650000000,
+  "phaseACostMicros": 380000000,
+  "phaseBCostMicros": 270000000,
+  "maxOutputTokens": 4096,
+  "outputMarginTokens": 10,
+  "contextTokens": 1000000,
+  "tenantTokenLimit": 76311296,
+  "taskTokenLimit": 7028672,
+  "candidates": {
+    "qwen3.7-plus-2026-05-26": {
+      "inputMicrosPerMillion": 6000000,
+      "outputMicrosPerMillion": 24000000
+    },
+    "qwen3.7-flash-2026-07-15": {
+      "inputMicrosPerMillion": 1200000,
+      "outputMicrosPerMillion": 4800000
+    },
+    "qwen3.8-max-0902": {
+      "inputMicrosPerMillion": 12000000,
+      "outputMicrosPerMillion": 36000000
+    },
+    "deepseek-v4-pro-0813": {
+      "inputMicrosPerMillion": 9000000,
+      "outputMicrosPerMillion": 27000000
+    }
+  },
+  "sourcePlanSha256": "7af19d6808e81c9d6c77904ff63ee9339fb14d6e5cf47fd2875736977fc024ef",
+  "materialsDigest": "189997f9963aa4881257664c956e1159b812aab8c3c182734bd2434038c650a1",
+  "matrixWorstCostMicros": 626584745
+}

@@ -1,0 +1,149 @@
+{
+  "git_sha": "a20cefbf9004561bd14806c83e20c2c8940b9408",
+  "files": [
+    {
+      "repository_path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicPageProjection.java",
+      "path": "contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicPageProjection.java",
+      "bytes": 2818,
+      "sha256": "a831fdfe913f6cd6af96cfa426c643aa147791af41a0eaac1657713223569121"
+    },
+    {
+      "repository_path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportPolicy.java",
+      "path": "contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportPolicy.java",
+      "bytes": 5261,
+      "sha256": "026d3bc8919ab453e6aaaad050bf615447b140f9baa1fb3b04584c0ff04335e0"
+    },
+    {
+      "repository_path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+      "path": "contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+      "bytes": 24270,
+      "sha256": "6db9c8a5a501c9456dedd24eb2dfc4f32cf9d01887d4ac79564f803a90ca2256"
+    },
+    {
+      "repository_path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/ToolDefinitionMapper.java",
+      "path": "contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/ToolDefinitionMapper.java",
+      "bytes": 574,
+      "sha256": "1e84ea7d68a8e6ae7f2c67944fcf04f11406c0ea29a6c644424180d3b1369469"
+    },
+    {
+      "repository_path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/OpenAiProtocol.java",
+      "path": "contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/OpenAiProtocol.java",
+      "bytes": 13833,
+      "sha256": "8ca6f8983d7267515d7e5df7f1cdf3999e35425e9a0b2a5d69d574dfcbee6b1f"
+    },
+    {
+      "repository_path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+      "path": "contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+      "bytes": 1944,
+      "sha256": "b3b808ba8832b08e01811a45ce9d6afe674bfe272cbceaf033618fefca5dc77c"
+    },
+    {
+      "repository_path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ModelCosts.java",
+      "path": "contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ModelCosts.java",
+      "bytes": 779,
+      "sha256": "2ab0740004b7d24772b801cd5676c1bf40a4db9a28846cfc18d709dd281adc69"
+    },
+    {
+      "repository_path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelProfiles.java",
+      "path": "contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelProfiles.java",
+      "bytes": 10615,
+      "sha256": "11542cc2e82229fc73e8f899ab888a490aaeb8e92a7a28da13f3408488f8e3d0"
+    },
+    {
+      "repository_path": "src/main/java/io/github/lovexiaopeng/jimu/model/api/ModelSnapshot.java",
+      "path": "contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/model/api/ModelSnapshot.java",
+      "bytes": 1792,
+      "sha256": "98c665b179470db47ccb87a39b3206ee817e46aa93804df7ba013446f8af796a"
+    },
+    {
+      "repository_path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/FetchOutput.java",
+      "path": "contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/FetchOutput.java",
+      "bytes": 161,
+      "sha256": "528d18c689440d47fa78c675e1646dcae5b24dff272e64680a65227ef0475de9"
+    },
+    {
+      "repository_path": "src/main/resources/plugins/builtin/webfetch/input.schema.json",
+      "path": "contracts/repository/src/main/resources/plugins/builtin/webfetch/input.schema.json",
+      "bytes": 218,
+      "sha256": "a08d14641ebb1101f0f95757c569035cf134a17d8faced55ccf11baee1e2163a"
+    },
+    {
+      "repository_path": "src/main/resources/plugins/builtin/webfetch/plugin.yaml",
+      "path": "contracts/repository/src/main/resources/plugins/builtin/webfetch/plugin.yaml",
+      "bytes": 625,
+      "sha256": "b728d072dee18aae4a9eeea46336c2163e70309fcbb1c15fbc23092575be3c45"
+    },
+    {
+      "repository_path": "src/main/resources/plugins/builtin/read/input.schema.json",
+      "path": "contracts/repository/src/main/resources/plugins/builtin/read/input.schema.json",
+      "bytes": 503,
+      "sha256": "dd957a70a488c9167ee4b1ff79e65790f073492b05c9933919e89adf0dd26cec"
+    },
+    {
+      "repository_path": "src/main/resources/plugins/builtin/read/output.schema.json",
+      "path": "contracts/repository/src/main/resources/plugins/builtin/read/output.schema.json",
+      "bytes": 770,
+      "sha256": "3afdd8ce04586f381583d26eb91f3000745bf519a3571f702fd8da5b6cfaf4a9"
+    },
+    {
+      "repository_path": "src/main/resources/plugins/builtin/read/plugin.yaml",
+      "path": "contracts/repository/src/main/resources/plugins/builtin/read/plugin.yaml",
+      "bytes": 622,
+      "sha256": "9857ab76822692529c5f3ad5fadd3198e161fd08951825f9cc1cdd2b6b0f8759"
+    },
+    {
+      "repository_path": "src/main/resources/plugins/builtin/write/input.schema.json",
+      "path": "contracts/repository/src/main/resources/plugins/builtin/write/input.schema.json",
+      "bytes": 442,
+      "sha256": "26fbf190900805f120cfdc5f112526fa8b4c683a8f76a629619dcd4a24eeb0b7"
+    },
+    {
+      "repository_path": "src/main/resources/plugins/builtin/write/output.schema.json",
+      "path": "contracts/repository/src/main/resources/plugins/builtin/write/output.schema.json",
+      "bytes": 478,
+      "sha256": "b80d38a29e6fe4f73bf070971bfdd49bfc06d3f7fbd0e07b41890aef853020af"
+    },
+    {
+      "repository_path": "src/main/resources/plugins/builtin/write/plugin.yaml",
+      "path": "contracts/repository/src/main/resources/plugins/builtin/write/plugin.yaml",
+      "bytes": 626,
+      "sha256": "41cb80aa705f2588508601b4f2db718d0dca6d55291d28ac0351fe3d01999546"
+    },
+    {
+      "repository_path": "src/main/resources/plugins/builtin/present/input.schema.json",
+      "path": "contracts/repository/src/main/resources/plugins/builtin/present/input.schema.json",
+      "bytes": 753,
+      "sha256": "5ee1eecd2798c0795be14c6430133251e56b48f36ea12ab12500a74739401190"
+    },
+    {
+      "repository_path": "src/main/resources/plugins/builtin/present/output.schema.json",
+      "path": "contracts/repository/src/main/resources/plugins/builtin/present/output.schema.json",
+      "bytes": 1106,
+      "sha256": "29533528d028fa1d254fcbe73b189c6500c21202e6b52055382a42ad17a0886a"
+    },
+    {
+      "repository_path": "src/main/resources/plugins/builtin/present/plugin.yaml",
+      "path": "contracts/repository/src/main/resources/plugins/builtin/present/plugin.yaml",
+      "bytes": 631,
+      "sha256": "6aa35e5900356d675d6e35934ed88f4f725452b2a0e54db0351bc7b93fc7b583"
+    },
+    {
+      "repository_path": "docs/baseline/XIAO-33-web-fetch-output-v0.2.0.schema.json",
+      "path": "contracts/repository/docs/baseline/XIAO-33-web-fetch-output-v0.2.0.schema.json",
+      "bytes": 602,
+      "sha256": "08a144489ed9ea37b5b33a5ffdc815237f31d4f229b76ba1d5e465b9e13f9ff8"
+    },
+    {
+      "repository_path": "src/main/resources/plugins/builtin/webfetch-public/plugin.yaml",
+      "path": "contracts/repository/src/main/resources/plugins/builtin/webfetch-public/plugin.yaml",
+      "bytes": 677,
+      "sha256": "3c9d26608f61deb39c86c931daeb5775d20886ce4884d5a4cf862d6121d11483"
+    },
+    {
+      "repository_path": "src/main/resources/db/migration/V4__model_snapshots_and_budgets.sql",
+      "path": "contracts/repository/src/main/resources/db/migration/V4__model_snapshots_and_budgets.sql",
+      "bytes": 1942,
+      "sha256": "1a1d5fa336be3d55decfab17cd7acf62abdfcab520b35414d3f8fb0cca7ac981"
+    }
+  ]
+}

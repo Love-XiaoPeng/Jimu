@@ -8,10 +8,13 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public final class WorkerLoop implements AutoCloseable {
   private final ExecutionLedger ledger;
-  private final DurableAgent agent;
+  private final Consumer<ExecutionLedger.Lease> execution;
+  private final OperationThreads operations;
+  private volatile boolean undrained;
   private final String instance = UUID.randomUUID().toString();
   private final String host;
   private final ResourceProbe resources;
@@ -19,9 +22,23 @@ public final class WorkerLoop implements AutoCloseable {
   private final ScheduledExecutorService heartbeat = Executors.newSingleThreadScheduledExecutor();
 
   public WorkerLoop(
-      ExecutionLedger ledger, DurableAgent agent, String host, ResourceProbe resources) {
+      ExecutionLedger ledger,
+      DurableAgent agent,
+      String host,
+      ResourceProbe resources,
+      OperationThreads operations) {
+    this(ledger, agent::run, host, resources, operations);
+  }
+
+  WorkerLoop(
+      ExecutionLedger ledger,
+      Consumer<ExecutionLedger.Lease> execution,
+      String host,
+      ResourceProbe resources,
+      OperationThreads operations) {
     this.ledger = ledger;
-    this.agent = agent;
+    this.execution = execution;
+    this.operations = operations;
     this.host = host;
     this.resources = resources;
   }
@@ -33,8 +50,10 @@ public final class WorkerLoop implements AutoCloseable {
     work.scheduleWithFixedDelay(this::tick, 0, 100, TimeUnit.MILLISECONDS);
   }
 
-  private void tick() {
+  void tick() {
     try {
+      // An interrupted drain is not proof of quiescence and must never admit another attempt.
+      if (undrained || operations.activeCount() != 0) return;
       if (!resources.ready()) return;
       var candidate = ledger.claim(instance);
       if (candidate.isEmpty()) return;
@@ -42,7 +61,7 @@ public final class WorkerLoop implements AutoCloseable {
       var renewal =
           heartbeat.scheduleAtFixedRate(() -> ledger.renew(lease), 10, 10, TimeUnit.SECONDS);
       try {
-        agent.run(lease);
+        execution.accept(lease);
       } catch (RuntimeException error) {
         String code = error instanceof TaskFailure failure ? failure.code() : "EXECUTION_FAILED";
         System.getLogger(WorkerLoop.class.getName())
@@ -53,8 +72,15 @@ public final class WorkerLoop implements AutoCloseable {
           if (!"FENCE_REJECTED".equals(rejected.code())) throw rejected;
         }
       } finally {
-        renewal.cancel(false);
-        ledger.quiescent(lease);
+        try {
+          operations.awaitDrained();
+          ledger.quiescent(lease);
+        } catch (InterruptedException interrupted) {
+          undrained = true;
+          Thread.currentThread().interrupt();
+        } finally {
+          renewal.cancel(false);
+        }
       }
     } catch (RuntimeException error) {
       System.getLogger(WorkerLoop.class.getName())
@@ -67,7 +93,8 @@ public final class WorkerLoop implements AutoCloseable {
     work.shutdownNow();
     heartbeat.shutdownNow();
     if (!work.awaitTermination(25, TimeUnit.SECONDS)
-        || !heartbeat.awaitTermination(5, TimeUnit.SECONDS))
-      throw new IllegalStateException("Worker did not stop");
+        || !heartbeat.awaitTermination(5, TimeUnit.SECONDS)
+        || undrained
+        || operations.activeCount() != 0) throw new IllegalStateException("Worker did not stop");
   }
 }

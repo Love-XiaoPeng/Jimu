@@ -1,0 +1,22 @@
+[
+  {
+    "artifact": "org/jsoup/jsoup/1.19.1/jsoup-1.19.1.jar",
+    "sha256": "7b850eb00f2f77f606a343b2e4effe4107f3c1faa183729d85fbe16baf606096"
+  },
+  {
+    "artifact": "com/fasterxml/jackson/core/jackson-databind/2.21.7/jackson-databind-2.21.7.jar",
+    "sha256": "1290c2795e93e8a6861a6c4d9ff0d844d32f5ea178362cb2721edf5561e828b1"
+  },
+  {
+    "artifact": "com/fasterxml/jackson/core/jackson-core/2.21.7/jackson-core-2.21.7.jar",
+    "sha256": "8c5623b98f32d5f7e1287ff61ed50e08ab7b11381e991fff89327faabba42261"
+  },
+  {
+    "artifact": "com/fasterxml/jackson/core/jackson-annotations/2.21/jackson-annotations-2.21.jar",
+    "sha256": "53ca085f4a150f703f49e1aabd935bd03b43e1ea3d55d135438292af22cef56b"
+  },
+  {
+    "artifact": "org/apache/httpcomponents/core5/httpcore5/5.4.3/httpcore5-5.4.3.jar",
+    "sha256": "18bfbbabb478dfb67f31aeaf428c387f3c3df654582e1309f708ee1f3086830a"
+  }
+]

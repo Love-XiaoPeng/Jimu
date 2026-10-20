@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "filePath",
+    "version",
+    "sha256",
+    "size"
+  ],
+  "properties": {
+    "filePath": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

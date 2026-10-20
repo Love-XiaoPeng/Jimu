@@ -17,6 +17,7 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
  */
 public final class BuiltinManifestLoader {
   public static final String ROOT = "plugins/builtin/webfetch/";
+  public static final String PUBLIC_ROOT = "plugins/builtin/webfetch-public/";
   public static final String OUTPUT_SHA256 =
       "08a144489ed9ea37b5b33a5ffdc815237f31d4f229b76ba1d5e465b9e13f9ff8";
   private static final String ENTRY =
@@ -31,7 +32,30 @@ public final class BuiltinManifestLoader {
     return parse(resource("plugin.yaml"));
   }
 
+  /** Public runtime assembly; the historical fixture registry still selects load(). */
+  public ToolDescriptor loadPublic() throws IOException {
+    if (!OUTPUT_SHA256.equals(sha256(resource("output.schema.json"))))
+      throw new IllegalArgumentException("Canonical output Schema digest mismatch");
+    new SchemaContract(resource("output.schema.json"));
+    new SchemaContract(resource("input.schema.json"));
+    try (InputStream stream =
+        BuiltinManifestLoader.class
+            .getClassLoader()
+            .getResourceAsStream(PUBLIC_ROOT + "plugin.yaml")) {
+      if (stream == null) throw new IOException("Missing public fetch manifest");
+      return parsePublic(stream.readAllBytes());
+    }
+  }
+
   public ToolDescriptor parse(byte[] yaml) {
+    return parse(yaml, false);
+  }
+
+  public ToolDescriptor parsePublic(byte[] yaml) {
+    return parse(yaml, true);
+  }
+
+  private ToolDescriptor parse(byte[] yaml, boolean publicWeb) {
     var options = new LoaderOptions();
     options.setAllowDuplicateKeys(false);
     options.setMaxAliasesForCollections(0);
@@ -43,7 +67,8 @@ public final class BuiltinManifestLoader {
       throw new IllegalArgumentException("Manifest must be an object");
     expect(manifest, "manifestVersion", 1);
     expect(manifest, "id", "jimu.web.fetch");
-    expect(manifest, "version", "0.2.0");
+    String version = publicWeb ? "0.3.0" : "0.2.0";
+    expect(manifest, "version", version);
     expect(manifest, "kind", "tool");
     expect(manifest, "hostApi", ">=0.1.0 <0.2.0");
     expect(manifest, "entry", Map.of("type", "trusted-jvm", "class", ENTRY));
@@ -55,16 +80,25 @@ public final class BuiltinManifestLoader {
                 "name",
                 "web_fetch",
                 "inputSchema",
-                "input.schema.json",
+                publicWeb ? ROOT + "input.schema.json" : "input.schema.json",
                 "outputSchema",
-                "output.schema.json",
+                publicWeb ? ROOT + "output.schema.json" : "output.schema.json",
                 "sideEffect",
                 "read")));
-    expect(manifest, "permissions", Map.of("network", List.of("configured-origin-only")));
+    expect(
+        manifest,
+        "permissions",
+        Map.of(
+            "network",
+            List.of(publicWeb ? "operator-public-https-only" : "configured-origin-only")));
     expect(manifest, "limits", Map.of("timeoutMs", 30000, "outputBytes", 1048576));
     expect(manifest, "secretRefs", List.of());
     expect(manifest, "dependencies", List.of());
-    expect(manifest, "healthCheck", Map.of("operation", "provider-readiness", "timeoutMs", 2000));
+    expect(
+        manifest,
+        "healthCheck",
+        Map.of(
+            "operation", publicWeb ? "policy-readiness" : "provider-readiness", "timeoutMs", 2000));
     expect(manifest, "errorContract", "jimu-invocation-result");
     expect(
         manifest,
@@ -73,7 +107,7 @@ public final class BuiltinManifestLoader {
     if (manifest.size() != 14) throw new IllegalArgumentException("Unknown manifest fields");
     return new ToolDescriptor(
         "jimu.web.fetch",
-        "0.2.0",
+        version,
         "web_fetch",
         ROOT + "input.schema.json",
         ROOT + "output.schema.json",

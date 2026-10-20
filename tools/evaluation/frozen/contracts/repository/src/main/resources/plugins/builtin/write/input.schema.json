@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "file_path": {
+      "type": "string",
+      "description": "Path to write, resolved by the filesystem backend. Provide `file_path` before `content` in the arguments."
+    },
+    "content": {
+      "type": "string",
+      "description": "Full UTF-8 text content to write."
+    }
+  },
+  "required": [
+    "file_path",
+    "content"
+  ]
+}

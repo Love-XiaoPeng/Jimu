@@ -22,6 +22,13 @@ class PackageBoundariesTest {
         .onlyDependOnClassesThat()
         .resideInAnyPackage("java..", "..plugin.api..")
         .check(classes);
+    classes()
+        .that()
+        .resideInAPackage("..model.api..")
+        .should()
+        .onlyDependOnClassesThat()
+        .resideInAnyPackage("java..", "..model.api..")
+        .check(classes);
     noClasses()
         .that()
         .resideInAnyPackage("..kernel..", "..execution..")

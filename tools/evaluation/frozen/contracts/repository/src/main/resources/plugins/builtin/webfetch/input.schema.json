@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {"url": {"type": "string", "minLength": 1, "format": "uri"}},
+  "required": ["url"],
+  "additionalProperties": false
+}

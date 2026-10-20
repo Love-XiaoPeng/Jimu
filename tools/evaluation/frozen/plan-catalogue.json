@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "selectedPlan": null,
+  "enabled": false,
+  "exclusive": true,
+  "plans": [
+    {
+      "path": "plans/qwen-main-v1.json",
+      "sha256": "b58e55e317cb070e64b1949ea7be623beaa75ad83fc315ca63feaae217bbaab8",
+      "bytes": 7287
+    },
+    {
+      "path": "plans/qwen-pro-optional-v1.json",
+      "sha256": "7af19d6808e81c9d6c77904ff63ee9339fb14d6e5cf47fd2875736977fc024ef",
+      "bytes": 8457
+    }
+  ],
+  "selectionFreeze": "persist selected plan id/hash/candidates at trusted original-run admission before first paid dispatch; cannot activate both or switch for more allowance"
+}

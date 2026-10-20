@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "工位达成率",
+    "总体达成率",
+    "结论",
+    "局限"
+  ],
+  "properties": {
+    "工位达成率": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "A",
+        "B"
+      ],
+      "properties": {
+        "A": {
+          "const": "90.0%"
+        },
+        "B": {
+          "const": "110.0%"
+        }
+      }
+    },
+    "总体达成率": {
+      "const": "98.0%"
+    },
+    "结论": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "局限": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

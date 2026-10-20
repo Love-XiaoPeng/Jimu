@@ -12,6 +12,11 @@
 - [三份架构 ADR](docs/adr/README.md)
 - [P2 持久执行决定](docs/adr/0004-p2-durable-execution.md)与[架构交接/资源证据](docs/verification/XIAO-36/architecture-handoff.md)
 - [P2 运行配置、API、恢复及限制](docs/implementation-p2.md)
+- [XIAO-40 模型核心阶段配置、迁移、预算及限制](docs/implementation-p3-core.md)
+- [正常业务受信准入与 DeepSeek 请求策略](docs/normal-business-admission.md)
+- [XIAO-40 完整输入门禁与计费证明边界](docs/implementation-p3-input-bound.md)
+- [XIAO-40 工作区工具、报告发布与下载装配](docs/implementation-p3-reports.md)
+- [XIAO-40 关闭评测计划、阶段和额度](docs/implementation-p3-evaluation-plans.md)
 - [协作约定](CONTRIBUTING.md)
 - [Agent 约定](AGENTS.md)
 
