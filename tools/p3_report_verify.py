@@ -34,7 +34,7 @@ class ReportModel(Handler):
         goal = next(m["content"] for m in body["messages"] if m["role"] == "user")
         with self.server.lock:
             self.server.models[goal] = self.server.models.get(goal, 0) + 1
-            self.server.requests.append({"goal": goal, "tenant": tenant, "tools": [t["function"]["name"] for t in body["tools"]]})
+            self.server.requests.append({"goal": goal, "tenant": tenant, "tools": [t["function"]["name"] for t in body["tools"]], "currentReportInstruction": "write them as code without a protocol" in next((m["content"] for m in body["messages"] if m["role"] == "system"), "")})
         replies = [m for m in body["messages"] if m["role"] == "tool"]
         calls = [c for m in body["messages"] for c in m.get("tool_calls", [])]
         last = calls[-1]["function"]["name"] if calls else None
@@ -60,6 +60,17 @@ class ReportModel(Handler):
         elif last == "read":
             cite = "https://other.example/forged" if "forged" in goal else url
             report = "## 主题\n" + goal + "\n## 摘要\n真实本地 TLS 抓取摘要\n## 结论\n证据见[来源](" + cite + ")\n## 来源链接\n[来源](" + cite + ")\n## 生成时间\n" + clock + "\n## 局限\n本地模型与 TLS 替身，尚未核验真实业务质量。"
+            if goal == "report-url-generation":
+                endpoint = "api.example.test/chat/completions" if "write them as code without a protocol" in system else "https://api.example.test/chat/completions"
+                report += "\n端点 `" + endpoint + "`，仅作代码标识。"
+            elif goal == "report-url-endpoint":
+                report += "\nhttps://api.example.test/chat/completions"
+            elif goal == "report-url-endpoint-backticks":
+                report += "\n`https://api.example.test/anthropic`。"
+            elif goal == "report-url-source-punctuation":
+                report += "\n来源：" + url + "。"
+            elif goal == "report-url-source-backticks":
+                report += "\n来源 `" + url + "`"
             if "partial-disclosed" in goal:
                 report += " 部分来源失败。"
             name, args = "write", [{"file_path": path, "content": report} for path in paths]
@@ -117,6 +128,34 @@ class ReportExperiment(PublicExperiment):
                 shutil.copytree(self.root / "workspace", self.evidence / "workspace")
         finally:
             super().cleanup()
+
+
+def verify_citations(e, legacy=False):
+    worker = e.start("citation-worker", "worker")
+    goals = ["report-url-generation", "report-url-endpoint", "report-url-endpoint-backticks",
+             "report-url-source-punctuation", "report-url-source-backticks"]
+    for goal in goals:
+        task = e.submit(goal)
+        succeeds = goal == "report-url-generation" and not legacy
+        view = e.state(task, "SUCCEEDED" if succeeds else "FAILED")
+        requests = [r for r in e.fixture.requests if r["goal"] == goal]
+        e.assert_that(requests and all(r["currentReportInstruction"] == (not legacy) for r in requests),
+                      "actual model requests carry expected fixed instruction", goal=goal, legacy=legacy)
+        if not succeeds:
+            e.assert_that(view["code"] == "REPORT_CITATION_INVALID" and not view["artifacts"] and
+                          e.sql("SELECT COUNT(*) FROM artifact WHERE task_id='" + task + "';") == "0",
+                          "unfetched or malformed URL rejected before publication", goal=goal)
+            continue
+        artifact = view["artifacts"][0]
+        status, body = e.http("GET", "/api/artifacts/" + artifact["artifactId"] + "/download")
+        e.assert_that(status == 200 and "`api.example.test/chat/completions`，" in body and
+                      hashlib.sha256(body.encode()).hexdigest() == artifact["sha256"],
+                      "protocol-free endpoint and Markdown source publish exact authorized bytes")
+        for subject in ["b", "c"]:
+            e.assert_that(e.http("GET", "/api/artifacts/" + artifact["artifactId"] + "/download", subject=subject)[0] == 404,
+                          "download retains tenant and owner isolation", subject=subject)
+        (e.evidence / "citation-download.md").write_text(body, encoding="utf-8")
+    e.stop(worker)
 
 
 def verify(e):
@@ -241,6 +280,9 @@ if __name__ == "__main__":
     e = ReportExperiment(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]))
     try:
         e.prepare()
-        verify_effects(e) if "--effects-only" in sys.argv[4:] else verify(e)
+        if "--citations-only" in sys.argv[4:]:
+            verify_citations(e, "--expect-legacy-citation-failure" in sys.argv[4:])
+        else:
+            verify_effects(e) if "--effects-only" in sys.argv[4:] else verify(e)
     finally:
         e.cleanup()

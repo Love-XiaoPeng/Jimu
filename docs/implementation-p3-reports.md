@@ -32,6 +32,12 @@ present 用自己的 effectId 固定原观察版本并取得每个文件的不�
 
 下载沿既有 tenant/owner/撤权/expiry/hash 校验，Markdown 返回 `text/markdown; charset=utf-8`、宿主 UUID `.md` 附件文件名及 `nosniff`；旧 text/plain 产物仍为 `.txt`，不暴露工作区/宿主路径。
 
+### 正常报告的 URL 生成约束
+
+当前正常报告生成指令要求报告全文（包括代码块/反引号）中的每个 HTTP(S) URL 精确取自成功且可用的 `web_fetch.sourceUrl`。网页正文中介绍的 API 端点不是另一份已抓取来源，应写作无协议的代码标识，例如 `api.example.test/chat/completions`；来源使用 `[来源](sourceUrl)`，中文标点置于右括号外，不用反引号包裹来源 URL。宿主仍以原 `ReportPolicy.validate` 拒绝未抓取或格式不匹配的 URL，不修剪、改写或补抓报告内容。
+
+历史评测模板及其文件摘要不变。正常任务仅在没有 checkpoint 时使用当前生成指令；恢复沿用已保存请求中的原始指令。BUSINESS 完整历史核对仅允许旧/当前两个固定宿主模板，并要求后续步骤的系统指令与第一步相同，不接受任意模型指令或跨轮替换。没有迁移、旧任务快照回写、生产配置或额度变化。生成指令不能保证真实模型遵循；替身仅验证协议、门禁与发布/下载，真实业务仍须后续独立验收。
+
 ## 迁移和验证
 
 只增加 V6；基线与 V1–V5 保留原字节。V6 增加 report_time/file_receipt/receipt_digest，把原“一调用一产物”唯一键扩为“一调用每收据一产物”，支持单次 present 多文件；旧产物继续可读。严格 schema check 要求 V1–V6，离线升级仍先停受理、确认私有 worker 静止再迁移，不允许旧 JAR 接管 V6。无破坏性回滚。P2 的 V2 重建及受控 V4/V5 升级测试同步撤销隔离库的 V6，随后由真实 Flyway 重建；完整 P2 不删减。

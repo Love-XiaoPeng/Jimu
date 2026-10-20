@@ -14,7 +14,16 @@ import org.junit.jupiter.api.Test;
 class ReportWorkerIT {
   @Test
   void reportProductionBindsOwnInvocationAndAuthorizedDownload() throws Exception {
-    Path evidence = Path.of("target/failsafe-reports/report-worker-evidence");
+    verify("report-worker-evidence");
+  }
+
+  @Test
+  void reportCitationGenerationAndDownload() throws Exception {
+    verify("report-citation-evidence", "--citations-only");
+  }
+
+  private void verify(String name, String... options) throws Exception {
+    Path evidence = Path.of("target/failsafe-reports", name);
     Files.createDirectories(evidence);
     Path script = Path.of("tools/p3_report_verify.py").toAbsolutePath(),
         jar = Path.of(System.getProperty("jimu.jar")).toAbsolutePath();
@@ -39,6 +48,7 @@ class ReportWorkerIT {
               jar.toString(),
               evidence.toAbsolutePath().toString(),
               Path.of("target/test-classes").toAbsolutePath().toString()));
+    command.addAll(List.of(options));
     var log = evidence.resolve("runner.log");
     var process =
         new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile()).start();

@@ -38,10 +38,11 @@ class BusinessModel(http.server.BaseHTTPRequestHandler):
         goal = next(m['content'] for m in body['messages'] if m['role'] == 'user')
         replies = [m for m in body['messages'] if m['role'] == 'tool']
         system = next((m['content'] for m in body['messages'] if m['role'] == 'system'), '')
+        assert 'write them as code without a protocol' in system
         clock = re.search(r'report time (\S+)\.', system).group(1)
         url = 'https://fixture.example/business-source'
         report = ('## 主题\n正常业务\n## 摘要\n本地网页材料\n## 结论\n[来源](' + url +
-                  ')\n## 来源链接\n[来源](' + url + ')\n## 生成时间\n' + clock + '\n## 局限\n仅验证本地替身，未验证真实模型质量。')
+                  ')。端点 `api.example.test/chat/completions`，仅作代码标识。\n## 来源链接\n[来源](' + url + ')\n## 生成时间\n' + clock + '\n## 局限\n仅验证本地替身，未验证真实模型质量。')
         stages = [('web_fetch', {'url': url}), ('read', {'file_path': 'report.md'}),
                   ('write', {'file_path': 'report.md', 'content': report}),
                   ('present', {'files': [{'path': 'report.md'}]})]
