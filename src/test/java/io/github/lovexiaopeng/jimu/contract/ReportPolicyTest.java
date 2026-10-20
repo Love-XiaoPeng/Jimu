@@ -3,6 +3,7 @@ package io.github.lovexiaopeng.jimu.contract;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportPolicy;
@@ -97,6 +98,28 @@ class ReportPolicyTest {
     rejects("REPORT_INVALID", report().replace("## 摘要", "## 其他"), context());
     rejects("REPORT_INVALID", report().replace(time.toString(), "2020-01-01T00:00:00Z"), context());
     rejects("REPORT_INVALID", report() + "\n## 主题\n重复", context());
+  }
+
+  @Test
+  void endpointUrlsAndPunctuationRemainRejectedWhileProtocolFreeIdentifiersPass() {
+    for (String endpoint :
+        List.of(
+            "https://api.example.test/chat/completions",
+            "`https://api.example.test/chat/completions`，使用",
+            "`https://api.example.test/anthropic`。",
+            "[端点](https://api.example.test/chat/completions)"))
+      rejects("REPORT_CITATION_INVALID", report() + "\n" + endpoint, context());
+    rejects(
+        "REPORT_CITATION_INVALID",
+        report().replace(")\n## 来源链接", ")，" + url + "。\n## 来源链接"),
+        context());
+    rejects("REPORT_CITATION_INVALID", report() + "\n`" + url + "`", context());
+    assertDoesNotThrow(
+        () ->
+            policy.validate(
+                file(report() + "\n端点 `api.example.test/chat/completions`，仅作标识。"), context()));
+    assertTrue(policy.currentInstruction(context()).startsWith(policy.instruction(context())));
+    assertTrue(policy.currentInstruction(context()).contains("without a protocol"));
   }
 
   @Test

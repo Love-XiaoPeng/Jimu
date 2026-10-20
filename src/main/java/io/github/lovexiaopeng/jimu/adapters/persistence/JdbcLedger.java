@@ -983,14 +983,28 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             wire.path("requestBody").asText(), com.fasterxml.jackson.databind.JsonNode.class);
     var expected = Payloads.read("[]", com.fasterxml.jackson.databind.node.ArrayNode.class);
     if (business) {
-      if (caps(task).contains("present"))
-        expected
-            .addObject()
-            .put("role", "system")
-            .put(
-                "content",
-                new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportPolicy()
-                    .instruction(new ReportContext(time(task, "report_time"), List.of())));
+      if (caps(task).contains("present")) {
+        var reports = new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportPolicy();
+        var context = new ReportContext(time(task, "report_time"), List.of());
+        String instruction = body.path("messages").path(0).path("content").asText();
+        // Recovery retains the original fixed template; no model-selected instruction is allowed.
+        EvaluationMaterials.require(
+            List.of(reports.instruction(context), reports.currentInstruction(context))
+                .contains(instruction));
+        if (!preceding.isEmpty()) {
+          String first = s(preceding.getFirst(), "request_snapshot");
+          EvaluationMaterials.require(
+              Payloads.hash(first).equals(s(preceding.getFirst(), "request_digest")));
+          var original = Payloads.read(first, com.fasterxml.jackson.databind.JsonNode.class);
+          var originalBody =
+              Payloads.read(
+                  original.path("requestBody").asText(),
+                  com.fasterxml.jackson.databind.JsonNode.class);
+          EvaluationMaterials.require(
+              instruction.equals(originalBody.path("messages").path(0).path("content").asText()));
+        }
+        expected.addObject().put("role", "system").put("content", instruction);
+      }
       expected.addObject().put("role", "user").put("content", s(task, "goal"));
     } else {
       expected.add(body.path("messages").get(0));
