@@ -386,7 +386,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
               request.budget().maxModelRequests(),
               request.budget().maxToolInvocations());
           db.update(
-              "UPDATE task SET model_snapshot=?,model_digest=?,evaluation_run_id=?,max_cost_micros=?,tools_snapshot=?,tools_digest=?,execution_scope_digest=?,report_time=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
+              "UPDATE task SET model_snapshot=?,model_digest=?,evaluation_run_id=?,max_cost_micros=?,tools_snapshot=?,tools_digest=?,execution_scope_digest=?,report_time=UTC_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
               modelSnapshot,
               Payloads.hash(modelSnapshot),
               model.paid() ? run : null,
