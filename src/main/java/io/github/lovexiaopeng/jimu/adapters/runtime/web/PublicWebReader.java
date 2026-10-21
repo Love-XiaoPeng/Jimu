@@ -2,8 +2,10 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.web;
 
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.OperationThreads;
 import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation;
+import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation.CheckpointCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation.Failure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation.Phase;
+import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation.Reason;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchOutput;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebPageReader;
@@ -106,16 +108,20 @@ public final class PublicWebReader implements WebPageReader {
   public FetchOutput fetch(
       String url, ExecutionContext original, Consumer<WebFetchObservation> observer) {
     var phase = new AtomicReference<>(Phase.ADMISSION);
+    var cancellation = new WebFetchCancellation();
     Consumer<Phase> progress =
         next -> {
           observer.accept(new WebFetchObservation(next, Failure.NONE));
           phase.set(next);
+          cancellation.phase(next);
         };
     try {
       progress.accept(Phase.ADMISSION);
-      return fetchObserved(url, original, progress);
+      return fetchObserved(url, original, progress, cancellation);
     } catch (RuntimeException error) {
-      observer.accept(new WebFetchObservation(phase.get(), failure(error)));
+      if (failure(error) == Failure.CANCELLED)
+        cancellation.capture(Reason.UNKNOWN, CheckpointCode.NONE, 0);
+      observer.accept(new WebFetchObservation(phase.get(), failure(error), cancellation.finish()));
       throw error;
     }
   }
@@ -136,7 +142,10 @@ public final class PublicWebReader implements WebPageReader {
   }
 
   private FetchOutput fetchObserved(
-      String url, ExecutionContext original, Consumer<Phase> progress) {
+      String url,
+      ExecutionContext original,
+      Consumer<Phase> progress,
+      WebFetchCancellation cancellation) {
     Instant admittedAt = admissionClock.instant();
     Instant limit = admittedAt.plusSeconds(30);
     Instant deadline = original.deadline().isBefore(limit) ? original.deadline() : limit;
@@ -149,9 +158,28 @@ public final class PublicWebReader implements WebPageReader {
             deadline,
             () -> {
               if (closed.get()) throw new CancellationException("Public fetch closed");
-              original.cancellation().throwIfCancelled();
-              if (System.nanoTime() - started >= budget)
+              long checkpointStarted = System.nanoTime();
+              try {
+                original.cancellation().throwIfCancelled();
+              } catch (RuntimeException error) {
+                cancellation.capture(
+                    Reason.CHECKPOINT_REJECTED,
+                    WebFetchCancellation.code(error),
+                    checkpointStarted);
+                throw error;
+              }
+              if (System.nanoTime() - started >= budget) {
+                cancellation.capture(Reason.ELAPSED_LIMIT, CheckpointCode.NONE, 0);
                 throw new CancellationException("Public fetch elapsed deadline expired");
+              }
+              if (Thread.currentThread().isInterrupted()) {
+                cancellation.capture(Reason.THREAD_INTERRUPT, CheckpointCode.NONE, 0);
+                throw new CancellationException("Public fetch interrupted");
+              }
+              if (!Instant.now().isBefore(deadline)) {
+                cancellation.capture(Reason.FETCH_DEADLINE, CheckpointCode.NONE, 0);
+                throw new CancellationException("Public fetch deadline expired");
+              }
             });
     check(context);
     URI first = policy.target(url);
@@ -171,12 +199,22 @@ public final class PublicWebReader implements WebPageReader {
         }
       }
     } catch (InterruptedException e) {
+      cancellation.capture(Reason.CALLER_INTERRUPT, CheckpointCode.NONE, 0);
       Thread.currentThread().interrupt();
       throw new CancellationException("Public fetch interrupted");
     } catch (ExecutionException e) {
-      if (e.getCause() instanceof RuntimeException runtime) throw runtime;
+      if (failure(e.getCause()) == Failure.CANCELLED)
+        cancellation.capture(Reason.UNKNOWN, CheckpointCode.NONE, 0);
+      if (e.getCause() instanceof RuntimeException runtime) {
+        throw runtime;
+      }
       throw new IllegalStateException("Public fetch failed", e.getCause());
+    } catch (RuntimeException error) {
+      if (failure(error) == Failure.CANCELLED)
+        cancellation.capture(Reason.UNKNOWN, CheckpointCode.NONE, 0);
+      throw error;
     } finally {
+      cancellation.finish();
       // Publish before interrupt/abort: a platform DNS resolver may consume the interrupt.
       // The same invocation token is checked after DNS and inside the transport/socket path.
       closed.set(true);
