@@ -279,6 +279,22 @@ public final class JdbcLedger
   }
 
   @Override
+  public void authorizeAnswer(Identity identity, String taskId, String requestId) {
+    tx(
+        () -> {
+          bucket(identity.tenant());
+          questionVisible(identity, taskId);
+          if (rows(
+                  "SELECT id FROM user_question WHERE tenant_id=? AND task_id=? AND id=?",
+                  identity.tenant(),
+                  taskId,
+                  requestId)
+              .isEmpty()) throw new TaskFailure(404, "QUESTION_NOT_FOUND");
+          return null;
+        });
+  }
+
+  @Override
   public Submission answer(
       Identity identity, String taskId, String requestId, String key, Command command) {
     var outcome =

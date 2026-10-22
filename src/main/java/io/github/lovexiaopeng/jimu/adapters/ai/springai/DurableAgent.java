@@ -147,6 +147,8 @@ public final class DurableAgent implements AutoCloseable {
 
   public void run(Lease lease) {
     try {
+      if (lease.capabilities().equals(List.of("ask_user_question")))
+        probe.hit("QUESTION_ATTEMPT_CLAIMED", lease.taskId());
       runAttempt(lease);
     } catch (io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionSuspended suspended) {
       probe.hit("QUESTION_PAUSED", lease.taskId());

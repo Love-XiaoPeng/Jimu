@@ -169,11 +169,13 @@ class QuestionsExperiment(McpExperiment):
             status, value = self.http('GET', '/api/tasks/' + task + '/questions', subject=subject)
             self.assert_that(status == 404 and value['code'] == 'TASK_NOT_FOUND', 'question query hides other owner/tenant ' + subject)
             self.assert_that(self.respond(task, q, subject=subject)[0] == 404, 'answer hides other owner/tenant ' + subject)
+            self.assert_that(self.raw_answer(task,q,b'{',subject=subject)[0]==404,'visibility precedes malformed answer '+subject)
         for changes, code in [({'questionVersion': 2}, 'QUESTION_VERSION_UNSUPPORTED'), ({'expectedRevision': 99}, 'QUESTION_REVISION_CONFLICT'), ({'answers': [{'id': 'choice', 'selected': ['wrong']}]}, 'QUESTION_ANSWER_INVALID'), ({'answers': [{'id': 'choice', 'selected': ['A'], 'custom': 'also'}]}, 'QUESTION_ANSWER_INVALID')]:
             status, value = self.respond(task, q, **changes)
             self.assert_that(status in (400, 409) and value['code'] == code, code, response=value)
         self.sql("UPDATE actor_access SET enabled=FALSE WHERE tenant_id='tenant-a' AND actor_id='alice';")
         self.assert_that(self.http('GET', '/api/tasks/' + task + '/questions')[0] == 403 and self.respond(task, q)[0] == 403, 'current actor revocation applies immediately')
+        self.assert_that(self.raw_answer(task,q,b'{')[0]==403 and self.raw_answer(task,q,b'x'*32769)[0]==403,'current authorization precedes malformed and oversized answer')
         self.sql("UPDATE actor_access SET enabled=TRUE WHERE tenant_id='tenant-a' AND actor_id='alice';")
         # Maintenance may have legitimately closed the revoked task; never restore it.
         if self.http('GET', '/api/tasks/' + task)[1]['state'] == 'WAITING_USER':
@@ -234,6 +236,10 @@ class QuestionsExperiment(McpExperiment):
         self.stop(self.control)
         self.control=self.start('control-after-answer-commit','control')
         self.assert_that(self.respond(task,q,key='restart-answer')==(200,receipt),'answer receipt canonical digest survives control JVM restart')
+        claimed=self.start('resume-claimed-before-restore','worker',boundary='QUESTION_ATTEMPT_CLAIMED')
+        self.barrier(claimed)
+        self.assert_that(self.sql("SELECT state FROM task WHERE id='"+task+"';")=='RUNNING' and self.fixture.models['restart-wait']==1,'resume claim committed before checkpoint restore and external dispatch')
+        self.stop(claimed,kill=True)
         self.worker = self.start('worker-restarted', 'worker')
         self.other = self.start('worker-restarted-two', 'worker')
         self.state(task, 'SUCCEEDED')
@@ -300,8 +306,8 @@ class QuestionsExperiment(McpExperiment):
         self.assert_that(self.fixture.models['fault-late-prepare']==3 and sum(m['role']=='user' and 'answer_to_pending_question' in m['content'] for m in bodies[-1]['messages'])==1,'crash after late prepare recovers exact request once')
         self.other=self.start('recover-late-prepare-two','worker')
 
-    def raw_answer(self,task,q,raw):
-        request=urllib.request.Request('http://127.0.0.1:'+str(self.control['port'])+'/api/tasks/'+task+'/questions/'+q['requestId']+'/answers',data=raw,method='POST',headers={'Authorization':'Bearer '+self.token(),'Content-Type':'application/json','Idempotency-Key':str(uuid.uuid4())})
+    def raw_answer(self,task,q,raw,subject='a'):
+        request=urllib.request.Request('http://127.0.0.1:'+str(self.control['port'])+'/api/tasks/'+task+'/questions/'+q['requestId']+'/answers',data=raw,method='POST',headers={'Authorization':'Bearer '+self.token(subject),'Content-Type':'application/json','Idempotency-Key':str(uuid.uuid4())})
         try: response=self.http_client.open(request,timeout=20)
         except urllib.error.HTTPError as error: response=error
         with response: return response.status,json.loads(response.read())
@@ -310,6 +316,7 @@ class QuestionsExperiment(McpExperiment):
         task=self.task('install-revocation',[batch()]);q=self.question(task);self.stopped_slot(task)
         self.sql("UPDATE installation SET enabled=FALSE WHERE tenant_id='tenant-a' AND plugin_id='ask_user_question';")
         self.assert_that(self.http('GET','/api/tasks/'+task+'/questions')[0]==403 and self.respond(task,q)[0]==403,'disabled installation blocks read and answer immediately')
+        self.assert_that(self.raw_answer(task,q,b'{')[0]==403,'installation authorization precedes malformed answer')
         eventually(lambda:self.sql("SELECT state FROM task WHERE id='"+task+"';")=='FAILED','maintenance closes revoked wait')
         self.sql("UPDATE installation SET enabled=TRUE,epoch=epoch+1 WHERE tenant_id='tenant-a' AND plugin_id='ask_user_question';")
         self.assert_that(self.respond(task,q)[1]['code']=='PLUGIN_PIN_MISMATCH','reinstalled capability does not rebind old task')
@@ -372,7 +379,9 @@ class QuestionsExperiment(McpExperiment):
         ]):
             task=self.task('invalid-model-question-'+str(i),[value])
             self.state(task,'FAILED')
-            self.assert_that(self.sql("SELECT code FROM task WHERE id='"+task+"';")=='TOOL_INPUT_INVALID' and self.sql("SELECT COUNT(*) FROM user_question WHERE task_id='"+task+"';")=='0','invalid model question rejected before tool budget and persistence '+str(i))
+            # Duplicate JSON is rejected by the existing strict model wire decoder, before M2.
+            expected='MODEL_STREAM_INCOMPLETE' if i==4 else 'TOOL_INPUT_INVALID'
+            self.assert_that(self.sql("SELECT code,tools_used FROM task WHERE id='"+task+"';")==expected+'\t0' and self.sql("SELECT COUNT(*) FROM user_question WHERE task_id='"+task+"';")=='0','invalid model question rejected before tool budget and persistence '+str(i))
         task=self.task('tight-tool-budget',[batch(),batch()],budget={'maxToolInvocations':1})
         q=self.question(task);self.respond(task,q);self.state(task,'FAILED')
         self.assert_that(self.sql("SELECT code,tools_used FROM task WHERE id='"+task+"';")=='TOOL_BUDGET_EXCEEDED\t1','resume reads successful slot with exhausted tool count then rejects new dispatch')

@@ -14,6 +14,8 @@ public interface UserQuestionLedger {
 
   Map<String, Object> listQuestions(Tasks.Identity identity, String taskId);
 
+  void authorizeAnswer(Tasks.Identity identity, String taskId, String requestId);
+
   Submission answer(
       Tasks.Identity identity, String taskId, String requestId, String key, Command command);
 

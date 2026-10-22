@@ -59,6 +59,7 @@ public final class UserQuestionController {
       jakarta.servlet.http.HttpServletRequest request)
       throws IOException {
     var identity = authentication.authenticate(authorization);
+    questions.authorizeAnswer(identity, taskId, requestId);
     if (key == null || !key.matches("[!-~]{1,128}")) throw new TaskFailure(400, "INVALID_REQUEST");
     byte[] bytes = request.getInputStream().readNBytes(32769);
     if (bytes.length > 32768) throw new TaskFailure(413, "REQUEST_TOO_LARGE");
