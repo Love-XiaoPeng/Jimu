@@ -73,7 +73,11 @@ public final class TaskController {
     try {
       request = STRICT.readValue(body, SubmitRequest.class);
     } catch (com.fasterxml.jackson.core.JsonProcessingException invalid) {
-      throw new TaskFailure(400, "INVALID_IMAGE_INPUT");
+      boolean image =
+          invalid instanceof com.fasterxml.jackson.databind.JsonMappingException mapping
+              && mapping.getPath().stream()
+                  .anyMatch(reference -> "images".equals(reference.getFieldName()));
+      throw new TaskFailure(400, image ? "INVALID_IMAGE_INPUT" : "INVALID_REQUEST");
     }
     if (request != null && request.images() != null && request.images().isEmpty())
       throw new TaskFailure(400, "INVALID_IMAGE_INPUT");

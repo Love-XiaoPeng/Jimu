@@ -55,7 +55,7 @@ class ImageProvider(Handler):
         last = calls[-1]['function']['name'] if calls else None
         path = 'reports/image.md'
         if last is None:
-            name, args = 'read_image', {'file_path': 'inputs/images/sample.png'}
+            name, args = 'read_image', {'file_path': 'inputs/images/sample.jpg' if goal == 'image-stream' else 'inputs/images/sample.png'}
         elif last == 'read_image':
             assert len(media) == 1
             name, args = 'read', {'file_path': path}
@@ -167,6 +167,9 @@ def verify(e):
     capabilities = ['read', 'read_image', 'compose_report', 'present']
     body = {'goal': 'image-call', 'capabilityIds': capabilities, 'images': [{'filePath': 'inputs/images/sample.png', 'dataBase64': base64.b64encode(png()).decode()}]}
     before = e.sql('SELECT COUNT(*) FROM task;')
+    for invalid in [dict(body, unknown=True), dict(body, budget={'deadlineSeconds': '10'}), dict(body, budget={'deadlineSeconds': 1.5})]:
+        status, failure = e.http('POST', '/api/tasks', invalid, key='invalid-request')
+        e.assert_that(status == 400 and failure['code'] == 'INVALID_REQUEST', 'legacy malformed envelope retains INVALID_REQUEST', response=failure)
     for label, media in [('bad-base64', 'YWJj='), ('whitespace', 'Y Q=='), ('empty', ''), ('too-large', base64.b64encode(bytes(1048577)).decode())]:
         invalid = dict(body, images=[dict(body['images'][0], dataBase64=media)])
         e.assert_that(e.http('POST', '/api/tasks', invalid, key=label)[0] == 400, 'strict image admission rejects '+label)
@@ -206,7 +209,8 @@ def verify(e):
     e.assert_that(rejected['code'].startswith('REPORT_') and not rejected['artifacts'], 'another task image source cannot compose or publish', code=rejected['code'])
     e.stop(worker)
     # Same product stack and task contract, with real SSE model transport.
-    streaming = dict(body, goal='image-stream')
+    jpeg = (Path(__file__).resolve().parents[1] / 'src/test/resources/images/red-3x2.jpg').read_bytes()
+    streaming = dict(body, goal='image-stream', images=[{'filePath': 'inputs/images/sample.jpg', 'dataBase64': base64.b64encode(jpeg).decode()}])
     status, view = e.http('POST', '/api/tasks', streaming, key='image-stream', subject='b')
     e.assert_that(status == 202, 'stream image admission')
     worker = e.start('stream-worker', 'worker')
