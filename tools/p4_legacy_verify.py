@@ -44,8 +44,9 @@ public class Seed {
  public static void main(String[] a) throws Exception {
   var s = new SecureWorkspaceStore(Path.of(a[0]));
   s.initialize("legacy",a[1],Boolean.parseBoolean(a[2]),()->{});
-  var p=s.bind("legacy",a[1],"seed",()->{});
-  p.read("a",1,2000); p.write("a","legacy text");
+  var p=s.bind("legacy",a[1],java.util.UUID.randomUUID().toString(),()->{});
+  p.read("a",1,2000);
+  s.bind("legacy",a[1],java.util.UUID.randomUUID().toString(),()->{}).write("a","legacy text");
  }
 }
 ''')
@@ -58,8 +59,8 @@ public class Probe {
  public static void main(String[] a) throws Exception {
   try {
    var s=new SecureWorkspaceStore(Path.of(a[0]));
-   var result=s.bind("legacy",a[1],"old-worker",()->{}).read("a",1,2000);
-   if(a[2].equals("3") || !result.content().equals("legacy text")) throw new AssertionError();
+   var result=s.bind("legacy",a[1],java.util.UUID.randomUUID().toString(),()->{}).read("a",1,2000);
+   if(a[2].equals("3") || !result.content().equals("1: legacy text\\n")) throw new AssertionError();
    System.out.println("PASS exact old worker reads format2");
   } catch(FileFailure failure) {
    if(!a[2].equals("3")) throw failure;
@@ -79,7 +80,9 @@ public class Probe {
             subprocess.run(prefix+['-cp',str(current)+':'+classpath,'Seed',str(workspace),task,str(version==3).lower()],check=True,timeout=30)
             state=workspace/(hashlib.sha256(('legacy:'+task).encode()).hexdigest()+'.json')
             before=state.read_bytes()
-            result=subprocess.run(prefix+['-cp',str(old)+':'+classpath,'Probe',str(workspace),task,str(version)],check=True,capture_output=True,text=True,timeout=30)
+            result=subprocess.run(prefix+['-cp',str(old)+':'+classpath,'Probe',str(workspace),task,str(version)],capture_output=True,text=True,timeout=30)
+            (evidence/('format'+str(version)+'.log')).write_text(result.stdout+result.stderr)
+            assert result.returncode==0,result.stdout+result.stderr
             outputs.append(result.stdout)
             if version==3: assert state.read_bytes()==before,'old worker must leave format3 bytes unchanged'
         (evidence/'scenario.log').write_text(''.join(outputs))
