@@ -40,7 +40,7 @@ class Model(Handler):
                 batch = planned
                 break
             at -= len(planned)
-        message = {'role': 'assistant', 'content': 'Verified local logical directory result.'}
+        message = {'role': 'assistant', 'content': 'x'*8193 if goal == 'D09-summary' else 'Verified local logical directory result.'}
         if batch is not None:
             message['content'] = ''
             message['tool_calls'] = [{'id': 'slot-' + str(len(replies)+i), 'type': 'function',
@@ -112,6 +112,7 @@ class DirectoryExperiment(Experiment):
         self.control = self.start('control-directory', 'control')
         self.sql('UPDATE tenant_budget SET directory_storage_limit=268435456,model_limit=1000,tool_limit=1000,token_limit=16777216;')
         self.subjects = {}
+        self.task_subjects = self.subjects
 
     def task(self, goal, plan, subject='a', **fields):
         self.fixture.plans[goal] = plan
@@ -248,6 +249,16 @@ class DirectoryExperiment(Experiment):
         self.assert_that(output['filePath'] == 'a/x' and output['sha256'] == hashlib.sha256(b'alias-update').hexdigest(), 'canonical aliases share observation and CAS')
         self.stop(worker)
         self.storage_probe('boundaries')
+        task = self.task('D06-missing-ready-state', [self.sentinels()[0], [call('working_directory', cd='a')]])
+        worker = self.start('D06-missing-ready-worker', 'worker', 'DIRECTORY_FROZEN')
+        self.barrier(worker)
+        state = self.root/'workspace'/(hashlib.sha256(('tenant-a:'+task).encode()).hexdigest()+'.json')
+        state.unlink()
+        (worker['folder']/'release').touch()
+        self.state(task, 'FAILED')
+        self.assert_that(not state.exists() and self.view(task)['revision'] == 0 and
+                         self.sql("SELECT code FROM task WHERE id='"+task+"';") == 'FS_BINDING_UNPROVEN', 'missing READY workspace fails without reinitializing root')
+        self.stop(worker)
 
     def storage_probe(self, mode):
         if not hasattr(self, 'probe_classes'):
@@ -276,7 +287,11 @@ class DirectoryExperiment(Experiment):
             out.write(json.dumps({'task': task, 'slot': slot, 'exit': result.returncode,
                                   'stdout': result.stdout, 'stderr': result.stderr})+'\n')
         assert result.returncode == 0, (result.returncode, result.stdout, result.stderr)
-        return json.loads(result.stdout.strip().splitlines()[-1])
+        output = json.loads(result.stdout.strip().splitlines()[-1])
+        for line in result.stderr.splitlines():
+            if line.startswith('DIRECTORY_OPERATION_MILLIS='):
+                output['operationMillis'] = int(line.split('=', 1)[1])
+        return output
 
     def transaction(self):
         task = self.task('D04-fixed-slots', [[call('working_directory'), call('working_directory'), call('working_directory')]])
@@ -430,6 +445,7 @@ class DirectoryExperiment(Experiment):
         for goal, plan, budget, expected in (
             ('tight-batch', [[call('working_directory'), call('working_directory')]], {'maxToolInvocations':1}, 'TOOL_BUDGET_EXCEEDED'),
             ('five-slots', [[call('working_directory')]*5], {}, 'MODEL_RESPONSE_TOO_LARGE'),
+            ('summary', [], {}, 'DIRECTORY_STORAGE_LIMIT'),
             ('eight-models', [[call('working_directory')]]*8, {}, 'DIRECTORY_EXECUTION_LIMIT'),
             ('twenty-tools', [[call('working_directory')]*4]*6, {}, 'DIRECTORY_EXECUTION_LIMIT')):
             task = self.task('D09-'+goal, plan, budget=budget)
@@ -450,7 +466,7 @@ class DirectoryExperiment(Experiment):
             start = time.monotonic()
             result = self.probe(task, worker)
             elapsed = time.monotonic()-start
-            self.assert_that(result['code'] == 'UNCONFIRMED' and 1.5 <= elapsed < 6, 'real InnoDB lock has two-second bound', result=result, elapsedSeconds=elapsed)
+            self.assert_that(result['code'] == 'UNCONFIRMED' and 1500 <= result['operationMillis'] < 3000, 'real InnoDB lock has two-second bound', result=result, processElapsedSeconds=elapsed)
         finally:
             locker.communicate('\n', timeout=10)
         import fcntl
@@ -461,7 +477,7 @@ class DirectoryExperiment(Experiment):
                 start = time.monotonic()
                 result = self.probe(task, worker)
                 elapsed = time.monotonic()-start
-                self.assert_that(result['code'] == 'WORKSPACE_UNAVAILABLE' and 1.5 <= elapsed < 6, 'real POSIX file lock has two-second bound', result=result, elapsedSeconds=elapsed)
+                self.assert_that(result['code'] == 'WORKSPACE_UNAVAILABLE' and 1500 <= result['operationMillis'] < 3000, 'real POSIX file lock has two-second bound', result=result, processElapsedSeconds=elapsed)
             finally:
                 fcntl.lockf(lock, fcntl.LOCK_UN)
         self.assert_that(self.sql("SELECT tools_used FROM task WHERE id='"+task+"';") == '0', 'lock rejection never consumes a tool')
@@ -484,6 +500,20 @@ class DirectoryExperiment(Experiment):
         worker = self.start('D10-worker', 'worker')
         self.state(task, 'SUCCEEDED')
         self.stop(worker)
+        self.sql("UPDATE tenant_budget SET directory_storage_limit=1073741824 WHERE tenant_id='tenant-a';")
+        blockers = []
+        for index in range(64):
+            blocked = self.task('D10-blocked-'+str(index), [])
+            status, _ = self.http('POST', '/api/tasks/'+blocked+'/cancel')
+            assert status == 200
+            blockers.append(blocked)
+            if index < 32:
+                self.sql("INSERT INTO reservation(tenant_id,id,task_id,category,amount,state,usage_quality) VALUES('tenant-a','"+blocked+":unknown','"+blocked+"','MODEL',1,'HELD_UNKNOWN','UNKNOWN');")
+            else:
+                self.sql("INSERT INTO task_attempt(tenant_id,id,task_id,worker_id,fence,state,quiescent) VALUES('tenant-a','"+str(uuid.uuid4())+"','"+blocked+"','unconfirmed-historical-writer',1,'EXPIRED',FALSE);")
+        ids = ','.join("'"+value+"'" for value in blockers)
+        other = self.task('D10-unexpired-other-tenant', [], subject='b')
+        self.http('POST', '/api/tasks/'+other+'/cancel', subject='b')
         self.stop(self.control)
         scope = hashlib.sha256(('tenant-a:'+task).encode()).hexdigest()
         files = list((self.root/'workspace').glob(scope+'*'))
@@ -491,6 +521,9 @@ class DirectoryExperiment(Experiment):
         before = self.view_at_rest = self.sql("SELECT directory_storage_held FROM tenant_budget WHERE tenant_id='tenant-a';")
         self.sql("DELIMITER $$\nCREATE TRIGGER directory_cleanup_pause BEFORE UPDATE ON task_directory FOR EACH ROW BEGIN IF NEW.content_state='PURGED' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='test cleanup final commit interruption'; END IF; END$$\nDELIMITER ;\n")
         self.sql("UPDATE task_directory SET retain_until=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE task_id='"+task+"';")
+        self.sql("UPDATE task_directory SET retain_until=CURRENT_TIMESTAMP(6)-INTERVAL 2 DAY WHERE task_id IN ("+ids+");")
+        prefix = self.sql("SELECT task_id FROM task_directory WHERE content_state<>'PURGED' AND retain_until<=CURRENT_TIMESTAMP(6) ORDER BY retain_until,tenant_id,task_id LIMIT 32;").splitlines()
+        self.assert_that(len(prefix) == 32 and task not in prefix, 'unsafe prefix fills a full unfiltered cleanup batch')
         self.control = self.start('D10-purge-control', 'control')
         eventually(lambda: self.view(task)['state'] == 'PURGING' and not list((self.root/'workspace').glob(scope+'*.json')), 'files removed before interrupted final DB commit', 35)
         self.assert_that(self.sql("SELECT directory_storage_held FROM tenant_budget WHERE tenant_id='tenant-a';") == before, 'PURGING has not released quota')
@@ -499,6 +532,7 @@ class DirectoryExperiment(Experiment):
         eventually(lambda: self.view(task)['state'] == 'PURGED', 'retry finalizes exact persisted filesystem inventory', 35)
         self.assert_that(int(self.sql("SELECT directory_storage_held FROM tenant_budget WHERE tenant_id='tenant-a';")) == int(before)-8388608 and
                          self.sql("SELECT COUNT(*) FROM event WHERE task_id='"+task+"' AND type='working_directory.content_deleted';") == '1', 'exactly one eight MiB release and deletion event')
+        self.assert_that(self.sql("SELECT COUNT(*) FROM task_directory WHERE task_id IN ("+ids+") AND content_state='PRESENT';") == '64' and self.view(other)['state'] == 'PRESENT', 'cleanup retains UNKNOWN, all unconfirmed writers and unexpired other tenant')
         self.assert_that(not list((self.root/'workspace').glob(scope+'*.json')) and not list((self.root/'workspace').glob(scope+'*.part')), 'workspace body and temporary copies removed')
         bodies = self.sql("SELECT request_snapshot,goal,summary FROM task WHERE id='"+task+"';")+self.sql("SELECT request_snapshot,response_snapshot,directory_cwd FROM step WHERE task_id='"+task+"';")+self.sql("SELECT input_snapshot,output_snapshot FROM invocation WHERE task_id='"+task+"';")+self.sql("SELECT base_cwd,target_cwd,canonical_paths_snapshot,directory_evidence_snapshot FROM invocation_path_binding WHERE task_id='"+task+"';")
         self.assert_that('sentinel-A' not in bodies and 'sentinel-B' not in bodies and 'DIRECTORY_PURGED' in bodies, 'all duplicated content bodies tombstoned')

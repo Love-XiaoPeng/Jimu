@@ -142,6 +142,7 @@ public final class DirectoryLedgerScenario {
         };
     var ledger = new JdbcLedger(wrapped, new ModelProfiles(env));
     ledger.directoryEnabled(!mode.equals("flag-off"));
+    long operationStart = System.nanoTime();
     try {
       if (mode.equals("admit"))
         ledger.admit(
@@ -196,6 +197,9 @@ public final class DirectoryLedgerScenario {
     } catch (org.springframework.dao.DataAccessException
         | org.springframework.transaction.TransactionException unconfirmed) {
       System.out.println("{\"code\":\"UNCONFIRMED\"}");
+    } finally {
+      System.err.println(
+          "DIRECTORY_OPERATION_MILLIS=" + (System.nanoTime() - operationStart) / 1_000_000);
     }
   }
 }
