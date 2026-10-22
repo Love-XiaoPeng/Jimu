@@ -3808,7 +3808,7 @@ public final class JdbcLedger
               if (io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(response)
                       > 65536
                   || calls.size() > 4) throw new TaskFailure(409, "MODEL_RESPONSE_TOO_LARGE");
-              if (invocations + calls.size() > Math.min(20, n(task, "max_tools")))
+              if (invocations + calls.size() > 20)
                 throw new TaskFailure(429, "TODO_EXECUTION_LIMIT");
               for (var call : calls) {
                 if (!"todo_write".equals(call.tool()))

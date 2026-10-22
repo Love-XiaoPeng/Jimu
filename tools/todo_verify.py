@@ -266,6 +266,15 @@ class TodoExperiment(Experiment):
             (worker['folder']/'release').touch()
             eventually(lambda:self.sql("SELECT state FROM task WHERE id='"+task+"';") in ('CANCELLED','FAILED'),'blocked writer converges')
             self.stop(worker)
+        task=self.task('deadline-during-commit',[items(('must-roll-back','pending'))])
+        worker=self.start('worker-deadline-during-commit','worker','M2');self.barrier(worker)
+        self.sql("CREATE TRIGGER todo_test_deadline BEFORE UPDATE ON task_todo_projection FOR EACH ROW UPDATE task SET deadline=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE tenant_id=NEW.tenant_id AND id=NEW.task_id;")
+        try:
+            result=self.probe(task,worker)
+            self.assert_that(result['code']=='FENCE_REJECTED' and self.view(task)['revision']==0 and self.sql("SELECT tools_used FROM task WHERE id='"+task+"';")=='0','DB deadline expiry injected after admission rolls back projection event result and charge',code=result['code'])
+        finally:self.sql('DROP TRIGGER todo_test_deadline;')
+        self.sql("UPDATE task SET deadline=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE id='"+task+"';")
+        (worker['folder']/'release').touch();self.state(task,'FAILED');self.stop(worker)
 
     def sse_cases(self):
         task=self.task('sse-race',[items(('updated-between-get-and-subscribe','completed'))])
@@ -283,23 +292,25 @@ class TodoExperiment(Experiment):
         for cursor in (task+':999999',str(uuid.uuid4())+':1'):
             self.assert_that(self.http('GET','/api/tasks/'+task+'/events',headers={'Last-Event-ID':cursor})[0]==400,'future or foreign task SSE cursor rejected')
         self.sql("UPDATE event SET occurred_at=CURRENT_TIMESTAMP(6)-INTERVAL 8 DAY WHERE task_id='"+task+"';")
-        self.assert_that(self.http('GET','/api/tasks/'+task+'/events',headers={'Last-Event-ID':task+':0'})[0]==410 and self.view(task)['revision']==1,'410 cursor expires independently of latest owner snapshot')
+        status,error=self.http('GET','/api/tasks/'+task+'/events',headers={'Last-Event-ID':task+':'+str(initial['asOfSeq'])})
+        self.assert_that(status==410 and self.view(task)['revision']==1,'410 cursor expires independently of latest owner snapshot',status=status,error=error)
 
     def limit_cases(self):
         worker=self.start('worker-local-budget','worker')
         for goal,plan,budget,code in [
             ('model-limit',[items(('kept','pending'))],{'maxModelRequests':1},'MODEL_BUDGET_EXCEEDED'),
             ('model-limit-eight',[items() for _ in range(8)],{},'MODEL_BUDGET_EXCEEDED'),
-            ('tool-limit',[items(),items()],{'maxToolInvocations':1},'TODO_EXECUTION_LIMIT'),
+            ('tool-limit',[items(),items()],{'maxToolInvocations':1},'TOOL_BUDGET_EXCEEDED'),
             ('batch-hard-tool-limit',[[items() for _ in range(4)] for _ in range(24)],{},'TODO_EXECUTION_LIMIT'),
             ('summary-limit',[],{},'SUMMARY_TOO_LARGE'),
             ('batch-five',[[items(),items(),items(),items(),items()]],{},'MODEL_RESPONSE_TOO_LARGE')]:
             task=self.task(goal,plan,budget=budget);self.state(task,'FAILED')
-            self.assert_that(self.sql("SELECT code FROM task WHERE id='"+task+"';")==code,'explicit local limit '+goal)
+            actual=self.sql("SELECT code FROM task WHERE id='"+task+"';")
+            self.assert_that(actual==code,'explicit local limit '+goal,expected=code,actual=actual)
         self.stop(worker)
         for budget in ({'maxModelRequests':9},{'maxToolInvocations':21}):
             status,value=self.http('POST','/api/tasks',{'goal':'cannot-widen-fixed-caps','capabilityIds':['todo_write'],'budget':budget},key=str(uuid.uuid4()))
-            self.assert_that(status==429 and value['code']=='TODO_EXECUTION_LIMIT','caller cannot widen profile execution ceilings',budget=budget)
+            self.assert_that(status==400 and value['code']=='INVALID_BUDGET','HTTP caller cannot widen existing execution ceilings',budget=budget,status=status,value=value)
         task=self.task('storage-accounting',[items(('bounded','pending'))])
         worker=self.start('worker-storage-accounting','worker','M2');self.barrier(worker)
         request=self.sql("SELECT HEX(request_snapshot) FROM step WHERE task_id='"+task+"';")
