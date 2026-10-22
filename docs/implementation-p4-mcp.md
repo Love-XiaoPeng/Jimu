@@ -19,6 +19,10 @@ business-policy and budget gates still apply. An MCP-only task finishes with a
 summary; it does not stage or publish an artifact. Existing report and image
 contracts are unchanged.
 
+This first profile also requires the existing explicit local test model assembly,
+`paid=false`, and no BUSINESS policy. Enabling MCP cannot expand a production model
+or an existing paid/business authorization.
+
 The operator-owned `mcp_server` table binds tenant, actor allowlist, server alias,
 host identity, literal `http://127.0.0.1:<port>/mcp` endpoint, secret reference and
 version, URI/template allowlists, protocol/server/capability snapshot and packaged

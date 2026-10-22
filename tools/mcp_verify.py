@@ -32,7 +32,8 @@ class Model(Handler):
         replies = [json.loads(m['content']) for m in request['messages'] if m['role'] == 'tool']
         assert all(m['role'] != 'system' for m in request['messages'])
         assert all(not isinstance(m.get('content'), list) for m in request['messages'])
-        assert set(t['function']['name'] for t in request['tools']) == set(NAMES)
+        advertised = set(t['function']['name'] for t in request['tools'])
+        assert advertised == (set(NAMES) if not goal.startswith('legacy-') else {'web_fetch'})
         plan = self.server.plans[goal]
         at = len(replies)
         if at < len(plan):
@@ -44,7 +45,8 @@ class Model(Handler):
             if goal.startswith('batch-'):
                 message['tool_calls'] = [{'id': 'mcp_'+str(i), 'type': 'function', 'function': {'name': n, 'arguments': json.dumps(a)}} for i, (n, a) in enumerate(plan)]
         else:
-            message = {'role': 'assistant', 'content': 'Untrusted MCP results: ' + canonical([{'server': r['server'], 'uri': r.get('resourceUri'), 'sha256': r['snapshotSha256'], 'truncated': any(c['textTruncated'] for c in r.get('contents', []))} for r in replies])}
+            summary = 'Legacy fixture remains unchanged' if goal.startswith('legacy-') else 'Untrusted MCP results: ' + canonical([{'server': r['server'], 'uri': r.get('resourceUri'), 'sha256': r['snapshotSha256'], 'truncated': any(c['textTruncated'] for c in r.get('contents', []))} for r in replies])
+            message = {'role': 'assistant', 'content': summary}
         with self.server.lock:
             self.server.models[goal] = self.server.models.get(goal, 0)+1
             self.server.identities.setdefault(goal, []).append(tenant)
@@ -53,6 +55,15 @@ class Model(Handler):
 
 
 class McpExperiment(Experiment):
+    def stop(self, instance, kill=False):
+        child = instance['process']
+        if kill and child.poll() is None:
+            child.kill()
+            # Preserve the zombie until the existing supervisor observes its exit.
+            # Disabled native search deliberately cannot prove an already-reaped PID absent.
+            eventually(lambda: self.sql("SELECT stopped FROM worker_process WHERE pid="+str(child.pid)+";") == '1', 'supervisor proves killed worker stopped')
+        super().stop(instance, kill=False)
+
     def start(self, name, role, boundary='', model_stream=False, expected_ready=200, extra=None):
         folder = self.root / name
         folder.mkdir()
@@ -82,6 +93,11 @@ class McpExperiment(Experiment):
         self.fixture.RequestHandlerClass = Model
         self.fixture.plans, self.fixture.requests = {}, []
         super().prepare()
+        self.fixture.plans['legacy-before-mcp'] = [('web_fetch', {'url': self.fixture.origin+'/page/legacy-before-mcp'})]
+        status, legacy = self.http('POST', '/api/tasks', {'goal': 'legacy-before-mcp'}, key='legacy-before-mcp')
+        assert status == 202
+        self.legacy_task = legacy['taskId']
+        self.legacy_pins = self.sql("SELECT tools_snapshot,tools_digest,model_snapshot,model_digest FROM task WHERE id='"+self.legacy_task+"';")
         self.mcp_root = self.root / 'mcp-service'
         self.mcp_root.mkdir(mode=0o700)
         self.mcp_secrets = {t: secrets.token_urlsafe(24) for t in ('tenant-a', 'tenant-b')}
@@ -150,11 +166,13 @@ class McpExperiment(Experiment):
         return eventually(matches, task+' -> '+expected)
 
     def outputs(self, task):
-        rows = self.sql("SELECT output_snapshot FROM invocation WHERE task_id='"+task+"' AND state='SUCCEEDED' ORDER BY ordinal;")
+        rows = self.sql("SELECT i.output_snapshot FROM invocation i JOIN step s ON s.tenant_id=i.tenant_id AND s.id=i.step_id WHERE i.task_id='"+task+"' AND i.state='SUCCEEDED' ORDER BY s.ordinal,i.slot;")
         return [json.loads(line) for line in rows.splitlines()] if rows else []
 
     def main_cases(self):
         worker = self.start('worker-main', 'worker')
+        legacy = self.state(self.legacy_task, 'SUCCEEDED')
+        self.assert_that(len(legacy['artifacts']) == 1 and self.sql("SELECT mcp_snapshot IS NULL FROM task WHERE id='"+self.legacy_task+"';") == '1' and self.sql("SELECT tools_snapshot,tools_digest,model_snapshot,model_digest FROM task WHERE id='"+self.legacy_task+"';") == self.legacy_pins, 'old NULL binding task keeps original pins and artifact behavior')
         prefix = 'jimu-fixture://tenant-a/docs/'
         plan = [(NAMES[0], {'server': 'controlled'}), (NAMES[1], {'server': 'controlled'}), (NAMES[1], {'server': 'controlled', 'cursor': '$next'}), (NAMES[2], {'server': 'controlled', 'uri': prefix+'text'})]
         task = self.task('mcp-json-slice', plan)
@@ -217,6 +235,44 @@ class McpExperiment(Experiment):
         self.stop(worker)
         return task, raw_cursor
 
+    def authorization_cases(self):
+        prefix = 'jimu-fixture://tenant-a/docs/'
+        original = self.sql("SELECT profile_snapshot FROM mcp_server WHERE tenant_id='tenant-a';")
+        for label, boundary, changes, expected in [
+            ('epoch', 'T0_BEFORE', {'epoch': 2}, 'MCP_SNAPSHOT_MISMATCH'),
+            ('actor', 'T1', {'allowedActors': ['carol']}, 'MCP_SERVER_NOT_AUTHORIZED'),
+            ('secret-version', 'T1', {'credentialVersion': 2}, 'MCP_SNAPSHOT_MISMATCH'),
+            ('capabilities', 'T1', {'serverCapabilities': {'resources': {'subscribe': True}}}, 'MCP_SNAPSHOT_MISMATCH'),
+            ('schema', 'T0_BEFORE', {'schemaDigest': '0'*64}, 'MCP_SNAPSHOT_MISMATCH'),
+            ('installation', 'T1', None, 'CAPABILITY_REVOKED'),
+            ('profile-hash', 'T0_BEFORE', None, 'SNAPSHOT_CORRUPT'),
+        ]:
+            tid = self.task('authorization-'+label, [(NAMES[2], {'server': 'controlled', 'uri': prefix+'text'})])
+            worker = self.start('worker-auth-'+label, 'worker', boundary)
+            self.barrier(worker)
+            before = len(self.calls())
+            if changes is not None:
+                profile = dict(json.loads(original), **changes)
+                raw = canonical(profile)
+                self.sql("UPDATE mcp_server SET epoch="+str(profile['epoch'])+",profile_snapshot='"+raw+"',profile_digest='"+hashlib.sha256(raw.encode()).hexdigest()+"' WHERE tenant_id='tenant-a';")
+            elif label == 'installation':
+                self.sql("UPDATE installation SET enabled=FALSE WHERE tenant_id='tenant-a' AND plugin_id='read_mcp_resource';")
+            else:
+                self.sql("UPDATE mcp_server SET profile_digest='"+'0'*64+"' WHERE tenant_id='tenant-a';")
+            (worker['folder'] / 'release').touch()
+            result = self.state(tid, 'FAILED')
+            self.assert_that(result['code'] == expected and len(self.calls()) == before, label+' change blocks first/cached admission with zero resource I/O', code=result['code'])
+            self.stop(worker)
+            self.sql("UPDATE mcp_server SET epoch=1,profile_snapshot='"+original+"',profile_digest='"+hashlib.sha256(original.encode()).hexdigest()+"' WHERE tenant_id='tenant-a'; UPDATE installation SET enabled=TRUE WHERE tenant_id='tenant-a' AND plugin_id='read_mcp_resource';")
+
+        tid = self.task('expired-cursor', [(NAMES[1], {'server': 'controlled'}), (NAMES[1], {'server': 'controlled', 'cursor': '$next'})])
+        worker = self.start('worker-expired-cursor', 'worker', 'T1'); self.barrier(worker)
+        before = len(self.calls())
+        self.sql("UPDATE mcp_cursor SET expires_at=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE task_id='"+tid+"';")
+        (worker['folder'] / 'release').touch()
+        self.assert_that(self.state(tid, 'FAILED')['code'] == 'MCP_CURSOR_INVALID' and len(self.calls()) == before, 'expired same-task cursor rejected without upstream I/O')
+        self.stop(worker)
+
     def recovery_cases(self):
         prefix = 'jimu-fixture://tenant-a/docs/'
         plan = [(NAMES[1], {'server': 'controlled'}), (NAMES[1], {'server': 'controlled', 'cursor': '$next'})]
@@ -232,8 +288,24 @@ class McpExperiment(Experiment):
         fresh = self.start('worker-recover', 'worker')
         self.state(task, 'SUCCEEDED')
         values = self.outputs(task)
-        self.assert_that(values[0] == output and values[1]['total'] == 201 and len(self.calls()) == before, 'successful cache and next cursor survive restart without MCP replay or source drift')
+        self.assert_that(values[0] == output and values[1]['total'] == 201 and len(self.calls()) == before, 'successful cache and next cursor survive restart without MCP replay or source drift', pages=[v['page'] for v in values], before=before, after=len(self.calls()))
         self.stop(fresh); source.write_text(original)
+        tid = self.task('recover-pending', [(NAMES[2], {'server': 'controlled', 'uri': prefix+'text'})])
+        pending = self.start('worker-pending', 'worker', 'T0_BEFORE'); self.barrier(pending)
+        before = len(self.calls())
+        self.stop(pending, kill=True); self.expire(tid)
+        fresh = self.start('worker-pending-recover', 'worker')
+        self.state(tid, 'SUCCEEDED')
+        self.assert_that(len(self.calls()) == before+1, 'PENDING recovery performs exactly its first resource call')
+        self.stop(fresh)
+        tid = self.task('recover-read', [(NAMES[2], {'server': 'controlled', 'uri': prefix+'text'})])
+        read_worker = self.start('worker-read-checkpoint', 'worker', 'T1'); self.barrier(read_worker)
+        output = self.outputs(tid)[0]; before = len(self.calls())
+        self.stop(read_worker, kill=True); self.expire(tid)
+        fresh = self.start('worker-read-recover', 'worker')
+        self.state(tid, 'SUCCEEDED')
+        self.assert_that(self.outputs(tid)[0] == output and len(self.calls()) == before, 'successful read restores original output without resource retry')
+        self.stop(fresh)
         tid = self.task('recover-running', [(NAMES[2], {'server': 'controlled', 'uri': prefix+'text'})])
         running = self.start('worker-running', 'worker', 'T1_BEFORE')
         self.barrier(running); before = len(self.calls())
@@ -242,6 +314,16 @@ class McpExperiment(Experiment):
         view = self.state(tid, 'NEEDS_RECONCILIATION')
         self.assert_that(view['code'] == 'EFFECT_OUTCOME_UNKNOWN' and len(self.calls()) == before, 'RUNNING crash remains UNKNOWN with no automatic resource retry')
         self.stop(next_worker)
+        tid = self.task('stale-mcp-writer', [(NAMES[1], {'server': 'controlled'})])
+        stale = self.start('worker-stale', 'worker', 'T1_BEFORE'); self.barrier(stale)
+        before = len(self.calls()); self.expire(tid)
+        fresh = self.start('worker-fenced', 'worker')
+        self.state(tid, 'NEEDS_RECONCILIATION')
+        (stale['folder'] / 'release').touch()
+        eventually(lambda: 'FENCE_REJECTED' in (stale['folder'] / 'worker-stale.log').read_text(), 'stale MCP commit rejected')
+        self.assert_that(self.sql("SELECT COUNT(*) FROM mcp_result WHERE task_id='"+tid+"';") == '0' and len(self.calls()) == before, 'old fence cannot publish list or replay UNKNOWN call')
+        self.assert_that(self.sql("SELECT state FROM reservation WHERE id=(SELECT CONCAT('mcp:',id) FROM invocation WHERE task_id='"+tid+"');") == 'RESERVED', 'UNKNOWN list retains storage reservation')
+        self.stop(stale); self.stop(fresh)
         tid = self.task('revoke-cache', [(NAMES[2], {'server': 'controlled', 'uri': prefix+'text'})])
         running = self.start('worker-revoke', 'worker', 'T1'); self.barrier(running)
         before = len(self.calls())
@@ -299,14 +381,17 @@ class McpExperiment(Experiment):
         self.assert_that(self.sql("SELECT COUNT(*) FROM mcp_cursor WHERE root_invocation_id='"+root+"';") == '0' and self.sql("SELECT output_digest FROM invocation WHERE id='"+root+"';") == invocation_before, 'cleanup removes cursors and keeps original output fact')
 
     def cleanup(self):
-        if hasattr(self, 'mcp_root'):
-            if (self.mcp_root / 'wire.jsonl').exists(): shutil.copyfile(self.mcp_root / 'wire.jsonl', self.evidence / 'mcp-wire.jsonl')
-            (self.evidence / 'model-wire.json').write_text(json.dumps(self.fixture.requests, ensure_ascii=False, indent=2))
-            (self.evidence / 'service.json').write_text(json.dumps({'pid': self.service.pid if hasattr(self, 'service') else None, 'port': getattr(self, 'mcp_port', None), 'scriptSha256': getattr(self, 'service_script', None), 'uid': 65534, 'root': str(self.mcp_root)}))
-            for table in ('mcp_server', 'mcp_io', 'mcp_result', 'mcp_cursor'):
-                (self.evidence / (table+'.tsv')).write_text(self.sql('SELECT * FROM '+table+';'))
         port = getattr(self, 'mcp_port', None)
-        super().cleanup()
+        try:
+            for child in reversed(self.children): self.stop({'process': child, 'name': 'MCP foreground collection'})
+            if hasattr(self, 'mcp_root'):
+                if (self.mcp_root / 'wire.jsonl').exists(): shutil.copyfile(self.mcp_root / 'wire.jsonl', self.evidence / 'mcp-wire.jsonl')
+                (self.evidence / 'model-wire.json').write_text(json.dumps(self.fixture.requests, ensure_ascii=False, indent=2))
+                (self.evidence / 'service.json').write_text(json.dumps({'pid': self.service.pid if hasattr(self, 'service') else None, 'port': port, 'scriptSha256': getattr(self, 'service_script', None), 'uid': 65534, 'root': str(self.mcp_root)}))
+                for table in ('mcp_server', 'mcp_io', 'mcp_result', 'mcp_cursor'):
+                    (self.evidence / (table+'.tsv')).write_text(self.sql('SELECT * FROM '+table+';'))
+        finally:
+            super().cleanup()
         if port:
             with socket.socket() as client: assert client.connect_ex(('127.0.0.1', port)) != 0
             (self.evidence / 'mcp-cleanup.json').write_text(json.dumps({'serviceExited': self.service.poll() is not None, 'portClosed': True, 'rootRemoved': not self.mcp_root.exists()}))
@@ -321,6 +406,7 @@ if __name__ == '__main__':
     try:
         experiment.prepare()
         experiment.main_cases()
+        experiment.authorization_cases()
         experiment.recovery_cases()
         experiment.limit_and_cleanup_cases()
     except BaseException:

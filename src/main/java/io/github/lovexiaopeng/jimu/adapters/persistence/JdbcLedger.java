@@ -877,6 +877,11 @@ public final class JdbcLedger
           var model = models.selected(identity.tenant());
           String scopeDigest = requireScope(identity.tenant(), evaluation, null, model);
           var businessPolicy = models.businessPolicy();
+          if (mcpTask
+              && (model.paid()
+                  || businessPolicy != null
+                  || !(models.fixture() || models.localEvaluation(model))))
+            throw new TaskFailure(503, "MCP_NOT_CONFIGURED");
           if (request.capabilityIds().contains("compose_report")
               && request.capabilityIds().contains("write"))
             throw new TaskFailure(400, "INVALID_CAPABILITIES");

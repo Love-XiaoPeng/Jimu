@@ -51,8 +51,8 @@ final class JdbcMcpRecords {
     if (!p.tenant().equals(row.get("tenant_id"))
         || !p.server().equals(row.get("server_id"))
         || p.epoch() != ((Number) row.get("epoch")).longValue()) throw corrupt();
+    if (!Payloads.json(p).equals(raw)) throw corrupt();
     if (!p.hostId().equals(settings.hostId())) throw new TaskFailure(409, "MCP_SNAPSHOT_MISMATCH");
-    settings.credential(p);
     return new McpLedger.Server(p, digest);
   }
 
@@ -64,7 +64,10 @@ final class JdbcMcpRecords {
             "SELECT * FROM mcp_server WHERE tenant_id=? AND enabled=TRUE ORDER BY server_id FOR SHARE",
             tenant)) {
       var s = server(row);
-      if (s.profile().allowedActors().contains(actor)) servers.put(s.profile().server(), s);
+      if (s.profile().allowedActors().contains(actor)) {
+        settings.credential(s.profile());
+        servers.put(s.profile().server(), s);
+      }
     }
     if (servers.isEmpty()) throw unauthorized();
     if (servers.size() > 4) throw new TaskFailure(503, "MCP_NOT_CONFIGURED");
@@ -87,7 +90,6 @@ final class JdbcMcpRecords {
       contracts.binding(binding);
     } catch (IllegalArgumentException error) {
       throw corrupt();
-      if (!Payloads.json(p).equals(raw)) throw corrupt();
     }
     for (var entry : binding.servers().entrySet()) {
       var pinned = entry.getValue();
@@ -108,6 +110,7 @@ final class JdbcMcpRecords {
       if (actual.profile().epoch() != pinned.profile().epoch()
           || !actual.digest().equals(pinned.digest()))
         throw new TaskFailure(409, "MCP_SNAPSHOT_MISMATCH");
+      settings.credential(pinned.profile());
     }
     return binding;
   }
