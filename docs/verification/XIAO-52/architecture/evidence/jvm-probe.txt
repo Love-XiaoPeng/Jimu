@@ -1,0 +1,1 @@
+PASS 49 architecture Schema/parser/public-policy cases using production SchemaContract.
