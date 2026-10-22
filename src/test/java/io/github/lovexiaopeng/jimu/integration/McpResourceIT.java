@@ -30,6 +30,7 @@ class McpResourceIT {
         "JIMU_IT_JAVA must name a reviewed local Linux Java21 runtime");
     if (windows) command.add("JIMU_IT_JAVA=" + java);
     command.add("python3");
+    command.add("-B");
     Path driver = Path.of("tools/mcp_verify.py"), jar = Path.of(System.getProperty("jimu.jar"));
     command.add(windows ? linuxPath(driver) : driver.toString());
     command.addAll(

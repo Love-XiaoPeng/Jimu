@@ -242,10 +242,12 @@ class McpExperiment(Experiment):
             ('epoch', 'T0_BEFORE', {'epoch': 2}, 'MCP_SNAPSHOT_MISMATCH'),
             ('actor', 'T1', {'allowedActors': ['carol']}, 'MCP_SERVER_NOT_AUTHORIZED'),
             ('secret-version', 'T1', {'credentialVersion': 2}, 'MCP_SNAPSHOT_MISMATCH'),
+            ('endpoint', 'T0_BEFORE', {'endpoint': 'http://127.0.0.1:1/mcp'}, 'MCP_SNAPSHOT_MISMATCH'),
             ('capabilities', 'T1', {'serverCapabilities': {'resources': {'subscribe': True}}}, 'MCP_SNAPSHOT_MISMATCH'),
             ('schema', 'T0_BEFORE', {'schemaDigest': '0'*64}, 'MCP_SNAPSHOT_MISMATCH'),
             ('installation', 'T1', None, 'CAPABILITY_REVOKED'),
             ('profile-hash', 'T0_BEFORE', None, 'SNAPSHOT_CORRUPT'),
+            ('binding-version', 'T0_BEFORE', None, 'SNAPSHOT_CORRUPT'),
         ]:
             tid = self.task('authorization-'+label, [(NAMES[2], {'server': 'controlled', 'uri': prefix+'text'})])
             worker = self.start('worker-auth-'+label, 'worker', boundary)
@@ -257,11 +259,17 @@ class McpExperiment(Experiment):
                 self.sql("UPDATE mcp_server SET epoch="+str(profile['epoch'])+",profile_snapshot='"+raw+"',profile_digest='"+hashlib.sha256(raw.encode()).hexdigest()+"' WHERE tenant_id='tenant-a';")
             elif label == 'installation':
                 self.sql("UPDATE installation SET enabled=FALSE WHERE tenant_id='tenant-a' AND plugin_id='read_mcp_resource';")
+            elif label == 'binding-version':
+                binding = json.loads(self.sql("SELECT mcp_snapshot FROM task WHERE id='"+tid+"';"))
+                binding['version'] = 2
+                raw = canonical(binding)
+                self.sql("UPDATE task SET mcp_snapshot='"+raw+"',mcp_digest='"+hashlib.sha256(raw.encode()).hexdigest()+"' WHERE id='"+tid+"';")
             else:
                 self.sql("UPDATE mcp_server SET profile_digest='"+'0'*64+"' WHERE tenant_id='tenant-a';")
             (worker['folder'] / 'release').touch()
-            result = self.state(tid, 'FAILED')
-            self.assert_that(result['code'] == expected and len(self.calls()) == before, label+' change blocks first/cached admission with zero resource I/O', code=result['code'])
+            eventually(lambda: self.sql("SELECT state FROM task WHERE id='"+tid+"';") == 'FAILED', label+' task stops')
+            code = self.sql("SELECT code FROM task WHERE id='"+tid+"';")
+            self.assert_that(code == expected and len(self.calls()) == before, label+' change blocks first/cached admission with zero resource I/O', code=code)
             self.stop(worker)
             self.sql("UPDATE mcp_server SET epoch=1,profile_snapshot='"+original+"',profile_digest='"+hashlib.sha256(original.encode()).hexdigest()+"' WHERE tenant_id='tenant-a'; UPDATE installation SET enabled=TRUE WHERE tenant_id='tenant-a' AND plugin_id='read_mcp_resource';")
 
