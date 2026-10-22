@@ -146,12 +146,21 @@ public final class DurableAgent implements AutoCloseable {
   }
 
   public void run(Lease lease) {
+    try {
+      runAttempt(lease);
+    } catch (io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionSuspended suspended) {
+      probe.hit("QUESTION_PAUSED", lease.taskId());
+    }
+  }
+
+  private void runAttempt(Lease lease) {
     var definitions = definitions(lease);
     var modelSnapshot = ledger.modelSnapshot(lease);
     boolean mcpOnly =
         lease.capabilities().stream()
             .anyMatch(io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES::contains);
-    if (workspace != null && !mcpOnly) workspace.prepareEvaluation(lease, ledger);
+    boolean askOnly = lease.capabilities().equals(List.of("ask_user_question"));
+    if (workspace != null && !mcpOnly && !askOnly) workspace.prepareEvaluation(lease, ledger);
     Session session = new Session(lease, modelSnapshot, definitions);
     var previous = ledger.checkpoint(lease);
     List<Message> messages =
@@ -202,6 +211,13 @@ public final class DurableAgent implements AutoCloseable {
                   ((io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger) ledger)
                       .mediaSnapshot(lease))));
     }
+    if (askOnly
+        && previous.isPresent()
+        && ((io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger) ledger)
+            .questionContinuation(lease)) {
+      messages = new ArrayList<>(messages);
+      messages.add(assistant(Payloads.read(previous.get().response(), Response.class)));
+    }
     var manager = session.manager();
     var advisor = ToolCallingAdvisor.builder().toolCallingManager(manager).build();
     // This ChatModel performs HTTP only and has no internal tool execution or SDK retries.
@@ -237,9 +253,9 @@ public final class DurableAgent implements AutoCloseable {
     if (response == null) throw new TaskFailure(502, "MODEL_STREAM_INCOMPLETE");
     if (response.hasToolCalls()) throw new TaskFailure(409, "MODEL_LOOP_INCOMPLETE");
     String summary = response.getResult().getOutput().getText();
-    if (fetch.publicMode() || mcpOnly) {
+    if (fetch.publicMode() || mcpOnly || askOnly) {
       probe.hit("M3", lease.taskId());
-      ledger.finish(lease, summary); // The ledger requires an actual published present report.
+      ledger.finish(lease, summary); // Completion follows the pinned task profile.
       probe.hit("DONE", lease.taskId());
       return;
     }
@@ -286,6 +302,20 @@ public final class DurableAgent implements AutoCloseable {
             ToolDefinition.builder()
                 .name(name)
                 .description(mcp.description(name))
+                .inputSchema(contract.input())
+                .build());
+        continue;
+      }
+      if (name.equals("ask_user_question")) {
+        var contract =
+            new io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts()
+                .contract(pins.get(name).version());
+        if (!contract.descriptor().outputSha256().equals(pins.get(name).digest()))
+          throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+        result.add(
+            ToolDefinition.builder()
+                .name(name)
+                .description(contract.description())
                 .inputSchema(contract.input())
                 .build());
         continue;
@@ -413,6 +443,8 @@ public final class DurableAgent implements AutoCloseable {
     private ExecutionLedger.Step step;
     private List<Call> calls = List.of();
     private boolean hadTools;
+    private List<WireMessage> lastIncoming;
+    private List<WireMessage> lastEffective;
 
     Session(Lease lease, ModelSnapshot modelSnapshot, List<ToolDefinition> definitions) {
       this.definitions = definitions;
@@ -422,6 +454,35 @@ public final class DurableAgent implements AutoCloseable {
 
     private ChatResponse call(Prompt prompt) {
       var history = prompt.getInstructions().stream().map(DurableAgent.this::wire).toList();
+      if (lease.capabilities().equals(List.of("ask_user_question"))) {
+        var incoming = history;
+        if (lastIncoming != null
+            && history.size() >= lastIncoming.size()
+            && history.subList(0, lastIncoming.size()).equals(lastIncoming)) {
+          var merged = new ArrayList<>(lastEffective);
+          merged.addAll(history.subList(lastIncoming.size(), history.size()));
+          history = merged;
+        }
+        lastIncoming = incoming;
+        var latest = ledger.checkpoint(lease);
+        boolean replay =
+            latest.isPresent()
+                && Payloads.read(latest.get().request(), Checkpoint.class)
+                    .messages()
+                    .equals(history)
+                && !((io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger) ledger)
+                    .questionContinuation(lease);
+        if (!replay) {
+          history = new ArrayList<>(history);
+          for (String pending :
+              ((io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger) ledger)
+                  .pendingQuestionMessages(lease))
+            if (history.stream()
+                .noneMatch(m -> m.role().equals("user") && pending.equals(m.content())))
+              history.add(new WireMessage("user", pending, List.of(), List.of()));
+        }
+      }
+      lastEffective = List.copyOf(history);
       String body =
           protocol.body(
               modelSnapshot,
@@ -446,6 +507,13 @@ public final class DurableAgent implements AutoCloseable {
           && encoded.getBytes(StandardCharsets.UTF_8).length > 12582912)
         throw new TaskFailure(409, "MODEL_MEDIA_LIMIT_EXCEEDED");
       step = ledger.prepare(lease, encoded);
+      if (lease.capabilities().equals(List.of("ask_user_question"))
+          && history.stream()
+              .anyMatch(
+                  m ->
+                      m.role().equals("user")
+                          && m.content().contains("\"kind\":\"answer_to_pending_question\"")))
+        probe.hit("QUESTION_LATE_PREPARED", lease.taskId());
       if (!history.isEmpty()
           && history.getLast().replies().stream().anyMatch(reply -> reply.name().equals("read")))
         probe.hit("READ_MODEL_PREPARED", lease.taskId());
@@ -599,6 +667,7 @@ public final class DurableAgent implements AutoCloseable {
     }
 
     private String invoke(Call call, String input) {
+      if (call.tool().equals("ask_user_question")) return invokeQuestion(call, input);
       if (io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES.contains(call.tool()))
         return invokeMcp(call, input);
       boolean file = !call.tool().equals("web_fetch");
@@ -692,6 +761,39 @@ public final class DurableAgent implements AutoCloseable {
       if (call.tool().equals("compose_report")) probe.hit("C2", lease.taskId());
       probe.hit("T1", lease.taskId());
       if (call.tool().equals("write")) probe.hit("W1", lease.taskId());
+      return output;
+    }
+
+    private String invokeQuestion(Call call, String input) {
+      var pin = ledger.toolSnapshot(lease).pins().get(call.tool());
+      var contracts =
+          new io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts();
+      var parsed = contracts.input(pin.version(), input);
+      var descriptor = contracts.contract(pin.version()).descriptor();
+      var port =
+          (io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort)
+              (qs, timeout) -> {
+                probe.hit("QUESTION_OPEN_BEFORE", lease.taskId());
+                var result =
+                    ((io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger) ledger)
+                        .openOrResult(
+                            lease, step.id(), call, pin.version(), descriptor.outputSha256());
+                if (result.suspended()) {
+                  probe.hit("QUESTION_OPEN_COMMITTED", lease.taskId());
+                  throw new io.github.lovexiaopeng.jimu.adapters.runtime.interaction
+                      .QuestionSuspended();
+                }
+                return result.result();
+              };
+      var plugin =
+          new io.github.lovexiaopeng.jimu.plugins.builtin.interaction.AskUserQuestionPlugin(
+              port, descriptor);
+      var result =
+          plugin.execute(
+              parsed,
+              new ExecutionContext(step.id(), lease.deadline(), () -> ledger.checkpoint(lease)));
+      String output = Payloads.json(result.output());
+      contracts.output(pin.version(), output);
       return output;
     }
 

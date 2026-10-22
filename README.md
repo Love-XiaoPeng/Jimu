@@ -18,6 +18,7 @@
 - [XIAO-40 工作区工具、报告发布与下载装配](docs/implementation-p3-reports.md)
 - [P4 edit / glob / grep 实施契约](docs/implementation-p4-workspace.md)与[运行配置及验证](docs/implementation-p4-runtime.md)
 - [MCP 资源只读 profile、配置与定向验证](docs/implementation-p4-mcp.md)
+- [持久用户问答、owner API、暂停恢复与定向验证](docs/implementation-p4-user-questions.md)
 - [XIAO-40 关闭评测计划、阶段和额度](docs/implementation-p3-evaluation-plans.md)
 - [协作约定](CONTRIBUTING.md)
 - [Agent 约定](AGENTS.md)

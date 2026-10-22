@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "requestId": "11111111-1111-4111-8111-111111111111",
+      "questionVersion": 1,
+      "revision": 1,
+      "invocationId": "33333333-3333-4333-8333-333333333333",
+      "callId": "provider-call-1",
+      "mode": "blocking",
+      "phase": "OPEN",
+      "questions": [
+        {
+          "id": "mode",
+          "question": "Choose a mode",
+          "header": "Mode",
+          "options": [
+            {
+              "label": "Fast",
+              "description": "Shorter wait"
+            },
+            {
+              "label": "Careful"
+            }
+          ]
+        }
+      ],
+      "foregroundDueAt": null,
+      "answerExpiresAt": "2026-10-22T14:02:00Z",
+      "answerable": true
+    }
+  ]
+}

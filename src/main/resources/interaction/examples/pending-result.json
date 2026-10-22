@@ -1,0 +1,5 @@
+{
+  "pending": true,
+  "callId": "provider-call-1",
+  "message": "No answer batch arrived before the timeout. This is pending, not a skipped answer. Continue useful independent work. The user can still answer; their reply will be a user message identified as answer_to_pending_question with this callId and the original questions. Do not treat this as permission."
+}

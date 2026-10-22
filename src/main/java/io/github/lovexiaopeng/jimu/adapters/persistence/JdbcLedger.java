@@ -33,6 +33,7 @@ public final class JdbcLedger
     implements Tasks,
         ExecutionLedger,
         NativeSearchLedger,
+        io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger {
   private final JdbcTemplate db;
@@ -43,6 +44,708 @@ public final class JdbcLedger
   private final JdbcImageRecords images;
   private final JdbcMcpRecords mcp;
   private ArtifactStore imageStore;
+  private final io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts
+      questions = new io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts();
+  private boolean questionsEnabled;
+
+  public void questionsEnabled(boolean enabled) {
+    questionsEnabled = enabled;
+  }
+
+  private void releaseQuestionTask(Map<String, Object> task) {
+    if (!questionTask(task)) return;
+    int count =
+        db.update(
+            "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'",
+            s(task, "tenant_id"),
+            s(task, "id") + ":question-task");
+    if (count == 1)
+      db.update(
+          "UPDATE tenant_budget SET question_tasks_held=question_tasks_held-1 WHERE tenant_id=?",
+          s(task, "tenant_id"));
+  }
+
+  private void cleanupQuestions() {
+    for (var candidate :
+        rows(
+            "SELECT tenant_id,id FROM task WHERE question_cleanup_state='RETAINED' AND state IN ('SUCCEEDED','FAILED','CANCELLED') AND created_at<=CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY ORDER BY created_at,id LIMIT 32")) {
+      tx(
+          () -> {
+            String tenant = s(candidate, "tenant_id"), taskId = s(candidate, "id");
+            bucket(tenant);
+            var task = locked(tenant, taskId);
+            if (!"RETAINED".equals(s(task, "question_cleanup_state"))
+                || !view(task).terminal()
+                || !writersQuiescent(task)) return null;
+            if (!rows(
+                        "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN') LIMIT 1",
+                        tenant,
+                        taskId)
+                    .isEmpty()
+                || !rows(
+                        "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state='OUTCOME_UNKNOWN' LIMIT 1",
+                        tenant,
+                        taskId)
+                    .isEmpty()) return null;
+            var retained = new java.util.LinkedHashMap<String, Object>();
+            for (String field : List.of("request_snapshot", "goal", "summary"))
+              retainQuestionBody(retained, "task:" + field, s(task, field));
+            String tombstone = "{\"version\":1,\"state\":\"QUESTION_PURGED\"}";
+            for (var step :
+                rows("SELECT * FROM step WHERE tenant_id=? AND task_id=?", tenant, taskId)) {
+              for (String field : List.of("request_snapshot", "response_snapshot"))
+                retainQuestionBody(retained, "step:" + s(step, "id") + ":" + field, s(step, field));
+              db.update(
+                  "UPDATE step SET request_snapshot=?,response_snapshot=IF(response_snapshot IS NULL,NULL,?),request_cleanup_state='QUESTION_PURGED',retained_request_digest=request_digest WHERE tenant_id=? AND id=?",
+                  tombstone,
+                  tombstone,
+                  tenant,
+                  s(step, "id"));
+            }
+            for (var invocation :
+                rows("SELECT * FROM invocation WHERE tenant_id=? AND task_id=?", tenant, taskId)) {
+              for (String field : List.of("input_snapshot", "output_snapshot"))
+                retainQuestionBody(
+                    retained,
+                    "invocation:" + s(invocation, "id") + ":" + field,
+                    s(invocation, field));
+              db.update(
+                  "UPDATE invocation SET input_snapshot=?,output_snapshot=IF(output_snapshot IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
+                  tombstone,
+                  tombstone,
+                  tenant,
+                  s(invocation, "id"));
+            }
+            for (var q :
+                rows(
+                    "SELECT * FROM user_question WHERE tenant_id=? AND task_id=?",
+                    tenant,
+                    taskId)) {
+              var metadata = new java.util.LinkedHashMap<String, Object>();
+              for (String field :
+                  List.of("request_snapshot", "answer_snapshot", "receipt_snapshot"))
+                retainQuestionBody(metadata, field, s(q, field));
+              db.update(
+                  "UPDATE user_question SET request_snapshot=?,answer_snapshot=IF(answer_snapshot IS NULL,NULL,?),receipt_snapshot=IF(receipt_snapshot IS NULL,NULL,?),retained_digests=? WHERE tenant_id=? AND id=?",
+                  tombstone,
+                  tombstone,
+                  tombstone,
+                  Payloads.json(metadata),
+                  tenant,
+                  s(q, "id"));
+            }
+            db.update(
+                "UPDATE task SET request_snapshot=?,goal=?,summary=IF(summary IS NULL,NULL,?),question_cleanup_state='PURGED',question_retained_digests=? WHERE tenant_id=? AND id=?",
+                tombstone,
+                tombstone,
+                tombstone,
+                Payloads.json(retained),
+                tenant,
+                taskId);
+            if (db.update(
+                    "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'",
+                    tenant,
+                    taskId + ":question-storage")
+                == 1)
+              db.update(
+                  "UPDATE tenant_budget SET storage_held=storage_held-2097152 WHERE tenant_id=?",
+                  tenant);
+            event(task, "question-purged", "question.content_deleted", null);
+            return null;
+          });
+    }
+  }
+
+  private void retainQuestionBody(Map<String, Object> metadata, String key, String body) {
+    if (body != null)
+      metadata.put(
+          key,
+          Map.of(
+              "sha256",
+              Payloads.hash(body),
+              "bytes",
+              body.getBytes(java.nio.charset.StandardCharsets.UTF_8).length));
+  }
+
+  private boolean questionTask(Map<String, Object> task) {
+    return caps(task).contains("ask_user_question");
+  }
+
+  private void questionAccess(Map<String, Object> task) {
+    var pin = tools(task).pins().get("ask_user_question");
+    var contract = questions.contract(pin.version());
+    var installed =
+        one(
+            "SELECT * FROM installation WHERE tenant_id=? AND plugin_id='ask_user_question'",
+            s(task, "tenant_id"));
+    if (!pin.version().equals(s(installed, "plugin_version"))
+        || !pin.digest().equals(s(installed, "plugin_digest"))
+        || !pin.digest().equals(contract.descriptor().outputSha256())
+        || pin.installationEpoch() != n(installed, "epoch"))
+      throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+    if ("PURGED".equals(s(task, "question_cleanup_state")))
+      throw new TaskFailure(410, "QUESTION_CONTENT_EXPIRED");
+    String binding = s(task, "question_binding");
+    if (binding == null
+        || !Payloads.hash(binding).equals(s(task, "question_binding_digest"))
+        || !questions.binding(pin.version()).equals(binding))
+      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+  }
+
+  private Instant questionNow() {
+    return db.queryForObject("SELECT CURRENT_TIMESTAMP(6)", java.time.LocalDateTime.class)
+        .toInstant(java.time.ZoneOffset.UTC);
+  }
+
+  private Map<String, Object> questionVisible(Identity identity, String taskId) {
+    identity(identity);
+    var found =
+        rows(
+            "SELECT id FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=?",
+            identity.tenant(),
+            taskId,
+            identity.actor());
+    if (found.isEmpty()) throw new TaskFailure(404, "TASK_NOT_FOUND");
+    var task = locked(identity.tenant(), taskId);
+    access(task);
+    return task;
+  }
+
+  @Override
+  public Map<String, Object> listQuestions(Identity identity, String taskId) {
+    return tx(
+        () -> {
+          bucket(identity.tenant());
+          var task = questionVisible(identity, taskId);
+          if (!questionTask(task)) return Map.of("version", 1, "items", List.of());
+          Instant now = questionNow();
+          var items = new java.util.ArrayList<Map<String, Object>>();
+          for (var q :
+              rows(
+                  "SELECT q.*,i.provider_id FROM user_question q JOIN invocation i ON i.tenant_id=q.tenant_id AND i.id=q.invocation_id WHERE q.tenant_id=? AND q.task_id=? ORDER BY q.ordinal",
+                  identity.tenant(),
+                  taskId)) {
+            var item = new java.util.LinkedHashMap<String, Object>();
+            item.put("requestId", s(q, "id"));
+            item.put("questionVersion", n(q, "question_version"));
+            item.put("revision", n(q, "revision"));
+            item.put("invocationId", s(q, "invocation_id"));
+            item.put("callId", s(q, "provider_id"));
+            item.put("mode", s(q, "mode"));
+            item.put("phase", s(q, "phase"));
+            item.put("questions", questionInput(q, task).questions());
+            item.put(
+                "foregroundDueAt",
+                q.get("foreground_due_at") == null
+                    ? null
+                    : time(q, "foreground_due_at").toString());
+            item.put("answerExpiresAt", time(q, "answer_expires_at").toString());
+            item.put(
+                "answerable",
+                questionsEnabled
+                    && !view(task).terminal()
+                    && task.get("cancel_requested_at") == null
+                    && now.isBefore(time(q, "answer_expires_at"))
+                    && List.of("OPEN", "CONTINUED").contains(s(q, "phase")));
+            if (q.get("answer_id") != null) {
+              item.put("answerId", s(q, "answer_id"));
+              item.put("answeredBy", s(q, "answered_actor_id"));
+              item.put("answeredAt", time(q, "answered_at").toString());
+              item.put(
+                  "answers",
+                  Payloads.read(
+                      s(q, "answer_snapshot"), com.fasterxml.jackson.databind.JsonNode.class));
+              item.put("deliveryState", s(q, "delivery_state"));
+            }
+            if (q.get("close_code") != null) item.put("closeCode", s(q, "close_code"));
+            items.add(item);
+          }
+          var result = Map.<String, Object>of("version", 1, "items", items);
+          if (Payloads.json(result).getBytes(java.nio.charset.StandardCharsets.UTF_8).length
+              > 524288) throw new TaskFailure(409, "QUESTION_RESPONSE_TOO_LARGE");
+          return result;
+        });
+  }
+
+  private io.github.lovexiaopeng.jimu.plugins.builtin.interaction.AskUserQuestionPlugin.Input
+      questionInput(Map<String, Object> q, Map<String, Object> task) {
+    if (n(q, "record_version") != 1
+        || n(q, "question_version") != 1
+        || !s(q, "binding_digest").equals(s(task, "question_binding_digest"))
+        || !Payloads.hash(s(q, "request_snapshot")).equals(s(q, "request_digest")))
+      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    return questions.input(
+        tools(task).pins().get("ask_user_question").version(), s(q, "request_snapshot"));
+  }
+
+  @Override
+  public Submission answer(
+      Identity identity, String taskId, String requestId, String key, Command command) {
+    var outcome =
+        tx(
+            () -> {
+              bucket(identity.tenant());
+              var task = questionVisible(identity, taskId);
+              var found =
+                  rows(
+                      "SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND id=? FOR UPDATE",
+                      identity.tenant(),
+                      taskId,
+                      requestId);
+              if (found.isEmpty()) throw new TaskFailure(404, "QUESTION_NOT_FOUND");
+              var q = found.getFirst();
+              var previous =
+                  rows(
+                      "SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND owner_actor_id=? AND answer_key=?",
+                      identity.tenant(),
+                      taskId,
+                      identity.actor(),
+                      key);
+              if (!previous.isEmpty()) {
+                var old = previous.getFirst();
+                String requestDigest;
+                try {
+                  requestDigest =
+                      questionAnswerDigest(
+                          requestId,
+                          command,
+                          questions.canonicalAnswers(questionInput(q, task).questions(), command));
+                } catch (TaskFailure invalid) {
+                  throw new TaskFailure(409, "IDEMPOTENCY_CONFLICT");
+                }
+                if (!requestDigest.equals(s(old, "answer_request_digest")))
+                  throw new TaskFailure(409, "IDEMPOTENCY_CONFLICT");
+                return new AdmissionResult<Submission>(new Submission(true, receipt(old)), null);
+              }
+              Instant now = questionNow();
+              if (!now.isBefore(time(q, "answer_expires_at"))) {
+                closeQuestions(task, "DEADLINE_EXCEEDED");
+                if (!view(task).terminal()) terminal(task, "FAILED", "DEADLINE_EXCEEDED");
+                return new AdmissionResult<Submission>(
+                    null, new TaskFailure(410, "QUESTION_EXPIRED"));
+              }
+              if (view(task).terminal()
+                  || task.get("cancel_requested_at") != null
+                  || "CLOSED".equals(s(q, "phase"))) throw new TaskFailure(409, "QUESTION_CLOSED");
+              if (!questionsEnabled) throw new TaskFailure(403, "QUESTION_FEATURE_DISABLED");
+              if (q.get("foreground_due_at") != null
+                  && !now.isBefore(time(q, "foreground_due_at"))
+                  && "OPEN".equals(s(q, "phase"))) {
+                continueQuestion(task, q);
+                q =
+                    one(
+                        "SELECT * FROM user_question WHERE tenant_id=? AND id=?",
+                        identity.tenant(),
+                        requestId);
+              }
+              if (q.get("answer_id") != null)
+                return new AdmissionResult<Submission>(
+                    null, new TaskFailure(409, "QUESTION_ALREADY_ANSWERED"));
+              if (command.questionVersion() != 1)
+                return new AdmissionResult<Submission>(
+                    null, new TaskFailure(409, "QUESTION_VERSION_UNSUPPORTED"));
+              if (command.expectedRevision() != n(q, "revision"))
+                return new AdmissionResult<Submission>(
+                    null, new TaskFailure(409, "QUESTION_REVISION_CONFLICT"));
+              java.util.List<io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.Answer>
+                  answers;
+              try {
+                answers = questions.canonicalAnswers(questionInput(q, task).questions(), command);
+              } catch (TaskFailure invalid) {
+                return new AdmissionResult<Submission>(null, invalid);
+              }
+              String answer = Payloads.json(answers);
+              String requestDigest = questionAnswerDigest(requestId, command, answers);
+              String answerId = id();
+              boolean foreground = "OPEN".equals(s(q, "phase"));
+              int seq =
+                  db.queryForObject(
+                      "SELECT COALESCE(MAX(accepted_seq),0)+1 FROM user_question WHERE tenant_id=? AND task_id=?",
+                      Integer.class,
+                      identity.tenant(),
+                      taskId);
+              var receipt =
+                  Map.<String, Object>of(
+                      "version",
+                      1,
+                      "requestId",
+                      requestId,
+                      "answerId",
+                      answerId,
+                      "questionVersion",
+                      1,
+                      "acceptedRevision",
+                      n(q, "revision") + 1,
+                      "answeredBy",
+                      identity.actor(),
+                      "answeredAt",
+                      now.toString(),
+                      "delivery",
+                      foreground ? "TOOL_RESULT" : "USER_MESSAGE");
+              try {
+                questionStorage(
+                    task,
+                    answer.getBytes(java.nio.charset.StandardCharsets.UTF_8).length
+                        + Payloads.json(receipt)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8)
+                            .length
+                        + 16384);
+              } catch (TaskFailure invalid) {
+                return new AdmissionResult<Submission>(null, invalid);
+              }
+              if (db.update(
+                      "UPDATE user_question SET phase='ANSWERED',revision=revision+1,answer_id=?,answered_actor_id=?,answered_at=?,accepted_seq=?,answer_snapshot=?,answer_digest=?,answer_key=?,answer_request_digest=?,answer_source_revision=?,receipt_snapshot=?,delivery_state=? WHERE tenant_id=? AND id=? AND revision=? AND answer_id IS NULL",
+                      answerId,
+                      identity.actor(),
+                      java.sql.Timestamp.from(now),
+                      seq,
+                      answer,
+                      Payloads.hash(answer),
+                      key,
+                      requestDigest,
+                      command.expectedRevision(),
+                      Payloads.json(receipt),
+                      foreground ? "CHECKPOINTED" : "PENDING",
+                      identity.tenant(),
+                      requestId,
+                      n(q, "revision"))
+                  != 1) throw new TaskFailure(409, "QUESTION_REVISION_CONFLICT");
+              if (foreground) {
+                String output =
+                    Payloads.json(
+                        new io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.AnswerBatch(
+                            answers, null, null, null));
+                questionToolResult(task, q, output);
+                questionResume(task, requestId);
+              }
+              event(task, "question-answer:" + answerId, "question.answered", null);
+              return new AdmissionResult<Submission>(new Submission(false, receipt), null);
+            });
+    if (outcome.rejection() != null) throw outcome.rejection();
+    return outcome.value();
+  }
+
+  private String questionAnswerDigest(
+      String requestId,
+      Command command,
+      java.util.List<io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.Answer> answers) {
+    return Payloads.hash(
+        Payloads.json(
+            new QuestionAnswerRequest(
+                requestId, command.questionVersion(), command.expectedRevision(), answers)));
+  }
+
+  private record QuestionAnswerRequest(
+      String requestId,
+      int questionVersion,
+      int expectedRevision,
+      java.util.List<io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.Answer> answers) {}
+
+  private record LateQuestionReply(
+      int version,
+      String kind,
+      String tool,
+      String requestId,
+      String callId,
+      java.util.List<io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.Question> questions,
+      com.fasterxml.jackson.databind.JsonNode answers) {}
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> receipt(Map<String, Object> q) {
+    return Payloads.read(s(q, "receipt_snapshot"), Map.class);
+  }
+
+  @Override
+  public OpenResult openOrResult(
+      Lease lease, String step, Call call, String version, String digest) {
+    return leaseTx(
+        lease,
+        () -> {
+          var task = fenced(lease, true);
+          var budget = bucket(lease.tenant());
+          if (!questionTask(task) || !questionsEnabled)
+            throw new TaskFailure(403, "QUESTION_NOT_AUTHORIZED");
+          var input = questions.input(version, call.input());
+          var invocation =
+              one(
+                  "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND step_id=? AND slot=? FOR UPDATE",
+                  lease.tenant(),
+                  lease.taskId(),
+                  step,
+                  call.slot());
+          if (!call.tool().equals("ask_user_question")
+              || !call.tool().equals(s(invocation, "tool"))
+              || !call.providerId().equals(s(invocation, "provider_id"))
+              || !Payloads.hash(call.input()).equals(s(invocation, "input_digest"))
+              || !version.equals(s(invocation, "plugin_version"))
+              || !digest.equals(s(invocation, "plugin_digest")))
+            throw new TaskFailure(409, "INVOCATION_MISMATCH");
+          var pin = tools(task).pins().get("ask_user_question");
+          if (!pin.version().equals(version)
+              || !pin.digest().equals(digest)
+              || pin.installationEpoch() != n(invocation, "installation_epoch"))
+            throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+          String invocationId = s(invocation, "id");
+          if ("SUCCEEDED".equals(s(invocation, "state"))) {
+            if (!Payloads.hash(s(invocation, "output_snapshot"))
+                .equals(s(invocation, "output_digest")))
+              throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+            questions.output(version, s(invocation, "output_snapshot"));
+            return new OpenResult(
+                false,
+                Payloads.read(
+                    s(invocation, "output_snapshot"),
+                    io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.AnswerBatch.class));
+          }
+          if (!"PENDING".equals(s(invocation, "state")))
+            throw new TaskFailure(409, "INVOCATION_STATE");
+          int ordinal =
+              db.queryForObject(
+                  "SELECT COUNT(*)+1 FROM user_question WHERE tenant_id=? AND task_id=?",
+                  Integer.class,
+                  lease.tenant(),
+                  lease.taskId());
+          if (ordinal > 8) throw new TaskFailure(429, "QUESTION_BATCH_LIMIT");
+          if (task.get("waiting_question_id") != null)
+            throw new TaskFailure(409, "QUESTION_ALREADY_WAITING");
+          if (n(task, "tools_used") >= n(task, "max_tools")
+              || n(budget, "tool_used") >= n(budget, "tool_limit"))
+            throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
+          questionStorage(task, 16384);
+          String requestId = id();
+          Integer timeout =
+              version.equals("0.1.0") ? null : input.timeout() == null ? 120 : input.timeout();
+          db.update(
+              "INSERT INTO user_question(tenant_id,id,task_id,owner_actor_id,invocation_id,ordinal,binding_digest,mode,effective_timeout,phase,request_snapshot,request_digest,foreground_due_at,answer_expires_at,retain_until) VALUES(?,?,?,?,?,?,?,?,?,'OPEN',?,?,IF(? IS NULL OR ?=-1,NULL,TIMESTAMPADD(SECOND,?,CURRENT_TIMESTAMP(6))),?,?)",
+              lease.tenant(),
+              requestId,
+              lease.taskId(),
+              lease.actor(),
+              invocationId,
+              ordinal,
+              s(task, "question_binding_digest"),
+              questions.mode(version),
+              timeout,
+              call.input(),
+              Payloads.hash(call.input()),
+              timeout,
+              timeout,
+              timeout,
+              task.get("deadline"),
+              java.sql.Timestamp.from(time(task, "created_at").plusSeconds(604800)));
+          db.update(
+              "UPDATE task SET tools_used=tools_used+1,waiting_question_id=? WHERE tenant_id=? AND id=?",
+              requestId,
+              lease.tenant(),
+              lease.taskId());
+          db.update(
+              "UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=?", lease.tenant());
+          reserve(
+              lease.tenant(),
+              lease.taskId(),
+              invocationId,
+              invocationId,
+              "TOOL",
+              1,
+              "RESERVED",
+              "KNOWN");
+          if (db.update(
+                  "UPDATE invocation SET state='WAITING_USER' WHERE tenant_id=? AND id=? AND state='PENDING'",
+                  lease.tenant(),
+                  invocationId)
+              != 1) throw new TaskFailure(409, "INVOCATION_STATE");
+          questionPause(task, lease, "WAITING_USER", null);
+          event(task, "question-created:" + requestId, "question.created", null);
+          event(task, "question-wait:" + requestId, "task.waiting_user", null);
+          return new OpenResult(true, null);
+        });
+  }
+
+  private void questionPause(
+      Map<String, Object> task, Lease lease, String state, String continuation) {
+    if (db.update(
+            "UPDATE task_attempt SET state='PAUSED',ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND fence=? AND state='ACTIVE'",
+            lease.tenant(),
+            lease.attemptId(),
+            lease.fence())
+        != 1) throw new TaskFailure(409, "FENCE_REJECTED");
+    if (db.update(
+            "UPDATE task SET state=?,question_continuation_step_id=?,fence=fence+1,current_attempt_id=NULL,worker_id=NULL,lease_until=NULL WHERE tenant_id=? AND id=? AND fence=?",
+            state,
+            continuation,
+            lease.tenant(),
+            lease.taskId(),
+            lease.fence())
+        != 1) throw new TaskFailure(409, "FENCE_REJECTED");
+  }
+
+  private void questionToolResult(Map<String, Object> task, Map<String, Object> q, String output) {
+    String tenant = s(task, "tenant_id"), invocation = s(q, "invocation_id");
+    questions.output(tools(task).pins().get("ask_user_question").version(), output);
+    if (db.update(
+            "UPDATE invocation SET state='SUCCEEDED',output_snapshot=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND task_id=? AND id=? AND state='WAITING_USER'",
+            output,
+            Payloads.hash(output),
+            tenant,
+            s(task, "id"),
+            invocation)
+        != 1) throw new TaskFailure(409, "INVOCATION_STATE");
+    if (db.update(
+            "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=? AND id=? AND category='TOOL' AND state='RESERVED'",
+            tenant,
+            invocation)
+        != 1) throw new TaskFailure(409, "RESERVATION_STATE");
+    event(task, "tool:" + invocation, "tool.completed", null);
+  }
+
+  private void questionResume(Map<String, Object> task, String requestId) {
+    if (db.update(
+            "UPDATE task SET state='RESUME_READY',waiting_question_id=NULL WHERE tenant_id=? AND id=? AND state='WAITING_USER' AND waiting_question_id=?",
+            s(task, "tenant_id"),
+            s(task, "id"),
+            requestId)
+        != 1) throw new TaskFailure(409, "QUESTION_BINDING_MISMATCH");
+    event(task, "question-resume:" + requestId, "task.resumable", null);
+  }
+
+  private void continueQuestion(Map<String, Object> task, Map<String, Object> q) {
+    var invocation =
+        one(
+            "SELECT provider_id FROM invocation WHERE tenant_id=? AND id=? AND task_id=?",
+            s(task, "tenant_id"),
+            s(q, "invocation_id"),
+            s(task, "id"));
+    String output =
+        questions.pending(
+            tools(task).pins().get("ask_user_question").version(), s(invocation, "provider_id"));
+    questionToolResult(task, q, output);
+    if (db.update(
+            "UPDATE user_question SET phase='CONTINUED',revision=revision+1 WHERE tenant_id=? AND id=? AND phase='OPEN' AND revision=?",
+            s(task, "tenant_id"),
+            s(q, "id"),
+            n(q, "revision"))
+        != 1) throw new TaskFailure(409, "QUESTION_REVISION_CONFLICT");
+    questionResume(task, s(q, "id"));
+    event(task, "question-continued:" + s(q, "id"), "question.continued", null);
+  }
+
+  private void closeQuestions(Map<String, Object> task, String code) {
+    if (!questionTask(task)) return;
+    String tenant = s(task, "tenant_id"), taskId = s(task, "id");
+    for (var q :
+        rows(
+            "SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND phase IN ('OPEN','CONTINUED') FOR UPDATE",
+            tenant,
+            taskId)) {
+      db.update(
+          "UPDATE user_question SET phase='CLOSED',revision=revision+1,close_code=? WHERE tenant_id=? AND id=?",
+          code,
+          tenant,
+          s(q, "id"));
+      db.update(
+          "UPDATE invocation SET state=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND state='WAITING_USER'",
+          code.equals("CANCELLED") ? "CANCELLED" : "FAILED",
+          tenant,
+          s(q, "invocation_id"));
+      db.update(
+          "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=? AND id=? AND category='TOOL' AND state='RESERVED'",
+          tenant,
+          s(q, "invocation_id"));
+      event(task, "question-closed:" + s(q, "id"), "question.closed", code);
+    }
+    db.update(
+        "UPDATE user_question SET delivery_state='DISCARDED',close_code=? WHERE tenant_id=? AND task_id=? AND delivery_state='PENDING'",
+        code,
+        tenant,
+        taskId);
+    db.update(
+        "UPDATE task SET waiting_question_id=NULL,question_continuation_step_id=NULL WHERE tenant_id=? AND id=?",
+        tenant,
+        taskId);
+  }
+
+  @Override
+  public List<String> pendingQuestionMessages(Lease lease) {
+    return leaseTx(lease, () -> questionMessages(fenced(lease, true)).values().stream().toList());
+  }
+
+  private Map<String, String> questionMessages(Map<String, Object> task) {
+    var result = new java.util.LinkedHashMap<String, String>();
+    if (!questionTask(task)) return result;
+    for (var q :
+        rows(
+            "SELECT q.*,i.provider_id FROM user_question q JOIN invocation i ON i.tenant_id=q.tenant_id AND i.id=q.invocation_id WHERE q.tenant_id=? AND q.task_id=? AND q.delivery_state='PENDING' ORDER BY q.accepted_seq",
+            s(task, "tenant_id"),
+            s(task, "id"))) {
+      if (!Payloads.hash(s(q, "answer_snapshot")).equals(s(q, "answer_digest")))
+        throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      result.put(
+          s(q, "id"),
+          Payloads.json(
+              new LateQuestionReply(
+                  1,
+                  "answer_to_pending_question",
+                  "ask_user_question",
+                  s(q, "id"),
+                  s(q, "provider_id"),
+                  questionInput(q, task).questions(),
+                  Payloads.read(
+                      s(q, "answer_snapshot"), com.fasterxml.jackson.databind.JsonNode.class))));
+    }
+    return result;
+  }
+
+  @Override
+  public boolean questionContinuation(Lease lease) {
+    return leaseTx(lease, () -> fenced(lease, true).get("question_continuation_step_id") != null);
+  }
+
+  private void questionStorage(Map<String, Object> task, long additional) {
+    if (!questionTask(task)) return;
+    long used =
+        db.queryForObject(
+            "SELECT COALESCE(OCTET_LENGTH(request_snapshot),0)+COALESCE(OCTET_LENGTH(goal),0)+COALESCE(OCTET_LENGTH(summary),0)+(SELECT COALESCE(SUM(OCTET_LENGTH(request_snapshot)+COALESCE(OCTET_LENGTH(response_snapshot),0)),0) FROM step WHERE tenant_id=t.tenant_id AND task_id=t.id)+(SELECT COALESCE(SUM(OCTET_LENGTH(input_snapshot)+COALESCE(OCTET_LENGTH(output_snapshot),0)),0) FROM invocation WHERE tenant_id=t.tenant_id AND task_id=t.id)+(SELECT COALESCE(SUM(OCTET_LENGTH(request_snapshot)+COALESCE(OCTET_LENGTH(answer_snapshot),0)+COALESCE(OCTET_LENGTH(receipt_snapshot),0)),0) FROM user_question WHERE tenant_id=t.tenant_id AND task_id=t.id) FROM task t WHERE tenant_id=? AND id=?",
+            Long.class,
+            s(task, "tenant_id"),
+            s(task, "id"));
+    if (used + additional > 2097152) throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
+  }
+
+  private void maintainQuestions() {
+    for (var candidate :
+        rows(
+            "SELECT t.tenant_id,t.id FROM task t LEFT JOIN actor_access a ON a.tenant_id=t.tenant_id AND a.actor_id=t.owner_actor_id LEFT JOIN installation i ON i.tenant_id=t.tenant_id AND i.plugin_id='ask_user_question' WHERE t.question_binding IS NOT NULL AND t.state IN ('WAITING_USER','RESUME_READY') AND (?=FALSE OR t.deadline<=CURRENT_TIMESTAMP(6) OR t.cancel_requested_at IS NOT NULL OR a.enabled=FALSE OR i.plugin_id IS NULL OR i.enabled=FALSE OR i.epoch<>t.installation_epoch OR i.plugin_version<>JSON_UNQUOTE(JSON_EXTRACT(t.tools_snapshot,'$.pins.ask_user_question.version')) OR i.plugin_digest<>JSON_UNQUOTE(JSON_EXTRACT(t.tools_snapshot,'$.pins.ask_user_question.digest')) OR EXISTS(SELECT 1 FROM user_question q WHERE q.tenant_id=t.tenant_id AND q.task_id=t.id AND q.phase='OPEN' AND q.foreground_due_at<=CURRENT_TIMESTAMP(6))) ORDER BY t.deadline,t.id LIMIT 64",
+            questionsEnabled)) {
+      tx(
+          () -> {
+            bucket(s(candidate, "tenant_id"));
+            var task = locked(s(candidate, "tenant_id"), s(candidate, "id"));
+            if (!List.of("WAITING_USER", "RESUME_READY").contains(s(task, "state"))) return null;
+            String rejection = null;
+            if (task.get("cancel_requested_at") != null) rejection = "CANCELLED";
+            else if (n(task, "within_deadline") != 1) rejection = "DEADLINE_EXCEEDED";
+            else if (!questionsEnabled) rejection = "QUESTION_FEATURE_DISABLED";
+            else
+              try {
+                access(task);
+              } catch (TaskFailure error) {
+                rejection = error.code();
+              }
+            if (rejection != null) {
+              closeQuestions(task, rejection);
+              terminal(task, rejection.equals("CANCELLED") ? "CANCELLED" : "FAILED", rejection);
+              return null;
+            }
+            for (var q :
+                rows(
+                    "SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND phase='OPEN' AND foreground_due_at<=CURRENT_TIMESTAMP(6) FOR UPDATE",
+                    s(task, "tenant_id"),
+                    s(task, "id"))) continueQuestion(task, q);
+            settleStoppedWriters(locked(s(task, "tenant_id"), s(task, "id")));
+            return null;
+          });
+    }
+  }
 
   public void imageStorage(ArtifactStore store) {
     imageStore = store;
@@ -753,6 +1456,7 @@ public final class JdbcLedger
                       mcp.enabled()
                           || !io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES.contains(
                               name))
+              .filter(name -> questionsEnabled || !name.equals("ask_user_question"))
               .filter(
                   name -> searchAvailable.getAsBoolean() || !List.of("glob", "grep").contains(name))
               .filter(
@@ -789,6 +1493,12 @@ public final class JdbcLedger
             original.resourceIds(),
             original.budget(),
             descriptors);
+    boolean ask = request.capabilityIds().contains("ask_user_question");
+    if (ask
+        && (!request.capabilityIds().equals(List.of("ask_user_question"))
+            || !request.resourceIds().isEmpty()
+            || descriptors != null)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
+    if (ask && !questionsEnabled) throw new TaskFailure(403, "QUESTION_NOT_AUTHORIZED");
     boolean media = request.capabilityIds().contains("read_image");
     boolean mcpTask =
         request.capabilityIds().stream()
@@ -829,12 +1539,13 @@ public final class JdbcLedger
                   identity.actor(),
                   key);
           if (!old.isEmpty()) {
+            if (ask) access(old.getFirst());
             if (!Payloads.hash(s(old.getFirst(), "request_snapshot"))
                 .equals(s(old.getFirst(), "request_digest")))
               throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
             if (!Payloads.read(s(old.getFirst(), "request_snapshot"), Request.class)
                 .equals(request)) throw new TaskFailure(409, "IDEMPOTENCY_CONFLICT");
-            if (mcpTask) access(old.getFirst());
+            if (mcpTask || ask) access(old.getFirst());
             return view(old.getFirst());
           }
           if (media) {
@@ -875,6 +1586,26 @@ public final class JdbcLedger
           var model = models.selected(identity.tenant());
           String scopeDigest = requireScope(identity.tenant(), evaluation, null, model);
           var businessPolicy = models.businessPolicy();
+          if (ask
+              && (model.paid()
+                  || businessPolicy != null
+                  || evaluation != null
+                  || !(models.fixture() || models.localEvaluation(model))))
+            throw new TaskFailure(403, "QUESTION_NOT_AUTHORIZED");
+          String questionBinding =
+              ask ? questions.binding(pins.get("ask_user_question").version()) : null;
+          if (ask
+              && !pins.get("ask_user_question")
+                  .digest()
+                  .equals(
+                      questions
+                          .contract(pins.get("ask_user_question").version())
+                          .descriptor()
+                          .outputSha256())) throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+          if (ask && n(budget, "question_tasks_held") >= n(budget, "question_tasks_limit"))
+            throw new TaskFailure(429, "QUESTION_TASK_LIMIT");
+          if (ask && 2097152 > n(budget, "storage_limit") - storageHeld(budget))
+            throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
           if (mcpTask
               && (model.paid()
                   || businessPolicy != null
@@ -978,6 +1709,35 @@ public final class JdbcLedger
               scopeDigest,
               identity.tenant(),
               task);
+          if (ask) {
+            db.update(
+                "UPDATE task SET question_binding=?,question_binding_digest=?,question_cleanup_state='RETAINED' WHERE tenant_id=? AND id=?",
+                questionBinding,
+                Payloads.hash(questionBinding),
+                identity.tenant(),
+                task);
+            db.update(
+                "UPDATE tenant_budget SET question_tasks_held=question_tasks_held+1,storage_held=storage_held+2097152 WHERE tenant_id=?",
+                identity.tenant());
+            reserve(
+                identity.tenant(),
+                task,
+                task + ":question-task",
+                null,
+                "QUESTION_TASK",
+                1,
+                "RESERVED",
+                "KNOWN");
+            reserve(
+                identity.tenant(),
+                task,
+                task + ":question-storage",
+                null,
+                "QUESTION_STORAGE",
+                2097152,
+                "RESERVED",
+                "KNOWN");
+          }
           if (mcpBinding != null) {
             String mcpSnapshot = Payloads.json(mcpBinding);
             db.update(
@@ -1093,8 +1853,11 @@ public final class JdbcLedger
   }
 
   private void access(Map<String, Object> row) {
-    if (epoch(new Identity(s(row, "tenant_id"), s(row, "owner_actor_id")), caps(row))
-        != n(row, "installation_epoch")) throw new TaskFailure(403, "CAPABILITY_REVOKED");
+    long currentEpoch =
+        epoch(new Identity(s(row, "tenant_id"), s(row, "owner_actor_id")), caps(row));
+    if (questionTask(row)) questionAccess(row);
+    else if (currentEpoch != n(row, "installation_epoch"))
+      throw new TaskFailure(403, "CAPABILITY_REVOKED");
     if (caps(row).stream()
         .anyMatch(io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES::contains)) {
       if (!io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES.containsAll(caps(row)))
@@ -1169,7 +1932,9 @@ public final class JdbcLedger
               identity.tenant(),
               task);
           event(row, "cancel", "task.cancel_requested", null);
-          if ("QUEUED".equals(s(row, "state"))) terminal(row, "CANCELLED", "CANCELLED");
+          if (questionTask(row)) closeQuestions(row, "CANCELLED");
+          if ("QUEUED".equals(s(row, "state")) || questionTask(row) && writersQuiescent(row))
+            terminal(row, "CANCELLED", "CANCELLED");
           return view(locked(identity.tenant(), task));
         });
   }
@@ -1288,13 +2053,14 @@ public final class JdbcLedger
 
   @Override
   public Optional<Lease> claim(String worker) {
+    maintainQuestions();
     for (String tenant :
         db.queryForList("SELECT tenant_id FROM tenant_budget ORDER BY tenant_id", String.class)) {
       // Select without a lock, then recheck this exact candidate under the shared run lock.
       // Every worker transaction takes run -> tenant -> task, including recovery claims.
       var ready =
           rows(
-              "SELECT id,evaluation_run_id FROM task WHERE tenant_id=? AND record_version IN (1,2,3) AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) ORDER BY ready_at,id LIMIT 1",
+              "SELECT id,evaluation_run_id FROM task WHERE tenant_id=? AND record_version IN (1,2,3) AND (state IN ('QUEUED','RESUME_READY') OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) ORDER BY ready_at,id LIMIT 1",
               tenant);
       if (ready.isEmpty()) continue;
       var candidate = ready.getFirst();
@@ -1308,7 +2074,7 @@ public final class JdbcLedger
                 var budget = bucket(tenant);
                 var candidates =
                     rows(
-                        "SELECT *,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND id=? AND record_version IN (1,2,3) AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) FOR UPDATE SKIP LOCKED",
+                        "SELECT *,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND id=? AND record_version IN (1,2,3) AND (state IN ('QUEUED','RESUME_READY') OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) FOR UPDATE SKIP LOCKED",
                         tenant,
                         s(candidate, "id"));
                 if (candidates.isEmpty()) return Optional.empty();
@@ -1319,7 +2085,15 @@ public final class JdbcLedger
                       .empty(); // Retry under the correct parent lock; never change lock order.
                 String taskId = s(task, "id");
                 boolean queued = "QUEUED".equals(s(task, "state"));
-                if (queued && n(budget, "running") >= n(budget, "running_limit"))
+                boolean resume = "RESUME_READY".equals(s(task, "state"));
+                if (resume
+                    && (!writersQuiescent(task)
+                        || !rows(
+                                "SELECT id FROM reservation WHERE tenant_id=? AND id=? AND state='RESERVED'",
+                                tenant,
+                                taskId + ":run")
+                            .isEmpty())) return Optional.empty();
+                if ((queued || resume) && n(budget, "running") >= n(budget, "running_limit"))
                   return Optional.empty();
                 // An expired writer might have caused an effect. Never infer safety from an absent
                 // result.
@@ -1369,6 +2143,12 @@ public final class JdbcLedger
                 }
                 try {
                   access(task);
+                  if (questionTask(task) && !questionsEnabled)
+                    throw new TaskFailure(403, "QUESTION_FEATURE_DISABLED");
+                  if (resume) {
+                    snapshot(task);
+                    questionStorage(task, 131072);
+                  }
                 } catch (TaskFailure e) {
                   terminal(task, "FAILED", e.code());
                   return Optional.empty();
@@ -1388,6 +2168,14 @@ public final class JdbcLedger
                       tenant,
                       taskId + ":queue");
                   reserve(tenant, taskId, taskId + ":run", null, "RUNNING", 1, "RESERVED", "KNOWN");
+                }
+                if (resume) {
+                  if (db.update(
+                          "UPDATE reservation SET state='RESERVED' WHERE tenant_id=? AND id=? AND state='RELEASED'",
+                          tenant,
+                          taskId + ":run")
+                      != 1) throw new TaskFailure(409, "RESERVATION_STATE");
+                  db.update("UPDATE tenant_budget SET running=running+1 WHERE tenant_id=?", tenant);
                 }
                 db.update(
                     "INSERT INTO task_attempt(tenant_id,id,task_id,worker_id,fence,state) VALUES(?,?,?,?,?,'ACTIVE')",
@@ -1441,6 +2229,8 @@ public final class JdbcLedger
       requireScope(lease.tenant(), evaluation, task, null);
       checkMaterials(task);
       access(task);
+      if (questionTask(task) && !questionsEnabled)
+        throw new TaskFailure(403, "QUESTION_FEATURE_DISABLED");
       if (task.get("cancel_requested_at") != null) throw new TaskFailure(409, "CANCEL_REQUESTED");
       if (n(task, "within_deadline") != 1) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
     }
@@ -2143,6 +2933,11 @@ public final class JdbcLedger
                           lease.tenant(),
                           s(previous.getFirst(), "id"))
                       .isEmpty())) throw new TaskFailure(409, "CHECKPOINT_INCOMPLETE");
+          if (questionTask(task)) {
+            if (request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 65536)
+              throw new TaskFailure(429, "MODEL_INPUT_TOO_LARGE");
+            questionStorage(task, request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
+          }
           String stepId = id();
           if (n(task, "record_version") == 3) {
             var budget = bucket(lease.tenant());
@@ -2177,6 +2972,28 @@ public final class JdbcLedger
               request,
               Payloads.hash(request),
               snapshot(task).model());
+          if (questionTask(task)) {
+            var wire =
+                Payloads.read(
+                    request,
+                    io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Checkpoint.class);
+            for (var pending : questionMessages(task).entrySet()) {
+              if (wire.messages().stream()
+                  .anyMatch(
+                      m -> m.role().equals("user") && pending.getValue().equals(m.content()))) {
+                if (db.update(
+                        "UPDATE user_question SET delivery_state='CHECKPOINTED',delivery_step_id=? WHERE tenant_id=? AND id=? AND delivery_state='PENDING'",
+                        stepId,
+                        lease.tenant(),
+                        pending.getKey())
+                    != 1) throw new TaskFailure(409, "QUESTION_DELIVERY_CONFLICT");
+              }
+            }
+            db.update(
+                "UPDATE task SET question_continuation_step_id=NULL WHERE tenant_id=? AND id=?",
+                lease.tenant(),
+                lease.taskId());
+          }
           event(task, "prepared:" + stepId, "model.prepared", null);
           return new Step(stepId, ordinal, request, null, null);
         });
@@ -2239,6 +3056,7 @@ public final class JdbcLedger
             throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
           if (task.get("evaluation_snapshot") != null)
             admitPlanDispatch(task, evaluation, model, cost);
+          questionStorage(task, 131072);
           String dispatch = id();
           if (model.paid()) {
             db.update(
@@ -2345,6 +3163,26 @@ public final class JdbcLedger
             event(task, "response:" + stepId, "model.rejected", rejection);
             return null;
           }
+          if (questionTask(task)
+              && (response.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 32768
+                  || calls.size() > 8)) {
+            db.update(
+                "UPDATE step SET state='REJECTED' WHERE tenant_id=? AND id=?",
+                lease.tenant(),
+                stepId);
+            db.update(
+                "UPDATE model_dispatch SET state='FAILED',code='MODEL_RESPONSE_TOO_LARGE' WHERE tenant_id=? AND id=?",
+                lease.tenant(),
+                dispatch);
+            db.update(
+                "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND id=? AND state='RESERVED'",
+                lease.tenant(),
+                dispatch);
+            event(task, "response:" + stepId, "model.rejected", "MODEL_RESPONSE_TOO_LARGE");
+            return null;
+          }
+          questionStorage(
+              task, response.getBytes(java.nio.charset.StandardCharsets.UTF_8).length * 2L);
           db.update(
               "UPDATE step SET state='RESPONDED',response_snapshot=?,response_digest=? WHERE tenant_id=? AND id=?",
               response,
@@ -3654,34 +4492,53 @@ public final class JdbcLedger
 
   @Override
   public void finish(Lease lease, String summary) {
-    leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, true);
-          if (publicReport(task)
-              && rows(
-                      "SELECT a.id FROM artifact a JOIN invocation i ON i.tenant_id=a.tenant_id AND i.id=a.producer_invocation AND i.task_id=a.task_id WHERE a.tenant_id=? AND a.task_id=? AND a.state='PUBLISHED' AND a.file_receipt IS NOT NULL AND i.tool='present' AND i.state='SUCCEEDED'",
-                      lease.tenant(),
-                      lease.taskId())
-                  .isEmpty()) throw new TaskFailure(409, "REPORT_NOT_PUBLISHED");
-          if (!rows(
-                      "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state<>'SUCCEEDED'",
-                      lease.tenant(),
-                      lease.taskId())
-                  .isEmpty()
-              || !rows(
-                      "SELECT id FROM artifact WHERE tenant_id=? AND task_id=? AND state<>'PUBLISHED'",
-                      lease.tenant(),
-                      lease.taskId())
-                  .isEmpty()) throw new TaskFailure(409, "UNRESOLVED_FACTS");
-          db.update(
-              "UPDATE task SET summary=? WHERE tenant_id=? AND id=?",
-              summary,
-              lease.tenant(),
-              lease.taskId());
-          terminal(task, "SUCCEEDED", null);
-          return null;
-        });
+    boolean paused =
+        leaseTx(
+            lease,
+            () -> {
+              var task = fenced(lease, true);
+              if (questionTask(task)) {
+                if (summary.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 8192)
+                  throw new TaskFailure(409, "SUMMARY_TOO_LARGE");
+                questionStorage(
+                    task, summary.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
+                if (!questionMessages(task).isEmpty()) {
+                  var latest =
+                      one(
+                          "SELECT id FROM step WHERE tenant_id=? AND task_id=? ORDER BY ordinal DESC LIMIT 1",
+                          lease.tenant(),
+                          lease.taskId());
+                  questionPause(task, lease, "RESUME_READY", s(latest, "id"));
+                  event(task, "question-final-resume:" + s(latest, "id"), "task.resumable", null);
+                  return true;
+                }
+              }
+              if (publicReport(task)
+                  && rows(
+                          "SELECT a.id FROM artifact a JOIN invocation i ON i.tenant_id=a.tenant_id AND i.id=a.producer_invocation AND i.task_id=a.task_id WHERE a.tenant_id=? AND a.task_id=? AND a.state='PUBLISHED' AND a.file_receipt IS NOT NULL AND i.tool='present' AND i.state='SUCCEEDED'",
+                          lease.tenant(),
+                          lease.taskId())
+                      .isEmpty()) throw new TaskFailure(409, "REPORT_NOT_PUBLISHED");
+              if (!rows(
+                          "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state<>'SUCCEEDED'",
+                          lease.tenant(),
+                          lease.taskId())
+                      .isEmpty()
+                  || !rows(
+                          "SELECT id FROM artifact WHERE tenant_id=? AND task_id=? AND state<>'PUBLISHED'",
+                          lease.tenant(),
+                          lease.taskId())
+                      .isEmpty()) throw new TaskFailure(409, "UNRESOLVED_FACTS");
+              db.update(
+                  "UPDATE task SET summary=? WHERE tenant_id=? AND id=?",
+                  summary,
+                  lease.tenant(),
+                  lease.taskId());
+              terminal(task, "SUCCEEDED", null);
+              return false;
+            });
+    if (paused)
+      throw new io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionSuspended();
   }
 
   @Override
@@ -3712,6 +4569,7 @@ public final class JdbcLedger
   private void terminal(Map<String, Object> task, String state, String code) {
     if ("CANCELLED".equals(state) && !writersQuiescent(task)) return;
     String tenant = s(task, "tenant_id"), taskId = s(task, "id");
+    closeQuestions(task, code == null ? "TASK_COMPLETED" : code);
     db.update(
         "UPDATE task SET state=?,code=? WHERE tenant_id=? AND id=?", state, code, tenant, taskId);
     if ("NEEDS_RECONCILIATION".equals(state)) {
@@ -3732,7 +4590,10 @@ public final class JdbcLedger
               taskId + ":queue");
       db.update("UPDATE tenant_budget SET queued=queued-? WHERE tenant_id=?", queued, tenant);
     }
-    if (writersQuiescent(task)) releaseRun(task);
+    if (writersQuiescent(task)) {
+      releaseRun(task);
+      releaseQuestionTask(task);
+    }
     db.update(
         "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND task_id=? AND category='MODEL' AND state='RESERVED'",
         tenant,
@@ -3882,24 +4743,34 @@ public final class JdbcLedger
           uncertain ? "NEEDS_RECONCILIATION" : "CANCELLED",
           uncertain ? "EFFECT_OUTCOME_UNKNOWN" : "CANCELLED");
     }
-    if (List.of("CANCEL_REQUESTED", "NEEDS_RECONCILIATION", "SUCCEEDED", "FAILED", "CANCELLED")
+    if (List.of(
+            "WAITING_USER",
+            "RESUME_READY",
+            "CANCEL_REQUESTED",
+            "NEEDS_RECONCILIATION",
+            "SUCCEEDED",
+            "FAILED",
+            "CANCELLED")
         .contains(s(task, "state"))) releaseRun(task);
+    if (view(locked(s(task, "tenant_id"), s(task, "id"))).terminal()) releaseQuestionTask(task);
   }
 
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16') AND success=TRUE",
             Integer.class)
-        != 15) throw new IllegalStateException("Required migration unavailable");
+        != 16) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 15) throw new IllegalStateException("Unsupported schema version");
+        != 16) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override
   public void cleanupArtifacts(ArtifactStore store) {
+    maintainQuestions();
+    cleanupQuestions();
     cleanupMcp();
     cleanupImages();
     var candidates =

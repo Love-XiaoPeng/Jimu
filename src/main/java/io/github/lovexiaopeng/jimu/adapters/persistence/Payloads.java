@@ -26,6 +26,18 @@ public final class Payloads {
           .addMixIn(
               io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Request.class,
               TaskRequestJson.class)
+          .addMixIn(
+              io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.Question.class,
+              McpItemJson.class)
+          .addMixIn(
+              io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.Option.class,
+              McpItemJson.class)
+          .addMixIn(
+              io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.Answer.class,
+              McpItemJson.class)
+          .addMixIn(
+              io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.AnswerBatch.class,
+              McpItemJson.class)
           .build();
 
   // Missing optional policy must retain the exact v2 canonical bytes/digest on old tasks.
