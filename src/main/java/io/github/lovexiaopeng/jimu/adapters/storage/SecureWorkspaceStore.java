@@ -48,10 +48,12 @@ public final class SecureWorkspaceStore {
                   .build())
           .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
           .build();
-  private static final Object[] LOCKS = new Object[64];
+  private static final java.util.concurrent.locks.ReentrantLock[] LOCKS =
+      new java.util.concurrent.locks.ReentrantLock[64];
 
   static {
-    for (int i = 0; i < LOCKS.length; i++) LOCKS[i] = new Object();
+    for (int i = 0; i < LOCKS.length; i++)
+      LOCKS[i] = new java.util.concurrent.locks.ReentrantLock();
   }
 
   public record FileValue(
@@ -91,6 +93,12 @@ public final class SecureWorkspaceStore {
   private final Path root;
   private final Boundary boundary;
   private final Clock clock;
+  private final boolean directoryPolicy;
+
+  /** A separate host instance applies new limits without reinterpreting old task workspaces. */
+  public SecureWorkspaceStore logicalDirectory() throws IOException {
+    return new SecureWorkspaceStore(root, boundary, clock, true);
+  }
 
   /** The operator must provision a private POSIX root; no model-controlled mkdir occurs here. */
   public SecureWorkspaceStore(Path root) throws IOException {
@@ -102,9 +110,15 @@ public final class SecureWorkspaceStore {
   }
 
   SecureWorkspaceStore(Path root, Boundary boundary, Clock clock) throws IOException {
+    this(root, boundary, clock, false);
+  }
+
+  private SecureWorkspaceStore(Path root, Boundary boundary, Clock clock, boolean directoryPolicy)
+      throws IOException {
     this.root = root.toAbsolutePath().normalize();
     this.boundary = boundary;
     this.clock = clock;
+    this.directoryPolicy = directoryPolicy;
     try (var directory = openRoot()) {
       var permissions =
           directory
@@ -131,6 +145,11 @@ public final class SecureWorkspaceStore {
                   Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS))) {
             state = load(directory, scope);
             if (state.format() != (format3 ? 3 : 2)) throw new FileFailure("FS_BINDING_UNPROVEN");
+            if (directoryPolicy
+                && (!state.files().isEmpty()
+                    || !state.observed().isEmpty()
+                    || !state.operations().isEmpty()
+                    || !state.bindings().isEmpty())) throw new FileFailure("FS_BINDING_UNPROVEN");
           } catch (NoSuchFileException absent) {
             state =
                 new State(
@@ -158,6 +177,16 @@ public final class SecureWorkspaceStore {
           var files = new java.util.TreeMap<>(state.files());
           return new WorkspaceSnapshot(Payloads.hash(Payloads.json(files)), files);
         });
+  }
+
+  /** Directory evidence grants no file observation and never initializes a missing READY state. */
+  public WorkspaceSnapshot directoryEvidence(
+      String tenant, String task, String target, Cancellation cancellation) {
+    if (!directoryPolicy) throw new IllegalStateException("Directory policy required");
+    var snapshot = searchSnapshot(tenant, task, cancellation);
+    io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryPaths.requireDirectory(
+        target, snapshot.files().keySet());
+    return snapshot;
   }
 
   private static String scope(String tenant, String task) {
@@ -285,6 +314,9 @@ public final class SecureWorkspaceStore {
                 boundary.hit("WRITE_INTENT_DURABLE");
               }
               FileValue current = state.files().get(name);
+              if (directoryPolicy)
+                io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryPaths
+                    .requireFileNamespace(name, state.files().keySet());
               long version = current == null ? 0 : current.version();
               if (version != intent.expected()) throw new FileFailure("FS_STALE_VERSION");
               long total = state.files().values().stream().mapToLong(FileValue::size).sum();
@@ -479,7 +511,16 @@ public final class SecureWorkspaceStore {
   }
 
   private <T> T locked(String scope, Cancellation cancellation, IO<T> work) {
-    synchronized (LOCKS[Math.floorMod((root + scope).hashCode(), LOCKS.length)]) {
+    var local = LOCKS[Math.floorMod((root + scope).hashCode(), LOCKS.length)];
+    long until = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(2);
+    if (directoryPolicy) {
+      while (!local.tryLock()) {
+        cancellation.throwIfCancelled();
+        if (System.nanoTime() >= until) throw new FileFailure("WORKSPACE_UNAVAILABLE");
+        java.util.concurrent.locks.LockSupport.parkNanos(1000000);
+      }
+    } else local.lock();
+    try {
       cancellation.throwIfCancelled();
       try (var directory = openRoot();
           var channel =
@@ -493,7 +534,7 @@ public final class SecureWorkspaceStore {
                       PosixFilePermissions.fromString("rw-------")))) {
         if (!(channel instanceof FileChannel file))
           throw new IOException("POSIX locking unavailable");
-        try (var lock = file.lock()) {
+        try (var lock = directoryPolicy ? directoryLock(file, cancellation, until) : file.lock()) {
           if (!lock.isValid()) throw new IOException("Workspace lock unavailable");
           cancellation.throwIfCancelled();
           return work.apply(directory);
@@ -501,6 +542,19 @@ public final class SecureWorkspaceStore {
       } catch (IOException e) {
         throw new FileFailure("WORKSPACE_UNAVAILABLE", e);
       }
+    } finally {
+      local.unlock();
+    }
+  }
+
+  private static java.nio.channels.FileLock directoryLock(
+      FileChannel file, Cancellation cancellation, long until) throws IOException {
+    for (; ; ) {
+      cancellation.throwIfCancelled();
+      var lock = file.tryLock();
+      if (lock != null) return lock;
+      if (System.nanoTime() >= until) throw new IOException("Workspace lock deadline");
+      java.util.concurrent.locks.LockSupport.parkNanos(1000000);
     }
   }
 
@@ -509,12 +563,14 @@ public final class SecureWorkspaceStore {
     try (var file =
         directory.newByteChannel(
             Path.of(scope + ".json"), Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS))) {
-      if (file.size() > MAX_STATE_BYTES) throw new IOException("Workspace state exceeds bound");
+      if (file.size() > (directoryPolicy ? 2097152 : MAX_STATE_BYTES))
+        throw new IOException("Workspace state exceeds bound");
       ByteBuffer buffer = ByteBuffer.allocate((int) file.size());
       while (buffer.hasRemaining())
         if (file.read(buffer) < 0) throw new IOException("Truncated workspace");
       bytes = buffer.array();
     } catch (NoSuchFileException missing) {
+      if (directoryPolicy) throw new FileFailure("FS_BINDING_UNPROVEN");
       return new State(
           2, scope, new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
     }
@@ -536,6 +592,7 @@ public final class SecureWorkspaceStore {
       }
       for (Operation operation : state.operations().values())
         if (operation.result() != null) verify(operation.result());
+      if (directoryPolicy) directoryState(state);
       return state;
     } catch (IllegalArgumentException e) {
       throw new IOException("Invalid workspace state", e);
@@ -555,11 +612,18 @@ public final class SecureWorkspaceStore {
 
   private void save(SecureDirectoryStream<Path> directory, State state, String phase)
       throws IOException {
+    if (directoryPolicy) directoryState(state);
     String payload = Payloads.json(state);
     byte[] bytes =
         Payloads.json(new Envelope(Payloads.hash(payload), payload))
             .getBytes(StandardCharsets.UTF_8);
     if (bytes.length > MAX_STATE_BYTES) throw new FileFailure("WORKSPACE_LIMIT");
+    if (directoryPolicy) {
+      if (bytes.length > 2097152) throw new FileFailure("DIRECTORY_STORAGE_LIMIT");
+      var usage = scopeUsage(directory, state.scope());
+      if (usage.bytes() + bytes.length > 4194304 || usage.parts() + 1 > 8)
+        throw new FileFailure("DIRECTORY_STORAGE_LIMIT");
+    }
     Path temporary = Path.of(state.scope() + "." + UUID.randomUUID() + ".part");
     try {
       try (var channel =
@@ -586,6 +650,135 @@ public final class SecureWorkspaceStore {
         /* rename consumed it */
       }
     }
+  }
+
+  private static void directoryState(State state) {
+    if (state.format() != 3) throw new FileFailure("FS_BINDING_UNPROVEN");
+    if (state.files().values().stream().anyMatch(value -> value.size() > 32768)
+        || state.files().values().stream().mapToLong(FileValue::size).sum() > 262144)
+      throw new FileFailure("DIRECTORY_STORAGE_LIMIT");
+    for (String path : state.files().keySet())
+      io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryPaths.requireFileNamespace(
+          path, state.files().keySet());
+  }
+
+  private record ScopeUsage(long bytes, int parts) {}
+
+  public record PurgeFile(String name, long size, String sha256) {}
+
+  public record PurgePlan(String namespace, List<PurgeFile> files) {
+    public PurgePlan {
+      files = List.copyOf(files);
+    }
+  }
+
+  private static boolean scopeFile(String scope, String name) throws IOException {
+    if (name.equals(scope + ".json")) return true;
+    if (!name.startsWith(scope + ".") || !name.endsWith(".part")) return false;
+    String id = name.substring(scope.length() + 1, name.length() - 5);
+    try {
+      if (!UUID.fromString(id).toString().equals(id)) throw new IllegalArgumentException("UUID");
+    } catch (IllegalArgumentException e) {
+      throw new IOException("Invalid scope part", e);
+    }
+    return true;
+  }
+
+  private static PurgeFile purgeFile(SecureDirectoryStream<Path> directory, String name)
+      throws IOException {
+    try (var file =
+        directory.newByteChannel(
+            Path.of(name), Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS))) {
+      if (file.size() > 4194304) throw new IOException("Scope file exceeds bound");
+      var bytes = ByteBuffer.allocate((int) file.size());
+      while (bytes.hasRemaining())
+        if (file.read(bytes) < 0) throw new IOException("Truncated scope file");
+      return new PurgeFile(name, bytes.capacity(), Payloads.hash(bytes.array()));
+    }
+  }
+
+  public PurgePlan planPurge(String tenant, String task, Cancellation cancellation) {
+    if (!directoryPolicy) throw new IllegalStateException("Directory policy required");
+    String scope = scope(tenant, task);
+    return locked(
+        scope,
+        cancellation,
+        directory -> {
+          var files = new java.util.ArrayList<PurgeFile>();
+          try (var listing =
+              directory.newDirectoryStream(Path.of("."), LinkOption.NOFOLLOW_LINKS)) {
+            for (Path entry : listing) {
+              String name = entry.getFileName().toString();
+              if (scopeFile(scope, name)) files.add(purgeFile(directory, name));
+            }
+          }
+          if (files.size() > 9 || files.stream().mapToLong(PurgeFile::size).sum() > 4194304)
+            throw new IOException("Scope exceeds bound");
+          files.sort(java.util.Comparator.comparing(PurgeFile::name));
+          return new PurgePlan(scope, files);
+        });
+  }
+
+  /** Exact persisted inventory only; missing entries are an idempotent previous deletion. */
+  public void purge(String tenant, String task, PurgePlan plan, Cancellation cancellation) {
+    if (!directoryPolicy) throw new IllegalStateException("Directory policy required");
+    String scope = scope(tenant, task);
+    if (!scope.equals(plan.namespace())) throw new FileFailure("FS_BINDING_UNPROVEN");
+    locked(
+        scope,
+        cancellation,
+        directory -> {
+          var expected = new java.util.HashMap<String, PurgeFile>();
+          for (var file : plan.files()) {
+            if (!scopeFile(scope, file.name()) || expected.put(file.name(), file) != null)
+              throw new IOException("Invalid purge inventory");
+          }
+          try (var listing =
+              directory.newDirectoryStream(Path.of("."), LinkOption.NOFOLLOW_LINKS)) {
+            for (Path entry : listing) {
+              String name = entry.getFileName().toString();
+              if (scopeFile(scope, name) && !expected.containsKey(name))
+                throw new IOException("Purge inventory changed");
+            }
+          }
+          for (var file : plan.files()) {
+            cancellation.throwIfCancelled();
+            try {
+              if (!file.equals(purgeFile(directory, file.name())))
+                throw new IOException("Purge file changed");
+              directory.deleteFile(Path.of(file.name()));
+            } catch (NoSuchFileException previouslyDeleted) {
+              // The persisted inventory remains authoritative across an interrupted cleanup.
+            }
+          }
+          forceDirectory(directory);
+          return null;
+        });
+  }
+
+  private static ScopeUsage scopeUsage(SecureDirectoryStream<Path> directory, String scope)
+      throws IOException {
+    long bytes = 0;
+    int parts = 0;
+    try (var listing = directory.newDirectoryStream(Path.of("."), LinkOption.NOFOLLOW_LINKS)) {
+      for (Path entry : listing) {
+        String name = entry.getFileName().toString();
+        boolean part = name.startsWith(scope + ".") && name.endsWith(".part");
+        if (!name.equals(scope + ".json") && !part) continue;
+        if (part) {
+          String id = name.substring(scope.length() + 1, name.length() - 5);
+          if (!UUID.fromString(id).toString().equals(id))
+            throw new IOException("Invalid scope part");
+          parts++;
+        }
+        try (var file =
+            directory.newByteChannel(
+                Path.of(name), Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS))) {
+          bytes = Math.addExact(bytes, file.size());
+        }
+      }
+    }
+    return new ScopeUsage(bytes, parts);
   }
 
   private static void forceDirectory(SecureDirectoryStream<Path> directory) throws IOException {

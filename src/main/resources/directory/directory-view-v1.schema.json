@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:directory:view:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "taskId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "asOfSeq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20
+    },
+    "state": {
+      "enum": [
+        "ABSENT",
+        "PRESENT",
+        "PURGING",
+        "PURGED"
+      ]
+    },
+    "cwd": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^/",
+          "description": "Canonical task-logical absolute path. Runtime also checks UTF-16/UTF-8, components and fixed namespace; never an OS path."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "invocationId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "checkpointId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "providerCallId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "createdAttemptId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "committedAttemptId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "fence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "eventId": {
+              "type": "string",
+              "pattern": "^[0-9a-f-]{36}:[1-9][0-9]*$"
+            },
+            "outputSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "invocationId",
+            "checkpointId",
+            "providerCallId",
+            "createdAttemptId",
+            "committedAttemptId",
+            "fence",
+            "eventId",
+            "outputSha256",
+            "updatedAt"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "retainUntil": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "version",
+    "taskId",
+    "asOfSeq",
+    "revision",
+    "state",
+    "cwd",
+    "source",
+    "retainUntil"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "ABSENT"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "revision": {
+            "const": 0
+          },
+          "cwd": {
+            "type": "null"
+          },
+          "source": {
+            "type": "null"
+          },
+          "retainUntil": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "PRESENT"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "cwd": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^/",
+            "description": "Canonical task-logical absolute path. Runtime also checks UTF-16/UTF-8, components and fixed namespace; never an OS path."
+          },
+          "retainUntil": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "enum": [
+              "PURGING",
+              "PURGED"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "cwd": {
+            "type": "null"
+          },
+          "retainUntil": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "revision": {
+            "const": 0
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "invocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "checkpointId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "providerCallId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "createdAttemptId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "committedAttemptId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "fence": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "eventId": {
+                "type": "string",
+                "pattern": "^[0-9a-f-]{36}:[1-9][0-9]*$"
+              },
+              "outputSha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "invocationId",
+              "checkpointId",
+              "providerCallId",
+              "createdAttemptId",
+              "committedAttemptId",
+              "fence",
+              "eventId",
+              "outputSha256",
+              "updatedAt"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

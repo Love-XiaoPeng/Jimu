@@ -1,0 +1,250 @@
+{
+  "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+  "tree": "e6bbcac442abdc6d279e422dd76894c242485ab5",
+  "sourceCount": 27,
+  "sources": [
+    {
+      "source": "AGENTS.md",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "fce92cf098c725af77108a57c18a17f38aa62e47",
+      "bytes": 1568,
+      "sha256": "65d6c6106f55a04b209ce7198cbc6a630c173762a5d289575d7aeddead9c9226",
+      "line": 1,
+      "anchor": "# 积木"
+    },
+    {
+      "source": "README.md",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "8510f2fa104e4f38430bc9d8d190c85c7a2748c9",
+      "bytes": 4122,
+      "sha256": "4981c8406fc127188b35e408c5c8f48b70cafc98efd8939a79b08e4e7e2d5050",
+      "line": 1,
+      "anchor": "# 积木"
+    },
+    {
+      "source": "CONTRIBUTING.md",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "b4a89f313eb6cdc87ae06d2025cc3f102ca68e59",
+      "bytes": 3952,
+      "sha256": "9d8f0db6426a83a9244a071d510a21cfd32c410e241aed2ca184f0bea255dbe0",
+      "line": 1,
+      "anchor": "# 参与"
+    },
+    {
+      "source": "docs/baseline/README.md",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "c79fe3c6d5c2c8b6fbe50baebc63d13c4fd8ec2b",
+      "bytes": 1917,
+      "sha256": "15760921d7c1a6d805d306f6b179d7cbd280d2cba577daf11d07bca31ed1bf15",
+      "line": 1,
+      "anchor": "# 已验收"
+    },
+    {
+      "source": "docs/baseline/XIAO-33-可行性与总体方案-v0.3.md",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "2649667071d8013edd056ca89803cd7601ce3361",
+      "bytes": 95190,
+      "sha256": "2b8e53c700aab0d96a6f06351ee9f924a43c8d5af4b5f62837b20e6f92e6c014",
+      "line": 238,
+      "anchor": "## 7. API"
+    },
+    {
+      "source": "docs/baseline/XIAO-33-工程规范-v0.2.md",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "1d7a4d0627b96ccb65725e2b34dd774bc5cf42ba",
+      "bytes": 27621,
+      "sha256": "36553f58e0b129903f04389c852f75560cf4879bbe9fbdac0e2759cb3f8298b7",
+      "line": 74,
+      "anchor": "## 3. 依赖"
+    },
+    {
+      "source": "docs/baseline/XIAO-33-tool-migration-evidence-v1.1.md",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "4b5aa6dfcab31ad139cd7d6e71a971dfcc316761",
+      "bytes": 87122,
+      "sha256": "2111bc4a0be86a3cc69420fb9b9d08adc0bc5b609686d859b38830edce17c0f7",
+      "line": 88,
+      "anchor": "| G28"
+    },
+    {
+      "source": "docs/baseline/XIAO-33-harness-tool-inventory-v1.1.json",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "b788c5703af0ee40a5df4d439b8209211ed132cf",
+      "bytes": 196149,
+      "sha256": "30b6904aad8d85dac3e789434e434c449575383cb23e254329a84930436f5b02",
+      "line": 3918,
+      "anchor": "\"id\": \"T67\""
+    },
+    {
+      "source": "docs/architecture.md",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "9007333242ea4bbfde80bb10f6b33ee9841705f8",
+      "bytes": 1815,
+      "sha256": "dc11f54fb8a6fdae745019825ae033c76f5424a677db821cf7bac367cdb23edb",
+      "line": 1,
+      "anchor": "#"
+    },
+    {
+      "source": "docs/adr/0005-workspace-edit-native-search.md",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "0a0a8ace0f6c405d9c3b38edaeca786747b9a34b",
+      "bytes": 1416,
+      "sha256": "12f2568f32c77e5c1d5cf00c417bca9d9ebca1c7b081b148e54bad1413f87e49",
+      "line": 1,
+      "anchor": "#"
+    },
+    {
+      "source": "docs/adr/0009-task-todo-projection.md",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "90e51bf07b6f4e49b6769527143099967b4e9a6f",
+      "bytes": 6337,
+      "sha256": "e86c20bcee171191e7598f92ccc8f9ddb0bc3f31511ec2355eb6ec685b7de6eb",
+      "line": 1,
+      "anchor": "#"
+    },
+    {
+      "source": "docs/implementation-p4-todos.md",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "2ea196f88cfa91fb015760fe921e58a421feecbb",
+      "bytes": 7754,
+      "sha256": "1f4fb603175c0909464258d23a254f5f3496b806303509eea852275fdd9d2574",
+      "line": 1,
+      "anchor": "#"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureWorkspaceStore.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "ae2fe0f94badb674e35dc8aacbb895a23d616787",
+      "bytes": 26979,
+      "sha256": "e25b2ec330b6fee8ec639bdf45b6e5bb08d89e603bac1f7ef06f40c22dbbe7bf",
+      "line": 76,
+      "anchor": "  public record State("
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceRuntime.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "77b954930404bb21290e9362225916c4b68085d9",
+      "bytes": 17630,
+      "sha256": "20dcf7b1d89018b458f079ba8f41a85d6046331b0a598da13f9395c45146aac8",
+      "line": 97,
+      "anchor": "  public void prepareEvaluation("
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceContracts.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "30a7904307bedc2daebd8f2cc5cfeaeb1c7beb44",
+      "bytes": 6493,
+      "sha256": "1881bb2466bba25898eae86a438175c02b850292c65709293e6dc8eea218918d",
+      "line": 18,
+      "anchor": "  public static String description("
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/SchemaContract.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "5bd7bed4a666c927d037cb2937080fa729a1ff88",
+      "bytes": 1977,
+      "sha256": "bfd42fccd264dd9b5b00cb69c0ccc771d89abfbf2fc083d73da66d912c92e5d9",
+      "line": 17,
+      "anchor": "  public SchemaContract("
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchRuntime.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "d49fc78569299339dcdb12d4052e023b2d7ccfc6",
+      "bytes": 10632,
+      "sha256": "99ba14bb0670de3dd1afff509a7e7bb0d1fc8ee643b672088b3ea6fd195940cc",
+      "line": 93,
+      "anchor": "  public SearchPort bind("
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchQuery.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "b54887f79fdf5c07d841c98873620ef1da7d4025",
+      "bytes": 2091,
+      "sha256": "9aba5732f564c7aff96901774704404a85f50d0c016acaa3c4517d6d0c2f1cca",
+      "line": 6,
+      "anchor": "public record"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "622e1e6ff2274fb9590c9bd157485a5d04ac4133",
+      "bytes": 261995,
+      "sha256": "cf9468f48b1a0a4e3647a0e951c980679138e40d7255999308ec499d1a3c580e",
+      "line": 2668,
+      "anchor": "  public Optional<Lease> claim("
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "9eafcf59ce2870239b76f1b1d92cbb4f4cdc4c85",
+      "bytes": 42045,
+      "sha256": "f13d090342ee01b505f1bc8c92ec83360703b323f583a8001fb34c1250b1e87c",
+      "line": 590,
+      "anchor": "    private List<Call> slots("
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/WorkerLoop.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "345f797dedeb76fa30d8bdc70d8d4d75d8c4aad9",
+      "bytes": 3902,
+      "sha256": "e86cbe664a60e33dd209a63207d9c96ccf2249d8c778f376c7c62818f962dbcb",
+      "line": 82,
+      "anchor": "operations.awaitDrained()"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LedgerMaintenance.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "c6afe96ec6c3e0cc104fd44ae67b597b7a599aa6",
+      "bytes": 1321,
+      "sha256": "5249eaca4cf07d2cff1aa42b0a00e212d046892c0f96e403737eeba8275a30a3",
+      "line": 19,
+      "anchor": "  public void start("
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/ExecutionLedger.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "4c8140c87257b1b04fc24fac23e6251190858682",
+      "bytes": 3747,
+      "sha256": "76645a63d5756dbebdecfdd361229ee28ca305249fcee100332bce443f1ae60b",
+      "line": 11,
+      "anchor": "public interface"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/TodoLedger.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "71f0b28f3ee7029e6720029a557d7b42739d9f4a",
+      "bytes": 424,
+      "sha256": "64f2380d272776367e7bef18a90129c9c10f36ca0adbf5ae80bd33fbc6d36e37",
+      "line": 6,
+      "anchor": "public interface"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/api/TodoController.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "5575f725e9287148ebc94630fbf966f2c756a8e8",
+      "bytes": 1334,
+      "sha256": "9c605ebe7d9a323a2628f3cbd94ab6c7393d5edfde09a5bcc2b1572eb7f11326",
+      "line": 25,
+      "anchor": "@GetMapping"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/FilePort.java",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "ef787e9d7bd49f9c2570d2e1cf1ca62a32996c7a",
+      "bytes": 751,
+      "sha256": "a46706c9595a44e88cb2be4619f49497da43cf7b2f85d1ea7151b5e76321eb6c",
+      "line": 4,
+      "anchor": "public interface"
+    },
+    {
+      "source": "src/main/resources/todo/todo_write-0.1.0/plugin.yaml",
+      "revision": "5d90fab841559e7349701c8284642525bc00da9d",
+      "gitBlob": "401501adfab3cd0e5875bb6a14db320d492979a7",
+      "bytes": 842,
+      "sha256": "fbece39d857c7576cade7a0132ba466ed9476b86fb4d3280308234a6ca3dc36f",
+      "line": 2,
+      "anchor": "manifestVersion"
+    }
+  ]
+}

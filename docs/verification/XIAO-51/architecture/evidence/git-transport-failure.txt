@@ -1,0 +1,7 @@
+Command: git ls-remote origin refs/heads/master
+Command exit code: 128
+fatal: unable to access 'https://github.com/Love-XiaoPeng/Jimu.git/': Recv failure: Connection was reset
+
+The surrounding inspection shell subsequently ran independent Multica reads and exited 0.
+That shell exit code does not mean the Git read succeeded. No retry/push/PR/merge was performed.
+Fallback: read-only public GitHub commit API confirmed the same master SHA and tree.

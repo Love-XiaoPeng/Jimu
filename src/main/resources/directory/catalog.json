@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "profile": "local-logical-directory-v1",
+  "directoryVersion": 1,
+  "pathPolicyVersion": 1,
+  "tools": [
+    {
+      "name": "working_directory",
+      "version": "0.1.0",
+      "pluginId": "jimu.workspace.working_directory",
+      "inputSha256": "5c614cd160f74a9326226ee10faff2bd50739e972eb49a86c84827f43b98d81e",
+      "outputSha256": "5cb3ee7a0697a415a91b8ece2bc2bd3338dd8185e0fb7a3a68697abeec365492",
+      "manifestSha256": "edfc01edef4ca2b4c528f9590bc832f66424cf1300ac72d6fec5ac3fa7d7eb14",
+      "descriptionSha256": "cefaa4e939e0bd1397847dedc0bdd77da5f84d42ee8c9e77fbeae02c4437a7df"
+    },
+    {
+      "name": "read",
+      "version": "0.1.0",
+      "pluginId": "jimu.workspace.read",
+      "inputSha256": "dd957a70a488c9167ee4b1ff79e65790f073492b05c9933919e89adf0dd26cec",
+      "outputSha256": "3afdd8ce04586f381583d26eb91f3000745bf519a3571f702fd8da5b6cfaf4a9",
+      "manifestSha256": "9857ab76822692529c5f3ad5fadd3198e161fd08951825f9cc1cdd2b6b0f8759",
+      "source": "5d90fab841559e7349701c8284642525bc00da9d:src/main/resources/plugins/builtin/read"
+    },
+    {
+      "name": "write",
+      "version": "0.1.0",
+      "pluginId": "jimu.workspace.write",
+      "inputSha256": "26fbf190900805f120cfdc5f112526fa8b4c683a8f76a629619dcd4a24eeb0b7",
+      "outputSha256": "b80d38a29e6fe4f73bf070971bfdd49bfc06d3f7fbd0e07b41890aef853020af",
+      "manifestSha256": "41cb80aa705f2588508601b4f2db718d0dca6d55291d28ac0351fe3d01999546",
+      "source": "5d90fab841559e7349701c8284642525bc00da9d:src/main/resources/plugins/builtin/write"
+    },
+    {
+      "name": "edit",
+      "version": "0.1.0",
+      "pluginId": "jimu.workspace.edit",
+      "inputSha256": "7d9e0154760864950d077222757e190534777039c953fde1262cc0ef343fe622",
+      "outputSha256": "af70998ce690b0a518dee65617424900e9ccdb4e7dacc9efd0bf7c4e2d163127",
+      "manifestSha256": "7f63221c4e64380013294a81f0735756b5e570b9a6753d79cfa04d79275662fa",
+      "source": "5d90fab841559e7349701c8284642525bc00da9d:src/main/resources/plugins/builtin/edit"
+    }
+  ]
+}

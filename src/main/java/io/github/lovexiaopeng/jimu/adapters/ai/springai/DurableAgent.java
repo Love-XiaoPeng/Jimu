@@ -152,10 +152,18 @@ public final class DurableAgent implements AutoCloseable {
       runAttempt(lease);
     } catch (io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionSuspended suspended) {
       probe.hit("QUESTION_PAUSED", lease.taskId());
+    } catch (
+        io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryCommitUnconfirmed
+            unconfirmed) {
+      probe.hit("DIRECTORY_UNCONFIRMED", lease.taskId());
     } catch (io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoCommitUnconfirmed unconfirmed) {
       // WorkerLoop drains operations and stops renewing this attempt. A new fence resolves
       // the same persisted slot after expiry; no ordinary tool reply or terminal guess.
       probe.hit("TODO_UNCONFIRMED", lease.taskId());
+    } catch (FileFailure failure) {
+      if (lease.capabilities().contains("working_directory"))
+        throw new TaskFailure(409, failure.code());
+      throw failure;
     }
   }
 
@@ -311,6 +319,21 @@ public final class DurableAgent implements AutoCloseable {
                 .name(name)
                 .description(mcp.description(name))
                 .inputSchema(contract.input())
+                .build());
+        continue;
+      }
+      if (name.equals("working_directory")) {
+        var contracts =
+            new io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryContracts();
+        var pin = pins.get(name);
+        if (!pin.version().equals(contracts.descriptor().version())
+            || !pin.digest().equals(contracts.descriptor().outputSha256()))
+          throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+        result.add(
+            ToolDefinition.builder()
+                .name(name)
+                .description(contracts.description())
+                .inputSchema(contracts.inputSchema())
                 .build());
         continue;
       }
@@ -476,7 +499,8 @@ public final class DurableAgent implements AutoCloseable {
 
     private ChatResponse call(Prompt prompt) {
       var history = prompt.getInstructions().stream().map(DurableAgent.this::wire).toList();
-      if (lease.capabilities().equals(List.of("ask_user_question"))) {
+      if (lease.capabilities().equals(List.of("ask_user_question"))
+          || lease.capabilities().contains("working_directory")) {
         var incoming = history;
         if (lastIncoming != null
             && history.size() >= lastIncoming.size()
@@ -502,6 +526,27 @@ public final class DurableAgent implements AutoCloseable {
             if (history.stream()
                 .noneMatch(m -> m.role().equals("user") && pending.equals(m.content())))
               history.add(new WireMessage("user", pending, List.of(), List.of()));
+        }
+      }
+      if (lease.capabilities().contains("working_directory")) {
+        var latest = ledger.checkpoint(lease);
+        boolean replay =
+            latest.isPresent()
+                && Payloads.read(latest.get().request(), Checkpoint.class)
+                    .messages()
+                    .equals(history);
+        if (!replay) {
+          var snapshot =
+              ((io.github.lovexiaopeng.jimu.kernel.task.api.WorkingDirectoryLedger) ledger)
+                  .directorySnapshot(lease);
+          history = new ArrayList<>(history);
+          history.add(
+              new WireMessage(
+                  "user",
+                  new io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryContracts()
+                      .context(snapshot.cwd(), snapshot.revision()),
+                  List.of(),
+                  List.of()));
         }
       }
       lastEffective = List.copyOf(history);
@@ -689,6 +734,16 @@ public final class DurableAgent implements AutoCloseable {
     }
 
     private String invoke(Call call, String input) {
+      try {
+        return invokeSlot(call, input);
+      } catch (FileFailure error) {
+        throw new TaskFailure(409, error.code());
+      }
+    }
+
+    private String invokeSlot(Call call, String input) {
+      if (call.tool().equals("working_directory"))
+        return workspace.directories().invoke(ledger, lease, step.id(), call, input, probe);
       if (call.tool().equals("todo_write")) return invokeTodo(call, input);
       if (call.tool().equals("ask_user_question")) return invokeQuestion(call, input);
       if (io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES.contains(call.tool()))
@@ -703,7 +758,11 @@ public final class DurableAgent implements AutoCloseable {
         args =
             call.tool().equals("compose_report")
                 ? ReportComposer.parse(input)
-                : json.readTree(input);
+                : lease.capabilities().contains("working_directory")
+                    ? new io.github.lovexiaopeng.jimu.adapters.runtime.directory
+                            .DirectoryContracts()
+                        .json(input, 65535)
+                    : json.readTree(input);
         if (file) workspace.validate(call.tool(), version, args);
         else {
           inputSchema.validate(args);
@@ -713,11 +772,28 @@ public final class DurableAgent implements AutoCloseable {
         throw new TaskFailure(400, "TOOL_INPUT_INVALID");
       }
       probe.hit("T0_BEFORE", lease.taskId());
-      var invocation =
-          ledger.admit(lease, step.id(), call, descriptor.version(), descriptor.outputSha256());
+      ExecutionLedger.Invocation invocation;
+      try {
+        invocation =
+            ledger.admit(lease, step.id(), call, descriptor.version(), descriptor.outputSha256());
+      } catch (org.springframework.dao.DataAccessException
+          | org.springframework.transaction.TransactionException unconfirmed) {
+        if (lease.capabilities().contains("working_directory"))
+          throw new io.github.lovexiaopeng.jimu.adapters.runtime.directory
+              .DirectoryCommitUnconfirmed();
+        throw unconfirmed;
+      }
       if ("SUCCEEDED".equals(invocation.state())) {
         outputContract.validate(Payloads.read(invocation.output(), JsonNode.class));
         return invocation.output();
+      }
+      if (lease.capabilities().contains("working_directory")) {
+        var canonical = (com.fasterxml.jackson.databind.node.ObjectNode) args.deepCopy();
+        canonical.put(
+            "file_path",
+            ((io.github.lovexiaopeng.jimu.kernel.task.api.WorkingDirectoryLedger) ledger)
+                .directoryFilePath(lease, invocation.id()));
+        args = canonical;
       }
       probe.hit("T0", lease.taskId());
       String output;
@@ -778,7 +854,15 @@ public final class DurableAgent implements AutoCloseable {
         return output;
       }
       probe.hit("T1_BEFORE", lease.taskId());
-      ledger.toolSucceeded(lease, invocation.id(), output);
+      try {
+        ledger.toolSucceeded(lease, invocation.id(), output);
+      } catch (org.springframework.dao.DataAccessException
+          | org.springframework.transaction.TransactionException unconfirmed) {
+        if (lease.capabilities().contains("working_directory"))
+          throw new io.github.lovexiaopeng.jimu.adapters.runtime.directory
+              .DirectoryCommitUnconfirmed();
+        throw unconfirmed;
+      }
       if (call.tool().equals("glob") || call.tool().equals("grep"))
         probe.hit("S_COMMITTED", lease.taskId());
       if (call.tool().equals("compose_report")) probe.hit("C2", lease.taskId());

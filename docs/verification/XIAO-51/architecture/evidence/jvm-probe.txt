@@ -1,0 +1,4 @@
+PASS actual baseline SchemaContract: 4 schemas, 15 valid / 20 invalid fixtures
+PASS strict boundary candidate: 8 rejected JSON/Unicode fixtures, 2 valid, malformed UTF8 rejected
+PASS actual Spring AI manager: 4 alternating slots in response-array order; exception stops after 2, original RuntimeException escapes
+NOT RUN: product directory code, database/DDL, call/stream full loop, locks, crash recovery, auth, cleanup, upgrade or business acceptance.

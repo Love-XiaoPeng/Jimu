@@ -20,6 +20,7 @@
 - [MCP 资源只读 profile、配置与定向验证](docs/implementation-p4-mcp.md)
 - [持久用户问答、owner API、暂停恢复与定向验证](docs/implementation-p4-user-questions.md)
 - [todo_write 持久清单、owner 快照与恢复](docs/implementation-p4-todos.md)
+- [working_directory 逻辑目录、文件路径绑定与 owner 观测](docs/implementation-p4-working-directory.md)
 - [XIAO-40 关闭评测计划、阶段和额度](docs/implementation-p3-evaluation-plans.md)
 - [协作约定](CONTRIBUTING.md)
 - [Agent 约定](AGENTS.md)

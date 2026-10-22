@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "taskId": "11111111-1111-4111-8111-111111111111",
+  "asOfSeq": 30,
+  "revision": 1,
+  "state": "PURGING",
+  "cwd": null,
+  "source": {
+    "invocationId": "22222222-2222-4222-8222-222222222222",
+    "checkpointId": "33333333-3333-4333-8333-333333333333",
+    "providerCallId": "call-cd-1",
+    "createdAttemptId": "44444444-4444-4444-8444-444444444444",
+    "committedAttemptId": "55555555-5555-4555-8555-555555555555",
+    "fence": 2,
+    "eventId": "11111111-1111-4111-8111-111111111111:17",
+    "outputSha256": "ce1e6d9d8281d07f6ba77276d0f42d3c244fb693c0c9169fead9cc53c6fb39d3",
+    "updatedAt": "2026-10-23T00:00:00Z"
+  },
+  "retainUntil": "2026-10-30T00:00:00Z"
+}

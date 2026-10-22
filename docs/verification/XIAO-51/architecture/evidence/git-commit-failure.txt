@@ -1,0 +1,7 @@
+Command: git commit -m 'docs(XIAO-51): define task logical directory contract'
+Exit code: 128
+Author identity unknown
+fatal: unable to auto-detect email address
+
+No commit was created. No Git identity configuration was modified or inferred.
+Delivery uses the byte-verified issue attachment; the assigned backend can import it.

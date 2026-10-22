@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:directory:binding:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "profile": {
+      "const": "local-logical-directory-v1"
+    },
+    "directoryVersion": {
+      "const": 1
+    },
+    "pathPolicyVersion": {
+      "const": 1
+    },
+    "workspaceFormat": {
+      "const": 3
+    },
+    "initialCwd": {
+      "const": "/"
+    },
+    "directoryKind": {
+      "const": "file-ancestors"
+    },
+    "slotOrder": {
+      "const": "response-array-serial"
+    },
+    "capabilities": {
+      "const": [
+        "working_directory",
+        "read",
+        "write",
+        "edit"
+      ]
+    },
+    "maxPathUtf16": {
+      "const": 512
+    },
+    "maxPathUtf8Bytes": {
+      "const": 2048
+    },
+    "maxDirectoryInputBytes": {
+      "const": 4096
+    },
+    "maxDirectoryOutputBytes": {
+      "const": 4096
+    },
+    "maxToolInputBytes": {
+      "const": 65535
+    },
+    "maxToolOutputBytes": {
+      "const": 65536
+    },
+    "maxJsonDepth": {
+      "const": 8
+    },
+    "maxFileBytes": {
+      "const": 32768
+    },
+    "maxCurrentFileBytes": {
+      "const": 262144
+    },
+    "maxWorkspaceEnvelopeBytes": {
+      "const": 2097152
+    },
+    "maxScopeFilesystemBytes": {
+      "const": 4194304
+    },
+    "maxScopePartFiles": {
+      "const": 8
+    },
+    "maxDatabaseBytes": {
+      "const": 2097152
+    },
+    "metadataReserveBytes": {
+      "const": 65536
+    },
+    "reservedTaskBytes": {
+      "const": 8388608
+    },
+    "maxModelRequestBytes": {
+      "const": 65536
+    },
+    "maxCheckpointBytes": {
+      "const": 131072
+    },
+    "maxModelResponseBytes": {
+      "const": 65536
+    },
+    "maxCallsPerResponse": {
+      "const": 4
+    },
+    "maxModelRequests": {
+      "const": 8
+    },
+    "maxToolInvocations": {
+      "const": 20
+    },
+    "maxAttempts": {
+      "const": 8
+    },
+    "maxEvents": {
+      "const": 256
+    },
+    "maxSummaryBytes": {
+      "const": 8192
+    },
+    "retentionSeconds": {
+      "const": 604800
+    },
+    "timeoutMs": {
+      "const": 30000
+    },
+    "lockWaitSeconds": {
+      "const": 2
+    },
+    "namespace": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "catalogDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "version",
+    "profile",
+    "directoryVersion",
+    "pathPolicyVersion",
+    "workspaceFormat",
+    "initialCwd",
+    "directoryKind",
+    "slotOrder",
+    "capabilities",
+    "maxPathUtf16",
+    "maxPathUtf8Bytes",
+    "maxDirectoryInputBytes",
+    "maxDirectoryOutputBytes",
+    "maxToolInputBytes",
+    "maxToolOutputBytes",
+    "maxJsonDepth",
+    "maxFileBytes",
+    "maxCurrentFileBytes",
+    "maxWorkspaceEnvelopeBytes",
+    "maxScopeFilesystemBytes",
+    "maxScopePartFiles",
+    "maxDatabaseBytes",
+    "metadataReserveBytes",
+    "reservedTaskBytes",
+    "maxModelRequestBytes",
+    "maxCheckpointBytes",
+    "maxModelResponseBytes",
+    "maxCallsPerResponse",
+    "maxModelRequests",
+    "maxToolInvocations",
+    "maxAttempts",
+    "maxEvents",
+    "maxSummaryBytes",
+    "retentionSeconds",
+    "timeoutMs",
+    "lockWaitSeconds",
+    "namespace",
+    "catalogDigest"
+  ]
+}

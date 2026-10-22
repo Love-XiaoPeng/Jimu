@@ -9,7 +9,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice(
-    assignableTypes = {TaskController.class, UserQuestionController.class, TodoController.class})
+    assignableTypes = {
+      TaskController.class,
+      UserQuestionController.class,
+      TodoController.class,
+      WorkingDirectoryController.class
+    })
 public final class TaskErrors {
   public record Error(String code, String message, String traceId) {}
 
