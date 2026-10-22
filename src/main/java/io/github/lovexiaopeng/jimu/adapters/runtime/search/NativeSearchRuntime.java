@@ -74,6 +74,18 @@ public final class NativeSearchRuntime {
     return runner != null;
   }
 
+  public boolean absent(long pid) throws IOException {
+    return runner != null && runner.absent(pid);
+  }
+
+  /** Disabled or unprovable recovery keeps the durable run and its storage reservation. */
+  public boolean reconcile(NativeIdentity identity, boolean stop, boolean force)
+      throws IOException {
+    if (runner == null) return false;
+    if (stop) runner.signal(identity, force);
+    return runner.stopped(identity);
+  }
+
   public void requireAvailable() {
     if (!available()) throw new TaskFailure(503, "SEARCH_NOT_CONFIGURED");
   }

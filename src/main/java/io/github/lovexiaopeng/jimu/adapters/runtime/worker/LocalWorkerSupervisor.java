@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.worker;
 
 import io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeProcesses;
+import io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeSearchRuntime;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger;
 import java.nio.file.Path;
@@ -13,6 +14,7 @@ public final class LocalWorkerSupervisor implements AutoCloseable {
   private final ExecutionLedger ledger;
   private final String host;
   private final Path proc;
+  private final NativeSearchRuntime nativeSearch;
   private final java.util.Map<String, Long> nativeStops = new java.util.HashMap<>();
   private final ScheduledExecutorService clock = Executors.newSingleThreadScheduledExecutor();
 
@@ -20,10 +22,19 @@ public final class LocalWorkerSupervisor implements AutoCloseable {
     this(ledger, host, Path.of("/proc"));
   }
 
+  public LocalWorkerSupervisor(
+      ExecutionLedger ledger, String host, NativeSearchRuntime nativeSearch) {
+    this.ledger = ledger;
+    this.host = host;
+    this.proc = Path.of("/proc");
+    this.nativeSearch = nativeSearch;
+  }
+
   LocalWorkerSupervisor(ExecutionLedger ledger, String host, Path proc) {
     this.ledger = ledger;
     this.host = host;
     this.proc = proc;
+    this.nativeSearch = new NativeSearchRuntime();
   }
 
   public void start() {
@@ -42,7 +53,17 @@ public final class LocalWorkerSupervisor implements AutoCloseable {
           status =
               LinuxProcessReceipt.read(proc.resolve(Long.toString(receipt.pid())).resolve("stat"));
         } catch (java.nio.file.NoSuchFileException absent) {
-          if (ProcessHandle.of(receipt.pid()).isEmpty()) ledger.processStopped(receipt.id());
+          try {
+            // Native recovery also relies on this worker/drainer exit receipt. When native
+            // search is enabled, it must use the same independent proof as the native tree.
+            boolean gone =
+                nativeSearch.available()
+                    ? nativeSearch.absent(receipt.pid())
+                    : ProcessHandle.of(receipt.pid()).isEmpty();
+            if (gone) ledger.processStopped(receipt.id());
+          } catch (java.io.IOException unproven) {
+            // Keep the registered worker and attempt non-quiescent.
+          }
           continue;
         } catch (java.io.IOException unavailable) {
           // Unreadable /proc is not proof of death. Recheck on the next reconciliation.
@@ -91,7 +112,7 @@ public final class LocalWorkerSupervisor implements AutoCloseable {
               var status = LinuxProcessReceipt.status(worker.pid());
               workerGone = status.startTicks() != worker.startTicks() || status.exited();
             } catch (java.nio.file.NoSuchFileException absent) {
-              workerGone = ProcessHandle.of(worker.pid()).isEmpty();
+              workerGone = nativeSearch.absent(worker.pid());
             }
             break;
           }
@@ -103,17 +124,21 @@ public final class LocalWorkerSupervisor implements AutoCloseable {
             if (workerGone || run.stopRequested()) {
               var launch = NativeProcesses.launch(Path.of(run.directory()), run.effect());
               long since = nativeStops.computeIfAbsent(run.invocation(), key -> System.nanoTime());
-              NativeProcesses.signal(
-                  launch.launcher(), System.nanoTime() - since > TimeUnit.SECONDS.toNanos(3));
+              nativeSearch.reconcile(
+                  new NativeSearchLedger.NativeIdentity(launch.launcher(), null, null),
+                  true,
+                  System.nanoTime() - since > TimeUnit.SECONDS.toNanos(3));
             }
             continue; // No namespace identity is not evidence of no namespace.
           }
         }
-        if (workerGone || run.stopRequested()) {
-          long since = nativeStops.computeIfAbsent(run.invocation(), key -> System.nanoTime());
-          NativeProcesses.signal(identity, System.nanoTime() - since > TimeUnit.SECONDS.toNanos(3));
-        }
-        if (workerGone && NativeProcesses.stopped(identity)) {
+        boolean stop = workerGone || run.stopRequested();
+        long since =
+            stop ? nativeStops.computeIfAbsent(run.invocation(), key -> System.nanoTime()) : 0;
+        boolean stopped =
+            nativeSearch.reconcile(
+                identity, stop, stop && System.nanoTime() - since > TimeUnit.SECONDS.toNanos(3));
+        if (workerGone && stopped) {
           searches.searchStopped(run, identity);
           nativeStops.remove(run.invocation());
         }

@@ -41,6 +41,65 @@ public final class NativeRunner {
     verifyBundle();
   }
 
+  /** A missing proc entry is ambiguous; only the fixed helper's ESRCH proves absence. */
+  public boolean absent(long pid) throws IOException {
+    verify(Path.of(bundle.launcher()), bundle.launcherSha256());
+    Process probe =
+        new ProcessBuilder(bundle.launcher(), "--probe-absent", Long.toString(pid))
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .start();
+    try {
+      if (!probe.waitFor(2, TimeUnit.SECONDS)) throw new IOException("Native exit probe timed out");
+      return switch (probe.exitValue()) {
+        case 0 -> true;
+        case 1 -> false;
+        default -> throw new IOException("Native exit probe unproven: " + probe.exitValue());
+      };
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw new IOException("Native exit probe interrupted", interrupted);
+    } finally {
+      if (probe.isAlive()) {
+        probe.destroyForcibly();
+        // Collect this exact child even if its caller was interrupted.
+        boolean interrupted = Thread.interrupted();
+        while (probe.isAlive()) {
+          try {
+            probe.waitFor();
+          } catch (InterruptedException retry) {
+            interrupted = true;
+          }
+        }
+        if (interrupted) Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  public boolean stopped(ProcessIdentity identity) throws IOException {
+    try {
+      return NativeProcesses.stopped(identity);
+    } catch (NoSuchFileException invisibleOrExited) {
+      return absent(identity.pid());
+    }
+  }
+
+  public boolean stopped(NativeIdentity identity) throws IOException {
+    return stopped(identity.launcher())
+        && stopped(identity.bubblewrap())
+        && stopped(identity.init());
+  }
+
+  private void signal(ProcessIdentity identity, boolean force) throws IOException {
+    if (!stopped(identity)) NativeProcesses.signal(identity, force);
+  }
+
+  public void signal(NativeIdentity identity, boolean force) throws IOException {
+    signal(identity.launcher(), force);
+    signal(identity.bubblewrap(), force);
+    signal(identity.init(), force);
+  }
+
   private void verifyBundle() throws IOException {
     if (((Number) Files.getAttribute(Path.of("/proc/self"), "unix:uid")).intValue() == 0)
       throw new IOException("Native search requires a non-root worker");
@@ -154,7 +213,7 @@ public final class NativeRunner {
       }
       byte[] raw = stdout.await(), errors = stderr.await();
       if (overflow.get() != null) throw new FileFailure(overflow.get());
-      if (!NativeProcesses.stopped(identity)) throw new FileFailure("SEARCH_PROCESS_UNPROVEN");
+      if (!stopped(identity)) throw new FileFailure("SEARCH_PROCESS_UNPROVEN");
       stopped.accept(identity);
       proven = true;
       return new Output(
@@ -198,11 +257,10 @@ public final class NativeRunner {
               }
             }
             if (identity != null) {
-              NativeProcesses.signal(identity, true);
+              signal(identity, true);
               long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(1);
-              while (!NativeProcesses.stopped(identity) && System.nanoTime() < end)
-                Thread.sleep(10);
-              if (!process.isAlive() && NativeProcesses.stopped(identity)) {
+              while (!stopped(identity) && System.nanoTime() < end) Thread.sleep(10);
+              if (!process.isAlive() && stopped(identity)) {
                 if (stdout != null) stdout.thread().join();
                 if (stderr != null) stderr.thread().join();
                 stopped.accept(identity);

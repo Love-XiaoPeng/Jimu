@@ -57,7 +57,7 @@ final class NativeCases {
     }
     operations.awaitDrained();
     for (var identity : cases.identities)
-      check(NativeProcesses.stopped(identity), "all recorded identities remain stopped");
+      check(cases.runner.stopped(identity), "all recorded identities remain stopped");
     Files.writeString(
         evidence.resolve(selected + "-identities.json"), Payloads.json(cases.identities));
     check(operations.activeCount() == 0, "no live operation or drainer");
@@ -130,8 +130,7 @@ final class NativeCases {
             identity -> {
               try {
                 check(
-                    NativeProcesses.stopped(identity),
-                    "actual launcher/bwrap/init stopped before callback");
+                    runner.stopped(identity), "actual launcher/bwrap/init stopped before callback");
               } catch (Exception error) {
                 throw new IllegalStateException(error);
               }
@@ -393,8 +392,8 @@ final class NativeCases {
         child.waitFor();
       }
       if (identity != null) {
-        NativeProcesses.signal(identity, true);
-        check(NativeProcesses.stopped(identity), "pinned rename namespace stopped");
+        runner.signal(identity, true);
+        check(runner.stopped(identity), "pinned rename namespace stopped");
       }
       SearchFiles.removeTree(directory);
     }

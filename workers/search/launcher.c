@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -134,6 +135,15 @@ static void restore_mtimes(int root, int projection) {
     char extra;require(read(metadata,&extra,1)==0);close(metadata);
 }
 int main(int argc, char **argv) {
+    /* kill(2) resolves the PID in this process's namespace, independently of proc hidepid.
+     * Only ESRCH proves absence. EPERM and all other errors remain unproven. No signal is sent. */
+    if (argc == 3 && !strcmp(argv[1], "--probe-absent")) {
+        require(getuid() != 0 && geteuid() == getuid());
+        unsigned long long value = number(argv[2]); require(value > 0 && value <= INT_MAX);
+        if (kill((pid_t)value, 0) == 0) return 1;
+        if (errno == ESRCH) return 0;
+        fail();
+    }
     require(argc == 4 && getuid() != 0 && geteuid() == getuid());
     pid_t parent = getppid(); require(parent > 1);
     require(prctl(PR_SET_PDEATHSIG, SIGKILL) == 0 && getppid() == parent);

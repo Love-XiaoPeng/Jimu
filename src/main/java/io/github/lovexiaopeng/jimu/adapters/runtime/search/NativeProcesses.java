@@ -6,7 +6,6 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger.ProcessIde
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 
 /** Physical observations. Unreadable proc/receipts never imply process death. */
@@ -31,18 +30,22 @@ public final class NativeProcesses {
 
   public static boolean stopped(ProcessIdentity expected) throws IOException {
     if (expected == null) return true;
+    if (!Files.readSymbolicLink(Path.of("/proc/self"))
+        .toString()
+        .equals(Long.toString(ProcessHandle.current().pid())))
+      throw new IOException("Proc PID namespace does not match observer");
     if (!expected
         .bootId()
         .equals(Files.readString(Path.of("/proc/sys/kernel/random/boot_id")).strip())) return true;
-    try {
-      String stat = Files.readString(Path.of("/proc", Long.toString(expected.pid()), "stat"));
-      String[] fields = stat.substring(stat.lastIndexOf(')') + 2).split(" ");
-      return Long.parseLong(fields[19]) != expected.startTicks()
-          || fields[0].equals("Z")
-          || fields[0].equals("X");
-    } catch (NoSuchFileException absent) {
-      return ProcessHandle.of(expected.pid()).isEmpty();
-    }
+    String stat = Files.readString(Path.of("/proc", Long.toString(expected.pid()), "stat"));
+    String[] fields = stat.substring(stat.lastIndexOf(')') + 2).split(" ");
+    if (Long.parseLong(fields[19]) != expected.startTicks()) return true;
+    if (fields[0].equals("Z") || fields[0].equals("X")) return true;
+    if (!Files.getAttribute(Path.of("/proc", Long.toString(expected.pid()), "ns/pid"), "unix:ino")
+        .toString()
+        .equals(expected.pidNamespace()))
+      throw new IOException("Native process namespace identity mismatch");
+    return false;
   }
 
   public static boolean stopped(NativeIdentity identity) throws IOException {

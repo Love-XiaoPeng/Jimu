@@ -211,8 +211,11 @@ public class DurableConfiguration {
 
   @Bean(initMethod = "start", destroyMethod = "close")
   @ConditionalOnProperty(name = "jimu.role", havingValue = "control")
-  LocalWorkerSupervisor supervisor(ExecutionLedger ledger, Environment env) {
+  LocalWorkerSupervisor supervisor(
+      ExecutionLedger ledger, Environment env, NativeSearchRuntime search) {
     return new LocalWorkerSupervisor(
-        ledger, java.util.UUID.fromString(env.getRequiredProperty("jimu.host-id")).toString());
+        ledger,
+        java.util.UUID.fromString(env.getRequiredProperty("jimu.host-id")).toString(),
+        search);
   }
 }
