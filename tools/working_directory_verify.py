@@ -289,7 +289,7 @@ class DirectoryExperiment(Experiment):
         assert result.returncode == 0, (result.returncode, result.stdout, result.stderr)
         output = json.loads(result.stdout.strip().splitlines()[-1])
         for line in result.stderr.splitlines():
-            if line.startswith('DIRECTORY_OPERATION_MILLIS='):
+            if mode == 'timed' and line.startswith('DIRECTORY_OPERATION_MILLIS='):
                 output['operationMillis'] = int(line.split('=', 1)[1])
         return output
 
@@ -464,7 +464,7 @@ class DirectoryExperiment(Experiment):
         try:
             assert locker.stdout.readline().strip() == 'LOCKED'
             start = time.monotonic()
-            result = self.probe(task, worker)
+            result = self.probe(task, worker, 'timed')
             elapsed = time.monotonic()-start
             self.assert_that(result['code'] == 'UNCONFIRMED' and 1500 <= result['operationMillis'] < 3000, 'real InnoDB lock has two-second bound', result=result, processElapsedSeconds=elapsed)
         finally:
@@ -475,7 +475,7 @@ class DirectoryExperiment(Experiment):
             fcntl.lockf(lock, fcntl.LOCK_EX)
             try:
                 start = time.monotonic()
-                result = self.probe(task, worker)
+                result = self.probe(task, worker, 'timed')
                 elapsed = time.monotonic()-start
                 self.assert_that(result['code'] == 'WORKSPACE_UNAVAILABLE' and 1500 <= result['operationMillis'] < 3000, 'real POSIX file lock has two-second bound', result=result, processElapsedSeconds=elapsed)
             finally:
