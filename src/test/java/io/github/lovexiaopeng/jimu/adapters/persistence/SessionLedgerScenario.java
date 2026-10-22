@@ -185,6 +185,19 @@ public final class SessionLedgerScenario {
       return;
     }
     if (args[2].equals("replay")) {
+      // The checkpoint read itself advances task revision. At a decimal-width boundary that
+      // metadata byte must be accounted in the same transaction, even with no subsequent event.
+      long revision = db.queryForObject("SELECT revision FROM task WHERE id=?", Long.class, taskId);
+      require(revision >= 10 && revision < 100, "Fixture starts in the two-digit revision range");
+      db.update("UPDATE task SET revision=99 WHERE id=?", taskId);
+      ledger.checkpoint(lease);
+      require(
+          records.metadata(task, true)
+              == db.queryForObject(
+                  "SELECT metadata_bytes FROM task_session_history WHERE task_id=?",
+                  Long.class,
+                  taskId),
+          "Read-only checkpoint accounts 99-to-100 metadata width immediately");
       var target =
           db.queryForMap(
               "SELECT * FROM session_public_event WHERE tenant_id='tenant-a' AND task_id=? AND seq=0",

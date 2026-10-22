@@ -4472,6 +4472,9 @@ public final class JdbcLedger
             lease.attemptId(),
             lease.fence())
         != 1) throw new TaskFailure(409, "FENCE_REJECTED");
+    if (JdbcSessionRecords.task(task)
+        && Long.toString(n(task, "revision")).length()
+            != Long.toString(n(task, "revision") + 1).length()) sessions.account(task, false);
     return task;
   }
 

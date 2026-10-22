@@ -28,7 +28,7 @@ python3 tools/session_event_regression_verify.py --jar <jar> --evidence <directo
 | H03–H04 | recovery：M1/M2/读取提交前后 SIGKILL，真实新 worker 接管，同上界/digest/字节/一次工具及收据；JDBC commit 前回滚与 commit 后丢确认两侧注入；同响应多槽看不到前槽新收据 |
 | H05–H06 | replay helper：变更 target 后仍回原字节、fence/actor/pin、actor/installation 撤权、flag off、通用写入口拒绝；authorization：M2 后取消/截止/flag off 保留 usage、无工具消费；owner终态可读 |
 | H07 | SessionContractsTest 严格 JSON/UTF-8/surrogate/safe integer；failures 真实 M2 拒绝及 owner query；diagnostics 数据库版本/来源/摘要损坏 |
-| H08 | 原生事件16KiB、输出32KiB N-1/N/N+1 契约测试；真实 Unicode 摘要截断；PK EXPLAIN；真实行锁超时；独立汇总全部正文副本与元数据等于计数 |
+| H08 | 原生事件16KiB、输出32KiB N-1/N/N+1 契约测试；真实 Unicode 摘要截断；PK EXPLAIN；真实行锁超时；独立汇总全部正文副本与元数据等于计数；无后续事件的 checkpoint 读取在 revision 99→100 时立即补记元数据字节 |
 | H09 | redaction：已知合成签名/DB秘密、私有配置、token/path、reasoning sentinel；公开目标/summary/SSE 不泄露，redacted 真实；unsafe summary fail closed |
 | H10 | migration：真实 V18→V19、旧 request/model/tool/checkpoint/invocation 原字节及 V1–V18 checksum 保持、旧 task 无回填、旧 V18 control/worker 在 readiness 前拒绝19、flag off旧任务接续 |
 | H11 | retention：过期立即410、17项 UNKNOWN/非静止 writer 不安全前缀后安全任务可清理、全部正文副本/墓碑/唯一释放；重复维护不重复释放 |
