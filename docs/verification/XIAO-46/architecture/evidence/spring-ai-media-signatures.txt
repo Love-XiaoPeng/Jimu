@@ -1,0 +1,28 @@
+Compiled from "DefaultToolExecutionResult.java"
+public final class org.springframework.ai.model.tool.DefaultToolExecutionResult$Builder {
+  public org.springframework.ai.model.tool.DefaultToolExecutionResult$Builder conversationHistory(java.util.List<org.springframework.ai.chat.messages.Message>);
+  public org.springframework.ai.model.tool.DefaultToolExecutionResult$Builder returnDirect(boolean);
+  public org.springframework.ai.model.tool.DefaultToolExecutionResult build();
+}
+Compiled from "UserMessage.java"
+public final class org.springframework.ai.chat.messages.UserMessage$Builder {
+  public org.springframework.ai.chat.messages.UserMessage$Builder();
+  public org.springframework.ai.chat.messages.UserMessage$Builder text(java.lang.String);
+  public org.springframework.ai.chat.messages.UserMessage$Builder text(org.springframework.core.io.Resource);
+  public org.springframework.ai.chat.messages.UserMessage$Builder media(java.util.List<org.springframework.ai.content.Media>);
+  public org.springframework.ai.chat.messages.UserMessage$Builder media(org.springframework.ai.content.Media...);
+  public org.springframework.ai.chat.messages.UserMessage$Builder metadata(java.util.Map<java.lang.String, java.lang.Object>);
+  public org.springframework.ai.chat.messages.UserMessage build();
+}
+Compiled from "Media.java"
+public final class org.springframework.ai.content.Media$Builder {
+  public org.springframework.ai.content.Media$Builder mimeType(org.springframework.util.MimeType);
+  public org.springframework.ai.content.Media$Builder data(org.springframework.core.io.Resource);
+  public org.springframework.ai.content.Media$Builder data(byte[]);
+  public org.springframework.ai.content.Media$Builder data(java.lang.String);
+  public org.springframework.ai.content.Media$Builder data(java.net.URI);
+  public org.springframework.ai.content.Media$Builder data(java.net.URL);
+  public org.springframework.ai.content.Media$Builder id(java.lang.String);
+  public org.springframework.ai.content.Media$Builder name(java.lang.String);
+  public org.springframework.ai.content.Media build();
+}

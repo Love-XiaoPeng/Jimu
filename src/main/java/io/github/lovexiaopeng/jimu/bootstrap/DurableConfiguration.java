@@ -57,7 +57,11 @@ public class DurableConfiguration {
 
   @Bean
   JdbcLedger ledger(
-      DataSource source, Environment env, ModelProfiles models, NativeSearchRuntime searches) {
+      DataSource source,
+      Environment env,
+      ModelProfiles models,
+      NativeSearchRuntime searches,
+      @Qualifier("imageStore") java.util.Optional<ArtifactStore> images) {
     if ("control".equals(env.getRequiredProperty("jimu.role"))) {
       Flyway.configure()
           .dataSource(
@@ -71,13 +75,22 @@ public class DurableConfiguration {
     Flyway.configure().dataSource(source).cleanDisabled(true).load().validate();
     var ledger = new JdbcLedger(source, models);
     ledger.nativeSearchAvailability(searches::available);
+    ledger.imageStorage(images.orElse(null));
     ledger.check();
     return ledger;
   }
 
   @Bean
+  @org.springframework.context.annotation.Primary
   ArtifactStore artifactStore(Environment env) throws IOException {
     return new LocalArtifactStore(Path.of(env.getRequiredProperty("jimu.storage-root")));
+  }
+
+  @Bean("imageStore")
+  @ConditionalOnProperty(name = "jimu.images.enabled", havingValue = "true")
+  ArtifactStore imageStore(Environment env) throws IOException {
+    return new io.github.lovexiaopeng.jimu.adapters.storage.SecureImageStore(
+        Path.of(env.getRequiredProperty("jimu.images.root")));
   }
 
   @Bean
@@ -125,6 +138,8 @@ public class DurableConfiguration {
       BoundaryProbe probe,
       ModelProfiles models,
       NativeSearchRuntime searches,
+      OperationThreads operations,
+      @Qualifier("imageStore") java.util.Optional<ArtifactStore> images,
       Environment env)
       throws IOException {
     var credentials = new HashMap<String, String>();
@@ -153,7 +168,11 @@ public class DurableConfiguration {
         models,
         workspaceRoot == null
             ? null
-            : new WorkspaceRuntime(new SecureWorkspaceStore(Path.of(workspaceRoot)), searches));
+            : new WorkspaceRuntime(
+                new SecureWorkspaceStore(Path.of(workspaceRoot)),
+                searches,
+                new io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageRuntime(
+                    images.orElse(null), operations)));
   }
 
   @Bean(initMethod = "start", destroyMethod = "close")

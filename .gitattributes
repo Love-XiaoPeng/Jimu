@@ -1,6 +1,9 @@
 * text=auto eol=lf whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/baseline/** -text
 docs/adr/** -text
+docs/verification/XIAO-46/architecture/** -text
+# Immutable upstream captures have byte-significant original whitespace.
+docs/verification/XIAO-46/architecture/evidence/deepseek-*.txt -diff
 tools/evaluation/frozen/** -text
 # Byte-pinned upstream captures retain their original whitespace; MANIFEST verifies their bytes.
 tools/evaluation/frozen/official/chat-api.md -diff

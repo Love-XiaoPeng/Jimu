@@ -8,7 +8,6 @@ import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Response;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.ToolCall;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.WireMessage;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer;
-import io.github.lovexiaopeng.jimu.adapters.runtime.model.BusinessPolicies;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import java.io.IOException;
@@ -33,10 +32,25 @@ public final class OpenAiProtocol {
   }
 
   public String body(ModelSnapshot p, List<WireMessage> history, List<ToolDefinition> definitions) {
+    return body(
+        p,
+        history,
+        definitions,
+        ref -> {
+          throw new IllegalArgumentException("Media resolver required");
+        });
+  }
+
+  public String body(
+      ModelSnapshot p,
+      List<WireMessage> history,
+      List<ToolDefinition> definitions,
+      java.util.function.Function<io.github.lovexiaopeng.jimu.plugin.api.ImagePort.Result, byte[]>
+          media) {
     var body = json.createObjectNode();
     body.put("model", p.model());
     body.put("stream", p.stream());
-    if (BusinessPolicies.STRATEGY.equals(p.adapter())) {
+    if (io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelImages.deepseek(p.adapter())) {
       body.putObject("thinking").put("type", "disabled");
     } else body.put("n", 1);
     body.put(p.outputLimitField(), p.maxOutputTokens() - p.outputMarginTokens());
@@ -45,7 +59,35 @@ public final class OpenAiProtocol {
       body.putObject("stream_options").put("include_usage", true);
     p.providerOptions().forEach(body::put);
     var messages = body.putArray("messages");
+    int images = 0;
+    long imageBytes = 0;
     for (var m : history) {
+      if (m.images() != null) {
+        io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelImages.require(p);
+        if (!m.role().equals("user")
+            || m.images().size() != 1
+            || !m.calls().isEmpty()
+            || !m.replies().isEmpty())
+          throw new IllegalArgumentException("Invalid host media message");
+        var ref = m.images().getFirst();
+        byte[] bytes = media.apply(ref);
+        if (!m.content()
+                .equals(io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.text(ref))
+            || !io.github.lovexiaopeng.jimu.adapters.persistence.Payloads.hash(bytes)
+                .equals(ref.image().sha256())
+            || bytes.length != ref.image().size())
+          throw new IllegalArgumentException("Media integrity mismatch");
+        images++;
+        imageBytes += bytes.length;
+        if (images > p.imageInput().maxImages()
+            || bytes.length > p.imageInput().maxImageBytes()
+            || imageBytes > p.imageInput().maxTotalImageBytes())
+          throw new io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure(
+              409, "MODEL_MEDIA_LIMIT_EXCEEDED");
+        messages.add(
+            io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.provider(ref, bytes));
+        continue;
+      }
       if ("tool".equals(m.role())) {
         for (var r : m.replies()) {
           var node = messages.addObject();

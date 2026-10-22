@@ -1,0 +1,70 @@
+{
+  "status": "architecture-proposal-not-installed",
+  "sourceBase": "10be244360bb41ea92f2f078b1661ea4cf38c244",
+  "files": [
+    {
+      "path": "contracts/compose_report-0.2.0/input.schema.json",
+      "bytes": 4070,
+      "sha256": "4901da65bf56c28822d76e4a8eee0803097c3c43a6a8ccd026529b061d3a4400"
+    },
+    {
+      "path": "contracts/compose_report-0.2.0/output.schema.json",
+      "bytes": 5181,
+      "sha256": "183994b16bdc7b3f0de711674a639c741fa85a58ff618ac7d3d378d3dca1fe79"
+    },
+    {
+      "path": "contracts/compose_report-0.2.0/plugin.yaml",
+      "bytes": 878,
+      "sha256": "894bd18c387715169d9117cd9dde2a8392141e8cc03e6f7865a1b0bdd409f430"
+    },
+    {
+      "path": "contracts/image-input-capability.schema.json",
+      "bytes": 1009,
+      "sha256": "1b00c95513e266badf0e3a3e347eec9e2cb6fbdde081af394a3c74a50a9d1989"
+    },
+    {
+      "path": "contracts/read_image/input.schema.json",
+      "bytes": 303,
+      "sha256": "cdf5a6395bfa7123c880d03869b8d595e15e2e4c8f0cda188278afb21990355c"
+    },
+    {
+      "path": "contracts/read_image/output.schema.json",
+      "bytes": 2118,
+      "sha256": "2b3e16c2ba0318dc62f26fb6410622997eb2591d074e1f7acf8c8c5d2da68108"
+    },
+    {
+      "path": "contracts/read_image/plugin.yaml",
+      "bytes": 865,
+      "sha256": "9b08fea3c0de3facd8fc6898a27981176ad28970683962a48568a2cbf0a50d1e"
+    },
+    {
+      "path": "contracts/task-images-field.schema.json",
+      "bytes": 833,
+      "sha256": "9b1b59d8c09242deaa6a7cdc33c75409fb4ab238ec04f79d77516cb9afd8c331"
+    }
+  ],
+  "catalogProposal": [
+    {
+      "tool": "read_image",
+      "plugin": "jimu.workspace.read_image",
+      "version": "0.1.0",
+      "upstream": "T24/G14",
+      "formats": [
+        "image/png",
+        "image/jpeg"
+      ],
+      "output": "image/png",
+      "description": "Read an authorized task PNG/JPEG image and return the image itself to the current image-capable model. Large images are downscaled automatically. GIF/WebP are unsupported by this deployment.",
+      "source": "packages/fs/tool-fs/src/read-image.ts",
+      "upstreamCommit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+      "license": "MIT, Copyright (c) 2026 DeepSeek"
+    },
+    {
+      "tool": "compose_report",
+      "plugin": "jimu.workspace.compose_report",
+      "version": "0.2.0",
+      "draftVersion": 2,
+      "renderer": "source-bound-report-v2"
+    }
+  ]
+}

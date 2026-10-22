@@ -1,0 +1,203 @@
+{
+  "checkedAt": "2026-10-22T06:49:26.019Z",
+  "baseline": {
+    "name": "master",
+    "sha": "10be244360bb41ea92f2f078b1661ea4cf38c244",
+    "tree": "a5c3e25997cc7a4bc42df7e4a126cddb97d0fa75",
+    "checkedAt": "2026-10-22T06:25:02.6925856Z"
+  },
+  "upstreamCommit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+  "treeTruncated": false,
+  "upstream": [
+    {
+      "path": "LICENSE",
+      "gitBlobSha1": "c1f7a78e89e4e4dc7b86664c3b3c76eb5eee1785",
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+      "bytes": 1065,
+      "match": true
+    },
+    {
+      "path": "packages/attachment/attachment-local/src/image.ts",
+      "gitBlobSha1": "402f076840cd31062dbf7cd1a21e92450f2fd500",
+      "sha256": "ec48db7f7702bb06317c10c393c1fc6a8ec0927f87f63021f419f015dd69827f",
+      "bytes": 5594,
+      "match": true
+    },
+    {
+      "path": "packages/attachment/attachment-local/src/index.ts",
+      "gitBlobSha1": "34959d088a53e61a8eaf78d14cf52580627d70da",
+      "sha256": "1a1d3fda491bbb0789447e6f9ab92840d6652eff8d68fbccc2a4307ccc5f9f8b",
+      "bytes": 12601,
+      "match": true
+    },
+    {
+      "path": "packages/attachment/attachment-local/src/request-image.ts",
+      "gitBlobSha1": "74d4934b2faad1b7262ac5bee30e538eac0342d7",
+      "sha256": "bbb89a0150520a8c73d96fa884066e4b2cc82085864c5899500e45bd6aac889e",
+      "bytes": 7715,
+      "match": true
+    },
+    {
+      "path": "packages/attachment/attachment/src/types.ts",
+      "gitBlobSha1": "455d6c9de06f09ac4cbac5590d41fff0dab326b8",
+      "sha256": "893a8d2501251873d7a885ac9d7249f9a79c3e71e18ef921c260bf56e2c6c354",
+      "bytes": 6116,
+      "match": true
+    },
+    {
+      "path": "packages/fs/tool-fs/src/read-image.ts",
+      "gitBlobSha1": "4a452e21c44f7253465e13f5e96c9ccbe7dd4ccc",
+      "sha256": "36cef763f246effda50ad7e3a50de46380bb65eb6cd87f758f07d716f10f2f54",
+      "bytes": 16573,
+      "match": true
+    },
+    {
+      "path": "packages/fs/tool-fs/src/read-target.ts",
+      "gitBlobSha1": "6fc61e7f5a968ab1d948807af8bf34b0e64fc657",
+      "sha256": "3e89ce59dae8d4d568ed0833d4c939ac9cd62eda380e1b4addf697a311b56d43",
+      "bytes": 1464,
+      "match": true
+    },
+    {
+      "path": "packages/fs/tool-fs/tests/read-image.spec.ts",
+      "gitBlobSha1": "7765b5b8e4c04bac21c192f37c01e7d2aa07b60c",
+      "sha256": "1df54c209c3269299b97398386c6972ea0962d819b5e87a79fc41b3d5c94d3c0",
+      "bytes": 40481,
+      "match": true
+    }
+  ],
+  "evidenceFiles": [
+    {
+      "path": "evidence/CodecProbe.java",
+      "bytes": 772,
+      "sha256": "209bde556d7f23381be9b6334921f018706da2f534a34daf0cd711d4cbe2fa65"
+    },
+    {
+      "path": "evidence/ContractProbe.java",
+      "bytes": 3159,
+      "sha256": "9efd3e1bd542b49f1f792e56779bf1ec1e9fd29026444f1c4b1b86752d21062d"
+    },
+    {
+      "path": "evidence/deepseek-pricing.html",
+      "bytes": 26045,
+      "sha256": "df309fa78d7258cf6349444f1d67a41f811548a3292791ea765302919ec0a5b9"
+    },
+    {
+      "path": "evidence/deepseek-pricing.txt",
+      "bytes": 4313,
+      "sha256": "a5040a9dc4a7d4da4e481aa3579a3673ac54049045ab5d72323abeb4ba637657"
+    },
+    {
+      "path": "evidence/deepseek-vision.html",
+      "bytes": 81889,
+      "sha256": "80f25e3b53c3ba516c3817d62c297a136d47bfe42958f46bbc28950f6d19f690"
+    },
+    {
+      "path": "evidence/deepseek-vision.txt",
+      "bytes": 10264,
+      "sha256": "20598fec543bc3e7cbe2be50b2d63041470e841214693fa0822e8dd617d3a323"
+    },
+    {
+      "path": "evidence/jdk-imageio-probe.txt",
+      "bytes": 386,
+      "sha256": "7b2c707c9cfeb8e6ad96efc84cb901eec8ba9cf036413ff40d82e39041f0d4ed"
+    },
+    {
+      "path": "evidence/LICENSE",
+      "bytes": 1065,
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+    },
+    {
+      "path": "evidence/master-baseline.json",
+      "bytes": 183,
+      "sha256": "efcc213d1bbed6a1f5fa316f0ff3b57287e5be12b6a0db429d7465987dbb2e9e"
+    },
+    {
+      "path": "evidence/packages__attachment__attachment-local__src__image.ts",
+      "bytes": 5594,
+      "sha256": "ec48db7f7702bb06317c10c393c1fc6a8ec0927f87f63021f419f015dd69827f"
+    },
+    {
+      "path": "evidence/packages__attachment__attachment-local__src__index.ts",
+      "bytes": 12601,
+      "sha256": "1a1d3fda491bbb0789447e6f9ab92840d6652eff8d68fbccc2a4307ccc5f9f8b"
+    },
+    {
+      "path": "evidence/packages__attachment__attachment-local__src__request-image.ts",
+      "bytes": 7715,
+      "sha256": "bbb89a0150520a8c73d96fa884066e4b2cc82085864c5899500e45bd6aac889e"
+    },
+    {
+      "path": "evidence/packages__attachment__attachment__src__types.ts",
+      "bytes": 6116,
+      "sha256": "893a8d2501251873d7a885ac9d7249f9a79c3e71e18ef921c260bf56e2c6c354"
+    },
+    {
+      "path": "evidence/packages__fs__tool-fs__src__read-image.ts",
+      "bytes": 16573,
+      "sha256": "36cef763f246effda50ad7e3a50de46380bb65eb6cd87f758f07d716f10f2f54"
+    },
+    {
+      "path": "evidence/packages__fs__tool-fs__src__read-target.ts",
+      "bytes": 1464,
+      "sha256": "3e89ce59dae8d4d568ed0833d4c939ac9cd62eda380e1b4addf697a311b56d43"
+    },
+    {
+      "path": "evidence/packages__fs__tool-fs__tests__read-image.spec.ts",
+      "bytes": 40481,
+      "sha256": "1df54c209c3269299b97398386c6972ea0962d819b5e87a79fc41b3d5c94d3c0"
+    },
+    {
+      "path": "evidence/schema-probe.txt",
+      "bytes": 415,
+      "sha256": "93878d32d8b6157b919e22f7d572e56e4a56ecc9547faf9d7d41bd41f041b75b"
+    },
+    {
+      "path": "evidence/spring-ai-media-signatures.txt",
+      "bytes": 2121,
+      "sha256": "ba6d92238b80279be45b9b0242d898d91d364dfbe542ba29714dd3f1a74b4235"
+    }
+  ],
+  "parsedContracts": 8,
+  "localReferencesResolved": true,
+  "productRepositoryModified": false,
+  "productTestsRun": false,
+  "githubCiRun": false,
+  "paidRequests": 0,
+  "validation": [
+    {
+      "command": "multica repo checkout https://github.com/Love-XiaoPeng/Jimu.git",
+      "exitCode": 0
+    },
+    {
+      "command": "git ls-remote origin refs/heads/master",
+      "exitCode": 128,
+      "limitation": "github.com:443 connection failed; GitHub branches/master API succeeded at recorded baseline time"
+    },
+    {
+      "command": "java ./CodecProbe.java",
+      "exitCode": 0,
+      "limitation": "Reader availability only; not product image decoding/security acceptance"
+    },
+    {
+      "command": "javap Spring AI 2.0.1 ToolExecutionResult/UserMessage/Media builder signatures",
+      "exitCode": 0,
+      "limitation": "Signature inspection only; no product loop executed"
+    },
+    {
+      "command": "java --class-path <networknt3.0.1/Jackson3.1.7 dependencies> ./ContractProbe.java",
+      "exitCode": 0,
+      "schemas": 6,
+      "cases": 10,
+      "limitation": "Contract shape validation; no product execution/decoding/authorization tested"
+    },
+    {
+      "command": "node ./build-contracts.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "node ./verify-handoff.mjs",
+      "exitCode": 0
+    }
+  ]
+}

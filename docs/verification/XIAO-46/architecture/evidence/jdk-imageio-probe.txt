@@ -1,0 +1,7 @@
+java=21.0.12.1+1-LTS
+vendor=Eclipse Adoptium
+readers=[JPG, jpg, tiff, bmp, BMP, gif, GIF, WBMP, png, PNG, JPEG, tif, TIF, TIFF, wbmp, jpeg]
+writers=[JPG, jpg, tiff, bmp, BMP, gif, GIF, WBMP, png, PNG, JPEG, tif, TIF, TIFF, jpeg, wbmp]
+PNG=com.sun.imageio.plugins.png.PNGImageReader
+JPEG=com.sun.imageio.plugins.jpeg.JPEGImageReader
+GIF=com.sun.imageio.plugins.gif.GIFImageReader

@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "source-bound-report-receipt-v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "rendererVersion",
+    "draftSha256",
+    "reportTime",
+    "bindings",
+    "file"
+  ],
+  "properties": {
+    "version": {
+      "const": 2
+    },
+    "rendererVersion": {
+      "const": "source-bound-report-v2"
+    },
+    "draftSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "reportTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "bindings": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 16,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "invocationId",
+              "outputDigest",
+              "sourceUrl",
+              "evidenceOffset",
+              "evidenceLength",
+              "quoteSha256"
+            ],
+            "properties": {
+              "type": {
+                "const": "web"
+              },
+              "invocationId": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+              },
+              "outputDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "sourceUrl": {
+                "type": "string",
+                "format": "uri",
+                "maxLength": 2048
+              },
+              "evidenceOffset": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "evidenceLength": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "quoteSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "invocationId",
+              "outputDigest",
+              "sourceRef",
+              "inputId",
+              "sourceSha256",
+              "imageId",
+              "imageSha256",
+              "stepId",
+              "dispatchId",
+              "configDigest",
+              "requestBodyDigest",
+              "responseDigest",
+              "textSha256"
+            ],
+            "properties": {
+              "type": {
+                "const": "image"
+              },
+              "invocationId": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+              },
+              "outputDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "sourceRef": {
+                "type": "string",
+                "pattern": "^image:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+              },
+              "inputId": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+              },
+              "sourceSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "imageId": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+              },
+              "imageSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "stepId": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+              },
+              "dispatchId": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+              },
+              "configDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "requestBodyDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "responseDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "textSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filePath",
+        "version",
+        "sha256",
+        "size"
+      ],
+      "properties": {
+        "filePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        }
+      }
+    }
+  }
+}

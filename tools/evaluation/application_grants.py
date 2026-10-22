@@ -6,6 +6,7 @@ APPLICATION_TABLES = (
     'actor_access', 'artifact', 'evaluation_budget', 'event', 'installation', 'invocation',
     'model_dispatch', 'reservation', 'step', 'task', 'task_attempt', 'tenant_budget', 'worker_process',
     'native_search_run',
+    'task_image_input', 'task_image_object',
 )
 
 

@@ -58,7 +58,17 @@ public final class DurableAgent implements AutoCloseable {
   public record ToolReply(String id, String name, String data) {}
 
   public record WireMessage(
-      String role, String content, List<ToolCall> calls, List<ToolReply> replies) {}
+      String role,
+      String content,
+      List<ToolCall> calls,
+      List<ToolReply> replies,
+      @com.fasterxml.jackson.annotation.JsonInclude(
+              com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+          List<io.github.lovexiaopeng.jimu.plugin.api.ImagePort.Result> images) {
+    public WireMessage(String role, String content, List<ToolCall> calls, List<ToolReply> replies) {
+      this(role, content, calls, replies, null);
+    }
+  }
 
   public record Checkpoint(
       int version,
@@ -134,14 +144,20 @@ public final class DurableAgent implements AutoCloseable {
                     restore(
                         Payloads.read(step.request(), Checkpoint.class),
                         modelSnapshot,
-                        definitions))
+                        definitions,
+                        lease))
             .orElseGet(
                 () ->
                     fetch.publicMode() && lease.capabilities().contains("present")
                         ? List.of(
                             new SystemMessage(
                                 lease.capabilities().contains("compose_report")
-                                    ? new ReportComposer().instruction(ledger.reportContext(lease))
+                                    ? lease.capabilities().contains("read_image")
+                                        ? new io.github.lovexiaopeng.jimu.adapters.runtime.contract
+                                                .ImageReportComposer()
+                                            .instruction(ledger.reportContext(lease))
+                                        : new ReportComposer()
+                                            .instruction(ledger.reportContext(lease))
                                     : models.businessPolicy() != null
                                             || models.evaluationSelection() == null
                                         ? new ReportPolicy()
@@ -150,6 +166,14 @@ public final class DurableAgent implements AutoCloseable {
                                             .instruction(ledger.reportContext(lease))),
                             new UserMessage(lease.goal()))
                         : List.of(new UserMessage(lease.goal())));
+    if (lease.capabilities().contains("read_image") && previous.isEmpty()) {
+      messages = new ArrayList<>(messages);
+      messages.add(
+          new UserMessage(
+              io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.directory(
+                  ((io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger) ledger)
+                      .mediaSnapshot(lease))));
+    }
     var manager = session.manager();
     var advisor = ToolCallingAdvisor.builder().toolCallingManager(manager).build();
     // This ChatModel performs HTTP only and has no internal tool execution or SDK retries.
@@ -224,7 +248,10 @@ public final class DurableAgent implements AutoCloseable {
       boolean web = name.equals("web_fetch");
       if (!web && (!fetch.publicMode() || workspace == null))
         throw new TaskFailure(503, "WORKSPACE_NOT_CONFIGURED");
-      var descriptor = web ? fetch.descriptor() : workspace.contract(name).descriptor();
+      var descriptor =
+          web
+              ? fetch.descriptor()
+              : workspace.contract(name, pins.get(name).version()).descriptor();
       if (!web) workspace.available(name);
       var pin = pins.get(name);
       if (pin == null
@@ -239,46 +266,43 @@ public final class DurableAgent implements AutoCloseable {
             ToolDefinition.builder()
                 .name(name)
                 .description(
-                    switch (name) {
-                      case "read" ->
-                          "Read a UTF-8 task file with line numbers; observe missing files before write";
-                      case "write" ->
-                          "Create or replace UTF-8 task file using the host's observed version";
-                      case "edit" ->
-                          "Replace observed literal UTF-8 text atomically; read first; replace_all defaults false";
-                      case "glob" ->
-                          "Find task files using native glob semantics; cursor reads the same immutable snapshot";
-                      case "grep" ->
-                          "Search task file lines with native Rust regex semantics; read matches before editing";
-                      case "compose_report" ->
-                          "Compose a source-bound report from typed fields and exact fetched evidence; read target first";
-                      case "present" ->
-                          "Publish existing observed Markdown reports as immutable authorized deliverables";
-                      default -> throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
-                    })
-                .inputSchema(workspace.contract(name).input())
+                    io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceContracts
+                        .description(name))
+                .inputSchema(workspace.contract(name, pin.version()).input())
                 .build());
     }
     return List.copyOf(result);
   }
 
   private List<Message> restore(
-      Checkpoint checkpoint, ModelSnapshot snapshot, List<ToolDefinition> definitions) {
-    if (checkpoint.version() != 2) throw new TaskFailure(409, "PAYLOAD_VERSION_UNSUPPORTED");
+      Checkpoint checkpoint,
+      ModelSnapshot snapshot,
+      List<ToolDefinition> definitions,
+      Lease lease) {
+    if (checkpoint.version() != (snapshot.version() == 3 ? 3 : 2))
+      throw new TaskFailure(409, "PAYLOAD_VERSION_UNSUPPORTED");
     if (!ModelProfiles.digest(snapshot).equals(checkpoint.configDigest()))
       throw new TaskFailure(409, "MODEL_CONFIG_UNAVAILABLE");
     if (!Payloads.hash(checkpoint.requestBody()).equals(checkpoint.bodyDigest()))
       throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
     if (!checkpoint
         .requestBody()
-        .equals(protocol.body(snapshot, checkpoint.messages(), definitions)))
+        .equals(
+            protocol.body(
+                snapshot,
+                checkpoint.messages(),
+                definitions,
+                ref -> workspace.images().bytes(ledger, lease, ref))))
       throw new TaskFailure(409, "MODEL_CONFIG_UNAVAILABLE");
-    return checkpoint.messages().stream().map(this::message).toList();
+    return checkpoint.messages().stream().map(m -> message(m, lease)).toList();
   }
 
-  private Message message(WireMessage message) {
+  private Message message(WireMessage message, Lease lease) {
     return switch (message.role()) {
-      case "user" -> new UserMessage(message.content());
+      case "user" ->
+          message.images() == null
+              ? new UserMessage(message.content())
+              : imageMessage(message.images().getFirst(), lease);
       case "system" -> new SystemMessage(message.content());
       case "assistant" ->
           assistant(new Response(2, message.content(), message.calls(), null, null));
@@ -306,7 +330,25 @@ public final class DurableAgent implements AutoCloseable {
                 .map(r -> new ToolReply(r.id(), r.name(), r.responseData()))
                 .toList()
             : List.of();
-    return new WireMessage(message.getMessageType().getValue(), message.getText(), calls, replies);
+    @SuppressWarnings("unchecked")
+    var images =
+        (List<io.github.lovexiaopeng.jimu.plugin.api.ImagePort.Result>)
+            message.getMetadata().get("jimu.images");
+    return new WireMessage(
+        message.getMessageType().getValue(), message.getText(), calls, replies, images);
+  }
+
+  private UserMessage imageMessage(
+      io.github.lovexiaopeng.jimu.plugin.api.ImagePort.Result ref, Lease lease) {
+    return UserMessage.builder()
+        .text(io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.text(ref))
+        .media(
+            org.springframework.ai.content.Media.builder()
+                .mimeType(org.springframework.util.MimeTypeUtils.IMAGE_PNG)
+                .data(workspace.images().bytes(ledger, lease, ref))
+                .build())
+        .metadata(java.util.Map.of("jimu.images", List.of(ref)))
+        .build();
   }
 
   private AssistantMessage assistant(Response response) {
@@ -335,10 +377,17 @@ public final class DurableAgent implements AutoCloseable {
 
     private ChatResponse call(Prompt prompt) {
       var history = prompt.getInstructions().stream().map(DurableAgent.this::wire).toList();
-      String body = protocol.body(modelSnapshot, history, definitions);
+      String body =
+          protocol.body(
+              modelSnapshot,
+              history,
+              definitions,
+              ref -> workspace.images().bytes(ledger, lease, ref));
+      if (modelSnapshot.version() == 3)
+        io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelImages.body(modelSnapshot, body);
       var checkpoint =
           new Checkpoint(
-              2,
+              modelSnapshot.version() == 3 ? 3 : 2,
               modelSnapshot.model(),
               history,
               lease.capabilities(),
@@ -347,7 +396,11 @@ public final class DurableAgent implements AutoCloseable {
               ModelProfiles.digest(modelSnapshot),
               body,
               Payloads.hash(body));
-      step = ledger.prepare(lease, Payloads.json(checkpoint));
+      String encoded = Payloads.json(checkpoint);
+      if (modelSnapshot.version() == 3
+          && encoded.getBytes(StandardCharsets.UTF_8).length > 12582912)
+        throw new TaskFailure(409, "MODEL_MEDIA_LIMIT_EXCEEDED");
+      step = ledger.prepare(lease, encoded);
       if (!history.isEmpty()
           && history.getLast().replies().stream().anyMatch(reply -> reply.name().equals("read")))
         probe.hit("READ_MODEL_PREPARED", lease.taskId());
@@ -468,22 +521,51 @@ public final class DurableAgent implements AutoCloseable {
                     });
               });
           var options = ToolCallingChatOptions.builder().toolCallbacks(callbacks).build();
-          return delegate.executeToolCalls(new Prompt(prompt.getInstructions(), options), response);
+          var result =
+              delegate.executeToolCalls(new Prompt(prompt.getInstructions(), options), response);
+          if (!lease.capabilities().contains("read_image")) return result;
+          var history = new ArrayList<>(result.conversationHistory());
+          var seen = new java.util.HashSet<String>();
+          for (var message : history) {
+            var saved = wire(message);
+            if (saved.images() != null)
+              saved
+                  .images()
+                  .forEach(
+                      ref ->
+                          seen.add(
+                              io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages
+                                  .identity(ref)));
+          }
+          for (var image :
+              ((io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger) ledger)
+                  .stepImages(lease, step.id()))
+            if (seen.add(
+                io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.identity(
+                    image.result()))) history.add(imageMessage(image.result(), lease));
+          if (seen.size() > modelSnapshot.imageInput().maxImages())
+            throw new TaskFailure(409, "MODEL_MEDIA_LIMIT_EXCEEDED");
+          return ToolExecutionResult.builder()
+              .conversationHistory(history)
+              .returnDirect(result.returnDirect())
+              .build();
         }
       };
     }
 
     private String invoke(Call call, String input) {
       boolean file = !call.tool().equals("web_fetch");
-      var descriptor = file ? workspace.contract(call.tool()).descriptor() : fetch.descriptor();
-      var outputContract = file ? workspace.contract(call.tool()).out() : outputSchema;
+      String version = file ? ledger.toolSnapshot(lease).pins().get(call.tool()).version() : null;
+      var descriptor =
+          file ? workspace.contract(call.tool(), version).descriptor() : fetch.descriptor();
+      var outputContract = file ? workspace.contract(call.tool(), version).out() : outputSchema;
       JsonNode args;
       try {
         args =
             call.tool().equals("compose_report")
                 ? ReportComposer.parse(input)
                 : json.readTree(input);
-        if (file) workspace.validate(call.tool(), args);
+        if (file) workspace.validate(call.tool(), version, args);
         else {
           inputSchema.validate(args);
           fetch.validate(Payloads.read(input, FetchInput.class));
@@ -552,7 +634,7 @@ public final class DurableAgent implements AutoCloseable {
         ledger.uncertain(lease, invocation.id());
         throw new TaskFailure(409, "EFFECT_OUTCOME_UNKNOWN");
       }
-      if (call.tool().equals("present")) {
+      if (call.tool().equals("present") || call.tool().equals("read_image")) {
         probe.hit("P2", lease.taskId());
         return output;
       }

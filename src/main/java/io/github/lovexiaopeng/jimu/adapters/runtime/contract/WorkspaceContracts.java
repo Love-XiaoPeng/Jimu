@@ -14,8 +14,30 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 /** Only packaged entries, never model-selected classes or paths. */
 public final class WorkspaceContracts {
+  /** Frozen host descriptions are also used when reconstructing a media checkpoint. */
+  public static String description(String name) {
+    return switch (name) {
+      case "web_fetch" -> "Fetch from the configured origin";
+      case "read" -> "Read a UTF-8 task file with line numbers; observe missing files before write";
+      case "read_image" ->
+          "Read an authorized task PNG/JPEG as actual model media; use the host directory, never host paths or URLs";
+      case "write" -> "Create or replace UTF-8 task file using the host's observed version";
+      case "edit" ->
+          "Replace observed literal UTF-8 text atomically; read first; replace_all defaults false";
+      case "glob" ->
+          "Find task files using native glob semantics; cursor reads the same immutable snapshot";
+      case "grep" ->
+          "Search task file lines with native Rust regex semantics; read matches before editing";
+      case "compose_report" ->
+          "Compose a source-bound report from typed fields and exact fetched evidence; read target first";
+      case "present" ->
+          "Publish existing observed Markdown reports as immutable authorized deliverables";
+      default -> throw new IllegalArgumentException("Unknown workspace tool");
+    };
+  }
+
   public static final List<String> NAMES =
-      List.of("read", "write", "present", "compose_report", "edit", "glob", "grep");
+      List.of("read", "write", "present", "compose_report", "edit", "glob", "grep", "read_image");
   private static final Map<String, String> ENTRIES =
       Map.of(
           "read",
@@ -37,12 +59,21 @@ public final class WorkspaceContracts {
       ToolDescriptor descriptor, String input, SchemaContract in, SchemaContract out) {}
 
   public Contract load(String name) throws IOException {
-    if (!NAMES.contains(name)) throw new IllegalArgumentException("Unknown workspace tool");
-    String root = "plugins/builtin/" + name + "/";
+    return load(name, "0.1.0");
+  }
+
+  public Contract load(String name, String version) throws IOException {
+    boolean image = name.equals("read_image");
+    boolean composeV2 = name.equals("compose_report") && version.equals("0.2.0");
+    if ((!NAMES.contains(name) && !image) || !(version.equals("0.1.0") || composeV2))
+      throw new IllegalArgumentException("Unknown workspace tool version");
+    String root = "plugins/builtin/" + name + (composeV2 ? "-0.2.0" : "") + "/";
     boolean search = name.equals("glob") || name.equals("grep");
     byte[] input = resource(root + "input.schema.json");
     byte[] output = resource(root + "output.schema.json");
-    String entry = "io.github.lovexiaopeng.jimu.plugins.builtin.workspace." + ENTRIES.get(name);
+    String entry =
+        "io.github.lovexiaopeng.jimu.plugins.builtin.workspace."
+            + (image ? "ReadImagePlugin" : ENTRIES.get(name));
     String plugin = name.equals("present") ? "jimu.artifact.present" : "jimu.workspace." + name;
     var options = new LoaderOptions();
     options.setAllowDuplicateKeys(false);
@@ -55,7 +86,7 @@ public final class WorkspaceContracts {
         Map.ofEntries(
             Map.entry("manifestVersion", 1),
             Map.entry("id", plugin),
-            Map.entry("version", "0.1.0"),
+            Map.entry("version", version),
             Map.entry("kind", "tool"),
             Map.entry("hostApi", ">=0.1.0 <0.2.0"),
             Map.entry("entry", Map.of("type", "trusted-jvm", "class", entry)),
@@ -70,17 +101,21 @@ public final class WorkspaceContracts {
                         "outputSchema",
                         "output.schema.json",
                         "sideEffect",
-                        name.equals("read") || search ? "read" : "write"))),
+                        name.equals("read") || search || image ? "read" : "write"))),
             Map.entry("permissions", Map.of("filesystem", List.of("host-task-workspace"))),
             Map.entry("secretRefs", List.of()),
             Map.entry("dependencies", List.of()),
             Map.entry(
-                "limits", Map.of("timeoutMs", 30000, "outputBytes", search ? 65536 : 1048576)),
+                "limits",
+                Map.of(
+                    "timeoutMs", 30000, "outputBytes", image ? 16384 : search ? 65536 : 1048576)),
             Map.entry(
                 "healthCheck",
                 Map.of(
                     "operation",
-                    search ? "native-search-readiness" : "workspace-readiness",
+                    image
+                        ? "image-store-readiness"
+                        : search ? "native-search-readiness" : "workspace-readiness",
                     "timeoutMs",
                     2000)),
             Map.entry("errorContract", "jimu-invocation-result"),
@@ -93,7 +128,7 @@ public final class WorkspaceContracts {
       var descriptor =
           new ToolDescriptor(
               plugin,
-              "0.1.0",
+              version,
               name,
               root + "input.schema.json",
               root + "output.schema.json",
