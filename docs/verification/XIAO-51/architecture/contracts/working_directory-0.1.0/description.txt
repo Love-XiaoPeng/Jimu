@@ -1,0 +1,1 @@
+Read the task's current logical directory, or change it with cd to an existing logical directory. The fixed authorized root is /. Relative paths use the current directory; . and .. stay inside that root. Directories are ancestors of existing task files; empty directories are unavailable. This changes no host or process directory and grants no permissions.
