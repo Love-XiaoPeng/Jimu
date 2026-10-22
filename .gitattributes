@@ -14,3 +14,4 @@ tools/evaluation/frozen/sources/rfc768.raw -diff
 tools/evaluation/frozen/sources/rfc768.visible.txt -diff
 src/main/resources/evaluation/*.source.json -text
 *.cmd text eol=crlf
+docs/verification/XIAO-49/architecture/** -text

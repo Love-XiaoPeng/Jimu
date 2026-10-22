@@ -1,0 +1,170 @@
+[
+  {
+    "path": "LICENSE",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "c1f7a78e89e4e4dc7b86664c3b3c76eb5eee1785",
+    "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+    "bytes": 1065,
+    "file": "LICENSE"
+  },
+  {
+    "path": "THIRD_PARTY_NOTICES.md",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "6a2fbda5ebec2d259fd90e22eaee819aec9e4edf",
+    "sha256": "260b8f9e14d68c083c8abe5d0c6b4cb5212d5f03025f327fdcd9656629222879",
+    "bytes": 24780,
+    "file": "THIRD_PARTY_NOTICES.md"
+  },
+  {
+    "path": "packages/interaction/tool-ask-user/package.json",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "f7acb9c7985575c983fc9d7a52c9b7b188483734",
+    "sha256": "b826ac166ecf18d6f3bedee4db9517d73fe7732ffc8eb2f75bcc1ce2cb0ebadd",
+    "bytes": 1380,
+    "file": "packages__interaction__tool-ask-user__package.json"
+  },
+  {
+    "path": "packages/interaction/tool-ask-user/src/index.ts",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "e9ca98d0485600a24c8ea8c58d9b8ba65cd73a92",
+    "sha256": "592f5b7b2e8528180b1bce69b33010d38b1e4352514484cada991c0add0e5bef",
+    "bytes": 4419,
+    "file": "packages__interaction__tool-ask-user__src__index.ts"
+  },
+  {
+    "path": "packages/interaction/tool-ask-user/src/timed.ts",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "2396e56e5207bc84fb87f04ee27a4ea23e8b649a",
+    "sha256": "c11da1a785add253eb99cda4a56e6729bb3a6191cc59b07533a8165faabdd942",
+    "bytes": 9097,
+    "file": "packages__interaction__tool-ask-user__src__timed.ts"
+  },
+  {
+    "path": "packages/interaction/tool-ask-user/tests/tool-ask-user.spec.ts",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "5ba9c7f5449168626161925e8ec427dc78ccb358",
+    "sha256": "5590a4c4efd6edfd63be7a477426a7737c2666beb9f3bd2c275f7aad4c652b51",
+    "bytes": 25664,
+    "file": "packages__interaction__tool-ask-user__tests__tool-ask-user.spec.ts"
+  },
+  {
+    "path": "packages/interaction/user-questions/src/index.ts",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "06cb67b8b6a2bf0c9b44e78db3d87fa695ff5887",
+    "sha256": "5bf54301a5560daf36a75ec12496a57dc7d2f20d741e17895df3c03584673106",
+    "bytes": 15058,
+    "file": "packages__interaction__user-questions__src__index.ts"
+  },
+  {
+    "path": "packages/interaction/user-questions/src/types.ts",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "8cccf99c3c702b7059cd231495330d0a5768511c",
+    "sha256": "682e2c58e1915019b3ef50be91a4edcdd7ba6cf3e4637baeb0fb4efa7319fa93",
+    "bytes": 6385,
+    "file": "packages__interaction__user-questions__src__types.ts"
+  },
+  {
+    "path": "packages/interaction/user-questions/src/timed-wait.ts",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "cc43cd98af45340d68d7e176b4a278d8c5d9b40e",
+    "sha256": "adc8a7ac7d079a8d468a0607329aec6025865ff366482790cf62edeb269c61ae",
+    "bytes": 3107,
+    "file": "packages__interaction__user-questions__src__timed-wait.ts"
+  },
+  {
+    "path": "packages/interaction/user-questions/src/projection.ts",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "7453a265a5617a2b796ac0862c01cd224dd8a720",
+    "sha256": "d01796bd8d4fd098bf8f004ccced882c8a243bb88b563871abc26dc98c9a3e7a",
+    "bytes": 13979,
+    "file": "packages__interaction__user-questions__src__projection.ts"
+  },
+  {
+    "path": "packages/interaction/user-questions/tests/user-questions.spec.ts",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "f0f744259a97ca665c98d912403b96fe50defe75",
+    "sha256": "e654e9dc67b3f1bc04d49dbf31ee34fc009f398de08e35e49b85982ceff9b612",
+    "bytes": 37725,
+    "file": "packages__interaction__user-questions__tests__user-questions.spec.ts"
+  },
+  {
+    "path": "packages/interaction/user-questions/tests/timed-wait.spec.ts",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "4cdb0d7e2b18d7ca974b2e2cfae974d0e2d2035c",
+    "sha256": "dd9cf726d25092931b671468b3b7c407679493b886313b2a23a1583b435ddb59",
+    "bytes": 4196,
+    "file": "packages__interaction__user-questions__tests__timed-wait.spec.ts"
+  },
+  {
+    "path": "docs/subsystems/user-questions.md",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "e409bff7477e933f6d7544e2fab41034c9e6f9d8",
+    "sha256": "9d90ad794fc1fe22ae9c54a8162b27d0e6f46dfd6fe0a3ba81ea05d1e037ea7a",
+    "bytes": 16654,
+    "file": "docs__subsystems__user-questions.md"
+  },
+  {
+    "path": ".agents/notes/implemented/architecture/2026-09-19-timed-user-question-two-settlements.md",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "014912c9a817dc18024e0d401e3acf147c718c07",
+    "sha256": "2f81984cbaef261d79f384636efd4b2979a1e2accd2173bd35db5c9ec74c2730",
+    "bytes": 15141,
+    "file": ".agents__notes__implemented__architecture__2026-09-19-timed-user-question-two-settlements.md"
+  },
+  {
+    "path": "docs/persistence-changes/2026-09-21-user-question-reply.md",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "c8e86c40d4975a074ff86a6a15b28541616c20f1",
+    "sha256": "6dc43e2b60727a294526d7643cdbeb8e918b9e22c93508425841fbc117e5848f",
+    "bytes": 2305,
+    "file": "docs__persistence-changes__2026-09-21-user-question-reply.md"
+  },
+  {
+    "path": "packages/client/ui-user-questions/src/index.ts",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "9357c3bba6e3f5ed3019acb3cb904b5afc30a225",
+    "sha256": "76a004fd33761675527d201d9870079e6ece96bbf3083037530b0f7679470b69",
+    "bytes": 457,
+    "file": "packages__client__ui-user-questions__src__index.ts"
+  },
+  {
+    "path": "packages/client/ui-user-questions/src/client/index.ts",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "8ee3962c395b14c024e97fecd2d8db9b734eb078",
+    "sha256": "909f686a18a45ea81119355c1d9c3aa199c722578478e3e8e1332f9606863ce2",
+    "bytes": 17729,
+    "file": "packages__client__ui-user-questions__src__client__index.ts"
+  },
+  {
+    "path": "packages/client/ui-user-questions/src/client/question-reply.ts",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "68973b32dfbbf850249d340bbd5825e2c7afd6ba",
+    "sha256": "2ce7aa0e8b469412b68a61c7ffee7007c6cc66600bfdf3d19904774040d512fe",
+    "bytes": 7494,
+    "file": "packages__client__ui-user-questions__src__client__question-reply.ts"
+  },
+  {
+    "path": "packages/client/ui-user-questions/tests/pending-question.client.spec.ts",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "d96bea972feb494bd2292fc85272c7c5b9aad9f1",
+    "sha256": "5c6ff23069e22ec07271a01853f5785f8a0610da299f2450e0fd22dd7ba9a5f4",
+    "bytes": 6319,
+    "file": "packages__client__ui-user-questions__tests__pending-question.client.spec.ts"
+  },
+  {
+    "path": "packages/client/ui-user-questions/tests/user-questions-composer.client.spec.tsx",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "8ece0da77766a6819aa4b448270eb504e823ab65",
+    "sha256": "a7a2514b30436178e251c5e3212a57302c448500c9239edda43dbac39748e08b",
+    "bytes": 45403,
+    "file": "packages__client__ui-user-questions__tests__user-questions-composer.client.spec.tsx"
+  },
+  {
+    "path": "packages/client/ui-user-questions/src/client/QuestionComposer.tsx",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "gitBlob": "8d3ad551ba057d1c5d57f38c362d7695e6619ff7",
+    "sha256": "e6a763552a3ebb3dcc18f1043f5437e7c4a32b5c796128ee284a5cf21108df20",
+    "bytes": 28612,
+    "file": "packages__client__ui-user-questions__src__client__QuestionComposer.tsx"
+  }
+]

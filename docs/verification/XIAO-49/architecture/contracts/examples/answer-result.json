@@ -1,0 +1,12 @@
+{
+  "answers": [
+    {
+      "id": "features",
+      "selected": [
+        "A",
+        "B"
+      ],
+      "custom": "C too"
+    }
+  ]
+}

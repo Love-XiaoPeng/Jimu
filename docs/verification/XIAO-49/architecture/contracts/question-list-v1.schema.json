@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:interaction:question-list:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionVersion": {
+            "const": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "invocationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "callId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "mode": {
+            "enum": [
+              "blocking",
+              "timed"
+            ]
+          },
+          "phase": {
+            "enum": [
+              "OPEN",
+              "CONTINUED",
+              "ANSWERED",
+              "CLOSED"
+            ]
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                },
+                "question": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "header": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      },
+                      "description": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024
+                      }
+                    },
+                    "required": [
+                      "label"
+                    ]
+                  },
+                  "minItems": 1,
+                  "maxItems": 8
+                },
+                "multi_select": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "question"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 4
+          },
+          "foregroundDueAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "answerExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "answerable": {
+            "type": "boolean"
+          },
+          "answerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "answeredBy": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "answeredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "answers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                },
+                "selected": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "minItems": 0,
+                  "maxItems": 8,
+                  "uniqueItems": true
+                },
+                "custom": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              },
+              "required": [
+                "id",
+                "selected"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 4
+          },
+          "deliveryState": {
+            "enum": [
+              "NONE",
+              "PENDING",
+              "CHECKPOINTED",
+              "DISCARDED"
+            ]
+          },
+          "closeCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "requestId",
+          "questionVersion",
+          "revision",
+          "invocationId",
+          "callId",
+          "mode",
+          "phase",
+          "questions",
+          "foregroundDueAt",
+          "answerExpiresAt",
+          "answerable"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "phase": {
+                  "const": "ANSWERED"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "answerId",
+                "answeredBy",
+                "answeredAt",
+                "answers",
+                "deliveryState"
+              ],
+              "properties": {
+                "answerable": {
+                  "const": false
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "phase": {
+                  "const": "CLOSED"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "closeCode"
+              ],
+              "properties": {
+                "answerable": {
+                  "const": false
+                }
+              }
+            }
+          }
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 8
+    }
+  },
+  "required": [
+    "version",
+    "items"
+  ]
+}

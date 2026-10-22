@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:interaction:task-binding:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "profile": {
+      "const": "local-durable-questions-v1"
+    },
+    "mode": {
+      "enum": [
+        "blocking",
+        "timed"
+      ]
+    },
+    "defaultTimeoutSeconds": {
+      "const": 120
+    },
+    "catalogDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "maxBatches": {
+      "const": 8
+    },
+    "maxQuestions": {
+      "const": 4
+    },
+    "maxWaitSeconds": {
+      "const": 180
+    },
+    "maxTaskBytes": {
+      "const": 2097152
+    }
+  },
+  "required": [
+    "version",
+    "profile",
+    "mode",
+    "defaultTimeoutSeconds",
+    "catalogDigest",
+    "maxBatches",
+    "maxQuestions",
+    "maxWaitSeconds",
+    "maxTaskBytes"
+  ]
+}

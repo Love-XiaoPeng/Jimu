@@ -1,0 +1,589 @@
+Compiled from "DefaultToolCallingManager.java"
+public final class org.springframework.ai.model.tool.DefaultToolCallingManager implements org.springframework.ai.model.tool.ToolCallingManager {
+  private static final org.apache.commons.logging.Log logger;
+
+  private static final io.micrometer.observation.ObservationRegistry DEFAULT_OBSERVATION_REGISTRY;
+
+  private static final org.springframework.ai.tool.observation.ToolCallingObservationConvention DEFAULT_OBSERVATION_CONVENTION;
+
+  private static final org.springframework.ai.tool.resolution.ToolCallbackResolver DEFAULT_TOOL_CALLBACK_RESOLVER;
+
+  private static final org.springframework.ai.tool.execution.ToolExecutionExceptionProcessor DEFAULT_TOOL_EXECUTION_EXCEPTION_PROCESSOR;
+
+  private static final boolean DEFAULT_RESOLUTION_FALLBACK_ENABLED;
+
+  private static final java.lang.String POSSIBLE_LLM_TOOL_NAME_CHANGE_WARNING_START;
+
+  private static final java.lang.String POSSIBLE_LLM_TOOL_NAME_CHANGE_WARNING_END;
+
+  public static final int DEFAULT_MAX_CALLS_PER_TOOL;
+
+  public static final int DEFAULT_MAX_TOTAL_TOOL_CALLS;
+
+  private final io.micrometer.observation.ObservationRegistry observationRegistry;
+
+  private final org.springframework.ai.tool.resolution.ToolCallbackResolver toolCallbackResolver;
+
+  private final org.springframework.ai.tool.execution.ToolExecutionExceptionProcessor toolExecutionExceptionProcessor;
+
+  private final org.springframework.ai.model.tool.ToolCallLimits toolCallLimits;
+
+  private final boolean resolutionFallbackEnabled;
+
+  private org.springframework.ai.tool.observation.ToolCallingObservationConvention observationConvention;
+
+  public org.springframework.ai.model.tool.DefaultToolCallingManager(io.micrometer.observation.ObservationRegistry, org.springframework.ai.tool.resolution.ToolCallbackResolver, org.springframework.ai.tool.execution.ToolExecutionExceptionProcessor);
+    Code:
+       0: aload_0
+       1: aload_1
+       2: aload_2
+       3: aload_3
+       4: new           #1                  // class org/springframework/ai/model/tool/ToolCallLimits
+       7: dup
+       8: bipush        40
+      10: invokestatic  #5                  // InterfaceMethod java/util/Map.of:()Ljava/util/Map;
+      13: invokestatic  #11                 // InterfaceMethod java/util/Set.of:()Ljava/util/Set;
+      16: sipush        150
+      19: getstatic     #16                 // Field org/springframework/ai/model/tool/ToolCallLimitBehavior.THROW:Lorg/springframework/ai/model/tool/ToolCallLimitBehavior;
+      22: invokespecial #22                 // Method org/springframework/ai/model/tool/ToolCallLimits."<init>":(ILjava/util/Map;Ljava/util/Set;ILorg/springframework/ai/model/tool/ToolCallLimitBehavior;)V
+      25: iconst_0
+      26: invokespecial #26                 // Method "<init>":(Lio/micrometer/observation/ObservationRegistry;Lorg/springframework/ai/tool/resolution/ToolCallbackResolver;Lorg/springframework/ai/tool/execution/ToolExecutionExceptionProcessor;Lorg/springframework/ai/model/tool/ToolCallLimits;Z)V
+      29: return
+
+  org.springframework.ai.model.tool.DefaultToolCallingManager(io.micrometer.observation.ObservationRegistry, org.springframework.ai.tool.resolution.ToolCallbackResolver, org.springframework.ai.tool.execution.ToolExecutionExceptionProcessor, org.springframework.ai.model.tool.ToolCallLimits);
+    Code:
+       0: aload_0
+       1: aload_1
+       2: aload_2
+       3: aload_3
+       4: aload         4
+       6: iconst_0
+       7: invokespecial #26                 // Method "<init>":(Lio/micrometer/observation/ObservationRegistry;Lorg/springframework/ai/tool/resolution/ToolCallbackResolver;Lorg/springframework/ai/tool/execution/ToolExecutionExceptionProcessor;Lorg/springframework/ai/model/tool/ToolCallLimits;Z)V
+      10: return
+
+  org.springframework.ai.model.tool.DefaultToolCallingManager(io.micrometer.observation.ObservationRegistry, org.springframework.ai.tool.resolution.ToolCallbackResolver, org.springframework.ai.tool.execution.ToolExecutionExceptionProcessor, org.springframework.ai.model.tool.ToolCallLimits, boolean);
+    Code:
+       0: aload_0
+       1: invokespecial #29                 // Method java/lang/Object."<init>":()V
+       4: aload_0
+       5: getstatic     #34                 // Field DEFAULT_OBSERVATION_CONVENTION:Lorg/springframework/ai/tool/observation/ToolCallingObservationConvention;
+       8: putfield      #38                 // Field observationConvention:Lorg/springframework/ai/tool/observation/ToolCallingObservationConvention;
+      11: aload_1
+      12: ldc           #41                 // String observationRegistry cannot be null
+      14: invokestatic  #43                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+      17: aload_2
+      18: ldc           #49                 // String toolCallbackResolver cannot be null
+      20: invokestatic  #43                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+      23: aload_3
+      24: ldc           #51                 // String toolCallExceptionConverter cannot be null
+      26: invokestatic  #43                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+      29: aload         4
+      31: ldc           #53                 // String toolCallLimits cannot be null
+      33: invokestatic  #43                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+      36: aload_0
+      37: aload_1
+      38: putfield      #55                 // Field observationRegistry:Lio/micrometer/observation/ObservationRegistry;
+      41: aload_0
+      42: aload_2
+      43: putfield      #59                 // Field toolCallbackResolver:Lorg/springframework/ai/tool/resolution/ToolCallbackResolver;
+      46: aload_0
+      47: aload_3
+      48: putfield      #63                 // Field toolExecutionExceptionProcessor:Lorg/springframework/ai/tool/execution/ToolExecutionExceptionProcessor;
+      51: aload_0
+      52: aload         4
+      54: putfield      #67                 // Field toolCallLimits:Lorg/springframework/ai/model/tool/ToolCallLimits;
+      57: aload_0
+      58: iload         5
+      60: putfield      #71                 // Field resolutionFallbackEnabled:Z
+      63: return
+
+  public java.util.List<org.springframework.ai.tool.definition.ToolDefinition> resolveToolDefinitions(org.springframework.ai.model.tool.ToolCallingChatOptions);
+    Code:
+       0: aload_1
+       1: ldc           #75                 // String chatOptions cannot be null
+       3: invokestatic  #43                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+       6: new           #77                 // class java/util/ArrayList
+       9: dup
+      10: aload_1
+      11: invokeinterface #79,  1           // InterfaceMethod org/springframework/ai/model/tool/ToolCallingChatOptions.getToolCallbacks:()Ljava/util/List;
+      16: invokestatic  #85                 // Method org/springframework/util/CollectionUtils.isEmpty:(Ljava/util/Collection;)Z
+      19: ifne          31
+      22: aload_1
+      23: invokeinterface #79,  1           // InterfaceMethod org/springframework/ai/model/tool/ToolCallingChatOptions.getToolCallbacks:()Ljava/util/List;
+      28: goto          34
+      31: invokestatic  #91                 // InterfaceMethod java/util/List.of:()Ljava/util/List;
+      34: invokespecial #95                 // Method java/util/ArrayList."<init>":(Ljava/util/Collection;)V
+      37: astore_2
+      38: aload_2
+      39: invokeinterface #98,  1           // InterfaceMethod java/util/List.stream:()Ljava/util/stream/Stream;
+      44: invokedynamic #102,  0            // InvokeDynamic #0:apply:()Ljava/util/function/Function;
+      49: invokeinterface #106,  2          // InterfaceMethod java/util/stream/Stream.map:(Ljava/util/function/Function;)Ljava/util/stream/Stream;
+      54: invokeinterface #112,  1          // InterfaceMethod java/util/stream/Stream.toList:()Ljava/util/List;
+      59: areturn
+
+  public org.springframework.ai.model.tool.ToolExecutionResult executeToolCalls(org.springframework.ai.chat.prompt.Prompt, org.springframework.ai.chat.model.ChatResponse);
+    Code:
+       0: aload_1
+       1: ldc           #115                // String prompt cannot be null
+       3: invokestatic  #43                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+       6: aload_2
+       7: ldc           #117                // String chatResponse cannot be null
+       9: invokestatic  #43                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+      12: aload_2
+      13: invokevirtual #119                // Method org/springframework/ai/chat/model/ChatResponse.getResults:()Ljava/util/List;
+      16: invokeinterface #98,  1           // InterfaceMethod java/util/List.stream:()Ljava/util/stream/Stream;
+      21: invokedynamic #124,  0            // InvokeDynamic #1:test:()Ljava/util/function/Predicate;
+      26: invokeinterface #128,  2          // InterfaceMethod java/util/stream/Stream.filter:(Ljava/util/function/Predicate;)Ljava/util/stream/Stream;
+      31: invokeinterface #132,  1          // InterfaceMethod java/util/stream/Stream.findFirst:()Ljava/util/Optional;
+      36: astore_3
+      37: aload_3
+      38: invokevirtual #136                // Method java/util/Optional.isEmpty:()Z
+      41: ifeq          54
+      44: new           #141                // class java/lang/IllegalStateException
+      47: dup
+      48: ldc           #143                // String No tool call requested by the chat model
+      50: invokespecial #145                // Method java/lang/IllegalStateException."<init>":(Ljava/lang/String;)V
+      53: athrow
+      54: aload_3
+      55: invokevirtual #148                // Method java/util/Optional.get:()Ljava/lang/Object;
+      58: checkcast     #152                // class org/springframework/ai/chat/model/Generation
+      61: invokevirtual #154                // Method org/springframework/ai/chat/model/Generation.getOutput:()Lorg/springframework/ai/chat/messages/AssistantMessage;
+      64: astore        4
+      66: aload_1
+      67: aload         4
+      69: invokestatic  #158                // Method buildToolContext:(Lorg/springframework/ai/chat/prompt/Prompt;Lorg/springframework/ai/chat/messages/AssistantMessage;)Lorg/springframework/ai/chat/model/ToolContext;
+      72: astore        5
+      74: aload_0
+      75: aload_1
+      76: aload         4
+      78: aload         5
+      80: invokevirtual #162                // Method executeToolCall:(Lorg/springframework/ai/chat/prompt/Prompt;Lorg/springframework/ai/chat/messages/AssistantMessage;Lorg/springframework/ai/chat/model/ToolContext;)Lorg/springframework/ai/model/tool/DefaultToolCallingManager$InternalToolExecutionResult;
+      83: astore        6
+      85: aload_0
+      86: aload_1
+      87: invokevirtual #166                // Method org/springframework/ai/chat/prompt/Prompt.getInstructions:()Ljava/util/List;
+      90: aload         4
+      92: aload         6
+      94: invokevirtual #171                // Method org/springframework/ai/model/tool/DefaultToolCallingManager$InternalToolExecutionResult.toolResponseMessage:()Lorg/springframework/ai/chat/messages/ToolResponseMessage;
+      97: invokevirtual #177                // Method buildConversationHistoryAfterToolExecution:(Ljava/util/List;Lorg/springframework/ai/chat/messages/AssistantMessage;Lorg/springframework/ai/chat/messages/ToolResponseMessage;)Ljava/util/List;
+     100: astore        7
+     102: invokestatic  #181                // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionResult.builder:()Lorg/springframework/ai/model/tool/DefaultToolExecutionResult$Builder;
+     105: aload         7
+     107: invokevirtual #187                // Method org/springframework/ai/model/tool/DefaultToolExecutionResult$Builder.conversationHistory:(Ljava/util/List;)Lorg/springframework/ai/model/tool/DefaultToolExecutionResult$Builder;
+     110: aload         6
+     112: invokevirtual #193                // Method org/springframework/ai/model/tool/DefaultToolCallingManager$InternalToolExecutionResult.returnDirect:()Z
+     115: invokevirtual #196                // Method org/springframework/ai/model/tool/DefaultToolExecutionResult$Builder.returnDirect:(Z)Lorg/springframework/ai/model/tool/DefaultToolExecutionResult$Builder;
+     118: invokevirtual #199                // Method org/springframework/ai/model/tool/DefaultToolExecutionResult$Builder.build:()Lorg/springframework/ai/model/tool/DefaultToolExecutionResult;
+     121: areturn
+
+  private static org.springframework.ai.chat.model.ToolContext buildToolContext(org.springframework.ai.chat.prompt.Prompt, org.springframework.ai.chat.messages.AssistantMessage);
+    Code:
+       0: invokestatic  #5                  // InterfaceMethod java/util/Map.of:()Ljava/util/Map;
+       3: astore_2
+       4: aload_0
+       5: invokevirtual #203                // Method org/springframework/ai/chat/prompt/Prompt.getOptions:()Lorg/springframework/ai/chat/prompt/ChatOptions;
+       8: astore        4
+      10: aload         4
+      12: instanceof    #80                 // class org/springframework/ai/model/tool/ToolCallingChatOptions
+      15: ifeq          50
+      18: aload         4
+      20: checkcast     #80                 // class org/springframework/ai/model/tool/ToolCallingChatOptions
+      23: astore_3
+      24: aload_3
+      25: invokeinterface #207,  1          // InterfaceMethod org/springframework/ai/model/tool/ToolCallingChatOptions.getToolContext:()Ljava/util/Map;
+      30: invokestatic  #210                // Method org/springframework/util/CollectionUtils.isEmpty:(Ljava/util/Map;)Z
+      33: ifne          50
+      36: new           #213                // class java/util/HashMap
+      39: dup
+      40: aload_3
+      41: invokeinterface #207,  1          // InterfaceMethod org/springframework/ai/model/tool/ToolCallingChatOptions.getToolContext:()Ljava/util/Map;
+      46: invokespecial #215                // Method java/util/HashMap."<init>":(Ljava/util/Map;)V
+      49: astore_2
+      50: new           #218                // class org/springframework/ai/chat/model/ToolContext
+      53: dup
+      54: aload_2
+      55: invokespecial #220                // Method org/springframework/ai/chat/model/ToolContext."<init>":(Ljava/util/Map;)V
+      58: areturn
+
+  private org.springframework.ai.model.tool.DefaultToolCallingManager$InternalToolExecutionResult executeToolCall(org.springframework.ai.chat.prompt.Prompt, org.springframework.ai.chat.messages.AssistantMessage, org.springframework.ai.chat.model.ToolContext);
+    Code:
+       0: invokestatic  #91                 // InterfaceMethod java/util/List.of:()Ljava/util/List;
+       3: astore        4
+       5: aload_1
+       6: invokevirtual #203                // Method org/springframework/ai/chat/prompt/Prompt.getOptions:()Lorg/springframework/ai/chat/prompt/ChatOptions;
+       9: astore        6
+      11: aload         6
+      13: instanceof    #80                 // class org/springframework/ai/model/tool/ToolCallingChatOptions
+      16: ifeq          48
+      19: aload         6
+      21: checkcast     #80                 // class org/springframework/ai/model/tool/ToolCallingChatOptions
+      24: astore        5
+      26: aload         5
+      28: invokeinterface #79,  1           // InterfaceMethod org/springframework/ai/model/tool/ToolCallingChatOptions.getToolCallbacks:()Ljava/util/List;
+      33: invokestatic  #85                 // Method org/springframework/util/CollectionUtils.isEmpty:(Ljava/util/Collection;)Z
+      36: ifne          48
+      39: aload         5
+      41: invokeinterface #79,  1           // InterfaceMethod org/springframework/ai/model/tool/ToolCallingChatOptions.getToolCallbacks:()Ljava/util/List;
+      46: astore        4
+      48: new           #77                 // class java/util/ArrayList
+      51: dup
+      52: invokespecial #221                // Method java/util/ArrayList."<init>":()V
+      55: astore        5
+      57: aconst_null
+      58: astore        6
+      60: aload_1
+      61: invokevirtual #166                // Method org/springframework/ai/chat/prompt/Prompt.getInstructions:()Ljava/util/List;
+      64: invokestatic  #222                // Method org/springframework/ai/model/tool/ToolCallLimits.countPriorToolCalls:(Ljava/util/List;)Ljava/util/Map;
+      67: astore        7
+      69: aload         7
+      71: invokeinterface #226,  1          // InterfaceMethod java/util/Map.values:()Ljava/util/Collection;
+      76: invokeinterface #230,  1          // InterfaceMethod java/util/Collection.stream:()Ljava/util/stream/Stream;
+      81: invokedynamic #233,  0            // InvokeDynamic #2:applyAsInt:()Ljava/util/function/ToIntFunction;
+      86: invokeinterface #237,  2          // InterfaceMethod java/util/stream/Stream.mapToInt:(Ljava/util/function/ToIntFunction;)Ljava/util/stream/IntStream;
+      91: invokeinterface #241,  1          // InterfaceMethod java/util/stream/IntStream.sum:()I
+      96: istore        8
+      98: aload_2
+      99: invokevirtual #247                // Method org/springframework/ai/chat/messages/AssistantMessage.getToolCalls:()Ljava/util/List;
+     102: invokeinterface #252,  1          // InterfaceMethod java/util/List.iterator:()Ljava/util/Iterator;
+     107: astore        9
+     109: aload         9
+     111: invokeinterface #256,  1          // InterfaceMethod java/util/Iterator.hasNext:()Z
+     116: ifeq          696
+     119: aload         9
+     121: invokeinterface #261,  1          // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+     126: checkcast     #264                // class org/springframework/ai/chat/messages/AssistantMessage$ToolCall
+     129: astore        10
+     131: getstatic     #266                // Field logger:Lorg/apache/commons/logging/Log;
+     134: invokeinterface #270,  1          // InterfaceMethod org/apache/commons/logging/Log.isDebugEnabled:()Z
+     139: ifeq          160
+     142: getstatic     #266                // Field logger:Lorg/apache/commons/logging/Log;
+     145: aload         10
+     147: invokevirtual #275                // Method org/springframework/ai/chat/messages/AssistantMessage$ToolCall.name:()Ljava/lang/String;
+     150: invokedynamic #279,  0            // InvokeDynamic #3:makeConcatWithConstants:(Ljava/lang/String;)Ljava/lang/String;
+     155: invokeinterface #283,  2          // InterfaceMethod org/apache/commons/logging/Log.debug:(Ljava/lang/Object;)V
+     160: aload         10
+     162: invokevirtual #275                // Method org/springframework/ai/chat/messages/AssistantMessage$ToolCall.name:()Ljava/lang/String;
+     165: astore        11
+     167: iinc          8, 1
+     170: aload         7
+     172: aload         11
+     174: iconst_1
+     175: invokestatic  #287                // Method java/lang/Integer.valueOf:(I)Ljava/lang/Integer;
+     178: invokedynamic #293,  0            // InvokeDynamic #4:apply:()Ljava/util/function/BiFunction;
+     183: invokeinterface #296,  4          // InterfaceMethod java/util/Map.merge:(Ljava/lang/Object;Ljava/lang/Object;Ljava/util/function/BiFunction;)Ljava/lang/Object;
+     188: checkcast     #288                // class java/lang/Integer
+     191: invokevirtual #300                // Method java/lang/Integer.intValue:()I
+     194: istore        12
+     196: aload_0
+     197: getfield      #67                 // Field toolCallLimits:Lorg/springframework/ai/model/tool/ToolCallLimits;
+     200: aload         11
+     202: iload         12
+     204: iload         8
+     206: invokevirtual #303                // Method org/springframework/ai/model/tool/ToolCallLimits.check:(Ljava/lang/String;II)Lorg/springframework/ai/model/tool/ToolCallLimits$Breach;
+     209: astore        13
+     211: aload         13
+     213: ifnull        333
+     216: aload         5
+     218: new           #307                // class org/springframework/ai/chat/messages/ToolResponseMessage$ToolResponse
+     221: dup
+     222: aload         10
+     224: invokevirtual #309                // Method org/springframework/ai/chat/messages/AssistantMessage$ToolCall.id:()Ljava/lang/String;
+     227: aload         11
+     229: aload         13
+     231: invokevirtual #312                // Method org/springframework/ai/model/tool/ToolCallLimits$Breach.message:()Ljava/lang/String;
+     234: invokespecial #317                // Method org/springframework/ai/chat/messages/ToolResponseMessage$ToolResponse."<init>":(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+     237: invokeinterface #320,  2          // InterfaceMethod java/util/List.add:(Ljava/lang/Object;)Z
+     242: pop
+     243: aload_0
+     244: getfield      #67                 // Field toolCallLimits:Lorg/springframework/ai/model/tool/ToolCallLimits;
+     247: invokevirtual #324                // Method org/springframework/ai/model/tool/ToolCallLimits.onLimitExceeded:()Lorg/springframework/ai/model/tool/ToolCallLimitBehavior;
+     250: getstatic     #16                 // Field org/springframework/ai/model/tool/ToolCallLimitBehavior.THROW:Lorg/springframework/ai/model/tool/ToolCallLimitBehavior;
+     253: if_acmpne     109
+     256: invokestatic  #328                // Method org/springframework/ai/chat/messages/ToolResponseMessage.builder:()Lorg/springframework/ai/chat/messages/ToolResponseMessage$Builder;
+     259: aload         5
+     261: invokevirtual #333                // Method org/springframework/ai/chat/messages/ToolResponseMessage$Builder.responses:(Ljava/util/List;)Lorg/springframework/ai/chat/messages/ToolResponseMessage$Builder;
+     264: invokevirtual #339                // Method org/springframework/ai/chat/messages/ToolResponseMessage$Builder.build:()Lorg/springframework/ai/chat/messages/ToolResponseMessage;
+     267: astore        14
+     269: aload_0
+     270: aload_1
+     271: invokevirtual #166                // Method org/springframework/ai/chat/prompt/Prompt.getInstructions:()Ljava/util/List;
+     274: aload_2
+     275: aload         14
+     277: invokevirtual #177                // Method buildConversationHistoryAfterToolExecution:(Ljava/util/List;Lorg/springframework/ai/chat/messages/AssistantMessage;Lorg/springframework/ai/chat/messages/ToolResponseMessage;)Ljava/util/List;
+     280: astore        15
+     282: invokestatic  #181                // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionResult.builder:()Lorg/springframework/ai/model/tool/DefaultToolExecutionResult$Builder;
+     285: aload         15
+     287: invokevirtual #187                // Method org/springframework/ai/model/tool/DefaultToolExecutionResult$Builder.conversationHistory:(Ljava/util/List;)Lorg/springframework/ai/model/tool/DefaultToolExecutionResult$Builder;
+     290: aload         6
+     292: iconst_0
+     293: invokestatic  #341                // Method java/lang/Boolean.valueOf:(Z)Ljava/lang/Boolean;
+     296: invokestatic  #346                // Method java/util/Objects.requireNonNullElse:(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+     299: checkcast     #342                // class java/lang/Boolean
+     302: invokevirtual #352                // Method java/lang/Boolean.booleanValue:()Z
+     305: invokevirtual #196                // Method org/springframework/ai/model/tool/DefaultToolExecutionResult$Builder.returnDirect:(Z)Lorg/springframework/ai/model/tool/DefaultToolExecutionResult$Builder;
+     308: invokevirtual #199                // Method org/springframework/ai/model/tool/DefaultToolExecutionResult$Builder.build:()Lorg/springframework/ai/model/tool/DefaultToolExecutionResult;
+     311: astore        16
+     313: new           #355                // class org/springframework/ai/model/tool/ToolCallLimitExceededException
+     316: dup
+     317: aload         13
+     319: invokevirtual #357                // Method org/springframework/ai/model/tool/ToolCallLimits$Breach.toolName:()Ljava/lang/String;
+     322: aload         13
+     324: invokevirtual #360                // Method org/springframework/ai/model/tool/ToolCallLimits$Breach.limit:()I
+     327: aload         16
+     329: invokespecial #363                // Method org/springframework/ai/model/tool/ToolCallLimitExceededException."<init>":(Ljava/lang/String;ILorg/springframework/ai/model/tool/ToolExecutionResult;)V
+     332: athrow
+     333: aload         10
+     335: invokevirtual #366                // Method org/springframework/ai/chat/messages/AssistantMessage$ToolCall.arguments:()Ljava/lang/String;
+     338: astore        14
+     340: aload         14
+     342: invokestatic  #369                // Method org/springframework/util/StringUtils.hasText:(Ljava/lang/String;)Z
+     345: ifne          382
+     348: getstatic     #266                // Field logger:Lorg/apache/commons/logging/Log;
+     351: invokeinterface #375,  1          // InterfaceMethod org/apache/commons/logging/Log.isWarnEnabled:()Z
+     356: ifeq          374
+     359: getstatic     #266                // Field logger:Lorg/apache/commons/logging/Log;
+     362: aload         11
+     364: invokedynamic #378,  0            // InvokeDynamic #5:makeConcatWithConstants:(Ljava/lang/String;)Ljava/lang/String;
+     369: invokeinterface #379,  2          // InterfaceMethod org/apache/commons/logging/Log.warn:(Ljava/lang/Object;)V
+     374: ldc_w         #382                // String {}
+     377: astore        15
+     379: goto          386
+     382: aload         14
+     384: astore        15
+     386: aload         4
+     388: invokeinterface #98,  1           // InterfaceMethod java/util/List.stream:()Ljava/util/stream/Stream;
+     393: aload         11
+     395: invokedynamic #384,  0            // InvokeDynamic #6:test:(Ljava/lang/String;)Ljava/util/function/Predicate;
+     400: invokeinterface #128,  2          // InterfaceMethod java/util/stream/Stream.filter:(Ljava/util/function/Predicate;)Ljava/util/stream/Stream;
+     405: invokeinterface #132,  1          // InterfaceMethod java/util/stream/Stream.findFirst:()Ljava/util/Optional;
+     410: aload_0
+     411: aload         11
+     413: invokedynamic #387,  0            // InvokeDynamic #7:get:(Lorg/springframework/ai/model/tool/DefaultToolCallingManager;Ljava/lang/String;)Ljava/util/function/Supplier;
+     418: invokevirtual #390                // Method java/util/Optional.orElseGet:(Ljava/util/function/Supplier;)Ljava/lang/Object;
+     421: checkcast     #394                // class org/springframework/ai/tool/ToolCallback
+     424: astore        16
+     426: aload         16
+     428: ifnonnull     472
+     431: getstatic     #266                // Field logger:Lorg/apache/commons/logging/Log;
+     434: invokeinterface #375,  1          // InterfaceMethod org/apache/commons/logging/Log.isWarnEnabled:()Z
+     439: ifeq          457
+     442: getstatic     #266                // Field logger:Lorg/apache/commons/logging/Log;
+     445: aload         11
+     447: invokedynamic #396,  0            // InvokeDynamic #8:makeConcatWithConstants:(Ljava/lang/String;)Ljava/lang/String;
+     452: invokeinterface #379,  2          // InterfaceMethod org/apache/commons/logging/Log.warn:(Ljava/lang/Object;)V
+     457: new           #141                // class java/lang/IllegalStateException
+     460: dup
+     461: aload         11
+     463: invokedynamic #397,  0            // InvokeDynamic #9:makeConcatWithConstants:(Ljava/lang/String;)Ljava/lang/String;
+     468: invokespecial #145                // Method java/lang/IllegalStateException."<init>":(Ljava/lang/String;)V
+     471: athrow
+     472: aload         6
+     474: ifnonnull     497
+     477: aload         16
+     479: invokeinterface #398,  1          // InterfaceMethod org/springframework/ai/tool/ToolCallback.getToolMetadata:()Lorg/springframework/ai/tool/metadata/ToolMetadata;
+     484: invokeinterface #402,  1          // InterfaceMethod org/springframework/ai/tool/metadata/ToolMetadata.returnDirect:()Z
+     489: invokestatic  #341                // Method java/lang/Boolean.valueOf:(Z)Ljava/lang/Boolean;
+     492: astore        6
+     494: goto          530
+     497: aload         6
+     499: invokevirtual #352                // Method java/lang/Boolean.booleanValue:()Z
+     502: ifeq          524
+     505: aload         16
+     507: invokeinterface #398,  1          // InterfaceMethod org/springframework/ai/tool/ToolCallback.getToolMetadata:()Lorg/springframework/ai/tool/metadata/ToolMetadata;
+     512: invokeinterface #402,  1          // InterfaceMethod org/springframework/ai/tool/metadata/ToolMetadata.returnDirect:()Z
+     517: ifeq          524
+     520: iconst_1
+     521: goto          525
+     524: iconst_0
+     525: invokestatic  #341                // Method java/lang/Boolean.valueOf:(Z)Ljava/lang/Boolean;
+     528: astore        6
+     530: invokestatic  #405                // Method org/springframework/ai/model/tool/internal/ToolCallReactiveContextHolder.getContext:()Lreactor/util/context/ContextView;
+     533: ldc_w         #413                // String micrometer.observation
+     536: aload_0
+     537: getfield      #55                 // Field observationRegistry:Lio/micrometer/observation/ObservationRegistry;
+     540: invokeinterface #415,  1          // InterfaceMethod io/micrometer/observation/ObservationRegistry.getCurrentObservation:()Lio/micrometer/observation/Observation;
+     545: invokeinterface #421,  3          // InterfaceMethod reactor/util/context/ContextView.getOrDefault:(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+     550: checkcast     #426                // class io/micrometer/observation/Observation
+     553: astore        17
+     555: invokestatic  #428                // Method org/springframework/ai/tool/observation/ToolCallingObservationContext.builder:()Lorg/springframework/ai/tool/observation/ToolCallingObservationContext$Builder;
+     558: aload         16
+     560: invokeinterface #433,  1          // InterfaceMethod org/springframework/ai/tool/ToolCallback.getToolDefinition:()Lorg/springframework/ai/tool/definition/ToolDefinition;
+     565: invokevirtual #437                // Method org/springframework/ai/tool/observation/ToolCallingObservationContext$Builder.toolDefinition:(Lorg/springframework/ai/tool/definition/ToolDefinition;)Lorg/springframework/ai/tool/observation/ToolCallingObservationContext$Builder;
+     568: aload         16
+     570: invokeinterface #398,  1          // InterfaceMethod org/springframework/ai/tool/ToolCallback.getToolMetadata:()Lorg/springframework/ai/tool/metadata/ToolMetadata;
+     575: invokevirtual #443                // Method org/springframework/ai/tool/observation/ToolCallingObservationContext$Builder.toolMetadata:(Lorg/springframework/ai/tool/metadata/ToolMetadata;)Lorg/springframework/ai/tool/observation/ToolCallingObservationContext$Builder;
+     578: aload         10
+     580: invokevirtual #309                // Method org/springframework/ai/chat/messages/AssistantMessage$ToolCall.id:()Ljava/lang/String;
+     583: invokevirtual #447                // Method org/springframework/ai/tool/observation/ToolCallingObservationContext$Builder.toolCallId:(Ljava/lang/String;)Lorg/springframework/ai/tool/observation/ToolCallingObservationContext$Builder;
+     586: aload         10
+     588: invokevirtual #451                // Method org/springframework/ai/chat/messages/AssistantMessage$ToolCall.type:()Ljava/lang/String;
+     591: invokevirtual #454                // Method org/springframework/ai/tool/observation/ToolCallingObservationContext$Builder.toolType:(Ljava/lang/String;)Lorg/springframework/ai/tool/observation/ToolCallingObservationContext$Builder;
+     594: aload         15
+     596: invokevirtual #457                // Method org/springframework/ai/tool/observation/ToolCallingObservationContext$Builder.toolCallArguments:(Ljava/lang/String;)Lorg/springframework/ai/tool/observation/ToolCallingObservationContext$Builder;
+     599: invokevirtual #460                // Method org/springframework/ai/tool/observation/ToolCallingObservationContext$Builder.build:()Lorg/springframework/ai/tool/observation/ToolCallingObservationContext;
+     602: astore        18
+     604: getstatic     #463                // Field org/springframework/ai/tool/observation/ToolCallingObservationDocumentation.TOOL_CALL:Lorg/springframework/ai/tool/observation/ToolCallingObservationDocumentation;
+     607: aload_0
+     608: getfield      #38                 // Field observationConvention:Lorg/springframework/ai/tool/observation/ToolCallingObservationConvention;
+     611: getstatic     #34                 // Field DEFAULT_OBSERVATION_CONVENTION:Lorg/springframework/ai/tool/observation/ToolCallingObservationConvention;
+     614: aload         18
+     616: invokedynamic #469,  0            // InvokeDynamic #10:get:(Lorg/springframework/ai/tool/observation/ToolCallingObservationContext;)Ljava/util/function/Supplier;
+     621: aload_0
+     622: getfield      #55                 // Field observationRegistry:Lio/micrometer/observation/ObservationRegistry;
+     625: invokevirtual #472                // Method org/springframework/ai/tool/observation/ToolCallingObservationDocumentation.observation:(Lio/micrometer/observation/ObservationConvention;Lio/micrometer/observation/ObservationConvention;Ljava/util/function/Supplier;Lio/micrometer/observation/ObservationRegistry;)Lio/micrometer/observation/Observation;
+     628: aload         17
+     630: invokeinterface #476,  2          // InterfaceMethod io/micrometer/observation/Observation.parentObservation:(Lio/micrometer/observation/Observation;)Lio/micrometer/observation/Observation;
+     635: aload_0
+     636: aload         16
+     638: aload         15
+     640: aload_3
+     641: aload         18
+     643: invokedynamic #480,  0            // InvokeDynamic #11:get:(Lorg/springframework/ai/model/tool/DefaultToolCallingManager;Lorg/springframework/ai/tool/ToolCallback;Ljava/lang/String;Lorg/springframework/ai/chat/model/ToolContext;Lorg/springframework/ai/tool/observation/ToolCallingObservationContext;)Ljava/util/function/Supplier;
+     648: invokeinterface #483,  2          // InterfaceMethod io/micrometer/observation/Observation.observe:(Ljava/util/function/Supplier;)Ljava/lang/Object;
+     653: checkcast     #486                // class java/lang/String
+     656: astore        19
+     658: aload         5
+     660: new           #307                // class org/springframework/ai/chat/messages/ToolResponseMessage$ToolResponse
+     663: dup
+     664: aload         10
+     666: invokevirtual #309                // Method org/springframework/ai/chat/messages/AssistantMessage$ToolCall.id:()Ljava/lang/String;
+     669: aload         11
+     671: aload         19
+     673: ifnull        681
+     676: aload         19
+     678: goto          684
+     681: ldc_w         #488                // String
+     684: invokespecial #317                // Method org/springframework/ai/chat/messages/ToolResponseMessage$ToolResponse."<init>":(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+     687: invokeinterface #320,  2          // InterfaceMethod java/util/List.add:(Ljava/lang/Object;)Z
+     692: pop
+     693: goto          109
+     696: new           #172                // class org/springframework/ai/model/tool/DefaultToolCallingManager$InternalToolExecutionResult
+     699: dup
+     700: invokestatic  #328                // Method org/springframework/ai/chat/messages/ToolResponseMessage.builder:()Lorg/springframework/ai/chat/messages/ToolResponseMessage$Builder;
+     703: aload         5
+     705: invokevirtual #333                // Method org/springframework/ai/chat/messages/ToolResponseMessage$Builder.responses:(Ljava/util/List;)Lorg/springframework/ai/chat/messages/ToolResponseMessage$Builder;
+     708: invokevirtual #339                // Method org/springframework/ai/chat/messages/ToolResponseMessage$Builder.build:()Lorg/springframework/ai/chat/messages/ToolResponseMessage;
+     711: aload         6
+     713: iconst_0
+     714: invokestatic  #341                // Method java/lang/Boolean.valueOf:(Z)Ljava/lang/Boolean;
+     717: invokestatic  #346                // Method java/util/Objects.requireNonNullElse:(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+     720: checkcast     #342                // class java/lang/Boolean
+     723: invokevirtual #352                // Method java/lang/Boolean.booleanValue:()Z
+     726: invokespecial #490                // Method org/springframework/ai/model/tool/DefaultToolCallingManager$InternalToolExecutionResult."<init>":(Lorg/springframework/ai/chat/messages/ToolResponseMessage;Z)V
+     729: areturn
+
+  private java.util.List<org.springframework.ai.chat.messages.Message> buildConversationHistoryAfterToolExecution(java.util.List<org.springframework.ai.chat.messages.Message>, org.springframework.ai.chat.messages.AssistantMessage, org.springframework.ai.chat.messages.ToolResponseMessage);
+    Code:
+       0: new           #77                 // class java/util/ArrayList
+       3: dup
+       4: aload_1
+       5: invokespecial #95                 // Method java/util/ArrayList."<init>":(Ljava/util/Collection;)V
+       8: astore        4
+      10: aload         4
+      12: aload_2
+      13: invokeinterface #320,  2          // InterfaceMethod java/util/List.add:(Ljava/lang/Object;)Z
+      18: pop
+      19: aload         4
+      21: aload_3
+      22: invokeinterface #320,  2          // InterfaceMethod java/util/List.add:(Ljava/lang/Object;)Z
+      27: pop
+      28: aload         4
+      30: areturn
+
+  public void setObservationConvention(org.springframework.ai.tool.observation.ToolCallingObservationConvention);
+    Code:
+       0: aload_0
+       1: aload_1
+       2: putfield      #38                 // Field observationConvention:Lorg/springframework/ai/tool/observation/ToolCallingObservationConvention;
+       5: return
+
+  public static org.springframework.ai.model.tool.DefaultToolCallingManager$Builder builder();
+    Code:
+       0: new           #493                // class org/springframework/ai/model/tool/DefaultToolCallingManager$Builder
+       3: dup
+       4: invokespecial #495                // Method org/springframework/ai/model/tool/DefaultToolCallingManager$Builder."<init>":()V
+       7: areturn
+
+  private java.lang.String lambda$executeToolCall$4(org.springframework.ai.tool.ToolCallback, java.lang.String, org.springframework.ai.chat.model.ToolContext, org.springframework.ai.tool.observation.ToolCallingObservationContext);
+    Code:
+       0: aload_1
+       1: aload_2
+       2: aload_3
+       3: invokeinterface #496,  3          // InterfaceMethod org/springframework/ai/tool/ToolCallback.call:(Ljava/lang/String;Lorg/springframework/ai/chat/model/ToolContext;)Ljava/lang/String;
+       8: astore        5
+      10: goto          28
+      13: astore        6
+      15: aload_0
+      16: getfield      #63                 // Field toolExecutionExceptionProcessor:Lorg/springframework/ai/tool/execution/ToolExecutionExceptionProcessor;
+      19: aload         6
+      21: invokeinterface #502,  2          // InterfaceMethod org/springframework/ai/tool/execution/ToolExecutionExceptionProcessor.process:(Lorg/springframework/ai/tool/execution/ToolExecutionException;)Ljava/lang/String;
+      26: astore        5
+      28: aload         4
+      30: aload         5
+      32: invokevirtual #508                // Method org/springframework/ai/tool/observation/ToolCallingObservationContext.setToolCallResult:(Ljava/lang/String;)V
+      35: aload         5
+      37: areturn
+    Exception table:
+       from    to  target type
+           0    10    13   Class org/springframework/ai/tool/execution/ToolExecutionException
+
+  private static org.springframework.ai.tool.observation.ToolCallingObservationContext lambda$executeToolCall$3(org.springframework.ai.tool.observation.ToolCallingObservationContext);
+    Code:
+       0: aload_0
+       1: areturn
+
+  private org.springframework.ai.tool.ToolCallback lambda$executeToolCall$2(java.lang.String);
+    Code:
+       0: aload_0
+       1: getfield      #71                 // Field resolutionFallbackEnabled:Z
+       4: ifeq          20
+       7: aload_0
+       8: getfield      #59                 // Field toolCallbackResolver:Lorg/springframework/ai/tool/resolution/ToolCallbackResolver;
+      11: aload_1
+      12: invokeinterface #511,  2          // InterfaceMethod org/springframework/ai/tool/resolution/ToolCallbackResolver.resolve:(Ljava/lang/String;)Lorg/springframework/ai/tool/ToolCallback;
+      17: goto          21
+      20: aconst_null
+      21: areturn
+
+  private static boolean lambda$executeToolCall$1(java.lang.String, org.springframework.ai.tool.ToolCallback);
+    Code:
+       0: aload_0
+       1: aload_1
+       2: invokeinterface #433,  1          // InterfaceMethod org/springframework/ai/tool/ToolCallback.getToolDefinition:()Lorg/springframework/ai/tool/definition/ToolDefinition;
+       7: invokeinterface #517,  1          // InterfaceMethod org/springframework/ai/tool/definition/ToolDefinition.name:()Ljava/lang/String;
+      12: invokevirtual #520                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+      15: ireturn
+
+  private static boolean lambda$executeToolCalls$0(org.springframework.ai.chat.model.Generation);
+    Code:
+       0: aload_0
+       1: invokevirtual #154                // Method org/springframework/ai/chat/model/Generation.getOutput:()Lorg/springframework/ai/chat/messages/AssistantMessage;
+       4: invokevirtual #247                // Method org/springframework/ai/chat/messages/AssistantMessage.getToolCalls:()Ljava/util/List;
+       7: invokestatic  #85                 // Method org/springframework/util/CollectionUtils.isEmpty:(Ljava/util/Collection;)Z
+      10: ifne          17
+      13: iconst_1
+      14: goto          18
+      17: iconst_0
+      18: ireturn
+
+  static {};
+    Code:
+       0: ldc           #3                  // class org/springframework/ai/model/tool/DefaultToolCallingManager
+       2: invokestatic  #523                // Method org/apache/commons/logging/LogFactory.getLog:(Ljava/lang/Class;)Lorg/apache/commons/logging/Log;
+       5: putstatic     #266                // Field logger:Lorg/apache/commons/logging/Log;
+       8: getstatic     #529                // Field io/micrometer/observation/ObservationRegistry.NOOP:Lio/micrometer/observation/ObservationRegistry;
+      11: putstatic     #532                // Field DEFAULT_OBSERVATION_REGISTRY:Lio/micrometer/observation/ObservationRegistry;
+      14: new           #535                // class org/springframework/ai/tool/observation/DefaultToolCallingObservationConvention
+      17: dup
+      18: invokespecial #537                // Method org/springframework/ai/tool/observation/DefaultToolCallingObservationConvention."<init>":()V
+      21: putstatic     #34                 // Field DEFAULT_OBSERVATION_CONVENTION:Lorg/springframework/ai/tool/observation/ToolCallingObservationConvention;
+      24: new           #538                // class org/springframework/ai/tool/resolution/DelegatingToolCallbackResolver
+      27: dup
+      28: invokestatic  #91                 // InterfaceMethod java/util/List.of:()Ljava/util/List;
+      31: invokespecial #540                // Method org/springframework/ai/tool/resolution/DelegatingToolCallbackResolver."<init>":(Ljava/util/List;)V
+      34: putstatic     #543                // Field DEFAULT_TOOL_CALLBACK_RESOLVER:Lorg/springframework/ai/tool/resolution/ToolCallbackResolver;
+      37: invokestatic  #546                // Method org/springframework/ai/tool/execution/DefaultToolExecutionExceptionProcessor.builder:()Lorg/springframework/ai/tool/execution/DefaultToolExecutionExceptionProcessor$Builder;
+      40: invokevirtual #551                // Method org/springframework/ai/tool/execution/DefaultToolExecutionExceptionProcessor$Builder.build:()Lorg/springframework/ai/tool/execution/DefaultToolExecutionExceptionProcessor;
+      43: putstatic     #556                // Field DEFAULT_TOOL_EXECUTION_EXCEPTION_PROCESSOR:Lorg/springframework/ai/tool/execution/ToolExecutionExceptionProcessor;
+      46: return
+}

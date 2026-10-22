@@ -1,0 +1,18 @@
+{
+  "questions": [
+    {
+      "id": "features",
+      "question": "Choose features",
+      "multi_select": true,
+      "options": [
+        {
+          "label": "A"
+        },
+        {
+          "label": "B"
+        }
+      ]
+    }
+  ],
+  "timeout": 2
+}

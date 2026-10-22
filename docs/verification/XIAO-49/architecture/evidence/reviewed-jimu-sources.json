@@ -1,0 +1,261 @@
+[
+  {
+    "path": "AGENTS.md",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "fce92cf098c725af77108a57c18a17f38aa62e47",
+    "workingSha256": "65d6c6106f55a04b209ce7198cbc6a630c173762a5d289575d7aeddead9c9226",
+    "bytes": 1568
+  },
+  {
+    "path": "README.md",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "e86e96b00052653179148da2890c66838c3c54e4",
+    "workingSha256": "1b99a25e986cced885a10222889e9d1a20e6b836f23ecac16b16a0debd7e12d5",
+    "bytes": 3930
+  },
+  {
+    "path": "CONTRIBUTING.md",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "b4a89f313eb6cdc87ae06d2025cc3f102ca68e59",
+    "workingSha256": "9d8f0db6426a83a9244a071d510a21cfd32c410e241aed2ca184f0bea255dbe0",
+    "bytes": 3952
+  },
+  {
+    "path": "docs/architecture.md",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "9007333242ea4bbfde80bb10f6b33ee9841705f8",
+    "workingSha256": "dc11f54fb8a6fdae745019825ae033c76f5424a677db821cf7bac367cdb23edb",
+    "bytes": 1815
+  },
+  {
+    "path": "docs/adr/0004-p2-durable-execution.md",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "4a5caab938812ac8ee0eb3d03314448f588e47bb",
+    "workingSha256": "09730bf54d87c44b0420579f71adbeb3588daab6eb6c2f4b508b3fc002f790c7",
+    "bytes": 23026
+  },
+  {
+    "path": "docs/adr/0007-mcp-readonly-same-host.md",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "11e69280fdc4046dcbedf5d18468ec34cf8622f5",
+    "workingSha256": "b2cb9cd5652e8a0d97cbeb43239cbe9dc081b997e2e83658932686916b529fa5",
+    "bytes": 9544
+  },
+  {
+    "path": "docs/baseline/README.md",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "c79fe3c6d5c2c8b6fbe50baebc63d13c4fd8ec2b",
+    "workingSha256": "15760921d7c1a6d805d306f6b179d7cbd280d2cba577daf11d07bca31ed1bf15",
+    "bytes": 1917
+  },
+  {
+    "path": "docs/baseline/XIAO-33-可行性与总体方案-v0.3.md",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "2649667071d8013edd056ca89803cd7601ce3361",
+    "workingSha256": "2b8e53c700aab0d96a6f06351ee9f924a43c8d5af4b5f62837b20e6f92e6c014",
+    "bytes": 95190
+  },
+  {
+    "path": "docs/baseline/XIAO-33-工程规范-v0.2.md",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "1d7a4d0627b96ccb65725e2b34dd774bc5cf42ba",
+    "workingSha256": "36553f58e0b129903f04389c852f75560cf4879bbe9fbdac0e2759cb3f8298b7",
+    "bytes": 27621
+  },
+  {
+    "path": "docs/baseline/XIAO-33-tool-migration-evidence-v1.1.md",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "4b5aa6dfcab31ad139cd7d6e71a971dfcc316761",
+    "workingSha256": "2111bc4a0be86a3cc69420fb9b9d08adc0bc5b609686d859b38830edce17c0f7",
+    "bytes": 87122
+  },
+  {
+    "path": "docs/baseline/XIAO-33-harness-tool-inventory-v1.1.json",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "b788c5703af0ee40a5df4d439b8209211ed132cf",
+    "workingSha256": "30b6904aad8d85dac3e789434e434c449575383cb23e254329a84930436f5b02",
+    "bytes": 196149
+  },
+  {
+    "path": "docs/implementation-p2.md",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "29b7eb0051b08c19db05c70ecda5e94eff629d62",
+    "workingSha256": "1b2a404ef80c65e94cfe47ac9f5f8dd8889a1e70021fda1a54f0ddd3da63eb66",
+    "bytes": 12312
+  },
+  {
+    "path": "docs/implementation-p4-mcp.md",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "1e0b53f7d719a93fd82b514eb0878806f26e88ec",
+    "workingSha256": "f799dace25493bd592965673acb1f75920ecab0cfdbccf4166f559fd824b1322",
+    "bytes": 7400
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskController.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "2ec6316082fc58e38a3341750ec1427900c56adf",
+    "workingSha256": "401d432ccbfd435f7ade4ab1e4b2c3d8d03f63e50954764c1192dce0acbb5e4c",
+    "bytes": 10772
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskErrors.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "2ccbe57b5d501ecd5c7e37c6546bb689d00e532f",
+    "workingSha256": "c96add9865fe16a4f3c547e2c370ab0669bcdcf72c2820bed89f8ece9c21f05c",
+    "bytes": 1549
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/Tasks.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "4ec8b317cbc2793de9fa8e2e51669151f72e945b",
+    "workingSha256": "458057b47bdbbc8f2b29cb5f8d77f368d1787d736b6d2a7975db0b414ae05902",
+    "bytes": 2413
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/ExecutionLedger.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "4c8140c87257b1b04fc24fac23e6251190858682",
+    "workingSha256": "76645a63d5756dbebdecfdd361229ee28ca305249fcee100332bce443f1ae60b",
+    "bytes": 3747
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "8b283e946aadad49ac07dfd65b55b8084780d6f4",
+    "workingSha256": "c5b7a4c31abbc8afb1778a7990dcb4f4c74f26f3e2e4c728690aa6fd16e94796",
+    "bytes": 180839
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "c3dbc847fc4b59d742677bc1bb145d1d84172a61",
+    "workingSha256": "53fbe015d77c00a098bd8cfc9e3ef6124cc943704bc2c3d917ec6f3d8568d524",
+    "bytes": 2767
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "797356d4b6933f5ae7ff33de09c309ddc980d4c6",
+    "workingSha256": "e1fb7a9ec1836986030996b82f4910a559acb661a9b732e3cf1d8be4b280d76a",
+    "bytes": 34416
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/WorkerLoop.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "345f797dedeb76fa30d8bdc70d8d4d75d8c4aad9",
+    "workingSha256": "e86cbe664a60e33dd209a63207d9c96ccf2249d8c778f376c7c62818f962dbcb",
+    "bytes": 3902
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LedgerMaintenance.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "c6afe96ec6c3e0cc104fd44ae67b597b7a599aa6",
+    "workingSha256": "5249eaca4cf07d2cff1aa42b0a00e212d046892c0f96e403737eeba8275a30a3",
+    "bytes": 1321
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/health/LedgerProbe.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "12dc38bc266f65a868f312fb1fb0d3ec13877629",
+    "workingSha256": "19db133527b85e5fd876cb2e56f8a7bcf013da9880048b45b77b3b5fdf87002a",
+    "bytes": 1151
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/SchemaContract.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "5bd7bed4a666c927d037cb2937080fa729a1ff88",
+    "workingSha256": "bfd42fccd264dd9b5b00cb69c0ccc771d89abfbf2fc083d73da66d912c92e5d9",
+    "bytes": 1977
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceContracts.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "30a7904307bedc2daebd8f2cc5cfeaeb1c7beb44",
+    "workingSha256": "1881bb2466bba25898eae86a438175c02b850292c65709293e6dc8eea218918d",
+    "bytes": 6493
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpContracts.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "f491ec63b9a7ebbbbaf972b1ff8b301a7624dc1a",
+    "workingSha256": "c5ae2fc15eee2300e817de0241332160f1162a5e1a02ed1a8bcdfb41c526f2e5",
+    "bytes": 3252
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/mcp/ListMcpResourcesPlugin.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "f38ec4b1608b0436d56f9cbfc3a9049f98edafe2",
+    "workingSha256": "c374b3010378d4cebfc4c101c13767438c9a70f29450eda4eb86d8e9ce974138",
+    "bytes": 1028
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ToolPlugin.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "1e457ddcfcc0002e4c1d7d06fbf679ca1aac9391",
+    "workingSha256": "cf11e06398fef375efbb42967410aba0d9a3e39d852a65b443f6d51d5fe54bf7",
+    "bytes": 230
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ToolResult.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "ea32363b61d365c9c06b0fafd6cd17abe9e58253",
+    "workingSha256": "bb23d44ebaade8733baad9c2f630daefcedd7bd44a53f6715adf675bdf808903",
+    "bytes": 167
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "7698a96e5ddb02fe9836415d076a919eb8cebf70",
+    "workingSha256": "25916c7eb225cc59b82e84200085be286a9c7bf60586e6001ce1489c43c694a2",
+    "bytes": 10548
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/identity/SignedIdentity.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "c581d64b5aecf1c845b4e42e90f0728a7f943729",
+    "workingSha256": "5414099b410693cc70fcda8f6a62358f16759037d803dc8b800fac4aa49596b3",
+    "bytes": 2660
+  },
+  {
+    "path": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "180577db7e24ad8d5ad10738144022b5906cf578",
+    "workingSha256": "c1d4c158b1f5c5a9cc955bee9fe93a5cdbed7a2a80e3026f4c835da235977e70",
+    "bytes": 7122
+  },
+  {
+    "path": "src/main/resources/db/migration/V14__image_checkpoint_retention.sql",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "ad05f3f06ba2b4b11682a2b4e071da0cb3f20b16",
+    "workingSha256": "3efa3e1240e1f3917265915d0e3713d799b7839a45618f97577fc1029a9801ab",
+    "bytes": 1399
+  },
+  {
+    "path": "src/main/resources/db/migration/V15__mcp_resources.sql",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "1259c73af80c1d26a6cb861ff447bff79dcf059c",
+    "workingSha256": "4a33b950278439feac9b11312381b78207f38f78a298f78923402db86bd03244",
+    "bytes": 2330
+  },
+  {
+    "path": "tools/evaluation/application_grants.py",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "dc7033eacc079b9771ea95eff97335f6eb4819e8",
+    "workingSha256": "bc70da01d887f0e5f129d42ac7c8335ef192664af22a3a2dd2d932719e543219",
+    "bytes": 1722
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/architecture/PackageBoundariesTest.java",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "706341a3b724dd870c7c14faab3ee7b644ea33e6",
+    "workingSha256": "7b66fdbc0d629c7a3f9637767901a663be3519c0bf69a08fd252c1f5376acfd4",
+    "bytes": 4031
+  },
+  {
+    "path": "pom.xml",
+    "commit": "0e630f28e39c157788886694e2b16dc0831bb571",
+    "gitBlob": "f13344b920287f912bd2e38456f6464825b7c335",
+    "workingSha256": "97bcb08a228d3d8e12816094b48168e2d6bee6b00aadb80f0d79687e05be067b",
+    "bytes": 7246
+  }
+]

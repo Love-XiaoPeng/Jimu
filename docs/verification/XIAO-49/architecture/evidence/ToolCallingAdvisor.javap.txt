@@ -1,0 +1,681 @@
+Compiled from "ToolCallingAdvisor.java"
+public class org.springframework.ai.chat.client.advisor.ToolCallingAdvisor implements org.springframework.ai.chat.client.advisor.api.CallAdvisor,org.springframework.ai.chat.client.advisor.api.StreamAdvisor,org.springframework.ai.chat.client.advisor.api.ToolAdvisor {
+  private static final org.springframework.ai.chat.client.ChatClientMessageAggregator CHAT_CLIENT_MESSAGE_AGGREGATOR;
+
+  public static final int DEFAULT_ORDER;
+
+  protected static final org.springframework.ai.model.tool.ToolExecutionEligibilityChecker DEFAULT_TOOL_EXECUTION_ELIGIBILITY_CHECKER;
+
+  protected final org.springframework.ai.model.tool.ToolCallingManager toolCallingManager;
+
+  private final org.springframework.ai.model.tool.ToolExecutionEligibilityChecker toolExecutionEligibilityChecker;
+
+  private final int advisorOrder;
+
+  private final boolean conversationHistoryEnabled;
+
+  protected org.springframework.ai.chat.client.advisor.ToolCallingAdvisor(org.springframework.ai.model.tool.ToolCallingManager, org.springframework.ai.model.tool.ToolExecutionEligibilityChecker, int, boolean);
+    Code:
+       0: aload_0
+       1: invokespecial #3                  // Method java/lang/Object."<init>":()V
+       4: aload_1
+       5: ldc           #9                  // String toolCallingManager must not be null
+       7: invokestatic  #11                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+      10: aload_2
+      11: ldc           #17                 // String toolExecutionEligibilityChecker must not be null
+      13: invokestatic  #11                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+      16: iload_3
+      17: ldc           #21                 // int -2147483648
+      19: if_icmple     32
+      22: iload_3
+      23: ldc           #22                 // int 2147483647
+      25: if_icmpge     32
+      28: iconst_1
+      29: goto          33
+      32: iconst_0
+      33: ldc           #23                 // String advisorOrder must be between HIGHEST_PRECEDENCE and LOWEST_PRECEDENCE
+      35: invokestatic  #25                 // Method org/springframework/util/Assert.isTrue:(ZLjava/lang/String;)V
+      38: aload_0
+      39: aload_1
+      40: putfield      #29                 // Field toolCallingManager:Lorg/springframework/ai/model/tool/ToolCallingManager;
+      43: aload_0
+      44: aload_2
+      45: putfield      #35                 // Field toolExecutionEligibilityChecker:Lorg/springframework/ai/model/tool/ToolExecutionEligibilityChecker;
+      48: aload_0
+      49: iload_3
+      50: putfield      #39                 // Field advisorOrder:I
+      53: aload_0
+      54: iload         4
+      56: putfield      #43                 // Field conversationHistoryEnabled:Z
+      59: return
+
+  public java.lang.String getName();
+    Code:
+       0: ldc           #47                 // String Tool Calling Advisor
+       2: areturn
+
+  public int getOrder();
+    Code:
+       0: aload_0
+       1: getfield      #39                 // Field advisorOrder:I
+       4: ireturn
+
+  public org.springframework.ai.chat.client.ChatClientResponse adviseCall(org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.chat.client.advisor.api.CallAdvisorChain);
+    Code:
+       0: aload_2
+       1: ldc           #49                 // String callAdvisorChain must not be null
+       3: invokestatic  #11                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+       6: aload_1
+       7: ldc           #51                 // String chatClientRequest must not be null
+       9: invokestatic  #11                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+      12: aload_1
+      13: invokevirtual #53                 // Method org/springframework/ai/chat/client/ChatClientRequest.prompt:()Lorg/springframework/ai/chat/prompt/Prompt;
+      16: invokevirtual #59                 // Method org/springframework/ai/chat/prompt/Prompt.getOptions:()Lorg/springframework/ai/chat/prompt/ChatOptions;
+      19: astore_3
+      20: aload_3
+      21: instanceof    #65                 // class org/springframework/ai/model/tool/ToolCallingChatOptions
+      24: ifeq          36
+      27: aload_3
+      28: checkcast     #65                 // class org/springframework/ai/model/tool/ToolCallingChatOptions
+      31: astore        4
+      33: goto          44
+      36: aload_2
+      37: aload_1
+      38: invokeinterface #67,  2           // InterfaceMethod org/springframework/ai/chat/client/advisor/api/CallAdvisorChain.nextCall:(Lorg/springframework/ai/chat/client/ChatClientRequest;)Lorg/springframework/ai/chat/client/ChatClientResponse;
+      43: areturn
+      44: aload_0
+      45: aload_1
+      46: aload_2
+      47: invokevirtual #73                 // Method doInitializeLoop:(Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/chat/client/advisor/api/CallAdvisorChain;)Lorg/springframework/ai/chat/client/ChatClientRequest;
+      50: astore_1
+      51: aload_1
+      52: invokevirtual #53                 // Method org/springframework/ai/chat/client/ChatClientRequest.prompt:()Lorg/springframework/ai/chat/prompt/Prompt;
+      55: invokevirtual #77                 // Method org/springframework/ai/chat/prompt/Prompt.getInstructions:()Ljava/util/List;
+      58: astore        5
+      60: aload         5
+      62: astore        6
+      64: aconst_null
+      65: astore        7
+      67: new           #81                 // class org/springframework/ai/chat/client/advisor/UsageAccumulator
+      70: dup
+      71: invokespecial #83                 // Method org/springframework/ai/chat/client/advisor/UsageAccumulator."<init>":()V
+      74: astore        8
+      76: iconst_0
+      77: istore        9
+      79: invokestatic  #84                 // Method org/springframework/ai/chat/client/ChatClientRequest.builder:()Lorg/springframework/ai/chat/client/ChatClientRequest$Builder;
+      82: new           #60                 // class org/springframework/ai/chat/prompt/Prompt
+      85: dup
+      86: aload         5
+      88: aload         4
+      90: invokespecial #88                 // Method org/springframework/ai/chat/prompt/Prompt."<init>":(Ljava/util/List;Lorg/springframework/ai/chat/prompt/ChatOptions;)V
+      93: invokevirtual #91                 // Method org/springframework/ai/chat/client/ChatClientRequest$Builder.prompt:(Lorg/springframework/ai/chat/prompt/Prompt;)Lorg/springframework/ai/chat/client/ChatClientRequest$Builder;
+      96: aload_1
+      97: invokevirtual #96                 // Method org/springframework/ai/chat/client/ChatClientRequest.context:()Ljava/util/Map;
+     100: invokevirtual #100                // Method org/springframework/ai/chat/client/ChatClientRequest$Builder.context:(Ljava/util/Map;)Lorg/springframework/ai/chat/client/ChatClientRequest$Builder;
+     103: invokevirtual #103                // Method org/springframework/ai/chat/client/ChatClientRequest$Builder.build:()Lorg/springframework/ai/chat/client/ChatClientRequest;
+     106: astore        10
+     108: aload_0
+     109: aload         10
+     111: aload_2
+     112: invokevirtual #107                // Method doBeforeCall:(Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/chat/client/advisor/api/CallAdvisorChain;)Lorg/springframework/ai/chat/client/ChatClientRequest;
+     115: astore        10
+     117: aload         10
+     119: invokevirtual #53                 // Method org/springframework/ai/chat/client/ChatClientRequest.prompt:()Lorg/springframework/ai/chat/prompt/Prompt;
+     122: invokevirtual #59                 // Method org/springframework/ai/chat/prompt/Prompt.getOptions:()Lorg/springframework/ai/chat/prompt/ChatOptions;
+     125: checkcast     #65                 // class org/springframework/ai/model/tool/ToolCallingChatOptions
+     128: astore        4
+     130: aload         4
+     132: ldc           #110                // String redundant check that should never fail (doBeforeCall must not change the options type away from ToolCallingChatOptions), but here to help NullAway
+     134: invokestatic  #11                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+     137: aload_2
+     138: aload_0
+     139: invokeinterface #112,  2          // InterfaceMethod org/springframework/ai/chat/client/advisor/api/CallAdvisorChain.copy:(Lorg/springframework/ai/chat/client/advisor/api/CallAdvisor;)Lorg/springframework/ai/chat/client/advisor/api/CallAdvisorChain;
+     144: aload         10
+     146: invokeinterface #67,  2           // InterfaceMethod org/springframework/ai/chat/client/advisor/api/CallAdvisorChain.nextCall:(Lorg/springframework/ai/chat/client/ChatClientRequest;)Lorg/springframework/ai/chat/client/ChatClientResponse;
+     151: astore        7
+     153: aload_0
+     154: aload         7
+     156: aload_2
+     157: invokevirtual #116                // Method doAfterCall:(Lorg/springframework/ai/chat/client/ChatClientResponse;Lorg/springframework/ai/chat/client/advisor/api/CallAdvisorChain;)Lorg/springframework/ai/chat/client/ChatClientResponse;
+     160: astore        7
+     162: aload         7
+     164: invokevirtual #120                // Method org/springframework/ai/chat/client/ChatClientResponse.chatResponse:()Lorg/springframework/ai/chat/model/ChatResponse;
+     167: astore        11
+     169: aload         8
+     171: aload         11
+     173: invokevirtual #126                // Method org/springframework/ai/chat/client/advisor/UsageAccumulator.addRoundResponse:(Lorg/springframework/ai/chat/model/ChatResponse;)Lorg/springframework/ai/chat/model/ChatResponse;
+     176: pop
+     177: aload_0
+     178: getfield      #35                 // Field toolExecutionEligibilityChecker:Lorg/springframework/ai/model/tool/ToolExecutionEligibilityChecker;
+     181: aload         11
+     183: invokeinterface #130,  2          // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionEligibilityChecker.isToolCallResponse:(Lorg/springframework/ai/chat/model/ChatResponse;)Z
+     188: istore        9
+     190: iload         9
+     192: ifeq          335
+     195: aload         11
+     197: ldc           #136                // String redundant check that should never fail, but here to help NullAway
+     199: invokestatic  #11                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+     202: aload_0
+     203: getfield      #29                 // Field toolCallingManager:Lorg/springframework/ai/model/tool/ToolCallingManager;
+     206: new           #60                 // class org/springframework/ai/chat/prompt/Prompt
+     209: dup
+     210: aload         6
+     212: aload         4
+     214: invokespecial #88                 // Method org/springframework/ai/chat/prompt/Prompt."<init>":(Ljava/util/List;Lorg/springframework/ai/chat/prompt/ChatOptions;)V
+     217: aload         11
+     219: invokeinterface #138,  3          // InterfaceMethod org/springframework/ai/model/tool/ToolCallingManager.executeToolCalls:(Lorg/springframework/ai/chat/prompt/Prompt;Lorg/springframework/ai/chat/model/ChatResponse;)Lorg/springframework/ai/model/tool/ToolExecutionResult;
+     224: astore        12
+     226: goto          269
+     229: astore        13
+     231: aload         7
+     233: invokevirtual #146                // Method org/springframework/ai/chat/client/ChatClientResponse.mutate:()Lorg/springframework/ai/chat/client/ChatClientResponse$Builder;
+     236: invokestatic  #150                // Method org/springframework/ai/chat/model/ChatResponse.builder:()Lorg/springframework/ai/chat/model/ChatResponse$Builder;
+     239: aload         11
+     241: invokevirtual #155                // Method org/springframework/ai/chat/model/ChatResponse$Builder.from:(Lorg/springframework/ai/chat/model/ChatResponse;)Lorg/springframework/ai/chat/model/ChatResponse$Builder;
+     244: aload         13
+     246: invokevirtual #161                // Method org/springframework/ai/model/tool/ToolCallLimitExceededException.buildGeneration:()Lorg/springframework/ai/chat/model/Generation;
+     249: invokestatic  #165                // InterfaceMethod java/util/List.of:(Ljava/lang/Object;)Ljava/util/List;
+     252: invokevirtual #171                // Method org/springframework/ai/chat/model/ChatResponse$Builder.generations:(Ljava/util/List;)Lorg/springframework/ai/chat/model/ChatResponse$Builder;
+     255: invokevirtual #175                // Method org/springframework/ai/chat/model/ChatResponse$Builder.build:()Lorg/springframework/ai/chat/model/ChatResponse;
+     258: invokevirtual #177                // Method org/springframework/ai/chat/client/ChatClientResponse$Builder.chatResponse:(Lorg/springframework/ai/chat/model/ChatResponse;)Lorg/springframework/ai/chat/client/ChatClientResponse$Builder;
+     261: invokevirtual #182                // Method org/springframework/ai/chat/client/ChatClientResponse$Builder.build:()Lorg/springframework/ai/chat/client/ChatClientResponse;
+     264: astore        7
+     266: goto          340
+     269: aload         12
+     271: invokeinterface #185,  1          // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionResult.conversationHistory:()Ljava/util/List;
+     276: astore        6
+     278: aload         12
+     280: invokeinterface #190,  1          // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionResult.returnDirect:()Z
+     285: ifeq          323
+     288: aload         7
+     290: invokevirtual #146                // Method org/springframework/ai/chat/client/ChatClientResponse.mutate:()Lorg/springframework/ai/chat/client/ChatClientResponse$Builder;
+     293: invokestatic  #150                // Method org/springframework/ai/chat/model/ChatResponse.builder:()Lorg/springframework/ai/chat/model/ChatResponse$Builder;
+     296: aload         11
+     298: invokevirtual #155                // Method org/springframework/ai/chat/model/ChatResponse$Builder.from:(Lorg/springframework/ai/chat/model/ChatResponse;)Lorg/springframework/ai/chat/model/ChatResponse$Builder;
+     301: aload         12
+     303: invokestatic  #194                // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionResult.buildGenerations:(Lorg/springframework/ai/model/tool/ToolExecutionResult;)Ljava/util/List;
+     306: invokevirtual #171                // Method org/springframework/ai/chat/model/ChatResponse$Builder.generations:(Ljava/util/List;)Lorg/springframework/ai/chat/model/ChatResponse$Builder;
+     309: invokevirtual #175                // Method org/springframework/ai/chat/model/ChatResponse$Builder.build:()Lorg/springframework/ai/chat/model/ChatResponse;
+     312: invokevirtual #177                // Method org/springframework/ai/chat/client/ChatClientResponse$Builder.chatResponse:(Lorg/springframework/ai/chat/model/ChatResponse;)Lorg/springframework/ai/chat/client/ChatClientResponse$Builder;
+     315: invokevirtual #182                // Method org/springframework/ai/chat/client/ChatClientResponse$Builder.build:()Lorg/springframework/ai/chat/client/ChatClientResponse;
+     318: astore        7
+     320: goto          340
+     323: aload_0
+     324: aload         10
+     326: aload         7
+     328: aload         12
+     330: invokevirtual #198                // Method doGetNextInstructionsForToolCall:(Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/chat/client/ChatClientResponse;Lorg/springframework/ai/model/tool/ToolExecutionResult;)Ljava/util/List;
+     333: astore        5
+     335: iload         9
+     337: ifne          79
+     340: aload         8
+     342: aload         7
+     344: invokevirtual #202                // Method org/springframework/ai/chat/client/advisor/UsageAccumulator.applyAccumulatedUsage:(Lorg/springframework/ai/chat/client/ChatClientResponse;)Lorg/springframework/ai/chat/client/ChatClientResponse;
+     347: astore        7
+     349: aload_0
+     350: aload         7
+     352: aload_2
+     353: invokevirtual #206                // Method doFinalizeLoop:(Lorg/springframework/ai/chat/client/ChatClientResponse;Lorg/springframework/ai/chat/client/advisor/api/CallAdvisorChain;)Lorg/springframework/ai/chat/client/ChatClientResponse;
+     356: areturn
+    Exception table:
+       from    to  target type
+         202   226   229   Class org/springframework/ai/model/tool/ToolCallLimitExceededException
+
+  protected java.util.List<org.springframework.ai.chat.messages.Message> doGetNextInstructionsForToolCall(org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.chat.client.ChatClientResponse, org.springframework.ai.model.tool.ToolExecutionResult);
+    Code:
+       0: aload_0
+       1: getfield      #43                 // Field conversationHistoryEnabled:Z
+       4: ifne          58
+       7: aload_3
+       8: invokeinterface #185,  1          // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionResult.conversationHistory:()Ljava/util/List;
+      13: astore        4
+      15: aload         4
+      17: invokeinterface #209,  1          // InterfaceMethod java/util/List.isEmpty:()Z
+      22: ifeq          28
+      25: aload         4
+      27: areturn
+      28: aload_1
+      29: invokevirtual #53                 // Method org/springframework/ai/chat/client/ChatClientRequest.prompt:()Lorg/springframework/ai/chat/prompt/Prompt;
+      32: invokevirtual #212                // Method org/springframework/ai/chat/prompt/Prompt.getSystemMessage:()Lorg/springframework/ai/chat/messages/SystemMessage;
+      35: aload         4
+      37: aload         4
+      39: invokeinterface #216,  1          // InterfaceMethod java/util/List.size:()I
+      44: iconst_1
+      45: isub
+      46: invokeinterface #220,  2          // InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;
+      51: checkcast     #224                // class org/springframework/ai/chat/messages/Message
+      54: invokestatic  #226                // InterfaceMethod java/util/List.of:(Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;
+      57: areturn
+      58: aload_3
+      59: invokeinterface #185,  1          // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionResult.conversationHistory:()Ljava/util/List;
+      64: areturn
+
+  protected org.springframework.ai.chat.client.ChatClientResponse doFinalizeLoop(org.springframework.ai.chat.client.ChatClientResponse, org.springframework.ai.chat.client.advisor.api.CallAdvisorChain);
+    Code:
+       0: aload_1
+       1: areturn
+
+  protected org.springframework.ai.chat.client.ChatClientRequest doInitializeLoop(org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.chat.client.advisor.api.CallAdvisorChain);
+    Code:
+       0: aload_1
+       1: areturn
+
+  protected org.springframework.ai.chat.client.ChatClientRequest doBeforeCall(org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.chat.client.advisor.api.CallAdvisorChain);
+    Code:
+       0: aload_1
+       1: areturn
+
+  protected org.springframework.ai.chat.client.ChatClientResponse doAfterCall(org.springframework.ai.chat.client.ChatClientResponse, org.springframework.ai.chat.client.advisor.api.CallAdvisorChain);
+    Code:
+       0: aload_1
+       1: areturn
+
+  public reactor.core.publisher.Flux<org.springframework.ai.chat.client.ChatClientResponse> adviseStream(org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.chat.client.advisor.api.StreamAdvisorChain);
+    Code:
+       0: aload_2
+       1: ldc           #229                // String streamAdvisorChain must not be null
+       3: invokestatic  #11                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+       6: aload_1
+       7: ldc           #51                 // String chatClientRequest must not be null
+       9: invokestatic  #11                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+      12: aload_1
+      13: invokevirtual #53                 // Method org/springframework/ai/chat/client/ChatClientRequest.prompt:()Lorg/springframework/ai/chat/prompt/Prompt;
+      16: invokevirtual #59                 // Method org/springframework/ai/chat/prompt/Prompt.getOptions:()Lorg/springframework/ai/chat/prompt/ChatOptions;
+      19: astore_3
+      20: aload_3
+      21: instanceof    #65                 // class org/springframework/ai/model/tool/ToolCallingChatOptions
+      24: ifeq          36
+      27: aload_3
+      28: checkcast     #65                 // class org/springframework/ai/model/tool/ToolCallingChatOptions
+      31: astore        4
+      33: goto          44
+      36: aload_2
+      37: aload_1
+      38: invokeinterface #231,  2          // InterfaceMethod org/springframework/ai/chat/client/advisor/api/StreamAdvisorChain.nextStream:(Lorg/springframework/ai/chat/client/ChatClientRequest;)Lreactor/core/publisher/Flux;
+      43: areturn
+      44: aload_0
+      45: aload_1
+      46: aload_2
+      47: aload         4
+      49: invokedynamic #237,  0            // InvokeDynamic #0:get:(Lorg/springframework/ai/chat/client/advisor/ToolCallingAdvisor;Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisorChain;Lorg/springframework/ai/model/tool/ToolCallingChatOptions;)Ljava/util/function/Supplier;
+      54: invokestatic  #240                // Method reactor/core/publisher/Flux.defer:(Ljava/util/function/Supplier;)Lreactor/core/publisher/Flux;
+      57: areturn
+
+  private reactor.core.publisher.Flux<org.springframework.ai.chat.client.ChatClientResponse> internalStream(org.springframework.ai.chat.client.advisor.api.StreamAdvisorChain, org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.model.tool.ToolCallingChatOptions, java.util.List<org.springframework.ai.chat.messages.Message>, java.util.List<org.springframework.ai.chat.messages.Message>, org.springframework.ai.chat.client.advisor.UsageAccumulator);
+    Code:
+       0: aload_0
+       1: aload         4
+       3: aload_3
+       4: aload_2
+       5: aload_1
+       6: aload         5
+       8: aload         6
+      10: invokedynamic #246,  0            // InvokeDynamic #1:apply:(Lorg/springframework/ai/chat/client/advisor/ToolCallingAdvisor;Ljava/util/List;Lorg/springframework/ai/model/tool/ToolCallingChatOptions;Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisorChain;Ljava/util/List;Lorg/springframework/ai/chat/client/advisor/UsageAccumulator;)Ljava/util/function/Function;
+      15: invokestatic  #250                // Method reactor/core/publisher/Flux.deferContextual:(Ljava/util/function/Function;)Lreactor/core/publisher/Flux;
+      18: areturn
+
+  private reactor.core.publisher.Flux<org.springframework.ai.chat.client.ChatClientResponse> streamWithToolCallResponses(reactor.core.publisher.Flux<org.springframework.ai.chat.client.ChatClientResponse>, org.springframework.ai.chat.client.ChatClientRequest, java.util.List<org.springframework.ai.chat.messages.Message>, org.springframework.ai.chat.client.advisor.api.StreamAdvisorChain, org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.model.tool.ToolCallingChatOptions, org.springframework.ai.chat.client.advisor.UsageAccumulator);
+    Code:
+       0: new           #254                // class java/util/concurrent/atomic/AtomicReference
+       3: dup
+       4: invokespecial #256                // Method java/util/concurrent/atomic/AtomicReference."<init>":()V
+       7: astore        8
+       9: aload         7
+      11: invokevirtual #257                // Method org/springframework/ai/chat/client/advisor/UsageAccumulator.accumulatedResponse:()Lorg/springframework/ai/chat/model/ChatResponse;
+      14: astore        9
+      16: getstatic     #260                // Field CHAT_CLIENT_MESSAGE_AGGREGATOR:Lorg/springframework/ai/chat/client/ChatClientMessageAggregator;
+      19: aload_1
+      20: aload         8
+      22: dup
+      23: invokestatic  #264                // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;)Ljava/lang/Object;
+      26: pop
+      27: invokedynamic #270,  0            // InvokeDynamic #2:accept:(Ljava/util/concurrent/atomic/AtomicReference;)Ljava/util/function/Consumer;
+      32: invokevirtual #274                // Method org/springframework/ai/chat/client/ChatClientMessageAggregator.aggregateChatClientResponse:(Lreactor/core/publisher/Flux;Ljava/util/function/Consumer;)Lreactor/core/publisher/Flux;
+      35: aload         9
+      37: invokedynamic #280,  0            // InvokeDynamic #3:apply:(Lorg/springframework/ai/chat/model/ChatResponse;)Ljava/util/function/Function;
+      42: invokevirtual #283                // Method reactor/core/publisher/Flux.map:(Ljava/util/function/Function;)Lreactor/core/publisher/Flux;
+      45: aload_0
+      46: aload         8
+      48: aload_2
+      49: aload_3
+      50: aload         4
+      52: aload         5
+      54: aload         6
+      56: aload         7
+      58: invokedynamic #286,  0            // InvokeDynamic #4:get:(Lorg/springframework/ai/chat/client/advisor/ToolCallingAdvisor;Ljava/util/concurrent/atomic/AtomicReference;Lorg/springframework/ai/chat/client/ChatClientRequest;Ljava/util/List;Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisorChain;Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/model/tool/ToolCallingChatOptions;Lorg/springframework/ai/chat/client/advisor/UsageAccumulator;)Ljava/util/function/Supplier;
+      63: invokestatic  #240                // Method reactor/core/publisher/Flux.defer:(Ljava/util/function/Supplier;)Lreactor/core/publisher/Flux;
+      66: invokevirtual #289                // Method reactor/core/publisher/Flux.concatWith:(Lorg/reactivestreams/Publisher;)Lreactor/core/publisher/Flux;
+      69: aload_0
+      70: invokedynamic #293,  0            // InvokeDynamic #5:test:(Lorg/springframework/ai/chat/client/advisor/ToolCallingAdvisor;)Ljava/util/function/Predicate;
+      75: invokevirtual #297                // Method reactor/core/publisher/Flux.filter:(Ljava/util/function/Predicate;)Lreactor/core/publisher/Flux;
+      78: areturn
+
+  private reactor.core.publisher.Flux<org.springframework.ai.chat.client.ChatClientResponse> handleToolCallRecursion(org.springframework.ai.chat.client.ChatClientResponse, org.springframework.ai.chat.client.ChatClientRequest, java.util.List<org.springframework.ai.chat.messages.Message>, org.springframework.ai.chat.client.advisor.api.StreamAdvisorChain, org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.model.tool.ToolCallingChatOptions, org.springframework.ai.chat.client.advisor.UsageAccumulator);
+    Code:
+       0: aload_1
+       1: ifnonnull     8
+       4: invokestatic  #301                // Method reactor/core/publisher/Flux.empty:()Lreactor/core/publisher/Flux;
+       7: areturn
+       8: aload_0
+       9: aload_1
+      10: aload         4
+      12: invokevirtual #305                // Method doAfterStream:(Lorg/springframework/ai/chat/client/ChatClientResponse;Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisorChain;)Lorg/springframework/ai/chat/client/ChatClientResponse;
+      15: astore_1
+      16: aload_1
+      17: invokevirtual #120                // Method org/springframework/ai/chat/client/ChatClientResponse.chatResponse:()Lorg/springframework/ai/chat/model/ChatResponse;
+      20: astore        8
+      22: aload         7
+      24: aload         8
+      26: invokevirtual #126                // Method org/springframework/ai/chat/client/advisor/UsageAccumulator.addRoundResponse:(Lorg/springframework/ai/chat/model/ChatResponse;)Lorg/springframework/ai/chat/model/ChatResponse;
+      29: astore        9
+      31: aload_0
+      32: getfield      #35                 // Field toolExecutionEligibilityChecker:Lorg/springframework/ai/model/tool/ToolExecutionEligibilityChecker;
+      35: aload         8
+      37: invokeinterface #130,  2          // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionEligibilityChecker.isToolCallResponse:(Lorg/springframework/ai/chat/model/ChatResponse;)Z
+      42: istore        10
+      44: iload         10
+      46: ifne          68
+      49: aload_1
+      50: aload         8
+      52: aload         9
+      54: invokestatic  #309                // Method org/springframework/ai/chat/client/advisor/UsageAccumulator.emitFinalUsageCorrectionIfNecessary:(Lorg/springframework/ai/chat/client/ChatClientResponse;Lorg/springframework/ai/chat/model/ChatResponse;Lorg/springframework/ai/chat/model/ChatResponse;)Lreactor/core/publisher/Flux;
+      57: astore        11
+      59: aload_0
+      60: aload         11
+      62: aload         4
+      64: invokevirtual #313                // Method doFinalizeLoopStream:(Lreactor/core/publisher/Flux;Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisorChain;)Lreactor/core/publisher/Flux;
+      67: areturn
+      68: aload         8
+      70: ldc           #136                // String redundant check that should never fail, but here to help NullAway
+      72: invokestatic  #11                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+      75: aload_1
+      76: astore        11
+      78: aload_0
+      79: aload_3
+      80: aload         6
+      82: aload         8
+      84: aload         11
+      86: aload         7
+      88: aload_2
+      89: aload         4
+      91: aload         5
+      93: invokedynamic #317,  0            // InvokeDynamic #6:apply:(Lorg/springframework/ai/chat/client/advisor/ToolCallingAdvisor;Ljava/util/List;Lorg/springframework/ai/model/tool/ToolCallingChatOptions;Lorg/springframework/ai/chat/model/ChatResponse;Lorg/springframework/ai/chat/client/ChatClientResponse;Lorg/springframework/ai/chat/client/advisor/UsageAccumulator;Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisorChain;Lorg/springframework/ai/chat/client/ChatClientRequest;)Ljava/util/function/Function;
+      98: invokestatic  #250                // Method reactor/core/publisher/Flux.deferContextual:(Ljava/util/function/Function;)Lreactor/core/publisher/Flux;
+     101: astore        12
+     103: aload         12
+     105: invokestatic  #320                // Method reactor/core/scheduler/Schedulers.boundedElastic:()Lreactor/core/scheduler/Scheduler;
+     108: invokevirtual #326                // Method reactor/core/publisher/Flux.subscribeOn:(Lreactor/core/scheduler/Scheduler;)Lreactor/core/publisher/Flux;
+     111: areturn
+
+  protected org.springframework.ai.chat.client.ChatClientRequest doInitializeLoopStream(org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.chat.client.advisor.api.StreamAdvisorChain);
+    Code:
+       0: aload_1
+       1: areturn
+
+  protected org.springframework.ai.chat.client.ChatClientRequest doBeforeStream(org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.chat.client.advisor.api.StreamAdvisorChain);
+    Code:
+       0: aload_1
+       1: areturn
+
+  protected org.springframework.ai.chat.client.ChatClientResponse doAfterStream(org.springframework.ai.chat.client.ChatClientResponse, org.springframework.ai.chat.client.advisor.api.StreamAdvisorChain);
+    Code:
+       0: aload_1
+       1: areturn
+
+  protected reactor.core.publisher.Flux<org.springframework.ai.chat.client.ChatClientResponse> doFinalizeLoopStream(reactor.core.publisher.Flux<org.springframework.ai.chat.client.ChatClientResponse>, org.springframework.ai.chat.client.advisor.api.StreamAdvisorChain);
+    Code:
+       0: aload_1
+       1: areturn
+
+  protected java.util.List<org.springframework.ai.chat.messages.Message> doGetNextInstructionsForToolCallStream(org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.chat.client.ChatClientResponse, org.springframework.ai.model.tool.ToolExecutionResult);
+    Code:
+       0: aload_0
+       1: getfield      #43                 // Field conversationHistoryEnabled:Z
+       4: ifne          58
+       7: aload_3
+       8: invokeinterface #185,  1          // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionResult.conversationHistory:()Ljava/util/List;
+      13: astore        4
+      15: aload         4
+      17: invokeinterface #209,  1          // InterfaceMethod java/util/List.isEmpty:()Z
+      22: ifeq          28
+      25: aload         4
+      27: areturn
+      28: aload_1
+      29: invokevirtual #53                 // Method org/springframework/ai/chat/client/ChatClientRequest.prompt:()Lorg/springframework/ai/chat/prompt/Prompt;
+      32: invokevirtual #212                // Method org/springframework/ai/chat/prompt/Prompt.getSystemMessage:()Lorg/springframework/ai/chat/messages/SystemMessage;
+      35: aload         4
+      37: aload         4
+      39: invokeinterface #216,  1          // InterfaceMethod java/util/List.size:()I
+      44: iconst_1
+      45: isub
+      46: invokeinterface #220,  2          // InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;
+      51: checkcast     #224                // class org/springframework/ai/chat/messages/Message
+      54: invokestatic  #226                // InterfaceMethod java/util/List.of:(Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;
+      57: areturn
+      58: aload_3
+      59: invokeinterface #185,  1          // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionResult.conversationHistory:()Ljava/util/List;
+      64: areturn
+
+  public static org.springframework.ai.chat.client.advisor.ToolCallingAdvisor$Builder<?> builder();
+    Code:
+       0: new           #330                // class org/springframework/ai/chat/client/advisor/ToolCallingAdvisor$Builder
+       3: dup
+       4: invokespecial #332                // Method org/springframework/ai/chat/client/advisor/ToolCallingAdvisor$Builder."<init>":()V
+       7: areturn
+
+  private org.reactivestreams.Publisher lambda$handleToolCallRecursion$6(java.util.List, org.springframework.ai.model.tool.ToolCallingChatOptions, org.springframework.ai.chat.model.ChatResponse, org.springframework.ai.chat.client.ChatClientResponse, org.springframework.ai.chat.client.advisor.UsageAccumulator, org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.chat.client.advisor.api.StreamAdvisorChain, org.springframework.ai.chat.client.ChatClientRequest, reactor.util.context.ContextView);
+    Code:
+       0: aload         9
+       2: invokestatic  #333                // Method org/springframework/ai/model/tool/internal/ToolCallReactiveContextHolder.setContext:(Lreactor/util/context/ContextView;)V
+       5: aload_0
+       6: getfield      #29                 // Field toolCallingManager:Lorg/springframework/ai/model/tool/ToolCallingManager;
+       9: new           #60                 // class org/springframework/ai/chat/prompt/Prompt
+      12: dup
+      13: aload_1
+      14: aload_2
+      15: invokespecial #88                 // Method org/springframework/ai/chat/prompt/Prompt."<init>":(Ljava/util/List;Lorg/springframework/ai/chat/prompt/ChatOptions;)V
+      18: aload_3
+      19: invokeinterface #138,  3          // InterfaceMethod org/springframework/ai/model/tool/ToolCallingManager.executeToolCalls:(Lorg/springframework/ai/chat/prompt/Prompt;Lorg/springframework/ai/chat/model/ChatResponse;)Lorg/springframework/ai/model/tool/ToolExecutionResult;
+      24: astore        10
+      26: invokestatic  #339                // Method org/springframework/ai/model/tool/internal/ToolCallReactiveContextHolder.clearContext:()V
+      29: goto          94
+      32: astore        11
+      34: aload         4
+      36: invokevirtual #146                // Method org/springframework/ai/chat/client/ChatClientResponse.mutate:()Lorg/springframework/ai/chat/client/ChatClientResponse$Builder;
+      39: invokestatic  #150                // Method org/springframework/ai/chat/model/ChatResponse.builder:()Lorg/springframework/ai/chat/model/ChatResponse$Builder;
+      42: aload_3
+      43: invokevirtual #155                // Method org/springframework/ai/chat/model/ChatResponse$Builder.from:(Lorg/springframework/ai/chat/model/ChatResponse;)Lorg/springframework/ai/chat/model/ChatResponse$Builder;
+      46: aload         11
+      48: invokevirtual #161                // Method org/springframework/ai/model/tool/ToolCallLimitExceededException.buildGeneration:()Lorg/springframework/ai/chat/model/Generation;
+      51: invokestatic  #165                // InterfaceMethod java/util/List.of:(Ljava/lang/Object;)Ljava/util/List;
+      54: invokevirtual #171                // Method org/springframework/ai/chat/model/ChatResponse$Builder.generations:(Ljava/util/List;)Lorg/springframework/ai/chat/model/ChatResponse$Builder;
+      57: invokevirtual #175                // Method org/springframework/ai/chat/model/ChatResponse$Builder.build:()Lorg/springframework/ai/chat/model/ChatResponse;
+      60: invokevirtual #177                // Method org/springframework/ai/chat/client/ChatClientResponse$Builder.chatResponse:(Lorg/springframework/ai/chat/model/ChatResponse;)Lorg/springframework/ai/chat/client/ChatClientResponse$Builder;
+      63: invokevirtual #182                // Method org/springframework/ai/chat/client/ChatClientResponse$Builder.build:()Lorg/springframework/ai/chat/client/ChatClientResponse;
+      66: astore        12
+      68: aload         5
+      70: aload         12
+      72: invokevirtual #202                // Method org/springframework/ai/chat/client/advisor/UsageAccumulator.applyAccumulatedUsage:(Lorg/springframework/ai/chat/client/ChatClientResponse;)Lorg/springframework/ai/chat/client/ChatClientResponse;
+      75: invokestatic  #342                // Method reactor/core/publisher/Flux.just:(Ljava/lang/Object;)Lreactor/core/publisher/Flux;
+      78: astore        13
+      80: invokestatic  #339                // Method org/springframework/ai/model/tool/internal/ToolCallReactiveContextHolder.clearContext:()V
+      83: aload         13
+      85: areturn
+      86: astore        14
+      88: invokestatic  #339                // Method org/springframework/ai/model/tool/internal/ToolCallReactiveContextHolder.clearContext:()V
+      91: aload         14
+      93: athrow
+      94: aload         10
+      96: invokeinterface #190,  1          // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionResult.returnDirect:()Z
+     101: ifeq          146
+     104: aload         4
+     106: invokevirtual #146                // Method org/springframework/ai/chat/client/ChatClientResponse.mutate:()Lorg/springframework/ai/chat/client/ChatClientResponse$Builder;
+     109: invokestatic  #150                // Method org/springframework/ai/chat/model/ChatResponse.builder:()Lorg/springframework/ai/chat/model/ChatResponse$Builder;
+     112: aload_3
+     113: invokevirtual #155                // Method org/springframework/ai/chat/model/ChatResponse$Builder.from:(Lorg/springframework/ai/chat/model/ChatResponse;)Lorg/springframework/ai/chat/model/ChatResponse$Builder;
+     116: aload         10
+     118: invokestatic  #194                // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionResult.buildGenerations:(Lorg/springframework/ai/model/tool/ToolExecutionResult;)Ljava/util/List;
+     121: invokevirtual #171                // Method org/springframework/ai/chat/model/ChatResponse$Builder.generations:(Ljava/util/List;)Lorg/springframework/ai/chat/model/ChatResponse$Builder;
+     124: invokevirtual #175                // Method org/springframework/ai/chat/model/ChatResponse$Builder.build:()Lorg/springframework/ai/chat/model/ChatResponse;
+     127: invokevirtual #177                // Method org/springframework/ai/chat/client/ChatClientResponse$Builder.chatResponse:(Lorg/springframework/ai/chat/model/ChatResponse;)Lorg/springframework/ai/chat/client/ChatClientResponse$Builder;
+     130: invokevirtual #182                // Method org/springframework/ai/chat/client/ChatClientResponse$Builder.build:()Lorg/springframework/ai/chat/client/ChatClientResponse;
+     133: astore        11
+     135: aload         5
+     137: aload         11
+     139: invokevirtual #202                // Method org/springframework/ai/chat/client/advisor/UsageAccumulator.applyAccumulatedUsage:(Lorg/springframework/ai/chat/client/ChatClientResponse;)Lorg/springframework/ai/chat/client/ChatClientResponse;
+     142: invokestatic  #342                // Method reactor/core/publisher/Flux.just:(Ljava/lang/Object;)Lreactor/core/publisher/Flux;
+     145: areturn
+     146: aload_0
+     147: aload         6
+     149: aload         4
+     151: aload         10
+     153: invokevirtual #346                // Method doGetNextInstructionsForToolCallStream:(Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/chat/client/ChatClientResponse;Lorg/springframework/ai/model/tool/ToolExecutionResult;)Ljava/util/List;
+     156: astore        11
+     158: aload_0
+     159: aload         7
+     161: aload         8
+     163: aload_2
+     164: aload         11
+     166: aload         10
+     168: invokeinterface #185,  1          // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionResult.conversationHistory:()Ljava/util/List;
+     173: aload         5
+     175: invokevirtual #349                // Method internalStream:(Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisorChain;Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/model/tool/ToolCallingChatOptions;Ljava/util/List;Ljava/util/List;Lorg/springframework/ai/chat/client/advisor/UsageAccumulator;)Lreactor/core/publisher/Flux;
+     178: areturn
+    Exception table:
+       from    to  target type
+           0    26    32   Class org/springframework/ai/model/tool/ToolCallLimitExceededException
+           0    26    86   any
+          32    80    86   any
+          86    88    86   any
+
+  private boolean lambda$streamWithToolCallResponses$5(org.springframework.ai.chat.client.ChatClientResponse);
+    Code:
+       0: aload_0
+       1: getfield      #35                 // Field toolExecutionEligibilityChecker:Lorg/springframework/ai/model/tool/ToolExecutionEligibilityChecker;
+       4: aload_1
+       5: invokevirtual #120                // Method org/springframework/ai/chat/client/ChatClientResponse.chatResponse:()Lorg/springframework/ai/chat/model/ChatResponse;
+       8: invokeinterface #130,  2          // InterfaceMethod org/springframework/ai/model/tool/ToolExecutionEligibilityChecker.isToolCallResponse:(Lorg/springframework/ai/chat/model/ChatResponse;)Z
+      13: ifne          20
+      16: iconst_1
+      17: goto          21
+      20: iconst_0
+      21: ireturn
+
+  private org.reactivestreams.Publisher lambda$streamWithToolCallResponses$4(java.util.concurrent.atomic.AtomicReference, org.springframework.ai.chat.client.ChatClientRequest, java.util.List, org.springframework.ai.chat.client.advisor.api.StreamAdvisorChain, org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.model.tool.ToolCallingChatOptions, org.springframework.ai.chat.client.advisor.UsageAccumulator);
+    Code:
+       0: aload_0
+       1: aload_1
+       2: invokevirtual #353                // Method java/util/concurrent/atomic/AtomicReference.get:()Ljava/lang/Object;
+       5: checkcast     #121                // class org/springframework/ai/chat/client/ChatClientResponse
+       8: aload_2
+       9: aload_3
+      10: aload         4
+      12: aload         5
+      14: aload         6
+      16: aload         7
+      18: invokevirtual #356                // Method handleToolCallRecursion:(Lorg/springframework/ai/chat/client/ChatClientResponse;Lorg/springframework/ai/chat/client/ChatClientRequest;Ljava/util/List;Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisorChain;Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/model/tool/ToolCallingChatOptions;Lorg/springframework/ai/chat/client/advisor/UsageAccumulator;)Lreactor/core/publisher/Flux;
+      21: areturn
+
+  private static org.springframework.ai.chat.client.ChatClientResponse lambda$streamWithToolCallResponses$3(org.springframework.ai.chat.model.ChatResponse, org.springframework.ai.chat.client.ChatClientResponse);
+    Code:
+       0: aload_1
+       1: aload_0
+       2: invokestatic  #360                // Method org/springframework/ai/chat/client/advisor/UsageAccumulator.applyPreviousAccumulatedUsageToChunk:(Lorg/springframework/ai/chat/client/ChatClientResponse;Lorg/springframework/ai/chat/model/ChatResponse;)Lorg/springframework/ai/chat/client/ChatClientResponse;
+       5: areturn
+
+  private org.reactivestreams.Publisher lambda$internalStream$2(java.util.List, org.springframework.ai.model.tool.ToolCallingChatOptions, org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.chat.client.advisor.api.StreamAdvisorChain, java.util.List, org.springframework.ai.chat.client.advisor.UsageAccumulator, reactor.util.context.ContextView);
+    Code:
+       0: invokestatic  #84                 // Method org/springframework/ai/chat/client/ChatClientRequest.builder:()Lorg/springframework/ai/chat/client/ChatClientRequest$Builder;
+       3: new           #60                 // class org/springframework/ai/chat/prompt/Prompt
+       6: dup
+       7: aload_1
+       8: aload_2
+       9: invokespecial #88                 // Method org/springframework/ai/chat/prompt/Prompt."<init>":(Ljava/util/List;Lorg/springframework/ai/chat/prompt/ChatOptions;)V
+      12: invokevirtual #91                 // Method org/springframework/ai/chat/client/ChatClientRequest$Builder.prompt:(Lorg/springframework/ai/chat/prompt/Prompt;)Lorg/springframework/ai/chat/client/ChatClientRequest$Builder;
+      15: aload_3
+      16: invokevirtual #96                 // Method org/springframework/ai/chat/client/ChatClientRequest.context:()Ljava/util/Map;
+      19: invokevirtual #100                // Method org/springframework/ai/chat/client/ChatClientRequest$Builder.context:(Ljava/util/Map;)Lorg/springframework/ai/chat/client/ChatClientRequest$Builder;
+      22: invokevirtual #103                // Method org/springframework/ai/chat/client/ChatClientRequest$Builder.build:()Lorg/springframework/ai/chat/client/ChatClientRequest;
+      25: astore        8
+      27: aload_0
+      28: aload         8
+      30: aload         4
+      32: invokevirtual #364                // Method doBeforeStream:(Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisorChain;)Lorg/springframework/ai/chat/client/ChatClientRequest;
+      35: astore        8
+      37: aload         4
+      39: aload_0
+      40: invokeinterface #368,  2          // InterfaceMethod org/springframework/ai/chat/client/advisor/api/StreamAdvisorChain.copy:(Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisor;)Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisorChain;
+      45: astore        9
+      47: aload         8
+      49: astore        10
+      51: aload         9
+      53: aload         8
+      55: invokeinterface #231,  2          // InterfaceMethod org/springframework/ai/chat/client/advisor/api/StreamAdvisorChain.nextStream:(Lorg/springframework/ai/chat/client/ChatClientRequest;)Lreactor/core/publisher/Flux;
+      60: astore        11
+      62: aload         10
+      64: invokevirtual #53                 // Method org/springframework/ai/chat/client/ChatClientRequest.prompt:()Lorg/springframework/ai/chat/prompt/Prompt;
+      67: invokevirtual #59                 // Method org/springframework/ai/chat/prompt/Prompt.getOptions:()Lorg/springframework/ai/chat/prompt/ChatOptions;
+      70: checkcast     #65                 // class org/springframework/ai/model/tool/ToolCallingChatOptions
+      73: astore        12
+      75: aload         12
+      77: ldc_w         #371                // String redundant check that should never fail (doBeforeStream must not change the options type away from ToolCallingChatOptions), but here to help NullAway
+      80: invokestatic  #11                 // Method org/springframework/util/Assert.notNull:(Ljava/lang/Object;Ljava/lang/String;)V
+      83: aload_0
+      84: aload         11
+      86: aload         10
+      88: aload         5
+      90: aload         4
+      92: aload_3
+      93: aload         12
+      95: aload         6
+      97: invokevirtual #373                // Method streamWithToolCallResponses:(Lreactor/core/publisher/Flux;Lorg/springframework/ai/chat/client/ChatClientRequest;Ljava/util/List;Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisorChain;Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/model/tool/ToolCallingChatOptions;Lorg/springframework/ai/chat/client/advisor/UsageAccumulator;)Lreactor/core/publisher/Flux;
+     100: areturn
+
+  private org.reactivestreams.Publisher lambda$adviseStream$1(org.springframework.ai.chat.client.ChatClientRequest, org.springframework.ai.chat.client.advisor.api.StreamAdvisorChain, org.springframework.ai.model.tool.ToolCallingChatOptions);
+    Code:
+       0: aload_0
+       1: aload_1
+       2: aload_2
+       3: invokevirtual #377                // Method doInitializeLoopStream:(Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisorChain;)Lorg/springframework/ai/chat/client/ChatClientRequest;
+       6: astore        4
+       8: new           #81                 // class org/springframework/ai/chat/client/advisor/UsageAccumulator
+      11: dup
+      12: invokespecial #83                 // Method org/springframework/ai/chat/client/advisor/UsageAccumulator."<init>":()V
+      15: astore        5
+      17: aload         4
+      19: invokevirtual #53                 // Method org/springframework/ai/chat/client/ChatClientRequest.prompt:()Lorg/springframework/ai/chat/prompt/Prompt;
+      22: invokevirtual #77                 // Method org/springframework/ai/chat/prompt/Prompt.getInstructions:()Ljava/util/List;
+      25: astore        6
+      27: aload_0
+      28: aload_2
+      29: aload         4
+      31: aload_3
+      32: aload         6
+      34: aload         6
+      36: aload         5
+      38: invokevirtual #349                // Method internalStream:(Lorg/springframework/ai/chat/client/advisor/api/StreamAdvisorChain;Lorg/springframework/ai/chat/client/ChatClientRequest;Lorg/springframework/ai/model/tool/ToolCallingChatOptions;Ljava/util/List;Ljava/util/List;Lorg/springframework/ai/chat/client/advisor/UsageAccumulator;)Lreactor/core/publisher/Flux;
+      41: areturn
+
+  private static java.lang.Boolean lambda$static$0(org.springframework.ai.chat.model.ChatResponse);
+    Code:
+       0: aload_0
+       1: ifnull        15
+       4: aload_0
+       5: invokevirtual #380                // Method org/springframework/ai/chat/model/ChatResponse.hasToolCalls:()Z
+       8: ifeq          15
+      11: iconst_1
+      12: goto          16
+      15: iconst_0
+      16: invokestatic  #383                // Method java/lang/Boolean.valueOf:(Z)Ljava/lang/Boolean;
+      19: areturn
+
+  static {};
+    Code:
+       0: new           #275                // class org/springframework/ai/chat/client/ChatClientMessageAggregator
+       3: dup
+       4: invokespecial #389                // Method org/springframework/ai/chat/client/ChatClientMessageAggregator."<init>":()V
+       7: putstatic     #260                // Field CHAT_CLIENT_MESSAGE_AGGREGATOR:Lorg/springframework/ai/chat/client/ChatClientMessageAggregator;
+      10: invokedynamic #390,  0            // InvokeDynamic #7:apply:()Lorg/springframework/ai/model/tool/ToolExecutionEligibilityChecker;
+      15: putstatic     #393                // Field DEFAULT_TOOL_EXECUTION_ELIGIBILITY_CHECKER:Lorg/springframework/ai/model/tool/ToolExecutionEligibilityChecker;
+      18: return
+}

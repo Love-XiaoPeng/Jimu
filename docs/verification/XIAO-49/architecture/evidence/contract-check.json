@@ -1,0 +1,18 @@
+{
+  "scope": "Architecture schema/source checks only; no product HTTP, authorization, SQL, crash recovery or business acceptance",
+  "jsonschemaVersion": "4.10.3",
+  "schemasChecked": 9,
+  "indexedFilesChecked": 13,
+  "positive": 14,
+  "negative": 34,
+  "runtimeChecksStillRequired": [
+    "UTF-8 byte limits",
+    "strict JSON duplicate keys and number tokens",
+    "original question/option matching",
+    "identity/pins/epochs",
+    "SQL atomicity/fence/quiescence",
+    "timed/late answer delivery",
+    "legacy migration/retention"
+  ],
+  "unicodeBoundary": "4096 emoji pass the character schema and exceed the 4096 UTF-8 byte field limit: product must reject in runtime validation"
+}

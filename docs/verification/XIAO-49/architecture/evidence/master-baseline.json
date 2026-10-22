@@ -1,0 +1,9 @@
+{
+  "retrievedAt": "2026-10-22T13:37:04.8253385Z",
+  "sha": "0e630f28e39c157788886694e2b16dc0831bb571",
+  "tree": "8850a9d11f610257d87962585221b91a6bc19948",
+  "checkout": "0e630f28e39c157788886694e2b16dc0831bb571",
+  "checkoutTree": "8850a9d11f610257d87962585221b91a6bc19948",
+  "gitLsRemoteFailure": "git ls-remote origin refs/heads/master: fatal connect failure after 21059 ms; native exit code not captured, enclosing PowerShell exit 0 because a later rg completed",
+  "scope": "source and architecture review only"
+}
