@@ -40,7 +40,7 @@ Windows 入口（JIMU_IT_JAVA 是现有 Linux Java21，JIMU_V16_JAR 是由准确
 
 ```powershell
 .\mvnw.cmd -B -ntp spotless:apply
-.\mvnw.cmd -B -ntp verify '-Dtest=TodoContractTest,PackageBoundariesTest,UserQuestionContractTest,McpContractTest,ModelInputBoundTest,ModelProtocolTest,ModelProfilesTest,WorkspaceToolContractTest' -Dit.test=TodoIT
+.\mvnw.cmd -B -ntp verify '-Dtest=TodoContractTest,PackageBoundariesTest,UserQuestionContractTest,McpContractTest,ModelInputBoundTest,ModelProtocolTest,ModelProfilesTest,WorkspaceToolContractTest' '-Dit.test=TodoIT'
 ```
 
 TodoIT 在前台运行私有 MySQL、真实 control/双 worker 和显式 paid=false 模型，调用 `tools/todo_verify.py` 及 `tools/todo_migration_verify.py`。需要 Docker/WSL/ext4/Java21；缺必需资源失败。日志、协议、账本、原失败及清理记录写入 evidence 目录。禁止运行或等待 GitHub CI，不重跑旧 P2/P3 全矩阵。
