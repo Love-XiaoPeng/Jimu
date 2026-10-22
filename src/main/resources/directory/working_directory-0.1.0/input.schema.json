@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:directory:input:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "cd": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "description": "Existing logical directory; absolute starts /, relative uses current directory. Omit to read. Runtime rejects escapes and invalid Unicode."
+    }
+  },
+  "required": []
+}

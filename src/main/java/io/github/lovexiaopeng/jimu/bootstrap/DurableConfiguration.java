@@ -62,7 +62,8 @@ public class DurableConfiguration {
       ModelProfiles models,
       NativeSearchRuntime searches,
       io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings mcpSettings,
-      @Qualifier("imageStore") java.util.Optional<ArtifactStore> images) {
+      @Qualifier("imageStore") java.util.Optional<ArtifactStore> images)
+      throws IOException {
     if ("control".equals(env.getRequiredProperty("jimu.role"))) {
       Flyway.configure()
           .dataSource(
@@ -78,8 +79,16 @@ public class DurableConfiguration {
     ledger.nativeSearchAvailability(searches::available);
     ledger.imageStorage(images.orElse(null));
     ledger.mcpSettings(mcpSettings);
+    ledger.directoryEnabled(
+        env.getProperty("jimu.working-directory.enabled", Boolean.class, false));
     ledger.todosEnabled(env.getProperty("jimu.todos.enabled", Boolean.class, false));
     ledger.questionsEnabled(env.getProperty("jimu.questions.enabled", Boolean.class, false));
+    if (env.getProperty("jimu.workspace-root") != null)
+      ledger.directoryWorkspace(
+          new SecureWorkspaceStore(Path.of(env.getRequiredProperty("jimu.workspace-root")))
+              .logicalDirectory());
+    else if (env.getProperty("jimu.working-directory.enabled", Boolean.class, false))
+      throw new IllegalStateException("Directory workspace root required");
     ledger.check();
     return ledger;
   }

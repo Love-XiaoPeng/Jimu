@@ -1,0 +1,42 @@
+{
+  "manifestVersion": 1,
+  "id": "jimu.workspace.working_directory",
+  "version": "0.1.0",
+  "kind": "tool",
+  "hostApi": ">=0.1.0 <0.2.0",
+  "entry": {
+    "type": "trusted-jvm",
+    "class": "io.github.lovexiaopeng.jimu.plugins.builtin.workspace.WorkingDirectoryPlugin"
+  },
+  "capabilities": [
+    {
+      "name": "working_directory",
+      "inputSchema": "input.schema.json",
+      "outputSchema": "output.schema.json",
+      "sideEffect": "write"
+    }
+  ],
+  "permissions": {
+    "filesystem": [
+      "host-task-workspace"
+    ]
+  },
+  "secretRefs": [],
+  "dependencies": [],
+  "limits": {
+    "timeoutMs": 30000,
+    "outputBytes": 4096
+  },
+  "healthCheck": {
+    "operation": "directory-ledger-workspace-readiness",
+    "timeoutMs": 2000
+  },
+  "errorContract": "jimu-invocation-result",
+  "eventTypes": [
+    "invocation.started",
+    "invocation.completed",
+    "invocation.failed",
+    "working_directory.changed",
+    "working_directory.content_deleted"
+  ]
+}

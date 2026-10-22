@@ -172,6 +172,22 @@ public final class ModelProfiles {
     }
   }
 
+  public void requireDirectory(ModelSnapshot model) {
+    if (fixture
+        || model.paid()
+        || !"false".equals(env.getProperty("jimu.model.profiles." + model.profile() + ".paid"))
+        || !localEvaluation(model)
+        || businessPolicy() != null
+        || evaluationRunId() != null
+        || scopeRequirement() != null) throw new TaskFailure(403, "DIRECTORY_NOT_AUTHORIZED");
+    if (model.maxOutputTokens() > 4096
+        || model.responseBytes() > 65536
+        || model.inputLimit() == null
+        || model.inputLimit().maxTokens() > 65536
+        || !"test-whole-request-utf8-v1".equals(model.inputLimit().proof()))
+      throw new TaskFailure(403, "DIRECTORY_NOT_AUTHORIZED");
+  }
+
   public void requireTodo(ModelSnapshot model) {
     if (fixture
         || model.paid()

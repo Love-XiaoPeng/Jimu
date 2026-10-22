@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "taskId": "11111111-1111-4111-8111-111111111111",
+  "asOfSeq": 1,
+  "revision": 0,
+  "state": "PRESENT",
+  "cwd": "/",
+  "source": null,
+  "retainUntil": "2026-10-30T00:00:00Z"
+}

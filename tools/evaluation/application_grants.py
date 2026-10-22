@@ -21,6 +21,8 @@ def grants(database, user, host, partial_revokes=False):
         'GRANT INSERT ON `' + database + '`.`native_search_stop` TO ' + account + ';',
         'GRANT INSERT,UPDATE ON `' + database + '`.`user_question` TO ' + account + ';',
         'GRANT INSERT,UPDATE ON `' + database + '`.`task_todo_projection` TO ' + account + ';',
+        'GRANT INSERT,UPDATE ON `' + database + '`.`task_directory` TO ' + account + ';',
+        'GRANT INSERT,UPDATE ON `' + database + '`.`invocation_path_binding` TO ' + account + ';',
         'GRANT INSERT,UPDATE ON `' + database + '`.`mcp_io` TO ' + account + ';',
         'GRANT INSERT,UPDATE ON `' + database + '`.`mcp_result` TO ' + account + ';',
         'GRANT INSERT,DELETE ON `' + database + '`.`mcp_cursor` TO ' + account + ';']

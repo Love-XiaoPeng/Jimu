@@ -37,6 +37,12 @@ import java.util.Set;
 /** Trusted gateway assembly, with no model-controlled scope, operation ID, or CAS bypass. */
 public final class WorkspaceRuntime {
   private final SecureWorkspaceStore workspace;
+  private final io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryRuntime directories;
+
+  public io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryRuntime directories() {
+    return directories;
+  }
+
   private final Map<String, WorkspaceContracts.Contract> contracts;
   private final ReportPolicy reports = new ReportPolicy();
   private final NativeSearchRuntime searches;
@@ -65,6 +71,11 @@ public final class WorkspaceRuntime {
       io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageRuntime images)
       throws IOException {
     this.workspace = workspace;
+    this.directories =
+        workspace == null
+            ? null
+            : new io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryRuntime(
+                workspace);
     this.images = images;
     this.searches = searches;
     var loaded = new LinkedHashMap<String, WorkspaceContracts.Contract>();
@@ -95,6 +106,10 @@ public final class WorkspaceRuntime {
   }
 
   public void prepareEvaluation(Lease lease, ExecutionLedger ledger) {
+    if (lease.capabilities().contains("working_directory")) {
+      directories.prepare(ledger, lease);
+      return;
+    }
     var pins = ledger.toolSnapshot(lease).pins();
     workspace.initialize(
         lease.tenant(),
@@ -220,11 +235,14 @@ public final class WorkspaceRuntime {
     var port =
         search
             ? null
-            : workspace.bind(
-                lease.tenant(),
-                lease.taskId(),
-                invocation.effectId(),
-                () -> ledger.checkpoint(lease));
+            : (lease.capabilities().contains("working_directory")
+                    ? directories.workspace()
+                    : workspace)
+                .bind(
+                    lease.tenant(),
+                    lease.taskId(),
+                    invocation.effectId(),
+                    () -> ledger.checkpoint(lease));
     var selected = contract(name, ledger.toolSnapshot(lease).pins().get(name).version());
     var descriptor = selected.descriptor();
     var context =
