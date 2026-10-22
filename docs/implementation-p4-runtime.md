@@ -2,6 +2,15 @@
 
 This is the implementation companion to the accepted [contract](implementation-p4-workspace.md) and [ADR-0005](adr/0005-workspace-edit-native-search.md). The contract's historical probes remain historical; product verification is recorded separately. P3 real model/public report delivery is complete; real `web_search` remains unconfigured. This branch requires independent review/QA and product acceptance. No deployment or GitHub CI is part of this change.
 
+XIAO-47 introduces [native bundle v2.0.0](../workers/search/v2/README.md): an explicit
+source rebuild of rg and the patched Ubuntu bubblewrap, replacing their historical
+vendor pins. New and old hashes are recorded in `workers/search/v2/pins.json`.
+Use `tools/native_rebuild.py` for this application's bundle. The legacy recipe,
+old inputs and previous verification snapshots remain historical evidence;
+the new application rejects those old executable hashes. Tool/schema pins, V12,
+observer identity and lifecycle/stop proofs are unchanged. No task snapshot or
+UNKNOWN is rebound, rewritten or replayed by switching the runtime bundle.
+
 ## Configuration and admission
 
 `edit@0.1.0` uses the existing private `jimu.workspace-root`. `glob@0.1.0` and `grep@0.1.0` are disabled by default. To enable them on both control and worker, provision the reviewed [offline bundle](../workers/search/README.md) and set:

@@ -1,0 +1,13 @@
+{
+  "version": "jimu-native-v2.0.0",
+  "previous": {
+    "rg": "193906679498de4d939345b937fa24e0e69a03c244bd70c859f5e41232713f21",
+    "bwrap": "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71",
+    "status": "Historical npm rg provenance remains unclosed; neither old snapshot nor input manifest is rewritten."
+  },
+  "binaries": {
+    "rg": "416d68ba9046da0007fb6e32297f4a287256cf6164ed71f7aa0260071125f946",
+    "bwrap": "42da0cc16f07e0731dd23be75a7912efab6ffe7f3faf52999ea451516ebc4384",
+    "jimu-search-launcher": "60e04f1dc9d4726184b45e38de06aec93736e1267998ebc46481e251a555d3ce"
+  }
+}

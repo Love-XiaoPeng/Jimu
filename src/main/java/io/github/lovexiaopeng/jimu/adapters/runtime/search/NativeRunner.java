@@ -28,9 +28,9 @@ public final class NativeRunner {
   public record Output(byte[] stdout, String stderr, int exit, NativeIdentity identity) {}
 
   private static final String RG_HASH =
-      "193906679498de4d939345b937fa24e0e69a03c244bd70c859f5e41232713f21";
+      "416d68ba9046da0007fb6e32297f4a287256cf6164ed71f7aa0260071125f946";
   private static final String BWRAP_HASH =
-      "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71";
+      "42da0cc16f07e0731dd23be75a7912efab6ffe7f3faf52999ea451516ebc4384";
   private final Bundle bundle;
   private final OperationThreads operations;
   private final AtomicBoolean busy = new AtomicBoolean();
