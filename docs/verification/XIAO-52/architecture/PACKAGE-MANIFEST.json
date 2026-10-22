@@ -9,8 +9,8 @@
     },
     {
       "path": "docs/adr/0011-authorized-session-event-read.md",
-      "bytes": 5545,
-      "sha256": "6b22116b4ed059fa60a2e5d963e2fd9ef684ef73c585b670440537e623f5d1e0"
+      "bytes": 5618,
+      "sha256": "9a113c57955d555b88cd42b8002624d211c4a3e3703720188634bc0ee76c2c0c"
     },
     {
       "path": "docs/verification/XIAO-52/architecture/ContractProbe.java",
@@ -404,8 +404,8 @@
     },
     {
       "path": "docs/verification/XIAO-52/architecture/implementation-contract.md",
-      "bytes": 27358,
-      "sha256": "e49b1a683828ed0c149aee624141d96bb45f9fad5f7059f8664bc847ed23cd94"
+      "bytes": 27595,
+      "sha256": "b14bd3ae971f334b6b03c34f45d127dbbeb354987f7fa358294a0ad2f0470f69"
     },
     {
       "path": "docs/verification/XIAO-52/architecture/make-contracts.cjs",

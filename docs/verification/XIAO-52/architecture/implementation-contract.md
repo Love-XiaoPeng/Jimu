@@ -106,7 +106,7 @@ owner 元数据 API：GET `/api/tasks/{id}/session-history`，无 query/body，�
 
 owner API 未认证沿用 401；跨 tenant/owner/task 和不存在 session/seq 统一 404 `SESSION_EVENT_NOT_FOUND`，不带 session ID、范围、计数或存在性区别。已授权自身：legacy 无日志为 409 `SESSION_HISTORY_UNAVAILABLE`；过 retain_until 或 PURGED 为 410 `SESSION_HISTORY_EXPIRED`；未知绑定/事件版本为409 `SESSION_HISTORY_VERSION_UNSUPPORTED`；内容/来源损坏409 `SESSION_HISTORY_CORRUPT`；输入400 `TOOL_INPUT_INVALID`；正文/输出/存储/次数上限429 `SESSION_HISTORY_LIMIT`；查询超时504 `SESSION_QUERY_TIMEOUT`；provider故障503 `SESSION_QUERY_UNAVAILABLE`。特性关闭仅在工具执行/重放返回403 `SESSION_READ_DISABLED`，不关闭 owner 历史 API；actor/installation 撤权沿用现有安全拒绝。原 FENCE_REJECTED/CANCEL_REQUESTED/DEADLINE_EXCEEDED 不变。
 
-retain_until=受理DB时间+604800s，所有本批正文副本不晚于该时间停止向模型/owner公开；无正文元数据墓碑不等于正文保留延期。超过期限但未知/在途事实未核清时继续占原有界容量，不能恢复输出或凭 TTL 释放资源。候选在 LIMIT 前排除非真正终态、任意历史 attempt 不静止、UNKNOWN/未结 reservation/dispatch/invocation，防不安全首项饿死其他可清理项；再在原锁序事务内重检。
+retain_until=受理DB时间+604800s，所有本批正文副本不晚于该时间停止向模型/owner公开；无正文元数据墓碑不等于正文保留延期。超过期限但未知/在途事实未核清时继续占原有界容量，不能恢复输出或凭 TTL 释放资源。候选在 LIMIT 前排除非真正终态、任意历史 attempt 不静止、UNKNOWN/未结 reservation/dispatch/invocation，防不安全首项饿死其他可清理项；唯一例外是本 task 自己仍为 RESERVED、即将在本清理事务结算的 SESSION_HISTORY_STORAGE reservation，该已知存储预留不能反过来阻止自身清理。其他 kind 的未结占用及任何 UNKNOWN 均不豁免；再在原锁序事务内重检。
 
 同一 DB 清理事务：标记 task history PURGED、清空所有原日志 event_snapshot（保留原 digest/bytes/seq/type/source）、所有 session read 输出与输入、task.goal/request_snapshot/summary、step.request/response、invocation.input/output、dispatch 中可能含正文的副本，保留原摘要/字节/来源和有界 cleanup_receipt；step.request_cleanup_state 用新 `SESSION_PURGED`，旧 digest 不重新计算成墓碑摘要。history 清理和原 reservation 唯一释放在同一事务，不减旧 model/tool 使用计数，不覆盖 UNKNOWN。清理出 `session_history.content_deleted` 可靠事件，不能向 native 日志写新正文。幂等重复清理只读原收据。
 

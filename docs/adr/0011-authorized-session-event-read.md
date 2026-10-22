@@ -17,7 +17,7 @@
 7. 采用与 todo/目录相同的一库提交模式：原响应槽验证后，读取、每条结果授权/来源核验、冻结范围、原输出、PENDING→SUCCEEDED、一次工具消费和可靠事件同事务提交；安全确定失败也绑定原 code、只消费一次。没有外部效果，不先提交 RUNNING；禁止通用 admit/toolSucceeded/uncertain 旁路。提交不确定时由原槽恢复，不能另记失败覆盖已成功结果。
 8. 事务复核 immutable lease 的 tenant/actor/task、当前 actor 权限、owner、安装 epoch/version/digest、binding、当前 fence/租约、取消、截止、终态和保留。成功重放先复核当前授权，再返回原字节，不再查目标；历史查询不授权重启终态任务。
 9. 所有新存储副本纳入本 profile 独立 8 MiB/task、默认 64 MiB/tenant 的预留；正文 DB 7 MiB，元数据 64 KiB，留有收尾空间。128 原事件、16 KiB/事件、至多 8 相邻摘要、32 KiB 输出、2 秒查询、PK 范围最多 9 行。不因大 seq、稀疏或未知版本扫描整个日志。
-10. 受理后 7 天是读取/保留上限；真正终态、所有历史写者静止、无 UNKNOWN 或未结占用后，原子清除日志、原输出、checkpoint、响应、goal/summary 等全部正文副本并保留墓碑/原摘要；唯一释放正文预留，留下的有界元数据继续计入本租户 history 存储占用，避免清理后无界积累。未知占用不由 TTL 释放。关闭 flag 阻止新准入和工具恢复，owner 的既有授权历史读取及清理仍可用。
+10. 受理后 7 天是读取/保留上限；真正终态、所有历史写者静止、无 UNKNOWN 或其他未结占用后（本次清理将结算的 SESSION_HISTORY_STORAGE 预留除外），原子清除日志、原输出、checkpoint、响应、goal/summary 等全部正文副本并保留墓碑/原摘要；唯一释放正文预留，留下的有界元数据继续计入本租户 history 存储占用，避免清理后无界积累。未知占用不由 TTL 释放。关闭 flag 阻止新准入和工具恢复，owner 的既有授权历史读取及清理仍可用。
 11. V1–V18、所有旧 profile 及旧快照字节保持。V19 只扩展，既有行新列为 NULL；旧 control/worker 由严格 schema gate 拒绝 19。回退采用理解 V19 且关闭新准入的制品，不能降 schema 或删历史。
 
 备选：复用 SSE 无法交付正文；临时展开 step/invocation 会把内部快照当公共协议并引入来源、清理和并发变化；新建通用 Session/搜索服务超出一个工具的需求。新增窄表和公开日志可保留一次提交的事实与有界读取，代价是 V19、明确的公开投影和本批 profile 专用保留路径。
