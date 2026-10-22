@@ -267,7 +267,8 @@ class McpExperiment(Experiment):
             else:
                 self.sql("UPDATE mcp_server SET profile_digest='"+'0'*64+"' WHERE tenant_id='tenant-a';")
             (worker['folder'] / 'release').touch()
-            eventually(lambda: self.sql("SELECT state FROM task WHERE id='"+tid+"';") == 'FAILED', label+' task stops')
+            terminal = 'NEEDS_RECONCILIATION' if expected == 'SNAPSHOT_CORRUPT' else 'FAILED'
+            eventually(lambda: self.sql("SELECT state FROM task WHERE id='"+tid+"';") == terminal, label+' task stops')
             code = self.sql("SELECT code FROM task WHERE id='"+tid+"';")
             self.assert_that(code == expected and len(self.calls()) == before, label+' change blocks first/cached admission with zero resource I/O', code=code)
             self.stop(worker)

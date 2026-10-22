@@ -41,6 +41,10 @@ enabled readiness performs bounded initialize/initialized handshakes. No MCP I/O
 occurs while disabled. A task cannot supply an endpoint, credential, command,
 host path, tenant or task identity as tool arguments.
 
+The first host assembly bounds readiness to one through four enabled profiles
+across the host. This is an additional configuration limit; it does not grant
+access to another tenant's profiles. The controlled verification uses two tenants.
+
 ## Runtime and persistence limits
 
 MCP `2025-06-18` uses JDK21 HTTP/1.1, an independent NO_PROXY selector and no
