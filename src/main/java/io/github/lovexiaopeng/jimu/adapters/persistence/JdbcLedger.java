@@ -6,6 +6,7 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationPlans;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
+import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
 import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation;
@@ -28,11 +29,16 @@ import org.springframework.transaction.support.TransactionTemplate;
  * InnoDB is the only authority. Every write locks budget before task and checks ownership inside
  * the transaction.
  */
-public final class JdbcLedger implements Tasks, ExecutionLedger {
+public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLedger {
   private final JdbcTemplate db;
   private final TransactionTemplate transactions;
   private final ModelProfiles models;
   private final JdbcExecutionScopes executionScopes;
+  private java.util.function.BooleanSupplier searchAvailable = () -> false;
+
+  public void nativeSearchAvailability(java.util.function.BooleanSupplier availability) {
+    this.searchAvailable = availability;
+  }
 
   public JdbcLedger(DataSource source, ModelProfiles models) {
     this.models = models;
@@ -245,10 +251,15 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
     return tx(
         () -> {
           identity(identity);
-          return db.queryForList(
-              "SELECT plugin_id FROM installation WHERE tenant_id=? AND enabled=TRUE ORDER BY plugin_id",
-              String.class,
-              identity.tenant());
+          return db
+              .queryForList(
+                  "SELECT plugin_id FROM installation WHERE tenant_id=? AND enabled=TRUE ORDER BY plugin_id",
+                  String.class,
+                  identity.tenant())
+              .stream()
+              .filter(
+                  name -> searchAvailable.getAsBoolean() || !List.of("glob", "grep").contains(name))
+              .toList();
         });
   }
 
@@ -291,6 +302,10 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             return view(old.getFirst());
           }
           long installationEpoch = epoch(identity, request.capabilityIds());
+          if (request.capabilityIds().stream()
+                  .anyMatch(name -> List.of("glob", "grep").contains(name))
+              && !searchAvailable.getAsBoolean())
+            throw new TaskFailure(503, "SEARCH_NOT_CONFIGURED");
           var pins = new java.util.LinkedHashMap<String, PluginPin>();
           for (String capability : request.capabilityIds()) {
             var installed =
@@ -314,8 +329,9 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             throw new TaskFailure(400, "INVALID_CAPABILITIES");
           if (businessPolicy != null
               && request.capabilityIds().contains("present")
-              && !request
-                  .capabilityIds()
+              && !request.capabilityIds().stream()
+                  .filter(name -> !List.of("edit", "glob", "grep").contains(name))
+                  .toList()
                   .equals(List.of("web_fetch", "read", "compose_report", "present")))
             throw new TaskFailure(400, "INVALID_CAPABILITIES");
           Long explicitCost = request.budget().maxCostMicros();
@@ -1634,6 +1650,9 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
             if (rejection == null) rejection = runRejection(evaluation);
             if (rejection != null) throw new TaskFailure(409, rejection);
             requireScope(lease.tenant(), evaluation, task, null);
+            for (Call call : calls)
+              if (call.input().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 65535)
+                throw new TaskFailure(400, "TOOL_INPUT_INVALID");
           } catch (TaskFailure rejected) {
             db.update(
                 "UPDATE step SET state='REJECTED' WHERE tenant_id=? AND id=?",
@@ -2137,6 +2156,292 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
         });
   }
 
+  @Override
+  public boolean searchQuiescent(Lease lease, String invocation) {
+    return rows(
+            "SELECT root_invocation FROM native_search_run WHERE tenant_id=? AND task_id=? AND root_invocation=? AND phase<>'STOPPED'",
+            lease.tenant(),
+            lease.taskId(),
+            invocation)
+        .isEmpty();
+  }
+
+  @Override
+  public void prepareSearch(
+      Lease lease,
+      Invocation invocation,
+      String directory,
+      String snapshot,
+      String query,
+      String pin) {
+    leaseTx(
+        lease,
+        () -> {
+          fenced(lease, true);
+          var budget = bucket(lease.tenant());
+          var call =
+              one(
+                  "SELECT * FROM invocation WHERE tenant_id=? AND id=? AND task_id=? AND attempt_id=?",
+                  lease.tenant(),
+                  invocation.id(),
+                  lease.taskId(),
+                  lease.attemptId());
+          if (!"RUNNING".equals(s(call, "state"))
+              || !List.of("glob", "grep").contains(s(call, "tool"))
+              || !invocation.effectId().equals(s(call, "effect_intent_id")))
+            throw new TaskFailure(409, "INVOCATION_MISMATCH");
+          var aggregate =
+              one(
+                  "SELECT COUNT(*) AS roots,COALESCE(SUM(COALESCE(result_size,4194304)),0) AS bytes FROM native_search_run WHERE tenant_id=? AND task_id=?",
+                  lease.tenant(),
+                  lease.taskId());
+          if (n(aggregate, "roots") >= 20 || n(aggregate, "bytes") + 4194304 > 8388608)
+            throw new TaskFailure(429, "SEARCH_RESULT_LIMIT");
+          if (n(budget, "storage_held") + 4194304 > n(budget, "storage_limit"))
+            throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
+          String host =
+              s(
+                  one(
+                      "SELECT host_id FROM worker_process WHERE id=? AND stopped=FALSE",
+                      lease.worker()),
+                  "host_id");
+          db.update(
+              "INSERT INTO native_search_run(tenant_id,root_invocation,task_id,effect_id,attempt_id,worker_id,host_id,runtime_directory,snapshot_digest,query_digest,tool_pin) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+              lease.tenant(),
+              invocation.id(),
+              lease.taskId(),
+              invocation.effectId(),
+              lease.attemptId(),
+              lease.worker(),
+              host,
+              directory,
+              snapshot,
+              query,
+              pin);
+          db.update(
+              "UPDATE tenant_budget SET storage_held=storage_held+4194304 WHERE tenant_id=?",
+              lease.tenant());
+          reserve(
+              lease.tenant(),
+              lease.taskId(),
+              "search:" + invocation.id(),
+              null,
+              "SEARCH_STORAGE",
+              4194304,
+              "RESERVED",
+              "KNOWN");
+          return null;
+        });
+  }
+
+  @Override
+  public void searchStarted(Lease lease, String invocation, NativeIdentity identity) {
+    leaseTx(
+        lease,
+        () -> {
+          fenced(lease, true);
+          if (db.update(
+                  "UPDATE native_search_run SET phase='STARTED',process_identity=? WHERE tenant_id=? AND task_id=? AND root_invocation=? AND attempt_id=? AND phase='PREPARED'",
+                  Payloads.json(identity),
+                  lease.tenant(),
+                  lease.taskId(),
+                  invocation,
+                  lease.attemptId())
+              != 1) throw new TaskFailure(409, "SEARCH_PROCESS_UNPROVEN");
+          return null;
+        });
+  }
+
+  @Override
+  public void searchStopped(Run run, NativeIdentity identity) {
+    // Append-only physical observation: an old fence may report death, never business success.
+    tx(
+        () -> {
+          bucket(run.tenant());
+          var task = locked(run.tenant(), run.task());
+          var row =
+              one(
+                  "SELECT * FROM native_search_run WHERE tenant_id=? AND root_invocation=? AND task_id=? AND effect_id=? AND worker_id=? FOR UPDATE",
+                  run.tenant(),
+                  run.invocation(),
+                  run.task(),
+                  run.effect(),
+                  run.worker());
+          String fact = Payloads.json(identity);
+          if (row.get("process_identity") != null && !fact.equals(row.get("process_identity")))
+            throw new TaskFailure(409, "SEARCH_PROCESS_UNPROVEN");
+          db.update(
+              "INSERT IGNORE INTO native_search_stop(tenant_id,root_invocation,identity_digest,process_identity) VALUES(?,?,?,?)",
+              run.tenant(),
+              run.invocation(),
+              Payloads.hash(fact),
+              fact);
+          db.update(
+              "UPDATE native_search_run SET phase='STOPPED',process_identity=?,stopped_at=COALESCE(stopped_at,CURRENT_TIMESTAMP(6)) WHERE tenant_id=? AND root_invocation=?",
+              fact,
+              run.tenant(),
+              run.invocation());
+          settleStoppedWriters(task);
+          return null;
+        });
+  }
+
+  @Override
+  public void searchCompleted(
+      Lease lease, String invocation, String hash, long size, Map<String, Integer> cursors) {
+    if (size < 0 || size > 4194304 || !hash.matches("[a-f0-9]{64}") || cursors.size() > 100000)
+      throw new TaskFailure(409, "SEARCH_RESULT_LIMIT");
+    leaseTx(
+        lease,
+        () -> {
+          fenced(lease, true);
+          var run =
+              one(
+                  "SELECT * FROM native_search_run WHERE tenant_id=? AND task_id=? AND root_invocation=? AND attempt_id=? FOR UPDATE",
+                  lease.tenant(),
+                  lease.taskId(),
+                  invocation,
+                  lease.attemptId());
+          if (!"STOPPED".equals(s(run, "phase")) || run.get("result_hash") != null)
+            throw new TaskFailure(409, "SEARCH_PROCESS_UNPROVEN");
+          db.update(
+              "UPDATE native_search_run SET result_hash=?,result_size=?,cursor_index=? WHERE tenant_id=? AND root_invocation=?",
+              hash,
+              size,
+              Payloads.json(cursors),
+              lease.tenant(),
+              invocation);
+          db.update(
+              "UPDATE reservation SET actual=?,state='SETTLED' WHERE tenant_id=? AND id=? AND category='SEARCH_STORAGE' AND state='RESERVED'",
+              size,
+              lease.tenant(),
+              "search:" + invocation);
+          db.update(
+              "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
+              4194304 - size,
+              lease.tenant());
+          return null;
+        });
+  }
+
+  @Override
+  public Result searchPage(Lease lease, String query, String pin, String cursor) {
+    return leaseTx(
+        lease,
+        () -> {
+          fenced(lease, true);
+          for (var row :
+              rows(
+                  "SELECT * FROM native_search_run WHERE tenant_id=? AND task_id=? AND result_hash IS NOT NULL AND phase='STOPPED' AND expires_at>CURRENT_TIMESTAMP(6)",
+                  lease.tenant(),
+                  lease.taskId())) {
+            var index =
+                Payloads.read(
+                    s(row, "cursor_index"), com.fasterxml.jackson.databind.JsonNode.class);
+            if (!index.has(cursor)) continue;
+            if (!query.equals(s(row, "query_digest")) || !pin.equals(s(row, "tool_pin")))
+              throw new TaskFailure(409, "SEARCH_CURSOR_INVALID");
+            return new Result(
+                s(row, "root_invocation"),
+                s(row, "runtime_directory"),
+                s(row, "result_hash"),
+                n(row, "result_size"),
+                index.path(cursor).intValue());
+          }
+          throw new TaskFailure(409, "SEARCH_CURSOR_INVALID");
+        });
+  }
+
+  @Override
+  public List<Run> nativeSearches(String host) {
+    return rows(
+            "SELECT n.*, (t.state<>'RUNNING' OR t.deadline<=CURRENT_TIMESTAMP(6) OR t.lease_until<=CURRENT_TIMESTAMP(6) OR w.stopped=TRUE) AS stop_requested FROM native_search_run n JOIN task t ON t.tenant_id=n.tenant_id AND t.id=n.task_id JOIN worker_process w ON w.id=n.worker_id WHERE n.host_id=? AND n.phase<>'STOPPED' ORDER BY n.root_invocation LIMIT 64",
+            host)
+        .stream()
+        .map(
+            row ->
+                new Run(
+                    s(row, "tenant_id"),
+                    s(row, "task_id"),
+                    s(row, "root_invocation"),
+                    s(row, "effect_id"),
+                    s(row, "attempt_id"),
+                    s(row, "worker_id"),
+                    s(row, "runtime_directory"),
+                    s(row, "snapshot_digest"),
+                    s(row, "phase"),
+                    row.get("process_identity") == null
+                        ? null
+                        : Payloads.read(s(row, "process_identity"), NativeIdentity.class),
+                    ((Number) row.get("stop_requested")).intValue() != 0))
+        .toList();
+  }
+
+  @Override
+  public List<Run> expiredSearches(String host) {
+    return rows(
+            "SELECT n.* FROM native_search_run n JOIN task t ON t.tenant_id=n.tenant_id AND t.id=n.task_id WHERE n.host_id=? AND n.phase='STOPPED' AND n.storage_removed=FALSE AND n.expires_at<=CURRENT_TIMESTAMP(6) AND t.state IN ('SUCCEEDED','FAILED','CANCELLED','NEEDS_RECONCILIATION') AND NOT EXISTS(SELECT 1 FROM task_attempt a WHERE a.tenant_id=n.tenant_id AND a.task_id=n.task_id AND a.quiescent=FALSE) LIMIT 64",
+            host)
+        .stream()
+        .map(
+            row ->
+                new Run(
+                    s(row, "tenant_id"),
+                    s(row, "task_id"),
+                    s(row, "root_invocation"),
+                    s(row, "effect_id"),
+                    s(row, "attempt_id"),
+                    s(row, "worker_id"),
+                    s(row, "runtime_directory"),
+                    s(row, "snapshot_digest"),
+                    "STOPPED",
+                    Payloads.read(s(row, "process_identity"), NativeIdentity.class),
+                    true))
+        .toList();
+  }
+
+  @Override
+  public void searchStorageRemoved(Run run) {
+    tx(
+        () -> {
+          bucket(run.tenant());
+          locked(run.tenant(), run.task());
+          var row =
+              one(
+                  "SELECT * FROM native_search_run WHERE tenant_id=? AND root_invocation=? AND task_id=? AND effect_id=? FOR UPDATE",
+                  run.tenant(),
+                  run.invocation(),
+                  run.task(),
+                  run.effect());
+          if (!"STOPPED".equals(s(row, "phase")))
+            throw new TaskFailure(409, "SEARCH_PROCESS_UNPROVEN");
+          var reservation =
+              one(
+                  "SELECT * FROM reservation WHERE tenant_id=? AND id=? AND category='SEARCH_STORAGE' FOR UPDATE",
+                  run.tenant(),
+                  "search:" + run.invocation());
+          if (!"RELEASED".equals(s(reservation, "state"))) {
+            long held =
+                reservation.get("actual") == null
+                    ? n(reservation, "amount")
+                    : n(reservation, "actual");
+            db.update(
+                "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
+                held,
+                run.tenant());
+            db.update(
+                "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=?",
+                run.tenant(),
+                "search:" + run.invocation());
+          }
+          db.update(
+              "UPDATE native_search_run SET storage_removed=TRUE,result_size=COALESCE(result_size,0) WHERE tenant_id=? AND root_invocation=?",
+              run.tenant(),
+              run.invocation());
+          return null;
+        });
+  }
+
   private boolean publicReport(Map<String, Object> task) {
     var pins = tools(task).pins();
     var pin = pins.get("web_fetch");
@@ -2621,7 +2926,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   @Override
   public List<WorkerProcess> processes(String host) {
     return rows(
-            "SELECT w.*,EXISTS(SELECT 1 FROM task_attempt a JOIN task t ON t.tenant_id=a.tenant_id AND t.id=a.task_id WHERE a.worker_id=w.id AND a.quiescent=FALSE AND t.cancel_requested_at<CURRENT_TIMESTAMP(6)-INTERVAL 3 SECOND) AS overdue FROM worker_process w WHERE host_id=? AND stopped=FALSE ORDER BY id LIMIT 64",
+            "SELECT w.*,EXISTS(SELECT 1 FROM task_attempt a JOIN task t ON t.tenant_id=a.tenant_id AND t.id=a.task_id WHERE a.worker_id=w.id AND a.quiescent=FALSE AND (t.cancel_requested_at<CURRENT_TIMESTAMP(6)-INTERVAL 3 SECOND OR (t.state='NEEDS_RECONCILIATION' AND t.updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 3 SECOND AND EXISTS(SELECT 1 FROM native_search_run n WHERE n.tenant_id=t.tenant_id AND n.task_id=t.id AND n.worker_id=w.id AND n.phase<>'STOPPED')))) AS overdue FROM worker_process w WHERE host_id=? AND stopped=FALSE ORDER BY id LIMIT 64",
             host)
         .stream()
         .map(
@@ -2643,6 +2948,11 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   }
 
   private boolean writersQuiescent(Map<String, Object> task) {
+    if (!rows(
+            "SELECT root_invocation FROM native_search_run WHERE tenant_id=? AND task_id=? AND phase<>'STOPPED' LIMIT 1",
+            s(task, "tenant_id"),
+            s(task, "id"))
+        .isEmpty()) return false;
     // Every attempt matters, including expired attempts fenced out by a later worker.
     // Missing receipts and process-observation failures remain unknown.
     return rows(
@@ -2658,6 +2968,11 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
         () -> {
           bucket(lease.tenant());
           var task = locked(lease.tenant(), lease.taskId());
+          if (!rows(
+                  "SELECT root_invocation FROM native_search_run WHERE tenant_id=? AND attempt_id=? AND phase<>'STOPPED' LIMIT 1",
+                  lease.tenant(),
+                  lease.attemptId())
+              .isEmpty()) return null;
           db.update(
               "UPDATE task_attempt SET quiescent=TRUE WHERE tenant_id=? AND id=? AND worker_id=? AND fence=?",
               lease.tenant(),
@@ -2671,6 +2986,10 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
 
   @Override
   public void processStopped(String worker) {
+    if (!rows(
+            "SELECT root_invocation FROM native_search_run WHERE worker_id=? AND phase<>'STOPPED' LIMIT 1",
+            worker)
+        .isEmpty()) return;
     for (var candidate :
         rows(
             "SELECT DISTINCT tenant_id,task_id AS id FROM task_attempt WHERE worker_id=?",
@@ -2719,13 +3038,13 @@ public final class JdbcLedger implements Tasks, ExecutionLedger {
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11') AND success=TRUE",
             Integer.class)
-        != 10) throw new IllegalStateException("Required migration unavailable");
+        != 11) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 10) throw new IllegalStateException("Unsupported schema version");
+        != 11) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override

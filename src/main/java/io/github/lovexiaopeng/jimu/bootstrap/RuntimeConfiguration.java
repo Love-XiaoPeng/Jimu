@@ -2,6 +2,7 @@ package io.github.lovexiaopeng.jimu.bootstrap;
 
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.ToolDefinitionMapper;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.BuiltinManifestLoader;
+import io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceContracts;
 import io.github.lovexiaopeng.jimu.adapters.runtime.health.HttpResourceProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.web.ConfiguredOriginReader;
 import io.github.lovexiaopeng.jimu.adapters.runtime.web.FetchRuntime;
@@ -15,7 +16,6 @@ import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebFetchPlugin;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -41,8 +41,17 @@ public class RuntimeConfiguration {
   }
 
   @Bean
-  PluginCatalog pluginCatalog(ToolDescriptor descriptor) {
-    return new PluginRegistry(List.of(descriptor));
+  PluginCatalog pluginCatalog(ToolDescriptor descriptor, Environment env) throws IOException {
+    var descriptors = new java.util.ArrayList<ToolDescriptor>();
+    descriptors.add(descriptor);
+    if (env.containsProperty("jimu.workspace-root")) {
+      for (String name : WorkspaceContracts.NAMES) {
+        if ((name.equals("glob") || name.equals("grep"))
+            && !env.getProperty("jimu.search.enabled", Boolean.class, false)) continue;
+        descriptors.add(new WorkspaceContracts().load(name).descriptor());
+      }
+    }
+    return new PluginRegistry(descriptors);
   }
 
   @Bean(destroyMethod = "close")

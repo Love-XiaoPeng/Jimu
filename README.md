@@ -16,6 +16,7 @@
 - [正常业务受信准入与 DeepSeek 请求策略](docs/normal-business-admission.md)
 - [XIAO-40 完整输入门禁与计费证明边界](docs/implementation-p3-input-bound.md)
 - [XIAO-40 工作区工具、报告发布与下载装配](docs/implementation-p3-reports.md)
+- [P4 edit / glob / grep 实施契约](docs/implementation-p4-workspace.md)与[运行配置及验证](docs/implementation-p4-runtime.md)
 - [XIAO-40 关闭评测计划、阶段和额度](docs/implementation-p3-evaluation-plans.md)
 - [协作约定](CONTRIBUTING.md)
 - [Agent 约定](AGENTS.md)
@@ -24,6 +25,8 @@ P1 采用单 Maven 制品与模块化包边界，控制/API 和独立 Java worke
 
 已提供 Java 21 单制品、固定 Maven 3.9.9 Wrapper、内置插件及自动门禁。完整命令为 `./mvnw -B -ntp verify`（Windows：`.\mvnw.cmd -B -ntp verify`），会检查格式、静态、契约与包边界，打包并启动独立 control/worker JVM、真实 MySQL 和受控 HTTP fixture。需要 JDK21、Docker、Python3 和 Linux POSIX 存储；Windows 通过 WSL Ubuntu 运行持久集成。缺必需资源失败，无需真实模型密钥或浏览器。
 
-默认 P1 装配仅开放 `/readyz`，配置见 [P1 实现说明](docs/implementation-p1.md)。启用 `jimu.durable.enabled=true` 后，control 开放持久任务受理/查询/取消、SSE 回放和授权产物下载；worker 运行唯一 ToolCallingAdvisor 循环和真实插件网关。详见 [P2 实现说明](docs/implementation-p2.md)。受控 provider 只验证协议与恢复；真实模型、公开网页报告、第三方插件和生产隔离未验收。
+默认 P1 装配仅开放 `/readyz`，配置见 [P1 实现说明](docs/implementation-p1.md)。启用 `jimu.durable.enabled=true` 后，control 开放持久任务受理/查询/取消、SSE 回放和授权产物下载；worker 运行唯一 ToolCallingAdvisor 循环和真实插件网关。P3 真实模型与公开网页报告已完成验收交付；真实 `web_search` provider 仍未配置，第三方插件和生产隔离未验收。P4 增加原子 edit 与可选 Linux 原生 glob/grep，当前独立分支待同 SHA 审查、QA 和业务验收；缺 native bundle 时默认不广告、不执行搜索。
 
-机制与基础工具参考 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 固定提交 `571902028a75c64c1d767f4ae5fd099485f0ddf0`，源码与许可对照见基线。本包不含其源代码，未来迁移须保留适用许可。积木独立于女娲 AI，不复用其代码、工具、配置、数据或服务。
+按 2026-10-21 成员决定，不运行、启用、重跑或等待 GitHub CI。必要本地 verify、准确源码的独立审查及业务验收继续；历史 CI 取消、失败与未完成记录保持原事实。本批使用定向 P4 验证入口，不重跑旧 P2/P3 全矩阵或付费评测。
+
+机制与基础工具参考 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 固定提交 `571902028a75c64c1d767f4ae5fd099485f0ddf0`。P4 字面编辑、搜索规则及 fixture 的移植保留其 MIT 许可；原生传递许可见 [bundle 说明](workers/search/README.md)。积木独立于女娲 AI，不复用其代码、工具、配置、数据或服务。

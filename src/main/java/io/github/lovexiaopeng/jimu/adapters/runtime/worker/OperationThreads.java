@@ -4,10 +4,19 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.worker;
 public final class OperationThreads {
   private int active;
 
-  public synchronized void start(String name, Runnable operation) {
+  /** A native slot is released only after external process-tree death has been proved. */
+  public synchronized void nativeStarted() {
+    active++;
+  }
+
+  public synchronized void nativeStopped() {
+    exited();
+  }
+
+  public synchronized Thread start(String name, Runnable operation) {
     active++;
     try {
-      Thread.ofVirtual()
+      return Thread.ofVirtual()
           .name(name)
           .start(
               () -> {

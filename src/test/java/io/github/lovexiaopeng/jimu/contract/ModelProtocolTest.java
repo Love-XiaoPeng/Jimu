@@ -37,6 +37,37 @@ class ModelProtocolTest {
   }
 
   @Test
+  void workspaceV3ArgumentsReachTextByteBoundaryWithoutWeakeningLegacyTools() throws Exception {
+    var mapper = new ObjectMapper();
+    for (String tool : List.of("edit", "glob", "grep")) {
+      String input = "{\"value\":\"" + "x".repeat(65523) + "\"}";
+      assertEquals(65535, utf8(input).length);
+      var message = mapper.createObjectNode();
+      var call = message.putArray("tool_calls").addObject();
+      call.put("id", "p4").put("type", "function");
+      call.putObject("function").put("name", tool).put("arguments", input);
+      assertEquals(
+          input,
+          protocol
+              .parse(utf8(result(message.toString(), "tool_calls")), false, List.of(tool))
+              .calls()
+              .getFirst()
+              .arguments());
+      call.withObject("function").put("arguments", input + " ");
+      assertThrows(
+          IOException.class,
+          () ->
+              protocol.parse(utf8(result(message.toString(), "tool_calls")), false, List.of(tool)));
+      call.withObject("function").put("name", "read").put("arguments", input);
+      assertThrows(
+          IOException.class,
+          () ->
+              protocol.parse(
+                  utf8(result(message.toString(), "tool_calls")), false, List.of("read")));
+    }
+  }
+
+  @Test
   void usageAbsenceIsUnknownAndComponentUsageIsNotInvented() throws Exception {
     String base = result("{\"content\":\"好\"}", "stop");
     var absent = protocol.parse(utf8(base), false, List.of("web_fetch"));

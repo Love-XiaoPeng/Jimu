@@ -14,7 +14,8 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 /** Only packaged entries, never model-selected classes or paths. */
 public final class WorkspaceContracts {
-  public static final List<String> NAMES = List.of("read", "write", "present", "compose_report");
+  public static final List<String> NAMES =
+      List.of("read", "write", "present", "compose_report", "edit", "glob", "grep");
   private static final Map<String, String> ENTRIES =
       Map.of(
           "read",
@@ -24,7 +25,13 @@ public final class WorkspaceContracts {
           "present",
           "PresentPlugin",
           "compose_report",
-          "ComposeReportPlugin");
+          "ComposeReportPlugin",
+          "edit",
+          "EditPlugin",
+          "glob",
+          "GlobPlugin",
+          "grep",
+          "GrepPlugin");
 
   public record Contract(
       ToolDescriptor descriptor, String input, SchemaContract in, SchemaContract out) {}
@@ -32,6 +39,7 @@ public final class WorkspaceContracts {
   public Contract load(String name) throws IOException {
     if (!NAMES.contains(name)) throw new IllegalArgumentException("Unknown workspace tool");
     String root = "plugins/builtin/" + name + "/";
+    boolean search = name.equals("glob") || name.equals("grep");
     byte[] input = resource(root + "input.schema.json");
     byte[] output = resource(root + "output.schema.json");
     String entry = "io.github.lovexiaopeng.jimu.plugins.builtin.workspace." + ENTRIES.get(name);
@@ -62,12 +70,19 @@ public final class WorkspaceContracts {
                         "outputSchema",
                         "output.schema.json",
                         "sideEffect",
-                        name.equals("read") ? "read" : "write"))),
+                        name.equals("read") || search ? "read" : "write"))),
             Map.entry("permissions", Map.of("filesystem", List.of("host-task-workspace"))),
             Map.entry("secretRefs", List.of()),
             Map.entry("dependencies", List.of()),
-            Map.entry("limits", Map.of("timeoutMs", 30000, "outputBytes", 1048576)),
-            Map.entry("healthCheck", Map.of("operation", "workspace-readiness", "timeoutMs", 2000)),
+            Map.entry(
+                "limits", Map.of("timeoutMs", 30000, "outputBytes", search ? 65536 : 1048576)),
+            Map.entry(
+                "healthCheck",
+                Map.of(
+                    "operation",
+                    search ? "native-search-readiness" : "workspace-readiness",
+                    "timeoutMs",
+                    2000)),
             Map.entry("errorContract", "jimu-invocation-result"),
             Map.entry(
                 "eventTypes",

@@ -8,6 +8,8 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.health.HttpResourceProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.health.LedgerProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.identity.SignedIdentity;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
+import io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeRunner;
+import io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeSearchRuntime;
 import io.github.lovexiaopeng.jimu.adapters.runtime.web.FetchRuntime;
 import io.github.lovexiaopeng.jimu.adapters.runtime.web.PublicWebReader;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.BoundaryProbe;
@@ -54,7 +56,8 @@ public class DurableConfiguration {
   }
 
   @Bean
-  JdbcLedger ledger(DataSource source, Environment env, ModelProfiles models) {
+  JdbcLedger ledger(
+      DataSource source, Environment env, ModelProfiles models, NativeSearchRuntime searches) {
     if ("control".equals(env.getRequiredProperty("jimu.role"))) {
       Flyway.configure()
           .dataSource(
@@ -67,6 +70,7 @@ public class DurableConfiguration {
     }
     Flyway.configure().dataSource(source).cleanDisabled(true).load().validate();
     var ledger = new JdbcLedger(source, models);
+    ledger.nativeSearchAvailability(searches::available);
     ledger.check();
     return ledger;
   }
@@ -120,6 +124,7 @@ public class DurableConfiguration {
       @Qualifier("publicWebReader") WebPageReader publicReader,
       BoundaryProbe probe,
       ModelProfiles models,
+      NativeSearchRuntime searches,
       Environment env)
       throws IOException {
     var credentials = new HashMap<String, String>();
@@ -148,7 +153,7 @@ public class DurableConfiguration {
         models,
         workspaceRoot == null
             ? null
-            : new WorkspaceRuntime(new SecureWorkspaceStore(Path.of(workspaceRoot))));
+            : new WorkspaceRuntime(new SecureWorkspaceStore(Path.of(workspaceRoot)), searches));
   }
 
   @Bean(initMethod = "start", destroyMethod = "close")
@@ -174,9 +179,23 @@ public class DurableConfiguration {
   }
 
   @Bean
-  @ConditionalOnProperty(name = "jimu.role", havingValue = "worker")
   OperationThreads operationThreads() {
     return new OperationThreads();
+  }
+
+  @Bean
+  NativeSearchRuntime nativeSearchRuntime(Environment env, OperationThreads operations)
+      throws IOException {
+    if (!env.getProperty("jimu.search.enabled", Boolean.class, false))
+      return new NativeSearchRuntime();
+    return new NativeSearchRuntime(
+        Path.of(env.getRequiredProperty("jimu.search.root")),
+        new NativeRunner.Bundle(
+            env.getRequiredProperty("jimu.search.launcher"),
+            env.getRequiredProperty("jimu.search.launcher-sha256"),
+            env.getRequiredProperty("jimu.search.rg"),
+            env.getRequiredProperty("jimu.search.bubblewrap")),
+        operations);
   }
 
   @Bean(destroyMethod = "close")

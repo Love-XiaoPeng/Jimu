@@ -165,6 +165,8 @@ public final class OpenAiProtocol {
       var function = c.path("function");
       var arguments = function.path("arguments");
       boolean composition = "compose_report".equals(function.path("name").asText());
+      boolean workspaceV3 =
+          java.util.List.of("edit", "glob", "grep").contains(function.path("name").asText());
       if (calls.size() >= 20
           || !id.matches("[A-Za-z0-9_-]{1,128}")
           || !ids.add(id)
@@ -172,7 +174,7 @@ public final class OpenAiProtocol {
           || !authorizedTools.contains(function.path("name").asText())
           || !arguments.isTextual()
           || arguments.asText().getBytes(StandardCharsets.UTF_8).length
-              > (composition ? ReportComposer.INPUT_MAX_BYTES : 16384))
+              > (composition || workspaceV3 ? ReportComposer.INPUT_MAX_BYTES : 16384))
         throw new IOException("Invalid tool slot");
       // Bound raw bytes before a MySQL TEXT invocation snapshot can be planned. Strict draft
       // parsing remains at the gateway, before executable admission.
