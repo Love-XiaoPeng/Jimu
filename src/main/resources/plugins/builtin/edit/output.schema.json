@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:plugin:workspace-edit:0.1.0:output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "filePath",
+    "version",
+    "sha256",
+    "size"
+  ],
+  "properties": {
+    "filePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 16777216
+    }
+  }
+}
