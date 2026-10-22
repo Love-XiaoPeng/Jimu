@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:plugin:workspace-edit:0.1.0:input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "file_path",
+    "old_string",
+    "new_string"
+  ],
+  "properties": {
+    "file_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "old_string": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384
+    },
+    "new_string": {
+      "type": "string",
+      "maxLength": 16384
+    },
+    "replace_all": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

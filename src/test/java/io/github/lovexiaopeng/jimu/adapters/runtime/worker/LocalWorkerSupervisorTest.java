@@ -2,6 +2,7 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.worker;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeProcesses;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import java.lang.reflect.Proxy;
 import java.nio.file.Files;
@@ -15,6 +16,12 @@ class LocalWorkerSupervisorTest {
   @TempDir Path proc;
 
   private List<String> reconcile(String state, long ticks) throws Exception {
+    var self = NativeProcesses.identity(ProcessHandle.current().pid());
+    return reconcile(state, ticks, self.bootId(), self.observerPidNamespace());
+  }
+
+  private List<String> reconcile(String state, long ticks, String boot, String namespace)
+      throws Exception {
     long pid = ProcessHandle.current().pid();
     Path directory = Files.createDirectory(proc.resolve(Long.toString(pid)));
     if (state != null) {
@@ -33,7 +40,9 @@ class LocalWorkerSupervisorTest {
                 (proxy, method, args) -> {
                   if ("processes".equals(method.getName())) {
                     assertEquals("local-host", args[0]);
-                    return List.of(new ExecutionLedger.WorkerProcess("worker", pid, 123, false));
+                    return List.of(
+                        new ExecutionLedger.WorkerProcess(
+                            "worker", pid, 123, false, boot, namespace));
                   }
                   if ("processStopped".equals(method.getName())) {
                     stopped.add((String) args[0]);
@@ -75,5 +84,22 @@ class LocalWorkerSupervisorTest {
   @Test
   void liveProcessDoesNotConfirmExit() throws Exception {
     assertEquals(List.of(), reconcile("S", 123));
+  }
+
+  @Test
+  void legacyReceiptCannotConfirmExit() throws Exception {
+    assertEquals(List.of(), reconcile("Z", 123, null, null));
+  }
+
+  @Test
+  void foreignObserverCannotConfirmExit() throws Exception {
+    var self = NativeProcesses.identity(ProcessHandle.current().pid());
+    assertEquals(List.of(), reconcile("Z", 123, self.bootId(), "0"));
+  }
+
+  @Test
+  void foreignBootCannotConfirmExit() throws Exception {
+    var self = NativeProcesses.identity(ProcessHandle.current().pid());
+    assertEquals(List.of(), reconcile("Z", 123, "different-boot", self.observerPidNamespace()));
   }
 }

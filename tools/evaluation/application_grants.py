@@ -5,6 +5,7 @@ import re
 APPLICATION_TABLES = (
     'actor_access', 'artifact', 'evaluation_budget', 'event', 'installation', 'invocation',
     'model_dispatch', 'reservation', 'step', 'task', 'task_attempt', 'tenant_budget', 'worker_process',
+    'native_search_run',
 )
 
 
@@ -15,7 +16,8 @@ def grants(database, user, host, partial_revokes=False):
     pattern = database if partial_revokes else database.replace('_', r'\_')
     return ['GRANT SELECT ON `' + pattern + '`.* TO ' + account + ';'] + [
         'GRANT INSERT,UPDATE,DELETE ON `' + database + '`.`' + table + '` TO ' + account + ';'
-        for table in APPLICATION_TABLES]
+        for table in APPLICATION_TABLES] + [
+        'GRANT INSERT ON `' + database + '`.`native_search_stop` TO ' + account + ';']
 
 
 if __name__ == '__main__':

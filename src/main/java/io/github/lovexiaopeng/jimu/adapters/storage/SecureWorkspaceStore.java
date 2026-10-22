@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.storage;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -7,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
 import io.github.lovexiaopeng.jimu.plugin.api.Cancellation;
+import io.github.lovexiaopeng.jimu.plugin.api.EditPort;
 import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.FilePort;
 import java.io.IOException;
@@ -20,7 +22,9 @@ import java.nio.file.Path;
 import java.nio.file.SecureDirectoryStream;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.time.Clock;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -50,7 +54,22 @@ public final class SecureWorkspaceStore {
     for (int i = 0; i < LOCKS.length; i++) LOCKS[i] = new Object();
   }
 
-  public record FileValue(long version, String content, String sha256, long size) {}
+  public record FileValue(
+      long version,
+      String content,
+      String sha256,
+      long size,
+      @JsonInclude(JsonInclude.Include.NON_NULL) Long modifiedAt) {
+    public FileValue(long version, String content, String sha256, long size) {
+      this(version, content, sha256, size, null);
+    }
+  }
+
+  public record WorkspaceSnapshot(String digest, Map<String, FileValue> files) {
+    public WorkspaceSnapshot {
+      files = Map.copyOf(files);
+    }
+  }
 
   public record Operation(String kind, String inputDigest, long expected, FileValue result) {}
 
@@ -71,6 +90,7 @@ public final class SecureWorkspaceStore {
 
   private final Path root;
   private final Boundary boundary;
+  private final Clock clock;
 
   /** The operator must provision a private POSIX root; no model-controlled mkdir occurs here. */
   public SecureWorkspaceStore(Path root) throws IOException {
@@ -78,8 +98,13 @@ public final class SecureWorkspaceStore {
   }
 
   SecureWorkspaceStore(Path root, Boundary boundary) throws IOException {
+    this(root, boundary, Clock.systemUTC());
+  }
+
+  SecureWorkspaceStore(Path root, Boundary boundary, Clock clock) throws IOException {
     this.root = root.toAbsolutePath().normalize();
     this.boundary = boundary;
+    this.clock = clock;
     try (var directory = openRoot()) {
       var permissions =
           directory
@@ -90,6 +115,55 @@ public final class SecureWorkspaceStore {
         throw new IOException("Workspace requires a private POSIX root");
       forceDirectory(directory);
     }
+  }
+
+  /** Pins are fixed at task creation; initialization precedes every workspace operation. */
+  public void initialize(String tenant, String task, boolean format3, Cancellation cancellation) {
+    String scope = scope(tenant, task);
+    locked(
+        scope,
+        cancellation,
+        directory -> {
+          State state;
+          try (var existing =
+              directory.newByteChannel(
+                  Path.of(scope + ".json"),
+                  Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS))) {
+            state = load(directory, scope);
+            if (state.format() != (format3 ? 3 : 2)) throw new FileFailure("FS_BINDING_UNPROVEN");
+          } catch (NoSuchFileException absent) {
+            state =
+                new State(
+                    format3 ? 3 : 2,
+                    scope,
+                    new HashMap<>(),
+                    new HashMap<>(),
+                    new HashMap<>(),
+                    new HashMap<>());
+            save(directory, state);
+          }
+          return null;
+        });
+  }
+
+  /** A search observes one state without granting edit/read observation authority. */
+  public WorkspaceSnapshot searchSnapshot(String tenant, String task, Cancellation cancellation) {
+    String scope = scope(tenant, task);
+    return locked(
+        scope,
+        cancellation,
+        directory -> {
+          State state = load(directory, scope);
+          if (state.format() != 3) throw new FileFailure("FS_BINDING_UNPROVEN");
+          var files = new java.util.TreeMap<>(state.files());
+          return new WorkspaceSnapshot(Payloads.hash(Payloads.json(files)), files);
+        });
+  }
+
+  private static String scope(String tenant, String task) {
+    if (!tenant.matches("[A-Za-z0-9_-]{1,64}") || !UUID.fromString(task).toString().equals(task))
+      throw new IllegalArgumentException("Invalid workspace scope");
+    return Payloads.hash(tenant + ":" + task);
   }
 
   /** Host preflight, under the same native boundary, without advancing model observations. */
@@ -151,7 +225,7 @@ public final class SecureWorkspaceStore {
               boundary.hit("BINDING_DURABLE");
               return frozen;
             });
-    return new FilePort() {
+    class BoundPort implements FilePort, EditPort {
       @Override
       public Read read(String path, int offset, int limit) {
         String name = logicalPath(path);
@@ -216,7 +290,7 @@ public final class SecureWorkspaceStore {
               long total = state.files().values().stream().mapToLong(FileValue::size).sum();
               if (total - (current == null ? 0 : current.size()) + size > MAX_BYTES)
                 throw new FileFailure("WORKSPACE_LIMIT");
-              FileValue result = new FileValue(version + 1, content, Payloads.hash(content), size);
+              FileValue result = value(state, version + 1, content, size);
               state.files().put(name, result);
               state.observed().put(name, result.version());
               state
@@ -225,6 +299,55 @@ public final class SecureWorkspaceStore {
               cancellation.throwIfCancelled();
               save(directory, state);
               boundary.hit("WRITE_COMMITTED");
+              return written(name, result);
+            });
+      }
+
+      @Override
+      public Written edit(String path, String oldString, String newString, boolean replaceAll) {
+        String name = logicalPath(path);
+        if (utf8Size(oldString) == 0
+            || utf8Size(oldString) > 16384
+            || utf8Size(newString) > 16384
+            || oldString.equals(newString)) throw new FileFailure("INPUT_INVALID");
+        String input =
+            Payloads.hash(
+                Payloads.json(List.of("literal-v1", name, oldString, newString, replaceAll)));
+        return locked(
+            scope,
+            cancellation,
+            directory -> {
+              State state = load(directory, scope);
+              if (state.format() != 3) throw new FileFailure("FS_BINDING_UNPROVEN");
+              Operation intent = operation(state, operationId, "EDIT", input);
+              if (intent != null && intent.result() != null) return written(name, intent.result());
+              if (intent == null) {
+                Long expected = boundObservations.get(name);
+                if (expected == null) throw new FileFailure("FS_NOT_OBSERVED");
+                if (expected == 0) throw new FileFailure("FS_NOT_FOUND");
+                intent = new Operation("EDIT", input, expected, null);
+                state.operations().put(operationId, intent);
+                save(directory, state);
+                boundary.hit("EDIT_INTENT_DURABLE");
+              }
+              FileValue current = state.files().get(name);
+              if (current == null || current.version() != intent.expected())
+                throw new FileFailure("FS_STALE_VERSION");
+              if (current.content().indexOf('\0') >= 0) throw new FileFailure("FS_NOT_TEXT");
+              String content = replaceLiteral(current.content(), oldString, newString, replaceAll);
+              long size = utf8Size(content);
+              long total = state.files().values().stream().mapToLong(FileValue::size).sum();
+              if (size > MAX_BYTES || total - current.size() + size > MAX_BYTES)
+                throw new FileFailure("WORKSPACE_LIMIT");
+              FileValue result = value(state, current.version() + 1, content, size);
+              state.files().put(name, result);
+              state.observed().put(name, result.version());
+              state
+                  .operations()
+                  .put(operationId, new Operation("EDIT", input, intent.expected(), result));
+              cancellation.throwIfCancelled();
+              save(directory, state);
+              boundary.hit("EDIT_COMMITTED");
               return written(name, result);
             });
       }
@@ -261,7 +384,59 @@ public final class SecureWorkspaceStore {
                   name, value.version(), value.sha256(), value.size(), value.content());
             });
       }
-    };
+    }
+    return new BoundPort();
+  }
+
+  private FileValue value(State state, long version, String content, long size) {
+    Long modified = null;
+    if (state.format() == 3) {
+      long previous =
+          state.files().values().stream().mapToLong(v -> v.modifiedAt()).max().orElse(0);
+      var now = clock.instant();
+      modified =
+          Math.max(
+              Math.addExact(previous, 1),
+              Math.addExact(
+                  Math.multiplyExact(now.getEpochSecond(), 1_000_000_000L), now.getNano()));
+    }
+    return new FileValue(version, content, Payloads.hash(content), size, modified);
+  }
+
+  private static String replaceLiteral(
+      String raw, String oldString, String newString, boolean all) {
+    String sample = raw.substring(0, Math.min(4096, raw.length()));
+    int crlf = 0, lf = 0;
+    for (int i = 0; i < sample.length(); i++)
+      if (sample.charAt(i) == '\n') {
+        if (i > 0 && sample.charAt(i - 1) == '\r') crlf++;
+        else lf++;
+      }
+    String text = (raw.startsWith("\uFEFF") ? raw.substring(1) : raw).replace("\r\n", "\n");
+    String old = oldString.replace("\r\n", "\n"), replacement = newString.replace("\r\n", "\n");
+    int first = text.indexOf(old);
+    if (first < 0) throw new FileFailure("FS_EDIT_NOT_FOUND");
+    if (!all && text.indexOf(old, first + old.length()) >= 0)
+      throw new FileFailure("FS_AMBIGUOUS_EDIT");
+    long matches = 1;
+    if (all)
+      for (int at = text.indexOf(old, first + old.length());
+          at >= 0;
+          at = text.indexOf(old, at + old.length())) matches++;
+    long bytes = utf8Size(text) + matches * (utf8Size(replacement) - utf8Size(old));
+    if (crlf > lf)
+      bytes +=
+          text.chars().filter(c -> c == '\n').count()
+              + matches
+                  * (replacement.chars().filter(c -> c == '\n').count()
+                      - old.chars().filter(c -> c == '\n').count());
+    if (bytes > MAX_BYTES) throw new FileFailure("WORKSPACE_LIMIT");
+    // String.replace is literal and advances non-overlapping matches; no regex replacement rules.
+    String result =
+        all
+            ? text.replace(old, replacement)
+            : text.substring(0, first) + replacement + text.substring(first + old.length());
+    return crlf > lf ? result.replace("\n", "\r\n") : result;
   }
 
   private static FilePort.Written written(String name, FileValue value) {
@@ -350,9 +525,15 @@ public final class SecureWorkspaceStore {
       State state = STATE_JSON.readValue(envelope.payload(), State.class);
       // Format 1 never persisted binding identity. Do not manufacture it from latest reads.
       if (state.format() == 1) throw new FileFailure("FS_BINDING_UNPROVEN");
-      if (state.format() != 2 || !scope.equals(state.scope()) || state.bindings() == null)
-        throw new IOException("Workspace scope mismatch");
-      for (FileValue value : state.files().values()) verify(value);
+      if ((state.format() != 2 && state.format() != 3)
+          || !scope.equals(state.scope())
+          || state.bindings() == null) throw new IOException("Workspace scope mismatch");
+      for (FileValue value : state.files().values()) {
+        verify(value);
+        if ((state.format() == 3) != (value.modifiedAt() != null)
+            || value.modifiedAt() != null && value.modifiedAt() <= 0)
+          throw new IOException("Workspace timestamp integrity failure");
+      }
       for (Operation operation : state.operations().values())
         if (operation.result() != null) verify(operation.result());
       return state;

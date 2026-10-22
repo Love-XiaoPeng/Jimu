@@ -32,3 +32,10 @@
 本轮检查原始输入摘要、JSON字段与首期工具身份，并对ADR文件做静态交付核验；详细实际结果见 `verification.txt`。未进行Java编译、依赖解析、真实validator/DTO测试、worker/DB/存储集成、恢复、安全或性能实验；未改共享网络/FRP/部署，也未调用真实收费模型/搜索。
 
 远端连通性及权限仍是独立前置。后端已回传WSL执行身份拒绝及GitHub连接失败的只读证据，产品经理已升级最小环境动作，事项当前仍为blocked；本交付只解除ADR前置。取得仓库后先核实原内容和已发布状态，若与“旧命名尚未部署”的输入不符，再由架构补充兼容决定。整个P1仍需后端PR/固定提交、实际门禁、独立审查与测试以及产品验收。
+
+## 2026-10-22 implementation index
+
+- [ADR-0004: durable execution](0004-p2-durable-execution.md)
+- [ADR-0005: atomic edit and native search](0005-workspace-edit-native-search.md)
+
+The dated handoff above remains historical; current P4 configuration and evidence are in ../implementation-p4-runtime.md.

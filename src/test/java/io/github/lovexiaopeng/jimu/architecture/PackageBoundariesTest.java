@@ -74,10 +74,16 @@ class PackageBoundariesTest {
         .check(classes);
     noClasses()
         .that()
-        .resideOutsideOfPackages("..bootstrap..", "..adapters.runtime..")
+        .doNotHaveFullyQualifiedName(
+            "io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeRunner")
         .should()
         .dependOnClassesThat()
         .haveFullyQualifiedName("java.lang.ProcessBuilder")
+        .check(classes);
+    noClasses()
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage("sun..", "jdk.internal..", "java.lang.reflect..")
         .check(classes);
     // No production call site is admitted to terminate the JVM in P1.
     noClasses().should().callMethod(System.class, "exit", int.class).check(classes);

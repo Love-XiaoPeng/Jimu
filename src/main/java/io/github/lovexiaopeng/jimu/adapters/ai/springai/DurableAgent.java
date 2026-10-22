@@ -225,6 +225,7 @@ public final class DurableAgent implements AutoCloseable {
       if (!web && (!fetch.publicMode() || workspace == null))
         throw new TaskFailure(503, "WORKSPACE_NOT_CONFIGURED");
       var descriptor = web ? fetch.descriptor() : workspace.contract(name).descriptor();
+      if (!web) workspace.available(name);
       var pin = pins.get(name);
       if (pin == null
           || !descriptor.version().equals(pin.version())
@@ -243,6 +244,12 @@ public final class DurableAgent implements AutoCloseable {
                           "Read a UTF-8 task file with line numbers; observe missing files before write";
                       case "write" ->
                           "Create or replace UTF-8 task file using the host's observed version";
+                      case "edit" ->
+                          "Replace observed literal UTF-8 text atomically; read first; replace_all defaults false";
+                      case "glob" ->
+                          "Find task files using native glob semantics; cursor reads the same immutable snapshot";
+                      case "grep" ->
+                          "Search task file lines with native Rust regex semantics; read matches before editing";
                       case "compose_report" ->
                           "Compose a source-bound report from typed fields and exact fetched evidence; read target first";
                       case "present" ->
@@ -515,19 +522,27 @@ public final class DurableAgent implements AutoCloseable {
           probe.hit("WEB_RESULT", lease.taskId());
         }
       } catch (FileFailure error) {
-        if ("WORKSPACE_UNAVAILABLE".equals(error.code())) {
+        if ("WORKSPACE_UNAVAILABLE".equals(error.code())
+            || "SEARCH_PROCESS_UNPROVEN".equals(error.code())
+            || "SNAPSHOT_CORRUPT".equals(error.code())) {
           ledger.uncertain(lease, invocation.id());
           throw new TaskFailure(409, "EFFECT_OUTCOME_UNKNOWN");
         }
         ledger.toolFailed(lease, invocation.id(), error.code());
         throw new TaskFailure(409, error.code());
       } catch (TaskFailure error) {
-        if (file
-            && (error.code().startsWith("REPORT_")
-                || error.code().equals("NO_EVIDENCE")
-                || error.code().equals("STORAGE_BUDGET_EXCEEDED")
-                || (call.tool().equals("present")
-                    && error.code().equals("MODEL_BUDGET_EXCEEDED")))) {
+        if (((call.tool().equals("glob") || call.tool().equals("grep"))
+                && !error.code().equals("FENCE_REJECTED")
+                && ((io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger) ledger)
+                    .searchQuiescent(lease, invocation.id()))
+            || file
+                && (error.code().startsWith("REPORT_")
+                    || error.code().equals("NO_EVIDENCE")
+                    || error.code().equals("STORAGE_BUDGET_EXCEEDED")
+                    || error.code().equals("SEARCH_CURSOR_INVALID")
+                    || error.code().equals("SEARCH_RESULT_LIMIT")
+                    || (call.tool().equals("present")
+                        && error.code().equals("MODEL_BUDGET_EXCEEDED")))) {
           ledger.toolFailed(lease, invocation.id(), error.code());
           throw error;
         }
@@ -543,6 +558,8 @@ public final class DurableAgent implements AutoCloseable {
       }
       probe.hit("T1_BEFORE", lease.taskId());
       ledger.toolSucceeded(lease, invocation.id(), output);
+      if (call.tool().equals("glob") || call.tool().equals("grep"))
+        probe.hit("S_COMMITTED", lease.taskId());
       if (call.tool().equals("compose_report")) probe.hit("C2", lease.taskId());
       probe.hit("T1", lease.taskId());
       if (call.tool().equals("write")) probe.hit("W1", lease.taskId());

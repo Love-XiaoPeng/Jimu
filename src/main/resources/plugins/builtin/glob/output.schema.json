@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:plugin:workspace-glob:0.1.0:output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "root",
+    "paths",
+    "seen",
+    "returned",
+    "truncated",
+    "nextCursor"
+  ],
+  "properties": {
+    "root": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "paths": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    },
+    "seen": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "returned": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "nextCursor": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 22,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    }
+  }
+}

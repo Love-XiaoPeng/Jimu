@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.worker;
 
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent;
+import io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeProcesses;
 import io.github.lovexiaopeng.jimu.kernel.readiness.port.ResourceProbe;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
@@ -44,9 +45,14 @@ public final class WorkerLoop implements AutoCloseable {
   }
 
   public void start() throws java.io.IOException {
-    var process = ProcessHandle.current();
+    var process = NativeProcesses.identity(ProcessHandle.current().pid());
     ledger.registerWorker(
-        instance, host, process.pid(), LinuxProcessReceipt.startTicks(process.pid()));
+        instance,
+        host,
+        process.pid(),
+        process.startTicks(),
+        process.bootId(),
+        process.observerPidNamespace());
     work.scheduleWithFixedDelay(this::tick, 0, 100, TimeUnit.MILLISECONDS);
   }
 
