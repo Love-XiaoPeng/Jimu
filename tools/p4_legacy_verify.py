@@ -12,7 +12,7 @@ BASE = 'f6a97168281990fd036cc18bf0ddef8045d90a6d'
 STORE = 'src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureWorkspaceStore.java'
 
 
-def verify_legacy(jar, classes, java, evidence):
+def verify_legacy(jar, java, evidence):
     evidence.mkdir()
     root = Path(tempfile.mkdtemp(prefix='jimu-p4-legacy-'))
     receipt = {'base': BASE, 'uid': 65534}
@@ -25,10 +25,15 @@ def verify_legacy(jar, classes, java, evidence):
         current = root / 'current'; current.mkdir()
         workspace = root / 'workspace'; workspace.mkdir(mode=0o700)
         dependencies = root / 'lib'; dependencies.mkdir()
+        classes = root / 'classes'; classes.mkdir()
         with zipfile.ZipFile(jar) as archive:
             for name in archive.namelist():
                 if name.startswith('BOOT-INF/lib/jackson-'):
                     (dependencies / Path(name).name).write_bytes(archive.read(name))
+                elif name.startswith('BOOT-INF/classes/') and not name.endswith('/'):
+                    target=classes/name.removeprefix('BOOT-INF/classes/')
+                    target.parent.mkdir(parents=True,exist_ok=True)
+                    target.write_bytes(archive.read(name))
         classpath = str(classes.resolve()) + ':' + str(dependencies / '*')
         old_source = root / 'SecureWorkspaceStore.java'; old_source.write_bytes(source)
         seed = root / 'Seed.java'
