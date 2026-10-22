@@ -341,7 +341,8 @@ class DirectoryExperiment(Experiment):
                          self.sql("SELECT COUNT(*) FROM task_attempt WHERE task_id='"+task+"';") == '1',
                          'expired lease alone cannot fence an unconfirmed live writer')
         self.stop(old, kill=True)
-        self.expire(task)
+        # The successor may already hold a fresh lease once the supervisor proves stop.
+        # Do not expire that new lease while testing the original writer's recovery.
         self.state(task, 'SUCCEEDED')
         self.assert_that(self.sql("SELECT fence FROM task WHERE id='"+task+"';") == '2' and
                          self.probe(task, old, 'old-fence')['code'] == 'FENCE_REJECTED',
