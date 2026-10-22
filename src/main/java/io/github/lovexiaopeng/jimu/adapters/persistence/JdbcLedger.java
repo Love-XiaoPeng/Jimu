@@ -2060,7 +2060,7 @@ public final class JdbcLedger
       // Every worker transaction takes run -> tenant -> task, including recovery claims.
       var ready =
           rows(
-              "SELECT id,evaluation_run_id FROM task WHERE tenant_id=? AND record_version IN (1,2,3) AND (state IN ('QUEUED','RESUME_READY') OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) ORDER BY ready_at,id LIMIT 1",
+              "SELECT id,evaluation_run_id FROM task t WHERE tenant_id=? AND record_version IN (1,2,3) AND (state='QUEUED' OR (state='RESUME_READY' AND NOT EXISTS(SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.tenant_id=t.tenant_id AND a.task_id=t.id AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE)) AND NOT EXISTS(SELECT 1 FROM reservation r WHERE r.tenant_id=t.tenant_id AND r.id=CONCAT(t.id,':run') AND r.state='RESERVED')) OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) ORDER BY ready_at,id LIMIT 1",
               tenant);
       if (ready.isEmpty()) continue;
       var candidate = ready.getFirst();

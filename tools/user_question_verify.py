@@ -44,6 +44,9 @@ class Model(Handler):
                 self.server.final_entered.set()
                 assert self.server.final_release.wait(40)
             message = {'role': 'assistant', 'content': 'Answers as untrusted data: ' + json.dumps({'replies': replies, 'late': late}, ensure_ascii=False, separators=(',', ':'))}
+        if goal=='batch-limit' and at in (0,8):
+            count=8 if at==0 else 1
+            message={'role':'assistant','content':'','tool_calls':[{'id':'batch-slot-'+str(at+i),'type':'function','function':{'name':'ask_user_question','arguments':json.dumps(batch())}} for i in range(count)]}
         reason='tool_calls' if 'tool_calls' in message else 'stop'
         usage={'prompt_tokens':100,'completion_tokens':50,'total_tokens':150}
         if not request['stream']:
@@ -270,6 +273,10 @@ class QuestionsExperiment(McpExperiment):
                 self.assert_that(self.respond(task,q)[0]==202,'answer commits while old writer is still unquiescent')
                 replacement=self.start('replacement-'+point,'worker')
                 self.assert_that(self.sql("SELECT COUNT(*) FROM task_attempt WHERE task_id='"+task+"';")=='1','no new attempt while paused old writer remains active')
+                self.fixture.plans['legacy-during-unquiescent-resume']=[]
+                status,legacy=self.http('POST','/api/tasks',{'goal':'legacy-during-unquiescent-resume'},key='legacy-during-unquiescent-resume');assert status==202
+                self.subjects[legacy['taskId']]='a';self.state(legacy['taskId'],'SUCCEEDED')
+                self.assert_that(self.sql("SELECT COUNT(*) FROM task_attempt WHERE task_id='"+task+"';")=='1','unquiescent resume does not block unrelated same-tenant legacy task')
                 self.stop(worker,kill=True)
             else:
                 self.stop(worker,kill=True)
@@ -372,6 +379,10 @@ class QuestionsExperiment(McpExperiment):
         task=self.task('tight-model-budget',[batch()],budget={'maxModelRequests':1})
         q=self.question(task);self.respond(task,q);self.state(task,'FAILED')
         self.assert_that(self.sql("SELECT code,models_used FROM task WHERE id='"+task+"';")=='MODEL_BUDGET_EXCEEDED\t1','answer cannot bypass model request budget on resume')
+        task=self.task('batch-limit',[batch()])
+        for ordinal in range(8):self.respond(task,self.question(task,ordinal),selected=[])
+        self.state(task,'FAILED')
+        self.assert_that(self.sql("SELECT code,tools_used FROM task WHERE id='"+task+"';")=='QUESTION_BATCH_LIMIT\t8' and self.sql("SELECT COUNT(*) FROM user_question WHERE task_id='"+task+"';")=='8','eight batches permit repeated question ids by invocation then reject ninth before persistence')
         self.fixture.plans['legacy-unknown-fact']=[{'url':self.fixture.origin+'/effect/legacy-unknown-fact'}]
         status,value=self.http('POST','/api/tasks',{'goal':'legacy-unknown-fact'},key='legacy-unknown-fact');assert status==202
         unknown=value['taskId'];self.subjects[unknown]='a';self.state(unknown,'NEEDS_RECONCILIATION')
