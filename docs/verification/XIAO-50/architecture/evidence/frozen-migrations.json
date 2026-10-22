@@ -1,0 +1,98 @@
+[
+  {
+    "path": "src/main/resources/db/migration/V10__business_task_policy.sql",
+    "gitBlob": "b0914ee1c41f4051b90d348ca70e27f059743ddb",
+    "sha256": "dd53e8624bbee3fb8e3ed4edf826d67bfa2a074ac1fe6262c4cc7517d5bb20e4",
+    "bytes": 387
+  },
+  {
+    "path": "src/main/resources/db/migration/V11__native_search.sql",
+    "gitBlob": "6145f1a0ef2e0f4cc9422bf2233a5a9f36f6658c",
+    "sha256": "6a13006bd44552a2507a4e15b3a5fec7dfab20326773d60b440fcd0c288fe6a9",
+    "bytes": 1780
+  },
+  {
+    "path": "src/main/resources/db/migration/V12__process_observer_identity.sql",
+    "gitBlob": "63169cfd56ddfe914d7047b3c641a30f6493f86c",
+    "sha256": "0229b5e2064768f14806845e0045a3dfde817b08e397e6747b1f54caee2802d1",
+    "bytes": 205
+  },
+  {
+    "path": "src/main/resources/db/migration/V13__task_images.sql",
+    "gitBlob": "cfa0c4f3610c63ba13e3931c87d5bfabb7204d42",
+    "sha256": "c6f4ad00f2bb2c618cdc5551420e272e883d6bfc53c64e877084d184817f147e",
+    "bytes": 1946
+  },
+  {
+    "path": "src/main/resources/db/migration/V14__image_checkpoint_retention.sql",
+    "gitBlob": "ad05f3f06ba2b4b11682a2b4e071da0cb3f20b16",
+    "sha256": "3efa3e1240e1f3917265915d0e3713d799b7839a45618f97577fc1029a9801ab",
+    "bytes": 1399
+  },
+  {
+    "path": "src/main/resources/db/migration/V15__mcp_resources.sql",
+    "gitBlob": "1259c73af80c1d26a6cb861ff447bff79dcf059c",
+    "sha256": "4a33b950278439feac9b11312381b78207f38f78a298f78923402db86bd03244",
+    "bytes": 2330
+  },
+  {
+    "path": "src/main/resources/db/migration/V16__durable_user_questions.sql",
+    "gitBlob": "64ee58e9b29a653fdd4d8893290ecf6941a6999e",
+    "sha256": "8b24cad2e4cd2c8118274972e81623a832ead2b47f0899f33b51a6ae93258c28",
+    "bytes": 2694
+  },
+  {
+    "path": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "gitBlob": "180577db7e24ad8d5ad10738144022b5906cf578",
+    "sha256": "c1d4c158b1f5c5a9cc955bee9fe93a5cdbed7a2a80e3026f4c835da235977e70",
+    "bytes": 7122
+  },
+  {
+    "path": "src/main/resources/db/migration/V2__local_worker_receipts.sql",
+    "gitBlob": "890703c30a40b60d1dd9d104ada1f08c425c6809",
+    "sha256": "98497bd4a3d2adbe3f401036a123d11b9c2af17309f452c8090ac8158a9c02c5",
+    "bytes": 295
+  },
+  {
+    "path": "src/main/resources/db/migration/V3__attempt_quiescence.sql",
+    "gitBlob": "1acd0b7fd43cf311691a8d2fe50e6aba0a1cc0a2",
+    "sha256": "f2095fb71fd867c5715f7a531ea79b72f4beb3c42f775dd421986d76ebb9e6df",
+    "bytes": 253
+  },
+  {
+    "path": "src/main/resources/db/migration/V4__model_snapshots_and_budgets.sql",
+    "gitBlob": "500036c8e0688ac977416b734fca4d42205c4230",
+    "sha256": "1a1d5fa336be3d55decfab17cd7acf62abdfcab520b35414d3f8fb0cca7ac981",
+    "bytes": 1942
+  },
+  {
+    "path": "src/main/resources/db/migration/V5__task_tool_snapshots.sql",
+    "gitBlob": "5c2f81ace158b51b866646bfeb7f533c36171034",
+    "sha256": "f87c2370145760e4d712bb9ff62a1ebcfac0d3461aea67b0f4b7c59f32c72615",
+    "bytes": 1289
+  },
+  {
+    "path": "src/main/resources/db/migration/V6__report_receipts.sql",
+    "gitBlob": "0cefd0f2647c481a5fe09bfbe28975697454e217",
+    "sha256": "0678241322741e682f02c580f4894f68de8283a17538a2dd70ff350e394a5d7e",
+    "bytes": 257
+  },
+  {
+    "path": "src/main/resources/db/migration/V7__bounded_evaluation_plans.sql",
+    "gitBlob": "f5f9a558234394520c237a42a3dc397038cd055b",
+    "sha256": "cbb04f1f00e5ee468def9fe9d3d309947e691f4f1b1ac54e426a856fc761a314",
+    "bytes": 876
+  },
+  {
+    "path": "src/main/resources/db/migration/V8__evaluation_material_binding.sql",
+    "gitBlob": "465995432ef0b334fd11bfa910ae5704db83daaf",
+    "sha256": "f91f70a6fc008b02942ded03bf25bcb6870bc7f272df8546be0cfdcb7b12d28d",
+    "bytes": 326
+  },
+  {
+    "path": "src/main/resources/db/migration/V9__evaluation_execution_scope.sql",
+    "gitBlob": "9261cecce311aa084506173ff4e0cd7892e492eb",
+    "sha256": "bd4e7327e825554ccf64b2110a9bec7e203a0443b99eb01bc65504ba4cba7066",
+    "bytes": 771
+  }
+]

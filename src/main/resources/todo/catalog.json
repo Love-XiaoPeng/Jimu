@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "profile": "local-durable-todos-v1",
+  "todoVersion": 1,
+  "allowParallelInProgress": false,
+  "upstream": {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "packageVersion": "0.2.1-alpha.3",
+    "projectionStateVersion": 2
+  },
+  "variants": [
+    {
+      "name": "todo_write",
+      "pluginId": "jimu.todo.write",
+      "version": "0.1.0",
+      "root": "todo_write-0.1.0",
+      "inputSha256": "18f340ae56366ad533d2ed6eb3dce4cda9022110ac4be2750b1134f05096b1d1",
+      "outputSha256": "5aaeeadb3ce3e7e8c34e991dcc85b87cf4ce5e9502163b9b8668523bf49df99c",
+      "manifestSha256": "fbece39d857c7576cade7a0132ba466ed9476b86fb4d3280308234a6ca3dc36f",
+      "descriptionSha256": "05bef58a8da85fa207fddd674a930d36ef4225db37575e4c5cb1c638c757b644"
+    }
+  ],
+  "bindingSchemaSha256": "2650d93bac1aa35cb9ae958fb045a1d3ef1299beedc879d32ac682a2bf8f8530",
+  "viewSchemaSha256": "039171d4ecec7cb31f7edfe40a53785d6bb9593385b0b1b72aecbcaed43f0ca2",
+  "renderTemplate": "Updated todo list: {pending} pending, {inProgress} in progress, {completed} completed.",
+  "semanticRules": [
+    "ECMAScript-trim",
+    "valid-Unicode-scalars",
+    "canonical-content-UTF8<=1024",
+    "canonical-list-UTF8<=8192",
+    "trimmed-content-unique-case-sensitive",
+    "at-most-one-in_progress",
+    "counts-match-list",
+    "ordered-whole-replacement"
+  ]
+}

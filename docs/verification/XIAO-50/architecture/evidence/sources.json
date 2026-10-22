@@ -1,0 +1,242 @@
+[
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/todo/tool-todo/package.json",
+    "file": "packages__todo__tool-todo__package.json",
+    "gitBlob": "0f13e4b1a37b854408e3da76e916273ca72edb32",
+    "sha256": "71b4ed98935f0cdf4a60c53f3a2b270b20e1cca99a3287b8adc3db9efb96678b",
+    "bytes": 1908,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/todo/tool-todo/package.json"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/core/tools/src/types.ts",
+    "file": "packages__core__tools__src__types.ts",
+    "gitBlob": "dc41c299a02771e4144c60b95882b3facad35f82",
+    "sha256": "26c2c9ac831526d9bcefe5ee3b9b1a6a8ca313d43efffe579670366790539bb6",
+    "bytes": 2897,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/tools/src/types.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/core/tools/src/index.ts",
+    "file": "packages__core__tools__src__index.ts",
+    "gitBlob": "0970c7e2b04748074525faa3f7206fabf6b4d2aa",
+    "sha256": "0f49b0958f0c8a8e3678505a05ebba1d34b3938653233600297b1cbac244fb1f",
+    "bytes": 91055,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/tools/src/index.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": ".agents/notes/archived/feature/2026-07-28-todo-plan-clears-on-next-turn.md",
+    "file": ".agents__notes__archived__feature__2026-07-28-todo-plan-clears-on-next-turn.md",
+    "gitBlob": "84653953d6e9cadc004eac0e5f4af589952e464a",
+    "sha256": "af16dd33b87cf31d097e8e1292c590461a6e4428f80b21580c724c61ae602b51",
+    "bytes": 3091,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/.agents/notes/archived/feature/2026-07-28-todo-plan-clears-on-next-turn.md"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": ".agents/notes/archived/architecture/2026-07-20-todo-event-ownership.md",
+    "file": ".agents__notes__archived__architecture__2026-07-20-todo-event-ownership.md",
+    "gitBlob": "3dfcd604393d05265eb895fa50647338830bd38f",
+    "sha256": "4c92c6dd9a5879437224f57616d1e106bf5a6afc1dd6229b033a01a51a035470",
+    "bytes": 3262,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/.agents/notes/archived/architecture/2026-07-20-todo-event-ownership.md"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "snapshots/session/todo-write/session.v4.jsonl",
+    "file": "snapshots__session__todo-write__session.v4.jsonl",
+    "gitBlob": "e26a7c8645e6d062ece155997ee6e1e9eac262bd",
+    "sha256": "ffb32f2c8f873ccdef94b9ee974b44abd1139bbcdcbee1bd1bd97e6700d6c0e8",
+    "bytes": 8203,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/snapshots/session/todo-write/session.v4.jsonl"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/session/session-persistence-jsonl/src/index.ts",
+    "file": "packages__session__session-persistence-jsonl__src__index.ts",
+    "gitBlob": "3c3c13589fbcf74842ba8090a74e2d12e7baad79",
+    "sha256": "52cad4e39f5ba4d173ec322c647f16bac12385b4819aa07684f12a123f94f72f",
+    "bytes": 75605,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/session/session-persistence-jsonl/src/index.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/core/agent/src/index.ts",
+    "file": "packages__core__agent__src__index.ts",
+    "gitBlob": "dd8d09e6b7a32827e84a12f968cc2e900099b7ab",
+    "sha256": "218b30227cdc55d4c193112495a852507d12070028572ac95e6f9d1f954d1077",
+    "bytes": 31398,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/agent/src/index.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/core/agent/src/projection.ts",
+    "file": "packages__core__agent__src__projection.ts",
+    "gitBlob": "89c10ac858f476ed1972ce58d066a22c6296a7b9",
+    "sha256": "2113e31ffcb4c98a1d4ddb15d36ee833f086ed5965520febaca65d6dbea6fe40",
+    "bytes": 360,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/agent/src/projection.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/core/agent/src/types.ts",
+    "file": "packages__core__agent__src__types.ts",
+    "gitBlob": "5cbc81df38c81be4f5c4d85e6a2c8acd5108ed95",
+    "sha256": "b237d5d00d9b549cc32c7d91e08aaf83004d14d2bfa0179eeebc3fbfe18fed62",
+    "bytes": 3887,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/agent/src/types.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/session/session-persistence/src/index.ts",
+    "file": "packages__session__session-persistence__src__index.ts",
+    "gitBlob": "f257ca0e1e4f38c26eb831cf171b8191c6bd9873",
+    "sha256": "d3da1fc3977e23eb5c2f73d6245a0d9c5967f9a0d755065e74ccd26e76794f14",
+    "bytes": 8535,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/session/session-persistence/src/index.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/session/session-projection/src/index.ts",
+    "file": "packages__session__session-projection__src__index.ts",
+    "gitBlob": "ac6e63458f840f6f8b1c95541e3fbf62912eccd8",
+    "sha256": "f6e57c06f57b20a74e87a8a476a7adfb67ccbbd3d924bd52420db93ac9a7381b",
+    "bytes": 31588,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/session/session-projection/src/index.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/session/session-projection/src/types.ts",
+    "file": "packages__session__session-projection__src__types.ts",
+    "gitBlob": "8373e4677b1e0485016311a257bb6c246e0ee662",
+    "sha256": "6ad9530ea5cfc8ff3e73b34413e5757da8091248b0a874c304f5c5a83500f555",
+    "bytes": 1066,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/session/session-projection/src/types.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/todo/tool-todo/tests/loader-composition.spec.ts",
+    "file": "packages__todo__tool-todo__tests__loader-composition.spec.ts",
+    "gitBlob": "3642d8485fb8d379c5d3b2b417d2a4d7d5eacc26",
+    "sha256": "7ada30f08840b0a785c7b2aa74c0d22e33ab137561e0418d6347412b1936a73d",
+    "bytes": 6225,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/todo/tool-todo/tests/loader-composition.spec.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/todo/tool-todo/tests/integration.spec.ts",
+    "file": "packages__todo__tool-todo__tests__integration.spec.ts",
+    "gitBlob": "4db57022b61ab0f81f933fa1fac7d65cabaf3b16",
+    "sha256": "7e18b3b1fe8a463edeb0160b6ebd42ad5ef2dd22f8dddf3c1fd5d3ab07acc778",
+    "bytes": 4276,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/todo/tool-todo/tests/integration.spec.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/todo/tool-todo/tests/projection.spec.ts",
+    "file": "packages__todo__tool-todo__tests__projection.spec.ts",
+    "gitBlob": "20975df8c020174f0b9ab4f6dceacbcc38e500f4",
+    "sha256": "4808edfde5d27fa0d63045ae1bc784d52a8cc22f24b396babeb95b31cfedb544",
+    "bytes": 4810,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/todo/tool-todo/tests/projection.spec.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/todo/tool-todo/tests/tool-todo.spec.ts",
+    "file": "packages__todo__tool-todo__tests__tool-todo.spec.ts",
+    "gitBlob": "e8c38f10f2c0a12d8fb6832188a902c6f24c92d1",
+    "sha256": "6b17d974f3aef7c4690ffac7a7999313f61637c7db3208b4e78ebafe6f5d6284",
+    "bytes": 13459,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/todo/tool-todo/tests/tool-todo.spec.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/todo/tool-todo/src/client.ts",
+    "file": "packages__todo__tool-todo__src__client.ts",
+    "gitBlob": "7bb1655a67d5821163e3fc088194115bedaa1164",
+    "sha256": "803e092ec67d96b6fceb351f1d1fec5713c40adaffd6528813e70cc4cd498822",
+    "bytes": 373,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/todo/tool-todo/src/client.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/todo/tool-todo/src/index.ts",
+    "file": "packages__todo__tool-todo__src__index.ts",
+    "gitBlob": "f345045c93f12c8e86c103f70ad9bba39313a149",
+    "sha256": "74eed074d1b056cc0a029f9b8343bc9337c14f04696c528daaedcbebe9842a17",
+    "bytes": 8621,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/todo/tool-todo/src/index.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "LICENSE",
+    "file": "LICENSE",
+    "gitBlob": "c1f7a78e89e4e4dc7b86664c3b3c76eb5eee1785",
+    "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+    "bytes": 1065,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/LICENSE"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/todo/tool-todo/src/types.ts",
+    "file": "packages__todo__tool-todo__src__types.ts",
+    "gitBlob": "68d5649bb0ff86710673ad0b610deaf3491de6d0",
+    "sha256": "2db87c666a0fad3dbca2dbf14c0f9a9f28f78bb4a1da78ddced4a1c0e5f0ba58",
+    "bytes": 1838,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/todo/tool-todo/src/types.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "THIRD_PARTY_NOTICES.md",
+    "file": "THIRD_PARTY_NOTICES.md",
+    "gitBlob": "6a2fbda5ebec2d259fd90e22eaee819aec9e4edf",
+    "sha256": "260b8f9e14d68c083c8abe5d0c6b4cb5212d5f03025f327fdcd9656629222879",
+    "bytes": 24780,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/THIRD_PARTY_NOTICES.md"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/core/session/src/index.ts",
+    "file": "packages__core__session__src__index.ts",
+    "gitBlob": "e1ecb920bd197aa9648b41c9a2d307ed14ac6edc",
+    "sha256": "c1f08f7dcf4075eeebb13e6ea06b3f348bfeb85b8a5d4e4bfd1c3b93c1959332",
+    "bytes": 65812,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/index.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/core/session/src/types.ts",
+    "file": "packages__core__session__src__types.ts",
+    "gitBlob": "e0931f22405b25cf1e9090929fb9f5f45852d6bc",
+    "sha256": "515cba50f366b06dc3caaab45e8ce98c48c80fc07684437aba014df13ce04f2f",
+    "bytes": 24681,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/types.ts"
+  }
+]

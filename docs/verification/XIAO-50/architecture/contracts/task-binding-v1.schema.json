@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:todo:task-binding:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "profile": {
+      "const": "local-durable-todos-v1"
+    },
+    "todoVersion": {
+      "const": 1
+    },
+    "upstreamStateVersion": {
+      "const": 2
+    },
+    "allowParallelInProgress": {
+      "const": false
+    },
+    "maxItems": {
+      "const": 32
+    },
+    "maxContentUtf8Bytes": {
+      "const": 1024
+    },
+    "maxInputBytes": {
+      "const": 16384
+    },
+    "maxListBytes": {
+      "const": 8192
+    },
+    "maxOutputBytes": {
+      "const": 16384
+    },
+    "maxJsonDepth": {
+      "const": 8
+    },
+    "maxModelRequestBytes": {
+      "const": 65536
+    },
+    "maxCheckpointBytes": {
+      "const": 131072
+    },
+    "maxModelResponseBytes": {
+      "const": 65536
+    },
+    "maxCallsPerResponse": {
+      "const": 4
+    },
+    "maxModelRequests": {
+      "const": 8
+    },
+    "maxToolInvocations": {
+      "const": 20
+    },
+    "maxAttempts": {
+      "const": 8
+    },
+    "maxEvents": {
+      "const": 256
+    },
+    "maxSummaryBytes": {
+      "const": 8192
+    },
+    "metadataReserveBytes": {
+      "const": 65536
+    },
+    "maxTaskBytes": {
+      "const": 2097152
+    },
+    "retentionSeconds": {
+      "const": 604800
+    },
+    "timeoutMs": {
+      "const": 30000
+    },
+    "lockWaitSeconds": {
+      "const": 2
+    },
+    "catalogDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "version",
+    "profile",
+    "todoVersion",
+    "upstreamStateVersion",
+    "allowParallelInProgress",
+    "maxItems",
+    "maxContentUtf8Bytes",
+    "maxInputBytes",
+    "maxListBytes",
+    "maxOutputBytes",
+    "maxJsonDepth",
+    "maxModelRequestBytes",
+    "maxCheckpointBytes",
+    "maxModelResponseBytes",
+    "maxCallsPerResponse",
+    "maxModelRequests",
+    "maxToolInvocations",
+    "maxAttempts",
+    "maxEvents",
+    "maxSummaryBytes",
+    "metadataReserveBytes",
+    "maxTaskBytes",
+    "retentionSeconds",
+    "timeoutMs",
+    "lockWaitSeconds",
+    "catalogDigest"
+  ]
+}

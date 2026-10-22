@@ -1,0 +1,1021 @@
+[
+  {
+    "name": "example binding",
+    "schema": "task-binding-v1.schema.json",
+    "value": {
+      "version": 1,
+      "profile": "local-durable-todos-v1",
+      "todoVersion": 1,
+      "upstreamStateVersion": 2,
+      "allowParallelInProgress": false,
+      "maxItems": 32,
+      "maxContentUtf8Bytes": 1024,
+      "maxInputBytes": 16384,
+      "maxListBytes": 8192,
+      "maxOutputBytes": 16384,
+      "maxJsonDepth": 8,
+      "maxModelRequestBytes": 65536,
+      "maxCheckpointBytes": 131072,
+      "maxModelResponseBytes": 65536,
+      "maxCallsPerResponse": 4,
+      "maxModelRequests": 8,
+      "maxToolInvocations": 20,
+      "maxAttempts": 8,
+      "maxEvents": 256,
+      "maxSummaryBytes": 8192,
+      "metadataReserveBytes": 65536,
+      "maxTaskBytes": 2097152,
+      "retentionSeconds": 604800,
+      "timeoutMs": 30000,
+      "lockWaitSeconds": 2,
+      "catalogDigest": "af06bd067b9d7a4ba55f71dbebe32b0e106af3a8fcae88b53557ca487951afdc"
+    },
+    "valid": true
+  },
+  {
+    "name": "example absent",
+    "schema": "todo-view-v1.schema.json",
+    "value": {
+      "version": 1,
+      "taskId": "12345678-1234-1234-1234-123456789abc",
+      "asOfSeq": 10,
+      "revision": 0,
+      "state": "ABSENT",
+      "todos": null,
+      "counts": null,
+      "source": null,
+      "retainUntil": null
+    },
+    "valid": true
+  },
+  {
+    "name": "example unwritten",
+    "schema": "todo-view-v1.schema.json",
+    "value": {
+      "version": 1,
+      "taskId": "12345678-1234-1234-1234-123456789abc",
+      "asOfSeq": 10,
+      "revision": 0,
+      "state": "UNWRITTEN",
+      "todos": null,
+      "counts": null,
+      "source": null,
+      "retainUntil": "2026-10-29T14:59:00Z"
+    },
+    "valid": true
+  },
+  {
+    "name": "example empty-view",
+    "schema": "todo-view-v1.schema.json",
+    "value": {
+      "version": 1,
+      "taskId": "12345678-1234-1234-1234-123456789abc",
+      "asOfSeq": 10,
+      "revision": 1,
+      "state": "PRESENT",
+      "todos": [],
+      "counts": {
+        "pending": 0,
+        "inProgress": 0,
+        "completed": 0
+      },
+      "source": {
+        "invocationId": "12345678-1234-1234-1234-123456789abc",
+        "checkpointId": "12345678-1234-1234-1234-123456789abc",
+        "providerCallId": "call-1",
+        "createdAttemptId": "12345678-1234-1234-1234-123456789abc",
+        "committedAttemptId": "12345678-1234-1234-1234-123456789abc",
+        "fence": 2,
+        "eventId": "12345678-1234-1234-1234-123456789abc:8",
+        "outputSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "updatedAt": "2026-10-22T15:00:00Z"
+      },
+      "retainUntil": "2026-10-29T14:59:00Z"
+    },
+    "valid": true
+  },
+  {
+    "name": "example latest-view",
+    "schema": "todo-view-v1.schema.json",
+    "value": {
+      "version": 1,
+      "taskId": "12345678-1234-1234-1234-123456789abc",
+      "asOfSeq": 10,
+      "revision": 2,
+      "state": "PRESENT",
+      "todos": [
+        {
+          "content": "Read source",
+          "status": "completed"
+        },
+        {
+          "content": "Verify changes",
+          "status": "in_progress"
+        }
+      ],
+      "counts": {
+        "pending": 0,
+        "inProgress": 1,
+        "completed": 1
+      },
+      "source": {
+        "invocationId": "12345678-1234-1234-1234-123456789abc",
+        "checkpointId": "12345678-1234-1234-1234-123456789abc",
+        "providerCallId": "call-1",
+        "createdAttemptId": "12345678-1234-1234-1234-123456789abc",
+        "committedAttemptId": "12345678-1234-1234-1234-123456789abc",
+        "fence": 2,
+        "eventId": "12345678-1234-1234-1234-123456789abc:8",
+        "outputSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "updatedAt": "2026-10-22T15:00:00Z"
+      },
+      "retainUntil": "2026-10-29T14:59:00Z"
+    },
+    "valid": true
+  },
+  {
+    "name": "example purged-view",
+    "schema": "todo-view-v1.schema.json",
+    "value": {
+      "version": 1,
+      "taskId": "12345678-1234-1234-1234-123456789abc",
+      "asOfSeq": 10,
+      "revision": 2,
+      "state": "PURGED",
+      "todos": null,
+      "counts": {
+        "pending": 0,
+        "inProgress": 1,
+        "completed": 1
+      },
+      "source": {
+        "invocationId": "12345678-1234-1234-1234-123456789abc",
+        "checkpointId": "12345678-1234-1234-1234-123456789abc",
+        "providerCallId": "call-1",
+        "createdAttemptId": "12345678-1234-1234-1234-123456789abc",
+        "committedAttemptId": "12345678-1234-1234-1234-123456789abc",
+        "fence": 2,
+        "eventId": "12345678-1234-1234-1234-123456789abc:8",
+        "outputSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "updatedAt": "2026-10-22T15:00:00Z"
+      },
+      "retainUntil": "2026-10-29T14:59:00Z"
+    },
+    "valid": true
+  },
+  {
+    "name": "example purged-unwritten",
+    "schema": "todo-view-v1.schema.json",
+    "value": {
+      "version": 1,
+      "taskId": "12345678-1234-1234-1234-123456789abc",
+      "asOfSeq": 10,
+      "revision": 0,
+      "state": "PURGED",
+      "todos": null,
+      "counts": null,
+      "source": null,
+      "retainUntil": "2026-10-29T14:59:00Z"
+    },
+    "valid": true
+  },
+  {
+    "name": "example empty-input",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": []
+    },
+    "valid": true
+  },
+  {
+    "name": "example replacement-input",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": [
+        {
+          "content": "Read source",
+          "status": "completed"
+        },
+        {
+          "content": "Verify changes",
+          "status": "in_progress"
+        }
+      ]
+    },
+    "valid": true
+  },
+  {
+    "name": "example empty-output",
+    "schema": "todo_write-0.1.0/output.schema.json",
+    "value": {
+      "todos": [],
+      "counts": {
+        "pending": 0,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "example replacement-output",
+    "schema": "todo_write-0.1.0/output.schema.json",
+    "value": {
+      "todos": [
+        {
+          "content": "Read source",
+          "status": "completed"
+        },
+        {
+          "content": "Verify changes",
+          "status": "in_progress"
+        }
+      ],
+      "counts": {
+        "pending": 0,
+        "inProgress": 1,
+        "completed": 1
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "missing todos",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {},
+    "valid": false
+  },
+  {
+    "name": "unknown root",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": [],
+      "taskId": "other"
+    },
+    "valid": false
+  },
+  {
+    "name": "null todos",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": null
+    },
+    "valid": false
+  },
+  {
+    "name": "todos scalar",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": "x"
+    },
+    "valid": false
+  },
+  {
+    "name": "null item",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": [
+        null
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "missing content",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": [
+        {
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "unknown item",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending",
+          "id": "x"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid status",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "doing"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "coerced content",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": [
+        {
+          "content": 3,
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "null content",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": [
+        {
+          "content": null,
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "33 items",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": [
+        {
+          "content": "0",
+          "status": "pending"
+        },
+        {
+          "content": "1",
+          "status": "pending"
+        },
+        {
+          "content": "2",
+          "status": "pending"
+        },
+        {
+          "content": "3",
+          "status": "pending"
+        },
+        {
+          "content": "4",
+          "status": "pending"
+        },
+        {
+          "content": "5",
+          "status": "pending"
+        },
+        {
+          "content": "6",
+          "status": "pending"
+        },
+        {
+          "content": "7",
+          "status": "pending"
+        },
+        {
+          "content": "8",
+          "status": "pending"
+        },
+        {
+          "content": "9",
+          "status": "pending"
+        },
+        {
+          "content": "10",
+          "status": "pending"
+        },
+        {
+          "content": "11",
+          "status": "pending"
+        },
+        {
+          "content": "12",
+          "status": "pending"
+        },
+        {
+          "content": "13",
+          "status": "pending"
+        },
+        {
+          "content": "14",
+          "status": "pending"
+        },
+        {
+          "content": "15",
+          "status": "pending"
+        },
+        {
+          "content": "16",
+          "status": "pending"
+        },
+        {
+          "content": "17",
+          "status": "pending"
+        },
+        {
+          "content": "18",
+          "status": "pending"
+        },
+        {
+          "content": "19",
+          "status": "pending"
+        },
+        {
+          "content": "20",
+          "status": "pending"
+        },
+        {
+          "content": "21",
+          "status": "pending"
+        },
+        {
+          "content": "22",
+          "status": "pending"
+        },
+        {
+          "content": "23",
+          "status": "pending"
+        },
+        {
+          "content": "24",
+          "status": "pending"
+        },
+        {
+          "content": "25",
+          "status": "pending"
+        },
+        {
+          "content": "26",
+          "status": "pending"
+        },
+        {
+          "content": "27",
+          "status": "pending"
+        },
+        {
+          "content": "28",
+          "status": "pending"
+        },
+        {
+          "content": "29",
+          "status": "pending"
+        },
+        {
+          "content": "30",
+          "status": "pending"
+        },
+        {
+          "content": "31",
+          "status": "pending"
+        },
+        {
+          "content": "32",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "1025 code points",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": [
+        {
+          "content": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "32 items",
+    "schema": "todo_write-0.1.0/input.schema.json",
+    "value": {
+      "todos": [
+        {
+          "content": "0",
+          "status": "pending"
+        },
+        {
+          "content": "1",
+          "status": "pending"
+        },
+        {
+          "content": "2",
+          "status": "pending"
+        },
+        {
+          "content": "3",
+          "status": "pending"
+        },
+        {
+          "content": "4",
+          "status": "pending"
+        },
+        {
+          "content": "5",
+          "status": "pending"
+        },
+        {
+          "content": "6",
+          "status": "pending"
+        },
+        {
+          "content": "7",
+          "status": "pending"
+        },
+        {
+          "content": "8",
+          "status": "pending"
+        },
+        {
+          "content": "9",
+          "status": "pending"
+        },
+        {
+          "content": "10",
+          "status": "pending"
+        },
+        {
+          "content": "11",
+          "status": "pending"
+        },
+        {
+          "content": "12",
+          "status": "pending"
+        },
+        {
+          "content": "13",
+          "status": "pending"
+        },
+        {
+          "content": "14",
+          "status": "pending"
+        },
+        {
+          "content": "15",
+          "status": "pending"
+        },
+        {
+          "content": "16",
+          "status": "pending"
+        },
+        {
+          "content": "17",
+          "status": "pending"
+        },
+        {
+          "content": "18",
+          "status": "pending"
+        },
+        {
+          "content": "19",
+          "status": "pending"
+        },
+        {
+          "content": "20",
+          "status": "pending"
+        },
+        {
+          "content": "21",
+          "status": "pending"
+        },
+        {
+          "content": "22",
+          "status": "pending"
+        },
+        {
+          "content": "23",
+          "status": "pending"
+        },
+        {
+          "content": "24",
+          "status": "pending"
+        },
+        {
+          "content": "25",
+          "status": "pending"
+        },
+        {
+          "content": "26",
+          "status": "pending"
+        },
+        {
+          "content": "27",
+          "status": "pending"
+        },
+        {
+          "content": "28",
+          "status": "pending"
+        },
+        {
+          "content": "29",
+          "status": "pending"
+        },
+        {
+          "content": "30",
+          "status": "pending"
+        },
+        {
+          "content": "31",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true
+  },
+  {
+    "name": "binding version",
+    "schema": "task-binding-v1.schema.json",
+    "value": {
+      "version": 2,
+      "profile": "local-durable-todos-v1",
+      "todoVersion": 1,
+      "upstreamStateVersion": 2,
+      "allowParallelInProgress": false,
+      "maxItems": 32,
+      "maxContentUtf8Bytes": 1024,
+      "maxInputBytes": 16384,
+      "maxListBytes": 8192,
+      "maxOutputBytes": 16384,
+      "maxJsonDepth": 8,
+      "maxModelRequestBytes": 65536,
+      "maxCheckpointBytes": 131072,
+      "maxModelResponseBytes": 65536,
+      "maxCallsPerResponse": 4,
+      "maxModelRequests": 8,
+      "maxToolInvocations": 20,
+      "maxAttempts": 8,
+      "maxEvents": 256,
+      "maxSummaryBytes": 8192,
+      "metadataReserveBytes": 65536,
+      "maxTaskBytes": 2097152,
+      "retentionSeconds": 604800,
+      "timeoutMs": 30000,
+      "lockWaitSeconds": 2,
+      "catalogDigest": "af06bd067b9d7a4ba55f71dbebe32b0e106af3a8fcae88b53557ca487951afdc"
+    },
+    "valid": false
+  },
+  {
+    "name": "binding allowParallelInProgress",
+    "schema": "task-binding-v1.schema.json",
+    "value": {
+      "version": 1,
+      "profile": "local-durable-todos-v1",
+      "todoVersion": 1,
+      "upstreamStateVersion": 2,
+      "allowParallelInProgress": true,
+      "maxItems": 32,
+      "maxContentUtf8Bytes": 1024,
+      "maxInputBytes": 16384,
+      "maxListBytes": 8192,
+      "maxOutputBytes": 16384,
+      "maxJsonDepth": 8,
+      "maxModelRequestBytes": 65536,
+      "maxCheckpointBytes": 131072,
+      "maxModelResponseBytes": 65536,
+      "maxCallsPerResponse": 4,
+      "maxModelRequests": 8,
+      "maxToolInvocations": 20,
+      "maxAttempts": 8,
+      "maxEvents": 256,
+      "maxSummaryBytes": 8192,
+      "metadataReserveBytes": 65536,
+      "maxTaskBytes": 2097152,
+      "retentionSeconds": 604800,
+      "timeoutMs": 30000,
+      "lockWaitSeconds": 2,
+      "catalogDigest": "af06bd067b9d7a4ba55f71dbebe32b0e106af3a8fcae88b53557ca487951afdc"
+    },
+    "valid": false
+  },
+  {
+    "name": "binding maxItems",
+    "schema": "task-binding-v1.schema.json",
+    "value": {
+      "version": 1,
+      "profile": "local-durable-todos-v1",
+      "todoVersion": 1,
+      "upstreamStateVersion": 2,
+      "allowParallelInProgress": false,
+      "maxItems": 33,
+      "maxContentUtf8Bytes": 1024,
+      "maxInputBytes": 16384,
+      "maxListBytes": 8192,
+      "maxOutputBytes": 16384,
+      "maxJsonDepth": 8,
+      "maxModelRequestBytes": 65536,
+      "maxCheckpointBytes": 131072,
+      "maxModelResponseBytes": 65536,
+      "maxCallsPerResponse": 4,
+      "maxModelRequests": 8,
+      "maxToolInvocations": 20,
+      "maxAttempts": 8,
+      "maxEvents": 256,
+      "maxSummaryBytes": 8192,
+      "metadataReserveBytes": 65536,
+      "maxTaskBytes": 2097152,
+      "retentionSeconds": 604800,
+      "timeoutMs": 30000,
+      "lockWaitSeconds": 2,
+      "catalogDigest": "af06bd067b9d7a4ba55f71dbebe32b0e106af3a8fcae88b53557ca487951afdc"
+    },
+    "valid": false
+  },
+  {
+    "name": "binding catalogDigest",
+    "schema": "task-binding-v1.schema.json",
+    "value": {
+      "version": 1,
+      "profile": "local-durable-todos-v1",
+      "todoVersion": 1,
+      "upstreamStateVersion": 2,
+      "allowParallelInProgress": false,
+      "maxItems": 32,
+      "maxContentUtf8Bytes": 1024,
+      "maxInputBytes": 16384,
+      "maxListBytes": 8192,
+      "maxOutputBytes": 16384,
+      "maxJsonDepth": 8,
+      "maxModelRequestBytes": 65536,
+      "maxCheckpointBytes": 131072,
+      "maxModelResponseBytes": 65536,
+      "maxCallsPerResponse": 4,
+      "maxModelRequests": 8,
+      "maxToolInvocations": 20,
+      "maxAttempts": 8,
+      "maxEvents": 256,
+      "maxSummaryBytes": 8192,
+      "metadataReserveBytes": 65536,
+      "maxTaskBytes": 2097152,
+      "retentionSeconds": 604800,
+      "timeoutMs": 30000,
+      "lockWaitSeconds": 2,
+      "catalogDigest": "bad"
+    },
+    "valid": false
+  },
+  {
+    "name": "binding unknown",
+    "schema": "task-binding-v1.schema.json",
+    "value": {
+      "version": 1,
+      "profile": "local-durable-todos-v1",
+      "todoVersion": 1,
+      "upstreamStateVersion": 2,
+      "allowParallelInProgress": false,
+      "maxItems": 32,
+      "maxContentUtf8Bytes": 1024,
+      "maxInputBytes": 16384,
+      "maxListBytes": 8192,
+      "maxOutputBytes": 16384,
+      "maxJsonDepth": 8,
+      "maxModelRequestBytes": 65536,
+      "maxCheckpointBytes": 131072,
+      "maxModelResponseBytes": 65536,
+      "maxCallsPerResponse": 4,
+      "maxModelRequests": 8,
+      "maxToolInvocations": 20,
+      "maxAttempts": 8,
+      "maxEvents": 256,
+      "maxSummaryBytes": 8192,
+      "metadataReserveBytes": 65536,
+      "maxTaskBytes": 2097152,
+      "retentionSeconds": 604800,
+      "timeoutMs": 30000,
+      "lockWaitSeconds": 2,
+      "catalogDigest": "af06bd067b9d7a4ba55f71dbebe32b0e106af3a8fcae88b53557ca487951afdc",
+      "session": "x"
+    },
+    "valid": false
+  },
+  {
+    "name": "present null",
+    "schema": "todo-view-v1.schema.json",
+    "value": {
+      "version": 1,
+      "taskId": "12345678-1234-1234-1234-123456789abc",
+      "asOfSeq": 10,
+      "revision": 2,
+      "state": "PRESENT",
+      "todos": null,
+      "counts": {
+        "pending": 0,
+        "inProgress": 1,
+        "completed": 1
+      },
+      "source": {
+        "invocationId": "12345678-1234-1234-1234-123456789abc",
+        "checkpointId": "12345678-1234-1234-1234-123456789abc",
+        "providerCallId": "call-1",
+        "createdAttemptId": "12345678-1234-1234-1234-123456789abc",
+        "committedAttemptId": "12345678-1234-1234-1234-123456789abc",
+        "fence": 2,
+        "eventId": "12345678-1234-1234-1234-123456789abc:8",
+        "outputSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "updatedAt": "2026-10-22T15:00:00Z"
+      },
+      "retainUntil": "2026-10-29T14:59:00Z"
+    },
+    "valid": false
+  },
+  {
+    "name": "present zero revision",
+    "schema": "todo-view-v1.schema.json",
+    "value": {
+      "version": 1,
+      "taskId": "12345678-1234-1234-1234-123456789abc",
+      "asOfSeq": 10,
+      "revision": 0,
+      "state": "PRESENT",
+      "todos": [
+        {
+          "content": "Read source",
+          "status": "completed"
+        },
+        {
+          "content": "Verify changes",
+          "status": "in_progress"
+        }
+      ],
+      "counts": {
+        "pending": 0,
+        "inProgress": 1,
+        "completed": 1
+      },
+      "source": {
+        "invocationId": "12345678-1234-1234-1234-123456789abc",
+        "checkpointId": "12345678-1234-1234-1234-123456789abc",
+        "providerCallId": "call-1",
+        "createdAttemptId": "12345678-1234-1234-1234-123456789abc",
+        "committedAttemptId": "12345678-1234-1234-1234-123456789abc",
+        "fence": 2,
+        "eventId": "12345678-1234-1234-1234-123456789abc:8",
+        "outputSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "updatedAt": "2026-10-22T15:00:00Z"
+      },
+      "retainUntil": "2026-10-29T14:59:00Z"
+    },
+    "valid": false
+  },
+  {
+    "name": "present no source",
+    "schema": "todo-view-v1.schema.json",
+    "value": {
+      "version": 1,
+      "taskId": "12345678-1234-1234-1234-123456789abc",
+      "asOfSeq": 10,
+      "revision": 2,
+      "state": "PRESENT",
+      "todos": [
+        {
+          "content": "Read source",
+          "status": "completed"
+        },
+        {
+          "content": "Verify changes",
+          "status": "in_progress"
+        }
+      ],
+      "counts": {
+        "pending": 0,
+        "inProgress": 1,
+        "completed": 1
+      },
+      "source": null,
+      "retainUntil": "2026-10-29T14:59:00Z"
+    },
+    "valid": false
+  },
+  {
+    "name": "view unknown",
+    "schema": "todo-view-v1.schema.json",
+    "value": {
+      "version": 1,
+      "taskId": "12345678-1234-1234-1234-123456789abc",
+      "asOfSeq": 10,
+      "revision": 2,
+      "state": "PRESENT",
+      "todos": [
+        {
+          "content": "Read source",
+          "status": "completed"
+        },
+        {
+          "content": "Verify changes",
+          "status": "in_progress"
+        }
+      ],
+      "counts": {
+        "pending": 0,
+        "inProgress": 1,
+        "completed": 1
+      },
+      "source": {
+        "invocationId": "12345678-1234-1234-1234-123456789abc",
+        "checkpointId": "12345678-1234-1234-1234-123456789abc",
+        "providerCallId": "call-1",
+        "createdAttemptId": "12345678-1234-1234-1234-123456789abc",
+        "committedAttemptId": "12345678-1234-1234-1234-123456789abc",
+        "fence": 2,
+        "eventId": "12345678-1234-1234-1234-123456789abc:8",
+        "outputSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "updatedAt": "2026-10-22T15:00:00Z"
+      },
+      "retainUntil": "2026-10-29T14:59:00Z",
+      "tenant": "other"
+    },
+    "valid": false
+  },
+  {
+    "name": "unwritten not empty list",
+    "schema": "todo-view-v1.schema.json",
+    "value": {
+      "version": 1,
+      "taskId": "12345678-1234-1234-1234-123456789abc",
+      "asOfSeq": 10,
+      "revision": 0,
+      "state": "UNWRITTEN",
+      "todos": [],
+      "counts": null,
+      "source": null,
+      "retainUntil": "2026-10-29T14:59:00Z"
+    },
+    "valid": false
+  },
+  {
+    "name": "missing counts",
+    "schema": "todo_write-0.1.0/output.schema.json",
+    "value": {
+      "todos": []
+    },
+    "valid": false
+  },
+  {
+    "name": "bad count name",
+    "schema": "todo_write-0.1.0/output.schema.json",
+    "value": {
+      "todos": [],
+      "counts": {
+        "pending": 0,
+        "inProgress": 0,
+        "completed": 0,
+        "in_progress": 0
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "negative count",
+    "schema": "todo_write-0.1.0/output.schema.json",
+    "value": {
+      "todos": [],
+      "counts": {
+        "pending": -1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "two active counts",
+    "schema": "todo_write-0.1.0/output.schema.json",
+    "value": {
+      "todos": [],
+      "counts": {
+        "pending": 0,
+        "inProgress": 2,
+        "completed": 0
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "result revision not tool field",
+    "schema": "todo_write-0.1.0/output.schema.json",
+    "value": {
+      "todos": [],
+      "counts": {
+        "pending": 0,
+        "inProgress": 0,
+        "completed": 0
+      },
+      "revision": 1
+    },
+    "valid": false
+  }
+]

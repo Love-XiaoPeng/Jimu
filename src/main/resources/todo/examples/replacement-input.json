@@ -1,0 +1,12 @@
+{
+  "todos": [
+    {
+      "content": "Read source",
+      "status": "completed"
+    },
+    {
+      "content": "Verify changes",
+      "status": "in_progress"
+    }
+  ]
+}

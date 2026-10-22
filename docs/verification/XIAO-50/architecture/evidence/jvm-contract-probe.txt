@@ -1,0 +1,2 @@
+PASS baseline SchemaContract: 4 schemas, 12 positive, 27 negative; JVM strict JSON/normalization candidate: 46 cases
+No product DB, invocation, worker, migration, crash or authorization proof was executed.

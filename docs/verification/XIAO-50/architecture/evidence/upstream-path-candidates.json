@@ -1,0 +1,2262 @@
+[
+  {
+    "path": ".agents/notes/archived/architecture/2026-07-20-todo-event-ownership.i18n.yaml",
+    "type": "blob",
+    "sha": "046b32c4c0c445036aafc3a3870e8387d9f43ba6"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-07-20-todo-event-ownership.md",
+    "type": "blob",
+    "sha": "3dfcd604393d05265eb895fa50647338830bd38f"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-07-20-todo-event-ownership.zh.md",
+    "type": "blob",
+    "sha": "8dabf8f0cde4ad8af325b00eb1be9d7b7011233f"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-08-06-subagent-list-identity-projection.i18n.yaml",
+    "type": "blob",
+    "sha": "938d4ccf472a82b9e2cdb23d05a860259374a15c"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-08-06-subagent-list-identity-projection.md",
+    "type": "blob",
+    "sha": "50937e1f75774438a0be8aef7df6c181ff0fc8a2"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-08-06-subagent-list-identity-projection.zh.md",
+    "type": "blob",
+    "sha": "7b252333549004eab5b81d21e518d6a05729ea2d"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-08-19-projection-cache-per-session-files.i18n.yaml",
+    "type": "blob",
+    "sha": "c2cb4a9d35db1cd2b7701480ddf99a4bd395dc1e"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-08-19-projection-cache-per-session-files.md",
+    "type": "blob",
+    "sha": "367d5bb42fef04dca92ab14ede1837df1436642e"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-08-19-projection-cache-per-session-files.zh.md",
+    "type": "blob",
+    "sha": "4d1ac6825f19c88d7db78cad1624b32b6db9cfd6"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-08-19-session-projection-state-and-client-views.i18n.yaml",
+    "type": "blob",
+    "sha": "b89cf90712b4267666b3cf9583215d7022d85d12"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-08-19-session-projection-state-and-client-views.md",
+    "type": "blob",
+    "sha": "76e3c01b1cb09558eabffb032d029ae6bcbe96ea"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-08-19-session-projection-state-and-client-views.zh.md",
+    "type": "blob",
+    "sha": "18c55b330ced7cfeb14c28a0f66eeb6e21b767b2"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-09-19-lossless-projection-checkpoint-json.i18n.yaml",
+    "type": "blob",
+    "sha": "35395f25de653f55a4c7887d43ca0338f2594dc0"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-09-19-lossless-projection-checkpoint-json.md",
+    "type": "blob",
+    "sha": "3375cd580de3d30f0b493dc9e2ebfafae671cce2"
+  },
+  {
+    "path": ".agents/notes/archived/architecture/2026-09-19-lossless-projection-checkpoint-json.zh.md",
+    "type": "blob",
+    "sha": "4ce4d370aa53bcf4fc002a320f282bbc0a4ba948"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-07-30-web-transcript-log-ordered-projection.i18n.yaml",
+    "type": "blob",
+    "sha": "3dfd6de4acb1e1c9067a547b9061f636dba1d462"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-07-30-web-transcript-log-ordered-projection.md",
+    "type": "blob",
+    "sha": "b16a87d5806b3d5d3e08cc436c1eacc92053a629"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-07-30-web-transcript-log-ordered-projection.zh.md",
+    "type": "blob",
+    "sha": "871894f29cfd4461bb80e941c0d7cbb14a7e2dda"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-07-31-resume-selector-batch-projection.i18n.yaml",
+    "type": "blob",
+    "sha": "bc98576d4603fb5988936101fdb48894d7a86b7d"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-07-31-resume-selector-batch-projection.md",
+    "type": "blob",
+    "sha": "c30abf7f236b625d17f4b1be1ca37184a4f13df5"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-07-31-resume-selector-batch-projection.zh.md",
+    "type": "blob",
+    "sha": "f0898242b268b9f0cad0e5aac1804cae5bde0539"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-08-02-todo-first-composer-context-order.i18n.yaml",
+    "type": "blob",
+    "sha": "ceb83f006640c7a1efda14fc3f43f2e5356cd619"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-08-02-todo-first-composer-context-order.md",
+    "type": "blob",
+    "sha": "146b5f237d58ed0b9d92791bded2cddc47455431"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-08-02-todo-first-composer-context-order.zh.md",
+    "type": "blob",
+    "sha": "61e989ecd039e0e61196990cbcc7959a5ef929f1"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-08-21-inline-user-text-projection.i18n.yaml",
+    "type": "blob",
+    "sha": "d22f49eb214be31ac82a58a59e12b2a38eca4420"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-08-21-inline-user-text-projection.md",
+    "type": "blob",
+    "sha": "5b8735c31cdd6ff95970034a09b5abce4ab03e20"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-08-21-inline-user-text-projection.zh.md",
+    "type": "blob",
+    "sha": "35f5f970eec9700e437a508caa045f9de72e4788"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-09-10-deepseek-v41-request-image-projection.i18n.yaml",
+    "type": "blob",
+    "sha": "604079175648e9a2d218c1649ab05dff3c36a021"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-09-10-deepseek-v41-request-image-projection.md",
+    "type": "blob",
+    "sha": "053e4c10620e82e05279abf1adcb1567d9f87301"
+  },
+  {
+    "path": ".agents/notes/archived/bug-fix/2026-09-10-deepseek-v41-request-image-projection.zh.md",
+    "type": "blob",
+    "sha": "8a45fc18543a0ca139f9c696649c8d92cc6e09a1"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-06-29-todo-write-tool.i18n.yaml",
+    "type": "blob",
+    "sha": "995c0a10297360c1039ced262f794e4ca3f601e4"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-06-29-todo-write-tool.md",
+    "type": "blob",
+    "sha": "8accda2b7069554326f3b7ed1ddc7ffe842500b5"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-06-29-todo-write-tool.zh.md",
+    "type": "blob",
+    "sha": "ff356debaece11d413414496a9b14c7d727bbed9"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-07-23-web-todo-display.i18n.yaml",
+    "type": "blob",
+    "sha": "5113605f8a104b0796ca557b1edabe92b8e6e5a9"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-07-23-web-todo-display.md",
+    "type": "blob",
+    "sha": "19b1a766cf4803f2537442a1aca3a23236692c84"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-07-23-web-todo-display.zh.md",
+    "type": "blob",
+    "sha": "50722c7b2756fbab82221b8a7ac555019ef86d38"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-07-26-todo-parallel-in-progress.i18n.yaml",
+    "type": "blob",
+    "sha": "154450569cb2c3c1f54dadbc24b61ccbbb232a90"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-07-26-todo-parallel-in-progress.md",
+    "type": "blob",
+    "sha": "0e53af9a52f6e0a78d2babe5cafd9e1aa71e4ff0"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-07-26-todo-parallel-in-progress.zh.md",
+    "type": "blob",
+    "sha": "a8e76d653112d2081474c5428367a0714c5f598b"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-07-28-todo-plan-clears-on-next-turn.i18n.yaml",
+    "type": "blob",
+    "sha": "27b1e4088ad432263becddde67075c9ba12b9e32"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-07-28-todo-plan-clears-on-next-turn.md",
+    "type": "blob",
+    "sha": "84653953d6e9cadc004eac0e5f4af589952e464a"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-07-28-todo-plan-clears-on-next-turn.zh.md",
+    "type": "blob",
+    "sha": "889f5532e360cf3b6e37ebdab6f79d4d493d5f00"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-08-01-goal-command-input-projection.i18n.yaml",
+    "type": "blob",
+    "sha": "a61e6842cd49e717b9f4ae50e2307f42b517016b"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-08-01-goal-command-input-projection.md",
+    "type": "blob",
+    "sha": "b5bf10095dc6429edb9b2aadca9944f10ec65935"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-08-01-goal-command-input-projection.zh.md",
+    "type": "blob",
+    "sha": "dac3c96f0b26fa55e628a7d086d0b8cbccf4c282"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-08-26-shell-execute-projection-and-jobs-at-start.i18n.yaml",
+    "type": "blob",
+    "sha": "f9973e47f04eda79b96e0ad7e39334cdb4f72132"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-08-26-shell-execute-projection-and-jobs-at-start.md",
+    "type": "blob",
+    "sha": "8786d7b727d6c3bf219cd0a1fed4b9e565bd10bc"
+  },
+  {
+    "path": ".agents/notes/archived/feature/2026-08-26-shell-execute-projection-and-jobs-at-start.zh.md",
+    "type": "blob",
+    "sha": "9dd7753c295aed973fa0891aca1cf8ab24b3e602"
+  },
+  {
+    "path": ".agents/notes/archived/process/2026-07-13-documentation-site-projection.i18n.yaml",
+    "type": "blob",
+    "sha": "8a625e379227476087ea0cc61563cac341de32eb"
+  },
+  {
+    "path": ".agents/notes/archived/process/2026-07-13-documentation-site-projection.md",
+    "type": "blob",
+    "sha": "fdad85599cad940df03f7f2f750e3ade79281709"
+  },
+  {
+    "path": ".agents/notes/archived/process/2026-07-13-documentation-site-projection.zh.md",
+    "type": "blob",
+    "sha": "756ec23183107c7733ea89fa0f40767ec1d27b4f"
+  },
+  {
+    "path": ".agents/notes/archived/simplification/2026-07-21-tui-todo-write-opt-in.i18n.yaml",
+    "type": "blob",
+    "sha": "5f3c3b7d0dacf81b1ac6064999cda29774f3b97a"
+  },
+  {
+    "path": ".agents/notes/archived/simplification/2026-07-21-tui-todo-write-opt-in.md",
+    "type": "blob",
+    "sha": "fd2ad9bb89bd20ffddf4d509e427a34c5ec0cf2b"
+  },
+  {
+    "path": ".agents/notes/archived/simplification/2026-07-21-tui-todo-write-opt-in.zh.md",
+    "type": "blob",
+    "sha": "5b1a7f19a48c87686cfc2052d4ad19ed45ab1fb9"
+  },
+  {
+    "path": ".agents/notes/archived/simplification/2026-09-08-web-subagent-catalog-projections.i18n.yaml",
+    "type": "blob",
+    "sha": "099fcbe14ca3ddba1ba65a9b01da08fdd75ecbc3"
+  },
+  {
+    "path": ".agents/notes/archived/simplification/2026-09-08-web-subagent-catalog-projections.md",
+    "type": "blob",
+    "sha": "a8660dc6d90f9e555429e7fe666c10e2cc6beaf6"
+  },
+  {
+    "path": ".agents/notes/archived/simplification/2026-09-08-web-subagent-catalog-projections.zh.md",
+    "type": "blob",
+    "sha": "aa4e9c2d1ae4057c3060d94c87b90d3c6b5e4a51"
+  },
+  {
+    "path": ".agents/notes/archived/testing/2026-08-18-session-snapshot-envelope-projection.i18n.yaml",
+    "type": "blob",
+    "sha": "7cb8c1cbf26548a6dd0638d83a1e3cffef96a513"
+  },
+  {
+    "path": ".agents/notes/archived/testing/2026-08-18-session-snapshot-envelope-projection.md",
+    "type": "blob",
+    "sha": "9542330b16c4395837653a7c5118012be467e0d2"
+  },
+  {
+    "path": ".agents/notes/archived/testing/2026-08-18-session-snapshot-envelope-projection.zh.md",
+    "type": "blob",
+    "sha": "49cce9a60a9aa267391c35542230a0bd402713f8"
+  },
+  {
+    "path": ".agents/notes/implemented/architecture/2026-08-19-session-projection-mandatory-seam.i18n.yaml",
+    "type": "blob",
+    "sha": "24f76c7cb049a056e9970cc64517291d5f8100d6"
+  },
+  {
+    "path": ".agents/notes/implemented/architecture/2026-08-19-session-projection-mandatory-seam.md",
+    "type": "blob",
+    "sha": "e1c6835311228fcaf7a22140f1db8da748603186"
+  },
+  {
+    "path": ".agents/notes/implemented/architecture/2026-08-19-session-projection-mandatory-seam.zh.md",
+    "type": "blob",
+    "sha": "5d6a5169a556febae3f5c960b2d519c324d99863"
+  },
+  {
+    "path": ".agents/notes/implemented/architecture/2026-08-25-session-observations-and-projection-owned-client-state.i18n.yaml",
+    "type": "blob",
+    "sha": "bd2626e8506d3f1eb81fd617e0beffa4ac49f6e1"
+  },
+  {
+    "path": ".agents/notes/implemented/architecture/2026-08-25-session-observations-and-projection-owned-client-state.md",
+    "type": "blob",
+    "sha": "523122c9ae25bcba09e38fd614de7abd9378db52"
+  },
+  {
+    "path": ".agents/notes/implemented/architecture/2026-08-25-session-observations-and-projection-owned-client-state.zh.md",
+    "type": "blob",
+    "sha": "6639047731e4d19954979f554ea886f9edf78d4d"
+  },
+  {
+    "path": ".agents/notes/implemented/architecture/2026-09-11-plugin-owned-message-projections.i18n.yaml",
+    "type": "blob",
+    "sha": "90c7dfd954e0099c1c1dd3ae722124861c752286"
+  },
+  {
+    "path": ".agents/notes/implemented/architecture/2026-09-11-plugin-owned-message-projections.md",
+    "type": "blob",
+    "sha": "739d27644bea4bfc887c666d7fecfb03d9b82ee1"
+  },
+  {
+    "path": ".agents/notes/implemented/architecture/2026-09-11-plugin-owned-message-projections.zh.md",
+    "type": "blob",
+    "sha": "74c85825bf9609deecfbad2fb8c039e04277d290"
+  },
+  {
+    "path": ".agents/notes/implemented/architecture/2026-09-19-projection-cache-listing-identity-and-cached-rows.i18n.yaml",
+    "type": "blob",
+    "sha": "41376c7c736ed7df9ad4c490308bd9f6c449e661"
+  },
+  {
+    "path": ".agents/notes/implemented/architecture/2026-09-19-projection-cache-listing-identity-and-cached-rows.md",
+    "type": "blob",
+    "sha": "f0235d8040b8765e28ef62bdf21fa4a2707a0e90"
+  },
+  {
+    "path": ".agents/notes/implemented/architecture/2026-09-19-projection-cache-listing-identity-and-cached-rows.zh.md",
+    "type": "blob",
+    "sha": "326e6f028b91c96b5a188c50f200f650c215e138"
+  },
+  {
+    "path": ".agents/notes/proposed/architecture/2026-07-27-session-projection-and-command-log.i18n.yaml",
+    "type": "blob",
+    "sha": "59a262d59e3c4377ccfd4e66064758fc51755702"
+  },
+  {
+    "path": ".agents/notes/proposed/architecture/2026-07-27-session-projection-and-command-log.md",
+    "type": "blob",
+    "sha": "4e2e02482eb4001f8d2c9774ceb9236fdd9b2152"
+  },
+  {
+    "path": ".agents/notes/proposed/architecture/2026-07-27-session-projection-and-command-log.zh.md",
+    "type": "blob",
+    "sha": "f226acfc8323a0ee26ee42906702e2d48aedfd0f"
+  },
+  {
+    "path": "apps/cli/tests/profiles/headless/tests/todo-write.e2e.ts",
+    "type": "blob",
+    "sha": "ce688b60bd799a74a9ef4e1ffa9bbf5437e6d81a"
+  },
+  {
+    "path": "apps/web/tests/expected/todo-row",
+    "type": "tree",
+    "sha": "f7b2bc6ef185fa5d527bd921f222e4f2f5d32e05"
+  },
+  {
+    "path": "apps/web/tests/expected/todo-row/parallel-plan.expected.txt",
+    "type": "blob",
+    "sha": "22c2ac777a5fee25057e41b461b171e2b755c9aa"
+  },
+  {
+    "path": "apps/web/tests/todo-row.expected.e2e.ts",
+    "type": "blob",
+    "sha": "8bc45f4dfb22b5d7f8c96318a13abbeee6dc8eb8"
+  },
+  {
+    "path": "benchmarks/session-corpus/projection-list.bench.ts",
+    "type": "blob",
+    "sha": "d176b68dd2cc489df7400c49ec5ed4ca4c5c271f"
+  },
+  {
+    "path": "benchmarks/session-corpus/projection-list.worker.ts",
+    "type": "blob",
+    "sha": "5e95356c12e532ee9e239bd7d451d232726c97a4"
+  },
+  {
+    "path": "docs/subsystems/session-projection.i18n.yaml",
+    "type": "blob",
+    "sha": "8d53d7ed366cdc5bf68c32473f75e2524f95b9cf"
+  },
+  {
+    "path": "docs/subsystems/session-projection.md",
+    "type": "blob",
+    "sha": "8580b94c4d7dd36f942ff10d77e13d2dc70b7e8b"
+  },
+  {
+    "path": "docs/subsystems/session-projection.zh.md",
+    "type": "blob",
+    "sha": "b98d348a36c51aab973bc3397ddbf744860245a4"
+  },
+  {
+    "path": "docs/subsystems/todo.i18n.yaml",
+    "type": "blob",
+    "sha": "eff1b6097296ceece487141c5bb9b9bdddc4f3e6"
+  },
+  {
+    "path": "docs/subsystems/todo.md",
+    "type": "blob",
+    "sha": "8a5306793b98a704a97e413e7f354f685faecf1c"
+  },
+  {
+    "path": "docs/subsystems/todo.zh.md",
+    "type": "blob",
+    "sha": "09015a16de7b6dba4c94bae4c7f246d85b4f4444"
+  },
+  {
+    "path": "packages/acp/acp/tests/turns.spec.ts",
+    "type": "blob",
+    "sha": "1ef2bc94ce80cc35fdda119ac1c125ed49cb751b"
+  },
+  {
+    "path": "packages/api/session-controller/src/agent.ts",
+    "type": "blob",
+    "sha": "aaacc886e7785c41ddcab94326b1594caac26bff"
+  },
+  {
+    "path": "packages/api/session-controller/src/archived-session-gate.ts",
+    "type": "blob",
+    "sha": "06c6ee5f026c730e63287376ae226a4367969f7f"
+  },
+  {
+    "path": "packages/api/session-controller/src/assistant-stream.ts",
+    "type": "blob",
+    "sha": "b34ec2ed73afaef69954d7b92e53422ac721b4ba"
+  },
+  {
+    "path": "packages/api/session-controller/src/catalog.ts",
+    "type": "blob",
+    "sha": "83ee7a8b9365d7607a96b09fbcd336545a131aa3"
+  },
+  {
+    "path": "packages/api/session-controller/src/client",
+    "type": "tree",
+    "sha": "4a834869969437d0fb59ef984fdae8d2724d235b"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/contract",
+    "type": "tree",
+    "sha": "42208259e1e07cd531f63e8d206b7ef26b3ff88d"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/contract/events.ts",
+    "type": "blob",
+    "sha": "bc825f08fd5c84309b1483c27d0565991d4b8d8b"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/contract/session.ts",
+    "type": "blob",
+    "sha": "2c8f16c4ae452d39a9f8f3582d231fa4cc34e9a9"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/contract/sessions.ts",
+    "type": "blob",
+    "sha": "a52d2c155ac251b770682c95e77146c2ab541843"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/contract/snapshot.ts",
+    "type": "blob",
+    "sha": "161cd858b4310ea1bf62b3b68902e5dbf1271e68"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/index.ts",
+    "type": "blob",
+    "sha": "b9600f36a66e72efe0ad6ffd9c29d0cf38916a55"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/ordered-baseline.ts",
+    "type": "blob",
+    "sha": "b7fdcd545edb379af1abbb93bd10f99fa1469d7e"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/scope.ts",
+    "type": "blob",
+    "sha": "3c9618d405423fe0940e6f6d71160a76308740bb"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/session-wire-event.ts",
+    "type": "blob",
+    "sha": "59d6ef5b934f849381b12518b90a5bf4adb0cbd5"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/sessions",
+    "type": "tree",
+    "sha": "7a0ef89289a72b775144702bfea8b03bbe97a2f3"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/sessions/assistant-stream.ts",
+    "type": "blob",
+    "sha": "973fd10853ac946e98c2fd11d87bd8381f0e35c2"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/sessions/history-records.ts",
+    "type": "blob",
+    "sha": "9a7f14cfa677ac156bb4202d73fc50922c201bcb"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/sessions/lineage.ts",
+    "type": "blob",
+    "sha": "e74cd9dce5a86bf24b25fc7047c65e9de244984f"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/sessions/manager.ts",
+    "type": "blob",
+    "sha": "b8bec9be8a68e6aa23b799cfcf6ed0a30adc333e"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/sessions/notifier.ts",
+    "type": "blob",
+    "sha": "660c8645b41e4e8bb2bfb22b486ac05818e3e716"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/sessions/projection-store.ts",
+    "type": "blob",
+    "sha": "c10c81c4751d98dd592453aea18bc3a6a270e208"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/sessions/remotes.ts",
+    "type": "blob",
+    "sha": "8e084384d46f8712f617fa8d92a1e9e413f54b69"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/sessions/service.ts",
+    "type": "blob",
+    "sha": "b992a34920d863c81e8dd06bdb240ee4ef44a4c6"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/sessions/session.ts",
+    "type": "blob",
+    "sha": "09494e01abe7e1663e17770324b469ef2c0210c6"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/time-zone.ts",
+    "type": "blob",
+    "sha": "f4ba8207ff5ce6e48b67bf0ad4dcc9b4cb6c9a5f"
+  },
+  {
+    "path": "packages/api/session-controller/src/client/transport.ts",
+    "type": "blob",
+    "sha": "fc2a11a0bb5d2160f7c200fe619eadb9bddfb747"
+  },
+  {
+    "path": "packages/api/session-controller/src/commands.ts",
+    "type": "blob",
+    "sha": "8dd38573c8bb79dfed0e675f95e0848da9bb1381"
+  },
+  {
+    "path": "packages/api/session-controller/src/control.ts",
+    "type": "blob",
+    "sha": "8d27396d29c0126b52f343155cbc4f8a75c5ea6f"
+  },
+  {
+    "path": "packages/api/session-controller/src/file-references.ts",
+    "type": "blob",
+    "sha": "44d3417928b033fec8191fa51c1e0bb51f99739a"
+  },
+  {
+    "path": "packages/api/session-controller/src/history.ts",
+    "type": "blob",
+    "sha": "07fbbfe6beb4bf71084c94bab3b57024060f8e75"
+  },
+  {
+    "path": "packages/api/session-controller/src/index.ts",
+    "type": "blob",
+    "sha": "2362bce21c169a4825850c58a9c259b8fbc5e884"
+  },
+  {
+    "path": "packages/api/session-controller/src/list.ts",
+    "type": "blob",
+    "sha": "d7ef1ad43cf6147140297dfc021f6943c9d75653"
+  },
+  {
+    "path": "packages/api/session-controller/src/media-references.ts",
+    "type": "blob",
+    "sha": "9da80029f5e15f935304c377eaf1a259f6b3081e"
+  },
+  {
+    "path": "packages/api/session-controller/src/model-selection-projection.ts",
+    "type": "blob",
+    "sha": "47eddde1815ae9cde266784029db6fbaee05d298"
+  },
+  {
+    "path": "packages/api/session-controller/src/remote-events.ts",
+    "type": "blob",
+    "sha": "f9112e9e1fb6d0fd96a315d77285b4bb8ddcfc80"
+  },
+  {
+    "path": "packages/api/session-controller/src/skill-catalog.ts",
+    "type": "blob",
+    "sha": "c9865b0e6bdbd44ed9b059c05dc85e5417d7f0f9"
+  },
+  {
+    "path": "packages/api/session-controller/src/types.ts",
+    "type": "blob",
+    "sha": "c0b2b9a5734271a4791ea1f19e36077fb023c8aa"
+  },
+  {
+    "path": "packages/api/session-controller/tests/inbox-projection.client.spec.ts",
+    "type": "blob",
+    "sha": "0522c8db35f83f48b1f12396ce996bb2c6adb995"
+  },
+  {
+    "path": "packages/api/session-controller/tests/projection-discovery.host.spec.ts",
+    "type": "blob",
+    "sha": "fcfe1a482060a47388a6309b3cee56cca73d2037"
+  },
+  {
+    "path": "packages/api/session-controller/tests/projection-store.client.spec.ts",
+    "type": "blob",
+    "sha": "40e1f3c95fb7ab3b432691d3b9d60cffd365a0a1"
+  },
+  {
+    "path": "packages/api/session-controller/tests/session-projections.host.spec.ts",
+    "type": "blob",
+    "sha": "ed4f4a6b0ce6bc1b9f267da26e0c043779b345a6"
+  },
+  {
+    "path": "packages/attachment/attachment/src/request-projection.ts",
+    "type": "blob",
+    "sha": "4e809a3632e0c6b615543bc68b9b492428de26bb"
+  },
+  {
+    "path": "packages/attachment/attachment/tests/request-projection.spec.ts",
+    "type": "blob",
+    "sha": "2db1578863499cd5846534a4eda8b5803b85069e"
+  },
+  {
+    "path": "packages/client/ui-chat/src/client/conversation-nodes/event-projection.ts",
+    "type": "blob",
+    "sha": "e61bb53109dfa160ac66030e2e943698568f2724"
+  },
+  {
+    "path": "packages/client/ui-chat/tests/event-projection.client.spec.ts",
+    "type": "blob",
+    "sha": "c895f8a3bc2016574bab9ea4e448b8f702fd71d6"
+  },
+  {
+    "path": "packages/client/ui-chat/tests/turn-metrics.client.spec.ts",
+    "type": "blob",
+    "sha": "7d0ffed6e4c79e5ddb2bf20ef26c527df43924b0"
+  },
+  {
+    "path": "packages/client/ui-chat/tests/turn-navigator.client.spec.tsx",
+    "type": "blob",
+    "sha": "c21672c8aac420952ff7eb1b5512ab429fe2b018"
+  },
+  {
+    "path": "packages/client/ui-chat/tests/turn-process-tail.client.spec.ts",
+    "type": "blob",
+    "sha": "fd301201a1553ad3b0666706b3e9029b96f8261f"
+  },
+  {
+    "path": "packages/client/ui-chat/tests/turn-rail-items.client.spec.ts",
+    "type": "blob",
+    "sha": "289ff3c0fdde9aa8c3300c23eeda132480725807"
+  },
+  {
+    "path": "packages/client/ui-chat/tests/turn-tail-spacing.client.spec.ts",
+    "type": "blob",
+    "sha": "e2523c86d91a0dcc6d6cbc9c473e500d30536502"
+  },
+  {
+    "path": "packages/client/ui-chat/tests/turn-trigger.client.spec.tsx",
+    "type": "blob",
+    "sha": "c45672dac510b630a2aa187b53483a0f05d77d3d"
+  },
+  {
+    "path": "packages/client/ui-chat/tests/turn-usage-panel.client.spec.tsx",
+    "type": "blob",
+    "sha": "31d11413b77b2fdfc110c4c618d7e1fb8401e350"
+  },
+  {
+    "path": "packages/client/ui-conversation/src/client/input/editor/projection.ts",
+    "type": "blob",
+    "sha": "f48a5b595ddf3e89d67047d3e82237d202c30b9d"
+  },
+  {
+    "path": "packages/client/ui-conversation/src/client/skeleton/TodoPanel.module.css",
+    "type": "blob",
+    "sha": "04b537dad1c54054479dc4c01c01e5062bddddd1"
+  },
+  {
+    "path": "packages/client/ui-conversation/src/client/skeleton/TodoPanel.tsx",
+    "type": "blob",
+    "sha": "bf59a54adae4b617e91f42a9452c932a4c265aaf"
+  },
+  {
+    "path": "packages/client/ui-conversation/tests/todo-panel.client.spec.tsx",
+    "type": "blob",
+    "sha": "248c3cd92f2ecb4c6840b8e6eee4195d94ec9666"
+  },
+  {
+    "path": "packages/client/ui-deliverables/tests/turn-tail-spacing.client.spec.ts",
+    "type": "blob",
+    "sha": "9d9bb1cbc47ecad6f1b209596f7f69fd100bc16c"
+  },
+  {
+    "path": "packages/client/ui-renderer/tests/use-projection.client.spec.tsx",
+    "type": "blob",
+    "sha": "d01f6138d0f27fc17e8de5d2da6a6587462f4815"
+  },
+  {
+    "path": "packages/client/ui-schedule/tests/schedule-turn-card.client.spec.tsx",
+    "type": "blob",
+    "sha": "04fbd89222b82d57fc1214dde10e8c66529e460b"
+  },
+  {
+    "path": "packages/client/ui-session/src/client",
+    "type": "tree",
+    "sha": "eb68af785aeb473494f5871ca7f725924b0ea511"
+  },
+  {
+    "path": "packages/client/ui-session/src/client/index.ts",
+    "type": "blob",
+    "sha": "29aeebce04d4c0e2c54236a92ce30a4fb0df1520"
+  },
+  {
+    "path": "packages/client/ui-session/src/client/session-provider.tsx",
+    "type": "blob",
+    "sha": "b40f98ea42c48334e5dc571547e8796ae775b9ad"
+  },
+  {
+    "path": "packages/client/ui-session/src/index.ts",
+    "type": "blob",
+    "sha": "5c12a006655b9a9d5972085e6a66b285af7dfaf6"
+  },
+  {
+    "path": "packages/client/ui-settings-session-log/src/client",
+    "type": "tree",
+    "sha": "e8c1e2785a551332c9c4d71fc9e8e1873a991b2f"
+  },
+  {
+    "path": "packages/client/ui-settings-session-log/src/client/UploadRow.module.css",
+    "type": "blob",
+    "sha": "b3751d7f0ba98f3133a1f5c2684bacaf2aa0e53e"
+  },
+  {
+    "path": "packages/client/ui-settings-session-log/src/client/UploadRow.tsx",
+    "type": "blob",
+    "sha": "458752156c0479cbdf636f099f247772442f5751"
+  },
+  {
+    "path": "packages/client/ui-settings-session-log/src/client/index.ts",
+    "type": "blob",
+    "sha": "05863f3fba440b735b8e9ec9f6cf4a42baa803a2"
+  },
+  {
+    "path": "packages/client/ui-settings-session-log/src/client/locales.ts",
+    "type": "blob",
+    "sha": "accdd2058a42e508961144498480e774b37300c4"
+  },
+  {
+    "path": "packages/client/ui-settings-session-log/src/client/upload-preference.ts",
+    "type": "blob",
+    "sha": "044f5402caaae1e80fe75587dd8f8c4ff84e497f"
+  },
+  {
+    "path": "packages/client/ui-settings-session-log/src/css-modules.d.ts",
+    "type": "blob",
+    "sha": "8811db126498ec8fac4acff5c3f137ffb839fec5"
+  },
+  {
+    "path": "packages/client/ui-settings-session-log/src/index.ts",
+    "type": "blob",
+    "sha": "6910de42d75e880791fd73415d498cf5834596d4"
+  },
+  {
+    "path": "packages/client/ui-tool/src/client/tool/models/todo-diff-model.ts",
+    "type": "blob",
+    "sha": "f8451b12d3d602aad994f364c37cc4c55e93ee35"
+  },
+  {
+    "path": "packages/client/ui-tool/src/client/tool/models/todo-history.ts",
+    "type": "blob",
+    "sha": "591bc05ca5ac416415c9d4a347675f1242bc9c56"
+  },
+  {
+    "path": "packages/client/ui-tool/src/client/tool/toolviews/todo-row.tsx",
+    "type": "blob",
+    "sha": "9aafae3fbccde25db4608f53f4cb8b21771c29c2"
+  },
+  {
+    "path": "packages/client/ui-tool/tests/todo-history.client.spec.ts",
+    "type": "blob",
+    "sha": "5a6480cfa7095388140cf2a9c2123f2266b26802"
+  },
+  {
+    "path": "packages/client/ui-tool/tests/todo-row.client.spec.tsx",
+    "type": "blob",
+    "sha": "d2a608d8ad26e2a7216e2a8bd8bf4f2321070fca"
+  },
+  {
+    "path": "packages/client/ui-trajectory/src/client/trajectory-event-projection.ts",
+    "type": "blob",
+    "sha": "0f3d53823316d1877e90b021d1d3342a005e8210"
+  },
+  {
+    "path": "packages/client/ui-trajectory/tests/event-projection.client.spec.ts",
+    "type": "blob",
+    "sha": "75ccac40524b25642aadb8ac7b8ffa28e376e5fd"
+  },
+  {
+    "path": "packages/compaction/compaction-image-offload/src/projection.ts",
+    "type": "blob",
+    "sha": "1dd0e81bd03688cf554df9bb12e62358feb2d38f"
+  },
+  {
+    "path": "packages/compaction/compaction-image-offload/tests/projection.spec.ts",
+    "type": "blob",
+    "sha": "0c82575dabc69b7faff6528371978a1fc7f01e92"
+  },
+  {
+    "path": "packages/context/session-reference/src/config.ts",
+    "type": "blob",
+    "sha": "b338ca24cae32367772ac4c00e5488b5d731e607"
+  },
+  {
+    "path": "packages/context/session-reference/src/index.ts",
+    "type": "blob",
+    "sha": "2423410bf94333084523d1647091068d22de437d"
+  },
+  {
+    "path": "packages/context/session-reference/src/projection.ts",
+    "type": "blob",
+    "sha": "196c75b4e17a44d6ff6aca91157cd489febcb71b"
+  },
+  {
+    "path": "packages/context/session-reference/src/serialization.ts",
+    "type": "blob",
+    "sha": "9c6b307c768e46ef5bca3e0106997d34df692316"
+  },
+  {
+    "path": "packages/context/session-reference/src/spill.ts",
+    "type": "blob",
+    "sha": "08e8c987fc123cbe3e9d7b20f29ec0d8f9ce0410"
+  },
+  {
+    "path": "packages/context/session-reference/src/types.ts",
+    "type": "blob",
+    "sha": "3fdfdf8de565375a66d7450cf7cd0658b3ad4ffb"
+  },
+  {
+    "path": "packages/context/session-reference/src/uri.ts",
+    "type": "blob",
+    "sha": "c37f7b094de22b2c4d66a6e81b196f1eb7a4e2dd"
+  },
+  {
+    "path": "packages/core/agent-loop/tests/system-prompt-projection.spec.ts",
+    "type": "blob",
+    "sha": "65ec74c486f8d67b79a1d8c57a0cb5cc315dc860"
+  },
+  {
+    "path": "packages/core/agent/src/projection.ts",
+    "type": "blob",
+    "sha": "89c10ac858f476ed1972ce58d066a22c6296a7b9"
+  },
+  {
+    "path": "packages/core/session/src/fork.ts",
+    "type": "blob",
+    "sha": "8d5b2219768ce0a660b461166d50dcb80f3bcff2"
+  },
+  {
+    "path": "packages/core/session/src/index.ts",
+    "type": "blob",
+    "sha": "e1ecb920bd197aa9648b41c9a2d307ed14ac6edc"
+  },
+  {
+    "path": "packages/core/session/src/known-event-types.ts",
+    "type": "blob",
+    "sha": "a0f5c17795be074e3c521c525a0eb59ee25248d6"
+  },
+  {
+    "path": "packages/core/session/src/preparation.ts",
+    "type": "blob",
+    "sha": "ee8fe53747671f5fe2661d7c5c2c59a5f0893454"
+  },
+  {
+    "path": "packages/core/session/src/repair.ts",
+    "type": "blob",
+    "sha": "bb32f01ca06af2c496fa4c68fed287297e1b7fce"
+  },
+  {
+    "path": "packages/core/session/src/request-header.ts",
+    "type": "blob",
+    "sha": "326165a1bdbdf5aaae53ed94ea5436ab4064f7c2"
+  },
+  {
+    "path": "packages/core/session/src/seq-ranges.ts",
+    "type": "blob",
+    "sha": "fc77fc397e2e32d170cc15fd7f9bdb80484c71ea"
+  },
+  {
+    "path": "packages/core/session/src/surface.ts",
+    "type": "blob",
+    "sha": "0bb84c030ef595b3d9a17116e7dc7b9deb26369c"
+  },
+  {
+    "path": "packages/core/session/src/tool-history.ts",
+    "type": "blob",
+    "sha": "90c28dab06aedda41dbe60cc93481551ca3dc392"
+  },
+  {
+    "path": "packages/core/session/src/types.ts",
+    "type": "blob",
+    "sha": "e0931f22405b25cf1e9090929fb9f5f45852d6bc"
+  },
+  {
+    "path": "packages/core/session/tests/message-projections.spec.ts",
+    "type": "blob",
+    "sha": "055dac5ff6427df9b0592e340cb5bc64606d20a0"
+  },
+  {
+    "path": "packages/experimental/agent-team/src/projection.ts",
+    "type": "blob",
+    "sha": "bc9239d3d800339e231062f97bafcf6baebe3e99"
+  },
+  {
+    "path": "packages/experimental/agent-team/tests/projection-events.spec.ts",
+    "type": "blob",
+    "sha": "2266b414834214bc24e62a254f6dd4f2ae3f3679"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client",
+    "type": "tree",
+    "sha": "dd101a598b0c26614dd230fee5197be30c1ad996"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/index.ts",
+    "type": "blob",
+    "sha": "a51c8b9b0cccaed0a7c2eea13d882c5462d3bd8d"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/locales.ts",
+    "type": "blob",
+    "sha": "5a02c89b792918583614f87d0bac404c381280ff"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views",
+    "type": "tree",
+    "sha": "f61203bacc1f24c3c9d9d2667e184d7023e4aac6"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/InspectorDetails.tsx",
+    "type": "blob",
+    "sha": "6c20efa71e39a9e4054dd653e271112f0bf57203"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/InspectorObjectTree.tsx",
+    "type": "blob",
+    "sha": "7417df14b04a1d6ef9c5847e0a4af96588c20f6e"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/InspectorTable.tsx",
+    "type": "blob",
+    "sha": "e88ae0ee46e3dac16f8775b3212be8f9c4e072d8"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/TypeFilter.tsx",
+    "type": "blob",
+    "sha": "1e0fcb4d68b24f3ea510ede9e266bd8f70f00f8e"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/View.tsx",
+    "type": "blob",
+    "sha": "6a38e1224ec5f9d3f3cfbdb0e8f8cb3f724c1f16"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/chat-node",
+    "type": "tree",
+    "sha": "4ee00bb1ddb67c4eba7219599f5993bb1cacef58"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/chat-node/dom.ts",
+    "type": "blob",
+    "sha": "76cf2bdcc0aea7d65624af124d52b24de5ad1d62"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/chat-node/highlight.ts",
+    "type": "blob",
+    "sha": "fd0bd64cc91e423b5f6c8d761ef3b71c125ca30c"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/chat-node/model.ts",
+    "type": "blob",
+    "sha": "3a61ae98aa62519716ede18409b17d910e2d49dd"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/chat-node/objects.ts",
+    "type": "blob",
+    "sha": "ec8c726bd2ebcf4c80f16a64f63ba7f1195d2915"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/chat-node/pick-match.ts",
+    "type": "blob",
+    "sha": "f8f6a78b47d018f05ea48220e5ad6f4cf7803e77"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/chat-node/picker.ts",
+    "type": "blob",
+    "sha": "7ab5f41426c148faa867e680f5da5e088d33a56d"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/chat-node/reveal-target.ts",
+    "type": "blob",
+    "sha": "a83c0d974c79d24a9cc22a4c2c0197f13c8768ca"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/chat-node/reveal.ts",
+    "type": "blob",
+    "sha": "28ef3c32157c197e5872a9477a9b01e50863fd22"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/format.ts",
+    "type": "blob",
+    "sha": "3aca68f5a8a9f3a1d398ece7b35bb3cb66de4c62"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/index.ts",
+    "type": "blob",
+    "sha": "88b99669a73fee2d066c933a3838aa6956008ca0"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/inspector.module.css",
+    "type": "blob",
+    "sha": "196a2462775da6fc3df82ae72379469db7f06e8b"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/object-value.ts",
+    "type": "blob",
+    "sha": "147bbfe1e3b3adf46d152b7ba0f641b2d855f94c"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/objects.ts",
+    "type": "blob",
+    "sha": "81fc20197b275d913bc8847e036cdcb751d49661"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/raw-json.ts",
+    "type": "blob",
+    "sha": "fd9958a33587204375b7cb8ee01913b1a222e08f"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/session-log",
+    "type": "tree",
+    "sha": "5578085edcd700e9304f8c02635df493b00f2ef1"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/session-log/chat-target.ts",
+    "type": "blob",
+    "sha": "d0a4c48e4d6445cd1ab66f8698a6353977ddaf59"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/session-log/groups.ts",
+    "type": "blob",
+    "sha": "837e7d6eb22111748999b196d8954be88259df00"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/session-log/model.ts",
+    "type": "blob",
+    "sha": "01f865fd4ff91ddb2d9afb4fc02a24cc2e232805"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/session-log/stream.ts",
+    "type": "blob",
+    "sha": "9a0fc83b116bdcf02163af3bb0980dcd098cffa4"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/table-layout.ts",
+    "type": "blob",
+    "sha": "6dc10bdc077eb15611fde44303e86f1169d190f6"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/table-model.ts",
+    "type": "blob",
+    "sha": "246e594492bacbd8a2339eef2819d5b886d41ad6"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/client/views/type-filter.ts",
+    "type": "blob",
+    "sha": "87741b41e246eac2d222df0b15e9fc8d1202fa17"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/css-modules.d.ts",
+    "type": "blob",
+    "sha": "31a4a4cc291105efda33deb7c4482eb538eb18dd"
+  },
+  {
+    "path": "packages/experimental/session-inspector/src/index.ts",
+    "type": "blob",
+    "sha": "4c7c4ed59fb93a5cd03c25e060620425d9e9c896"
+  },
+  {
+    "path": "packages/experimental/session-search/src/index.ts",
+    "type": "blob",
+    "sha": "ad451978f10b383959bc390760d59935388c2c66"
+  },
+  {
+    "path": "packages/experimental/session-title-all-prompts-llm/src/index.ts",
+    "type": "blob",
+    "sha": "a88ba636950740a71b9123463c9a90abd72f6d90"
+  },
+  {
+    "path": "packages/experimental/session-titles-bundle/src/index.ts",
+    "type": "blob",
+    "sha": "1b2c8b1664857ef76bc199c86b9e5e2c2f7232d9"
+  },
+  {
+    "path": "packages/experimental/tool-session-query/src/index.ts",
+    "type": "blob",
+    "sha": "61e18cc8f57826d672ba95b6e1fc2dd6d93e8274"
+  },
+  {
+    "path": "packages/experimental/tool-session-query/src/input.ts",
+    "type": "blob",
+    "sha": "f9f5de66f252f15db32682a7ad88d348f3837890"
+  },
+  {
+    "path": "packages/experimental/tool-session-query/src/operations.ts",
+    "type": "blob",
+    "sha": "3d5fa17f317145da3655bc05743140ac6ee32acb"
+  },
+  {
+    "path": "packages/experimental/tool-session-query/src/presentation.ts",
+    "type": "blob",
+    "sha": "659a48d17ba46ea16d11b36336323148f690a107"
+  },
+  {
+    "path": "packages/experimental/tool-session-query/src/service-boundary.ts",
+    "type": "blob",
+    "sha": "98bc8e8dc9b4c4c763bf028089700c0c8941f1bc"
+  },
+  {
+    "path": "packages/experimental/tool-session-query/src/workspace-access.ts",
+    "type": "blob",
+    "sha": "9eabee4e4615c94597870cb40c4c4c73a06533a7"
+  },
+  {
+    "path": "packages/goal/goal/tests/projection.spec.ts",
+    "type": "blob",
+    "sha": "227da38ad8287612d618746b8d8374506ffe472e"
+  },
+  {
+    "path": "packages/interaction/permission-presets/tests/projection.spec.ts",
+    "type": "blob",
+    "sha": "d9d301dd474f96a9bb5a82f656e97f91408f99c8"
+  },
+  {
+    "path": "packages/interaction/user-questions/src/projection.ts",
+    "type": "blob",
+    "sha": "7453a265a5617a2b796ac0862c01cd224dd8a720"
+  },
+  {
+    "path": "packages/interaction/user-questions/tests/projection.spec.ts",
+    "type": "blob",
+    "sha": "b235b36c1cf0a7a081cdd47fef7eecd70bc5067d"
+  },
+  {
+    "path": "packages/llm/token-meter/src/breakdown-projection.ts",
+    "type": "blob",
+    "sha": "66ea6ae398689fc4d92c37640b5084e15de401bc"
+  },
+  {
+    "path": "packages/llm/token-meter/src/projection.ts",
+    "type": "blob",
+    "sha": "5f23d266d3b414219e6be20bc69548be8a47bd1e"
+  },
+  {
+    "path": "packages/llm/token-meter/src/surface-projection.ts",
+    "type": "blob",
+    "sha": "b23d31e1926d74318c20dcecfdc2a4089eca4e98"
+  },
+  {
+    "path": "packages/llm/token-meter/src/usage-projection.ts",
+    "type": "blob",
+    "sha": "2238316fabf27e3d9d71a1031305b82e6cb40b59"
+  },
+  {
+    "path": "packages/llm/token-meter/tests/context-breakdown-projection.spec.ts",
+    "type": "blob",
+    "sha": "9818d45163aef16f656b5ff5548fe2fa35b64534"
+  },
+  {
+    "path": "packages/llm/token-meter/tests/token-usage-projection.spec.ts",
+    "type": "blob",
+    "sha": "b34e6e31ff4cdf3734c47c93edac32c8d855ce2f"
+  },
+  {
+    "path": "packages/llm/token-meter/tests/turn-usage.spec.ts",
+    "type": "blob",
+    "sha": "ad3b648df321270cadf927415f7221cfa7972706"
+  },
+  {
+    "path": "packages/plan/plan-mode/tests/projection.spec.ts",
+    "type": "blob",
+    "sha": "3c2fc36b5ce170d89e69aef3f737d407b65fa7e2"
+  },
+  {
+    "path": "packages/sdk/client/tests/cot-translation-projection.spec.ts",
+    "type": "blob",
+    "sha": "b9a3fff293995d64de3aa463a8dcf96c950ceb86"
+  },
+  {
+    "path": "packages/sdk/client/tests/expected/cot-translation-projection.json",
+    "type": "blob",
+    "sha": "7553a5977a14bbab4279ac2da281992a002b0b3d"
+  },
+  {
+    "path": "packages/session-query/session-log-export/src/archive.ts",
+    "type": "blob",
+    "sha": "9ff6416689a6b43c635e6279235c9c84bf149713"
+  },
+  {
+    "path": "packages/session-query/session-log-export/src/client",
+    "type": "tree",
+    "sha": "08d08b771b7903ff533efed653d84fc63170677e"
+  },
+  {
+    "path": "packages/session-query/session-log-export/src/client/Dialog.tsx",
+    "type": "blob",
+    "sha": "58600aaf5161c58b0eba7d495171351d16451c09"
+  },
+  {
+    "path": "packages/session-query/session-log-export/src/client/HeaderAction.module.css",
+    "type": "blob",
+    "sha": "90ca1eedbc1061267e712ad25ccd0e2680b3793c"
+  },
+  {
+    "path": "packages/session-query/session-log-export/src/client/HeaderAction.tsx",
+    "type": "blob",
+    "sha": "5104dee910501b518f691a67c7b6926089eb4134"
+  },
+  {
+    "path": "packages/session-query/session-log-export/src/client/controller.ts",
+    "type": "blob",
+    "sha": "071b99f55e47fdb2a02bc2d5bfb6871f624a2bfa"
+  },
+  {
+    "path": "packages/session-query/session-log-export/src/client/index.ts",
+    "type": "blob",
+    "sha": "bcba0dd581c896c2503a121087d4ec6dc61f0fdc"
+  },
+  {
+    "path": "packages/session-query/session-log-export/src/client/locales.ts",
+    "type": "blob",
+    "sha": "1fd687a3796ccffd392159f8e03f77c45f8d595e"
+  },
+  {
+    "path": "packages/session-query/session-log-export/src/css-modules.d.ts",
+    "type": "blob",
+    "sha": "bc5e482353ccdad2cac56977c6880a9453324cd6"
+  },
+  {
+    "path": "packages/session-query/session-log-export/src/index.ts",
+    "type": "blob",
+    "sha": "98870d061849f495c2e0ed968cbe0fe08aaa7d3f"
+  },
+  {
+    "path": "packages/session-query/session-log-export/src/routes.ts",
+    "type": "blob",
+    "sha": "e6033519958ade6c5accbde9dee24e6328d393a7"
+  },
+  {
+    "path": "packages/session-query/session-query-sqlite/src/index.ts",
+    "type": "blob",
+    "sha": "7c95afa28d8d048179e1d434d30950e5d00022b8"
+  },
+  {
+    "path": "packages/session-query/session-query-sqlite/src/query.ts",
+    "type": "blob",
+    "sha": "5a67653911f449ad82e590283e61b024b5f4a5df"
+  },
+  {
+    "path": "packages/session-query/session-query-sqlite/src/schema.ts",
+    "type": "blob",
+    "sha": "6ad031f77f73ee1d1e88ebe6f7963f5d1a856581"
+  },
+  {
+    "path": "packages/session-query/session-query/src/cold-read.ts",
+    "type": "blob",
+    "sha": "b8477cb0834eaa70d96aba1bb92b1a8e86f424be"
+  },
+  {
+    "path": "packages/session-query/session-query/src/config.ts",
+    "type": "blob",
+    "sha": "e5475e3df66a1257ff293ee9787b61be1f6001f7"
+  },
+  {
+    "path": "packages/session-query/session-query/src/corpus.ts",
+    "type": "blob",
+    "sha": "7ab77166cf46d191aa133193d35a233accad9faa"
+  },
+  {
+    "path": "packages/session-query/session-query/src/cursor.ts",
+    "type": "blob",
+    "sha": "8ee2a6660d97db55946d11bb7166114931916790"
+  },
+  {
+    "path": "packages/session-query/session-query/src/documents.ts",
+    "type": "blob",
+    "sha": "8788c8ea35270340a866003edcc229efd7140ee2"
+  },
+  {
+    "path": "packages/session-query/session-query/src/extraction.ts",
+    "type": "blob",
+    "sha": "198b11819796c6dd73a1156267aa7fb5793e8533"
+  },
+  {
+    "path": "packages/session-query/session-query/src/filters.ts",
+    "type": "blob",
+    "sha": "91ae640615860c07d28feeaa3841b5488afe6d53"
+  },
+  {
+    "path": "packages/session-query/session-query/src/index.ts",
+    "type": "blob",
+    "sha": "838ce4c74f6ef47b7442922eaefb742da03ba466"
+  },
+  {
+    "path": "packages/session-query/session-query/src/observation.ts",
+    "type": "blob",
+    "sha": "adfe84fd0b90caeeb7b0e490d4d0a34002b9e345"
+  },
+  {
+    "path": "packages/session-query/session-query/src/sources.ts",
+    "type": "blob",
+    "sha": "9c73d3d4743708c5e5cebfa04720c6594e952e4b"
+  },
+  {
+    "path": "packages/session-query/session-query/src/tracing.ts",
+    "type": "blob",
+    "sha": "0cd3fccfbb8e5f740bd88014d36b52bf23a4740a"
+  },
+  {
+    "path": "packages/session-query/session-query/src/types.ts",
+    "type": "blob",
+    "sha": "cca5b2283ea0874d354ce9a5cc5149c993b54c5a"
+  },
+  {
+    "path": "packages/session/session-checkpoint-policy/src/index.ts",
+    "type": "blob",
+    "sha": "0fc456eb08853b9fe54d0bf9ca3a26c05b4413cf"
+  },
+  {
+    "path": "packages/session/session-format-catalog/src/children.ts",
+    "type": "blob",
+    "sha": "580e46d2ae3dd6e1b1c568d874ce5614243f0764"
+  },
+  {
+    "path": "packages/session/session-format-catalog/src/current.ts",
+    "type": "blob",
+    "sha": "70fb574590dd685183be268ab65e3878b962759c"
+  },
+  {
+    "path": "packages/session/session-format-catalog/src/generated.ts",
+    "type": "blob",
+    "sha": "eab9d914564be9be6ccd331562bd9d4be97a6bd9"
+  },
+  {
+    "path": "packages/session/session-format-catalog/src/historical.ts",
+    "type": "blob",
+    "sha": "e04434ce72e0378ea12f29a1511c2d3bc299abe6"
+  },
+  {
+    "path": "packages/session/session-format-catalog/src/index.ts",
+    "type": "blob",
+    "sha": "854a9c89b607730f72280cbbf3a2fed273025459"
+  },
+  {
+    "path": "packages/session/session-format-catalog/src/message-projections.ts",
+    "type": "blob",
+    "sha": "d011783c12ef31fe23d405c67e1ec30ebd0b039e"
+  },
+  {
+    "path": "packages/session/session-format-v0-to-v1/src/codec.ts",
+    "type": "blob",
+    "sha": "c5ad4a70af302cad169f2cab3dec1fbc089008ea"
+  },
+  {
+    "path": "packages/session/session-format-v0-to-v1/src/dispositions.ts",
+    "type": "blob",
+    "sha": "24702e8bb11eab013d8e22b2653d1f690067dcb7"
+  },
+  {
+    "path": "packages/session/session-format-v0-to-v1/src/index.ts",
+    "type": "blob",
+    "sha": "4409bb31ade37773711dac66a77dc2f0b71b26ff"
+  },
+  {
+    "path": "packages/session/session-format-v0-to-v1/src/migration.ts",
+    "type": "blob",
+    "sha": "0a4ead8bcf8a6d977f4e2bb8e2e518b149c70340"
+  },
+  {
+    "path": "packages/session/session-format-v0-to-v1/src/payload-validation.ts",
+    "type": "blob",
+    "sha": "5b19f7cc6668d8e9bfc1c75806d3898132eb94ee"
+  },
+  {
+    "path": "packages/session/session-format-v0-to-v1/src/relationships.ts",
+    "type": "blob",
+    "sha": "ddd1a4b71d2fbb36ca93be9a41cc6eab41048e54"
+  },
+  {
+    "path": "packages/session/session-format-v0-to-v1/src/testing",
+    "type": "tree",
+    "sha": "7c7efa80428753aef8e0038628ba26bed1914275"
+  },
+  {
+    "path": "packages/session/session-format-v0-to-v1/src/testing/restore.ts",
+    "type": "blob",
+    "sha": "be2278af4346a9805388261b7773000811f6baed"
+  },
+  {
+    "path": "packages/session/session-format-v0-to-v1/src/testing/validation.ts",
+    "type": "blob",
+    "sha": "100b8d3bf7fdb87e4a9ce2a42d9ea341a4f1d461"
+  },
+  {
+    "path": "packages/session/session-format-v0-to-v1/src/validation-helpers.ts",
+    "type": "blob",
+    "sha": "8122af4b9a8b6ef5a0c3e8ebfd2125b9af34f681"
+  },
+  {
+    "path": "packages/session/session-format-v0-to-v1/src/validation.ts",
+    "type": "blob",
+    "sha": "762ed963f73c7159f5309176cc69b11db25ac634"
+  },
+  {
+    "path": "packages/session/session-format-v1-to-v2/src/codec.ts",
+    "type": "blob",
+    "sha": "40e935e7b4dea196b880d5fe058b25d8b82cb894"
+  },
+  {
+    "path": "packages/session/session-format-v1-to-v2/src/dispositions.ts",
+    "type": "blob",
+    "sha": "a87edb0013986cc291a0ccd96d9ea62750280393"
+  },
+  {
+    "path": "packages/session/session-format-v1-to-v2/src/index.ts",
+    "type": "blob",
+    "sha": "9e6977e0c8b43ea42f6b7e9af6ada33cb50d338f"
+  },
+  {
+    "path": "packages/session/session-format-v1-to-v2/src/migration.ts",
+    "type": "blob",
+    "sha": "b7a8b94afbc0ed8976a79e4c7fb8524d218352ea"
+  },
+  {
+    "path": "packages/session/session-format-v1-to-v2/src/testing",
+    "type": "tree",
+    "sha": "98e00154bcfbd227c4a410a2d7a0799e71ea1d4a"
+  },
+  {
+    "path": "packages/session/session-format-v1-to-v2/src/testing/validation.ts",
+    "type": "blob",
+    "sha": "aac6176da334a28873b8a2a3c4a11240e044427b"
+  },
+  {
+    "path": "packages/session/session-format-v1-to-v2/src/validation.ts",
+    "type": "blob",
+    "sha": "5725be03a4434dc071e05b98bb925cc3573e94c6"
+  },
+  {
+    "path": "packages/session/session-format-v2-to-v3/src/codec.ts",
+    "type": "blob",
+    "sha": "aae2c2b76223d52b44af02d12947bc33a246b683"
+  },
+  {
+    "path": "packages/session/session-format-v2-to-v3/src/index.ts",
+    "type": "blob",
+    "sha": "aeba87024551ac34039e1c50ab17bbdb0a3146a0"
+  },
+  {
+    "path": "packages/session/session-format-v2-to-v3/src/migration.ts",
+    "type": "blob",
+    "sha": "3aecf8a518cf12b60a56308d97fbab9e41d52b0c"
+  },
+  {
+    "path": "packages/session/session-format-v2-to-v3/src/payload.ts",
+    "type": "blob",
+    "sha": "3aa2add118102df7e9638253a08a62bc204d8660"
+  },
+  {
+    "path": "packages/session/session-format-v2-to-v3/src/references.ts",
+    "type": "blob",
+    "sha": "a7e66bc72f62d95bcc7d9158e88bc7d797cd8819"
+  },
+  {
+    "path": "packages/session/session-format-v2-to-v3/src/validation.ts",
+    "type": "blob",
+    "sha": "5f6b5972f2fdf6ffbfe2df4054ba2a2d34e001c6"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/codec.ts",
+    "type": "blob",
+    "sha": "b7cf4e7a2b2eda3f2d514a1b57157188352545c2"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/content.ts",
+    "type": "blob",
+    "sha": "51cc21e12b5eb083abac36768336eeb61c0d08c1"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/developer.ts",
+    "type": "blob",
+    "sha": "9200831177c56349c06be2d5a0535b8520dcbffd"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/extension-identities.ts",
+    "type": "blob",
+    "sha": "20b9c732ed30233fdca6f97c786942123fde4b25"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/facts.ts",
+    "type": "blob",
+    "sha": "ec36e7cb2b773da5fe0967fc47d5b3b9cef652a4"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/fork-result.ts",
+    "type": "blob",
+    "sha": "352a31d1a740a04bc2fa75b563ad3d2465cdc80d"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/index.ts",
+    "type": "blob",
+    "sha": "25254a32948e5a65bdbe19aa9bfa64012108d665"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/message-sources.ts",
+    "type": "blob",
+    "sha": "9cf580b265f60113bf52c7bd4b0a72477c1c5ca7"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/migration.ts",
+    "type": "blob",
+    "sha": "63a3460608283625552a6377d97bf43a537f4c8a"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/references.ts",
+    "type": "blob",
+    "sha": "f28b3ebc74567d41e1e086059c443b2eb5bd7303"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/relationships.ts",
+    "type": "blob",
+    "sha": "aa50b3f3bfd4fc4a4b967b30c96eabf249c2d117"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/retired-syntax.ts",
+    "type": "blob",
+    "sha": "13d62c45f57692940b01930eb23ddd2ba3ec544c"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/sources.ts",
+    "type": "blob",
+    "sha": "3c6a2886132701fed5b5db980f66386d585dde15"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/system-message.ts",
+    "type": "blob",
+    "sha": "f2a2ed1378f616b0331b39c31439f228860debee"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/testing",
+    "type": "tree",
+    "sha": "03389c47174a6a4062e7dde7f122d8038c9520e2"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/testing/validation.ts",
+    "type": "blob",
+    "sha": "08ec7fa8c6a5f7b077ae98bbf3c101eff17be83d"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/tool-role.ts",
+    "type": "blob",
+    "sha": "239a299fdc25e2134b50d2388beb9e410aa20473"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/src/validation.ts",
+    "type": "blob",
+    "sha": "8c0e74d61de7c94a2cc37131912c96fe3288b544"
+  },
+  {
+    "path": "packages/session/session-format-v3-to-v4/tests/interrupted-turn.spec.ts",
+    "type": "blob",
+    "sha": "db9f63479f29deacbe4dad4ed4af5c3731a6fc4e"
+  },
+  {
+    "path": "packages/session/session-format/src/catalog.ts",
+    "type": "blob",
+    "sha": "b96b5a79c09a93e3d011d91276c3e80cb61f9244"
+  },
+  {
+    "path": "packages/session/session-format/src/chain.ts",
+    "type": "blob",
+    "sha": "75b9395051e8ed8f05421818c15d56131d2b5985"
+  },
+  {
+    "path": "packages/session/session-format/src/context.ts",
+    "type": "blob",
+    "sha": "f3dd0bb944e150e196d5c31dd922aad55392a8ec"
+  },
+  {
+    "path": "packages/session/session-format/src/error.ts",
+    "type": "blob",
+    "sha": "9b7e4c6a00da358e10a8a0c189a070c7d602aad7"
+  },
+  {
+    "path": "packages/session/session-format/src/filename.ts",
+    "type": "blob",
+    "sha": "7b6e1cd2f71a868c8a8b60242773a6b87b036da4"
+  },
+  {
+    "path": "packages/session/session-format/src/index.ts",
+    "type": "blob",
+    "sha": "44614cce12253d36667e1e659bd434deb220e54e"
+  },
+  {
+    "path": "packages/session/session-format/src/json.ts",
+    "type": "blob",
+    "sha": "a4a35a32a2fcb9aea59a5ec770f29c4d08ed55ad"
+  },
+  {
+    "path": "packages/session/session-format/src/types.ts",
+    "type": "blob",
+    "sha": "f748cc302c9bfc3ad27902b2a23379b6da663566"
+  },
+  {
+    "path": "packages/session/session-log-deepseek/src/index.ts",
+    "type": "blob",
+    "sha": "0f197bc3f5df1782064e8a48b451763358f5b9dc"
+  },
+  {
+    "path": "packages/session/session-log-deepseek/src/types.ts",
+    "type": "blob",
+    "sha": "4201c51f9967cb0b09ba0544e6fea2956fb76ff8"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/catalog-migration.ts",
+    "type": "blob",
+    "sha": "f0aefc057f661465028a301518f1e25a4494ab8d"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/format.ts",
+    "type": "blob",
+    "sha": "781c5d83c32e14e30b37d7ae5c3a68cfe7f7b10b"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/generation.ts",
+    "type": "blob",
+    "sha": "ff01e9a038a848b70342af6672533388056c40fc"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/index.ts",
+    "type": "blob",
+    "sha": "3c3c13589fbcf74842ba8090a74e2d12e7baad79"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/lease.ts",
+    "type": "blob",
+    "sha": "59dfe27fcacc9943ae0eda8fe7bde4d136c86afb"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/migration-verifier.ts",
+    "type": "blob",
+    "sha": "a23692d802bc2557806cd5135745868772b7118c"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/storage.ts",
+    "type": "blob",
+    "sha": "197dcbc270cd153c8cb8b897359378d46963daa8"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/testing",
+    "type": "tree",
+    "sha": "889e409427ac796211df8ee71a95e0ebfeeaa65b"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/testing/generation.ts",
+    "type": "blob",
+    "sha": "dbec2b63fc5128a79d66f3d35f1d7fdff2e087f4"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/win32.ts",
+    "type": "blob",
+    "sha": "2369f474f28b592a68d6ff33d84305477577c1e8"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/worker.ts",
+    "type": "blob",
+    "sha": "cc77016c30a283b9b655d6997269209371e7b108"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/zstd-private-decoder.ts",
+    "type": "blob",
+    "sha": "6cc88aadf7aa762292a0494552adb5364c098561"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/zstd-public-decoder.ts",
+    "type": "blob",
+    "sha": "b08c77dfdbbaa68c66c4f3d9e7b101a916d48e96"
+  },
+  {
+    "path": "packages/session/session-persistence-jsonl/src/zstd.ts",
+    "type": "blob",
+    "sha": "01b4d459f0dc810a13373e506959a5329d9ebf34"
+  },
+  {
+    "path": "packages/session/session-persistence/src/errors.ts",
+    "type": "blob",
+    "sha": "62e232741ee61233d53847c94828c072779f1f2e"
+  },
+  {
+    "path": "packages/session/session-persistence/src/handle.ts",
+    "type": "blob",
+    "sha": "b6a194c87d14b787df55452e50f0008b3f56337a"
+  },
+  {
+    "path": "packages/session/session-persistence/src/index.ts",
+    "type": "blob",
+    "sha": "f257ca0e1e4f38c26eb831cf171b8191c6bd9873"
+  },
+  {
+    "path": "packages/session/session-persistence/src/revision.ts",
+    "type": "blob",
+    "sha": "cb037ffafcd8affe250c7f8fb3792237ab0f804b"
+  },
+  {
+    "path": "packages/session/session-persistence/src/storage-contract.ts",
+    "type": "blob",
+    "sha": "172a59a25829235d117ef767296a8e244f721ce3"
+  },
+  {
+    "path": "packages/session/session-projection-cache",
+    "type": "tree",
+    "sha": "b85d5a546fe494389fc17118df6c668ae4ea3719"
+  },
+  {
+    "path": "packages/session/session-projection-cache/README.i18n.yaml",
+    "type": "blob",
+    "sha": "4d5408b806f4183002074c9a8fae4519422d83b0"
+  },
+  {
+    "path": "packages/session/session-projection-cache/README.md",
+    "type": "blob",
+    "sha": "8aa797b35ad9bfab06859f70eaac460cb967e0de"
+  },
+  {
+    "path": "packages/session/session-projection-cache/README.zh.md",
+    "type": "blob",
+    "sha": "46d2c13babf005fa81087f679558fe24c011750b"
+  },
+  {
+    "path": "packages/session/session-projection-cache/locale",
+    "type": "tree",
+    "sha": "e18aa892445168aad871c3c75de050f9ad836001"
+  },
+  {
+    "path": "packages/session/session-projection-cache/locale/en.json",
+    "type": "blob",
+    "sha": "911a09f3620b1fa93ea545dc7caa80b791cfbe9a"
+  },
+  {
+    "path": "packages/session/session-projection-cache/locale/zh.json",
+    "type": "blob",
+    "sha": "a8fcc246f78e81b2359670793c64b54e5a8ac794"
+  },
+  {
+    "path": "packages/session/session-projection-cache/package.json",
+    "type": "blob",
+    "sha": "eb7b46590f155931eef93e92b799bb56bbd3e604"
+  },
+  {
+    "path": "packages/session/session-projection-cache/src",
+    "type": "tree",
+    "sha": "700c8debdef5ddfb254b1c7096f08b058f173207"
+  },
+  {
+    "path": "packages/session/session-projection-cache/src/index.ts",
+    "type": "blob",
+    "sha": "34726fc3b81388f2f8c78e604287307f37d8f18d"
+  },
+  {
+    "path": "packages/session/session-projection-cache/src/spec.ts",
+    "type": "blob",
+    "sha": "8da5b250bf60829b74694d8c7b49f846f4e36b61"
+  },
+  {
+    "path": "packages/session/session-projection-cache/tests",
+    "type": "tree",
+    "sha": "080b9780fbe0799e1858d816bec4138a16e6035d"
+  },
+  {
+    "path": "packages/session/session-projection-cache/tests/cache.spec.ts",
+    "type": "blob",
+    "sha": "87860844eebf9ad5e9777b6e6bb1d6d995540d9d"
+  },
+  {
+    "path": "packages/session/session-projection-cache/tests/fixtures.spec.ts",
+    "type": "blob",
+    "sha": "2849ea1b817997712fa83d0172883790ba9d3e45"
+  },
+  {
+    "path": "packages/session/session-projection-cache/tests/fixtures",
+    "type": "tree",
+    "sha": "082dc312adecd07ed7cc776c153ca63125b8aed2"
+  },
+  {
+    "path": "packages/session/session-projection-cache/tests/fixtures/v3-single-unit.json",
+    "type": "blob",
+    "sha": "4b36243611f92154892c2548ad7e831af66d4589"
+  },
+  {
+    "path": "packages/session/session-projection-cache/tests/fixtures/v4-session-doc.json",
+    "type": "blob",
+    "sha": "56d6868405f7946483222d717e2551b68ad81705"
+  },
+  {
+    "path": "packages/session/session-projection-cache/tests/fixtures/v5-lineageless-doc.json",
+    "type": "blob",
+    "sha": "f887e980e2f38eec47539f6c4ca24e646fdddbec"
+  },
+  {
+    "path": "packages/session/session-projection-cache/tests/fixtures/v5-session-doc.json",
+    "type": "blob",
+    "sha": "9b822870a800252e0f07c420694878c8aa4ae6d1"
+  },
+  {
+    "path": "packages/session/session-projection-cache/tests/fixtures/v7-opaque-session-doc.json",
+    "type": "blob",
+    "sha": "5bf96ab142beedb414020dc88d2a43b1bca8c442"
+  },
+  {
+    "path": "packages/session/session-projection-cache/tsconfig.json",
+    "type": "blob",
+    "sha": "4b68216bfde1673b2b7b0168591dfd6f12555356"
+  },
+  {
+    "path": "packages/session/session-projection",
+    "type": "tree",
+    "sha": "4d82f7e41c541472725c9b568458d8ddc3be90ce"
+  },
+  {
+    "path": "packages/session/session-projection/README.i18n.yaml",
+    "type": "blob",
+    "sha": "c6305ff877c63311a257e0b9c152cf672e7a2138"
+  },
+  {
+    "path": "packages/session/session-projection/README.md",
+    "type": "blob",
+    "sha": "79c5e0b213707b33964591e4e0792853bf32089f"
+  },
+  {
+    "path": "packages/session/session-projection/README.zh.md",
+    "type": "blob",
+    "sha": "cb44e32ef9c3482da4f64d86d485f5fde1901b41"
+  },
+  {
+    "path": "packages/session/session-projection/locale",
+    "type": "tree",
+    "sha": "137dd55483a271aa9a2ee3f94929046343065d77"
+  },
+  {
+    "path": "packages/session/session-projection/locale/en.json",
+    "type": "blob",
+    "sha": "84af3a0a04f90453e9c5d04a10874abd450930ce"
+  },
+  {
+    "path": "packages/session/session-projection/locale/zh.json",
+    "type": "blob",
+    "sha": "7e4377831699b693f79a9758a2ebc9f71e12c4a2"
+  },
+  {
+    "path": "packages/session/session-projection/package.json",
+    "type": "blob",
+    "sha": "eee5012258a8c79183709af74651e58f1ae10872"
+  },
+  {
+    "path": "packages/session/session-projection/src",
+    "type": "tree",
+    "sha": "d71a7d0989685214f54f9a99eb65d817175544eb"
+  },
+  {
+    "path": "packages/session/session-projection/src/index.ts",
+    "type": "blob",
+    "sha": "ac6e63458f840f6f8b1c95541e3fbf62912eccd8"
+  },
+  {
+    "path": "packages/session/session-projection/src/types.ts",
+    "type": "blob",
+    "sha": "8373e4677b1e0485016311a257bb6c246e0ee662"
+  },
+  {
+    "path": "packages/session/session-projection/tests",
+    "type": "tree",
+    "sha": "e7a4b5e361eff5a8cf0244d66e510396a1e8514c"
+  },
+  {
+    "path": "packages/session/session-projection/tests/registry.spec.ts",
+    "type": "blob",
+    "sha": "de7ecdde60f5e623551da1f593e351f8b6502186"
+  },
+  {
+    "path": "packages/session/session-projection/tsconfig.json",
+    "type": "blob",
+    "sha": "e817086a6a0446f88524123869ce55d801762d04"
+  },
+  {
+    "path": "packages/session/session-stats/src/client.ts",
+    "type": "blob",
+    "sha": "9f6adc5356de63dc76ec87bd4b7b7cbd3023750f"
+  },
+  {
+    "path": "packages/session/session-stats/src/index.ts",
+    "type": "blob",
+    "sha": "54679b6e78c685d4fa8a540c5747ccdc88966f84"
+  },
+  {
+    "path": "packages/session/session-stats/src/projection.ts",
+    "type": "blob",
+    "sha": "e7d3f323774eaf928f4ce6fac7bfb2b8ae323500"
+  },
+  {
+    "path": "packages/session/session-stats/src/types.ts",
+    "type": "blob",
+    "sha": "e11a300b1925ebfb1d704c37e28371350310ed9d"
+  },
+  {
+    "path": "packages/session/session-stats/tests/projection.spec.ts",
+    "type": "blob",
+    "sha": "1f1d6103ebfef0b30109f5e2535d5737538e91e0"
+  },
+  {
+    "path": "packages/session/session-telemetry-otel/src/index.ts",
+    "type": "blob",
+    "sha": "1e5dc258b84dbaa625c4ffeb912a1712211489be"
+  },
+  {
+    "path": "packages/session/session-telemetry/src/coordinator.ts",
+    "type": "blob",
+    "sha": "fa21a5ae417c147e3def7c0b046758fadcb6926d"
+  },
+  {
+    "path": "packages/session/session-telemetry/src/index.ts",
+    "type": "blob",
+    "sha": "25ffb44433e7f484e01a382d15c8b9b005b5b832"
+  },
+  {
+    "path": "packages/session/session-title-first-prompt-llm/src/index.ts",
+    "type": "blob",
+    "sha": "1cd6aa26ea23be4b45142a8ef6de52a164a23dda"
+  },
+  {
+    "path": "packages/session/session-title-llm/src/index.ts",
+    "type": "blob",
+    "sha": "e89962d7c7eeb17aefc1d98ec3ef72ebcb6b6106"
+  },
+  {
+    "path": "packages/session/session-title/src/client.ts",
+    "type": "blob",
+    "sha": "9a084f815aea0d3420f5c1b403b66868a008cc07"
+  },
+  {
+    "path": "packages/session/session-title/src/index.ts",
+    "type": "blob",
+    "sha": "6a7e9acdde6271364304a017d78e14f8d6391b16"
+  },
+  {
+    "path": "packages/session/session-title/src/normalize.ts",
+    "type": "blob",
+    "sha": "2891765704bd27f1be560c9d1c4990f17ebf5d43"
+  },
+  {
+    "path": "packages/session/session-title/src/types.ts",
+    "type": "blob",
+    "sha": "20855445a5730cd050592f3ff694bbc83473179b"
+  },
+  {
+    "path": "packages/session/session-title/tests/projection.spec.ts",
+    "type": "blob",
+    "sha": "df2b5f1f91aae734e48988c838f7fd28ceb53770"
+  },
+  {
+    "path": "packages/session/session-turn-outline/src/client.ts",
+    "type": "blob",
+    "sha": "9d15affea05aac9c38ee461ef131a89088acea33"
+  },
+  {
+    "path": "packages/session/session-turn-outline/src/index.ts",
+    "type": "blob",
+    "sha": "0105e7c1864dfb8108b581ecf6a30ccdc3b4782d"
+  },
+  {
+    "path": "packages/session/session-turn-outline/src/projection.ts",
+    "type": "blob",
+    "sha": "992273e72acade51ead851394f3b9df623677eb7"
+  },
+  {
+    "path": "packages/session/session-turn-outline/src/types.ts",
+    "type": "blob",
+    "sha": "c4ccbcdab31a809fdcab7688124247cf748edd2b"
+  },
+  {
+    "path": "packages/session/session-turn-outline/tests/loader-composition.spec.ts",
+    "type": "blob",
+    "sha": "d2c809c9b4dda5504b967e5d4324861b0c758e97"
+  },
+  {
+    "path": "packages/session/session-turn-outline/tests/projection.spec.ts",
+    "type": "blob",
+    "sha": "c01acf8aa5b8af7ee86fe993a11844441af4630e"
+  },
+  {
+    "path": "packages/session/tool-working-directory/src/index.ts",
+    "type": "blob",
+    "sha": "f0aa8bc4f0854c6dff38feeb9475b303e5108cb6"
+  },
+  {
+    "path": "packages/session/working-directory/src/index.ts",
+    "type": "blob",
+    "sha": "7346feb2743ef976bfc5454384f210f906ea3e0d"
+  },
+  {
+    "path": "packages/subagent/subagent/src/projection-types.ts",
+    "type": "blob",
+    "sha": "c8d1b472a760997b2aa423e801591949a25a9b8f"
+  },
+  {
+    "path": "packages/subagent/subagent/src/projection.ts",
+    "type": "blob",
+    "sha": "541721f2c17948ba68cadf0c5c4a0a2cf7f5d427"
+  },
+  {
+    "path": "packages/subagent/subagent/tests/timing-projection.spec.ts",
+    "type": "blob",
+    "sha": "40b21431ecedf34ae1241edbb48f7a314dd92e0d"
+  },
+  {
+    "path": "packages/test-support/loader-smoke/tests/agent-turn.spec.ts",
+    "type": "blob",
+    "sha": "7c9cf07d28d658c84c02940a709c025f42ba39c2"
+  },
+  {
+    "path": "packages/test-support/session-snapshot/src/harness.ts",
+    "type": "blob",
+    "sha": "ec7673d9597db53ba34f98d3060609280eaf485d"
+  },
+  {
+    "path": "packages/test-support/session-snapshot/src/identity.ts",
+    "type": "blob",
+    "sha": "cca42657c249e13bbc460a838f3046c3246cdbf5"
+  },
+  {
+    "path": "packages/test-support/session-snapshot/src/index.ts",
+    "type": "blob",
+    "sha": "386940f23c182ce6ef5be71cbce07d7b2242de86"
+  },
+  {
+    "path": "packages/test-support/session-snapshot/src/launcher.ts",
+    "type": "blob",
+    "sha": "a99ecac2c06a52e9f18e9c69fd646d4b67f7a9fc"
+  },
+  {
+    "path": "packages/test-support/session-snapshot/src/manifest.ts",
+    "type": "blob",
+    "sha": "e357c118211f460a1aa7988c01283cbf18dbed03"
+  },
+  {
+    "path": "packages/test-support/session-snapshot/src/normalize.ts",
+    "type": "blob",
+    "sha": "39f3522a8c706f606533923bd6184da5530349b3"
+  },
+  {
+    "path": "packages/test-support/session-snapshot/src/session-files.ts",
+    "type": "blob",
+    "sha": "8578abe416706b1836bf5d54a83f4a51c383ab05"
+  },
+  {
+    "path": "packages/test-support/session-snapshot/src/suite.ts",
+    "type": "blob",
+    "sha": "7546001ed308c6574e33404d097750b303bd5819"
+  },
+  {
+    "path": "packages/test-support/session-snapshot/src/workspace.ts",
+    "type": "blob",
+    "sha": "7e46957b6392cb0ebc347807a8b4e1d80580b165"
+  },
+  {
+    "path": "packages/todo",
+    "type": "tree",
+    "sha": "9b155ac832946026450c3e6999fcade4dcf9e1f8"
+  },
+  {
+    "path": "packages/todo/README.i18n.yaml",
+    "type": "blob",
+    "sha": "454854f08abec0719d5f5826d122742628be1dbb"
+  },
+  {
+    "path": "packages/todo/README.md",
+    "type": "blob",
+    "sha": "f43cabe8de26b448807c0db27b610516f62bc24d"
+  },
+  {
+    "path": "packages/todo/README.zh.md",
+    "type": "blob",
+    "sha": "38bda81c4add50500b44208bbccf601e46a866f7"
+  },
+  {
+    "path": "packages/todo/tool-todo",
+    "type": "tree",
+    "sha": "7fbe55a2e1760aab0b32a1161d0710f78ed1e11b"
+  },
+  {
+    "path": "packages/todo/tool-todo/README.i18n.yaml",
+    "type": "blob",
+    "sha": "2899c178101bf31774b97835edf2f26732193576"
+  },
+  {
+    "path": "packages/todo/tool-todo/README.md",
+    "type": "blob",
+    "sha": "1c31e14dddec8fa339210f255e9653c4ff2e34ed"
+  },
+  {
+    "path": "packages/todo/tool-todo/README.zh.md",
+    "type": "blob",
+    "sha": "6ceae4cc3ea42b47a69250c28c3fb99fc915e26f"
+  },
+  {
+    "path": "packages/todo/tool-todo/locale",
+    "type": "tree",
+    "sha": "7cffcbb6d58dff37a1694db61d1ab72de891f665"
+  },
+  {
+    "path": "packages/todo/tool-todo/locale/en.json",
+    "type": "blob",
+    "sha": "d96cec0f21f5c9bb4fc6c505b8e2d43306ab5899"
+  },
+  {
+    "path": "packages/todo/tool-todo/locale/zh.json",
+    "type": "blob",
+    "sha": "b9f36b1a3bc0a684ffe200408d33de377b8f86f2"
+  },
+  {
+    "path": "packages/todo/tool-todo/package.json",
+    "type": "blob",
+    "sha": "0f13e4b1a37b854408e3da76e916273ca72edb32"
+  },
+  {
+    "path": "packages/todo/tool-todo/src",
+    "type": "tree",
+    "sha": "c024dff0b6f501726d944aec89572c4ad1096776"
+  },
+  {
+    "path": "packages/todo/tool-todo/src/client.ts",
+    "type": "blob",
+    "sha": "7bb1655a67d5821163e3fc088194115bedaa1164"
+  },
+  {
+    "path": "packages/todo/tool-todo/src/index.ts",
+    "type": "blob",
+    "sha": "f345045c93f12c8e86c103f70ad9bba39313a149"
+  },
+  {
+    "path": "packages/todo/tool-todo/src/types.ts",
+    "type": "blob",
+    "sha": "68d5649bb0ff86710673ad0b610deaf3491de6d0"
+  },
+  {
+    "path": "packages/todo/tool-todo/tests",
+    "type": "tree",
+    "sha": "094742b6e0c8be2db380b63351131eabb6898c16"
+  },
+  {
+    "path": "packages/todo/tool-todo/tests/integration.spec.ts",
+    "type": "blob",
+    "sha": "4db57022b61ab0f81f933fa1fac7d65cabaf3b16"
+  },
+  {
+    "path": "packages/todo/tool-todo/tests/loader-composition.spec.ts",
+    "type": "blob",
+    "sha": "3642d8485fb8d379c5d3b2b417d2a4d7d5eacc26"
+  },
+  {
+    "path": "packages/todo/tool-todo/tests/projection.spec.ts",
+    "type": "blob",
+    "sha": "20975df8c020174f0b9ab4f6dceacbcc38e500f4"
+  },
+  {
+    "path": "packages/todo/tool-todo/tests/tool-todo.spec.ts",
+    "type": "blob",
+    "sha": "e8c38f10f2c0a12d8fb6832188a902c6f24c92d1"
+  },
+  {
+    "path": "packages/todo/tool-todo/tsconfig.json",
+    "type": "blob",
+    "sha": "ae150deb6712505c8ed9e81bfa7bfec0943665fe"
+  },
+  {
+    "path": "python/sdk/tests/expected/cot-translation-projection.json",
+    "type": "blob",
+    "sha": "7553a5977a14bbab4279ac2da281992a002b0b3d"
+  },
+  {
+    "path": "python/sdk/tests/test_cot_translation_projection.py",
+    "type": "blob",
+    "sha": "6ffb43c623cb08695e0ae1ab885b461e66e3ecdd"
+  },
+  {
+    "path": "snapshots/session/todo-write",
+    "type": "tree",
+    "sha": "731744710b50d24519c4d82ab687e80303469ba6"
+  },
+  {
+    "path": "snapshots/session/todo-write/session.v2.jsonl",
+    "type": "blob",
+    "sha": "3e624288ea350735496bd5f85423e7893000027c"
+  },
+  {
+    "path": "snapshots/session/todo-write/session.v3.jsonl",
+    "type": "blob",
+    "sha": "b99585c13b19250289b1e10ed1c97d73ddc791ac"
+  },
+  {
+    "path": "snapshots/session/todo-write/session.v4.jsonl",
+    "type": "blob",
+    "sha": "e26a7c8645e6d062ece155997ee6e1e9eac262bd"
+  },
+  {
+    "path": "snapshots/session/todo-write/snapshot.yml",
+    "type": "blob",
+    "sha": "bea5b245db45a5856f2970e4e2442febcf566694"
+  }
+]

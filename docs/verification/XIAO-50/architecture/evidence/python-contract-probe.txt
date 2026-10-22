@@ -1,0 +1,1 @@
+{"scope": "Architecture schemas/examples/hash checks only; no product runtime", "schemas": 4, "schemaCases": 39, "valid": 12, "invalid": 27, "semanticFixtures": 46}

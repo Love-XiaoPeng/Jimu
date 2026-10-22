@@ -1,0 +1,15 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------< io.github.lovexiaopeng.jimu:jimu >------------------
+[INFO] Building Jimu 0.1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- dependency:3.8.1:build-classpath (default-cli) @ jimu ---
+[INFO] Wrote classpath file 'C:\Users\Administrator\multica_workspaces\xiaopenggon-90758bde8412\xiao-50-11acf7a49ea7\workdir\xiao50-architecture\evidence\classpath-local.txt'.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.069 s
+[INFO] Finished at: 2026-10-22T23:53:55+08:00
+[INFO] ------------------------------------------------------------------------
