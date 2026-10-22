@@ -18,6 +18,12 @@ public final class Payloads {
           .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
           .addMixIn(ModelSnapshot.class, ModelSnapshotJson.class)
           .addMixIn(
+              io.github.lovexiaopeng.jimu.plugin.api.McpResourcePort.Resource.class,
+              McpItemJson.class)
+          .addMixIn(
+              io.github.lovexiaopeng.jimu.plugin.api.McpResourcePort.Template.class,
+              McpItemJson.class)
+          .addMixIn(
               io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Request.class,
               TaskRequestJson.class)
           .build();
@@ -38,6 +44,9 @@ public final class Payloads {
   }
 
   private Payloads() {}
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  private abstract static class McpItemJson {}
 
   public static String json(Object value) {
     try {

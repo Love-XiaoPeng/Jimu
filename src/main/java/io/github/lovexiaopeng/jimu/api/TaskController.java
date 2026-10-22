@@ -107,7 +107,10 @@ public final class TaskController {
                 "compose_report",
                 "edit",
                 "glob",
-                "grep")
+                "grep",
+                "list_mcp_resource_templates",
+                "list_mcp_resources",
+                "read_mcp_resource")
             .containsAll(capabilities)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
     // Resources remain operator-bound; no user-supplied connection or credential handles.
     if (request.resourceIds() != null && !request.resourceIds().isEmpty())

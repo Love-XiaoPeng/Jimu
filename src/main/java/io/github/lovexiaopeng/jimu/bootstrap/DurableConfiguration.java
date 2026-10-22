@@ -61,6 +61,8 @@ public class DurableConfiguration {
       Environment env,
       ModelProfiles models,
       NativeSearchRuntime searches,
+      io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings mcpSettings,
+      io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpRuntime mcpRuntime,
       @Qualifier("imageStore") java.util.Optional<ArtifactStore> images) {
     if ("control".equals(env.getRequiredProperty("jimu.role"))) {
       Flyway.configure()
@@ -76,6 +78,7 @@ public class DurableConfiguration {
     var ledger = new JdbcLedger(source, models);
     ledger.nativeSearchAvailability(searches::available);
     ledger.imageStorage(images.orElse(null));
+    ledger.mcpRuntime(mcpSettings, mcpRuntime);
     ledger.check();
     return ledger;
   }
@@ -138,6 +141,7 @@ public class DurableConfiguration {
       BoundaryProbe probe,
       ModelProfiles models,
       NativeSearchRuntime searches,
+      io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpRuntime mcp,
       OperationThreads operations,
       @Qualifier("imageStore") java.util.Optional<ArtifactStore> images,
       Environment env)
@@ -172,7 +176,19 @@ public class DurableConfiguration {
                 new SecureWorkspaceStore(Path.of(workspaceRoot)),
                 searches,
                 new io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageRuntime(
-                    images.orElse(null), operations)));
+                    images.orElse(null), operations)),
+        mcp);
+  }
+
+  @Bean
+  io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings mcpSettings(Environment env) {
+    return new io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings(env);
+  }
+
+  @Bean
+  io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpRuntime mcpRuntime(
+      io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings settings) throws IOException {
+    return new io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpRuntime(settings);
   }
 
   @Bean(initMethod = "start", destroyMethod = "close")

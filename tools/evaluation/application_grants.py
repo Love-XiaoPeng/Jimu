@@ -18,7 +18,10 @@ def grants(database, user, host, partial_revokes=False):
     return ['GRANT SELECT ON `' + pattern + '`.* TO ' + account + ';'] + [
         'GRANT INSERT,UPDATE,DELETE ON `' + database + '`.`' + table + '` TO ' + account + ';'
         for table in APPLICATION_TABLES] + [
-        'GRANT INSERT ON `' + database + '`.`native_search_stop` TO ' + account + ';']
+        'GRANT INSERT ON `' + database + '`.`native_search_stop` TO ' + account + ';',
+        'GRANT INSERT,UPDATE ON `' + database + '`.`mcp_io` TO ' + account + ';',
+        'GRANT INSERT,UPDATE ON `' + database + '`.`mcp_result` TO ' + account + ';',
+        'GRANT INSERT,DELETE ON `' + database + '`.`mcp_cursor` TO ' + account + ';']
 
 
 if __name__ == '__main__':
