@@ -28,11 +28,15 @@ class Model(Handler):
         body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
         goal = next(m['content'] for m in body['messages'] if m['role'] == 'user')
         replies = [json.loads(m['content']) for m in body['messages'] if m['role'] == 'tool']
-        assert {t['function']['name'] for t in body['tools']} == set(CAPS)
-        assert all(m['role'] != 'system' for m in body['messages'])
-        context = json.loads(body['messages'][-1]['content'])
-        assert context['kind'] == 'working_directory_context' and context['version'] == 1
-        assert context['cwd'].startswith('/') and not context['cwd'].startswith('/tmp/')
+        if goal.startswith('R1-legacy-'):
+            assert {t['function']['name'] for t in body['tools']} == {'read', 'write', 'edit'}
+            assert not any('working_directory_context' in m['content'] for m in body['messages'])
+        else:
+            assert {t['function']['name'] for t in body['tools']} == set(CAPS)
+            assert all(m['role'] != 'system' for m in body['messages'])
+            context = json.loads(body['messages'][-1]['content'])
+            assert context['kind'] == 'working_directory_context' and context['version'] == 1
+            assert context['cwd'].startswith('/') and not context['cwd'].startswith('/tmp/')
         at = len(replies)
         batch = None
         for planned in self.server.plans[goal]:
@@ -339,6 +343,9 @@ class DirectoryExperiment(Experiment):
         self.stop(old, kill=True)
         self.expire(task)
         self.state(task, 'SUCCEEDED')
+        self.assert_that(self.sql("SELECT fence FROM task WHERE id='"+task+"';") == '2' and
+                         self.probe(task, old, 'old-fence')['code'] == 'FENCE_REJECTED',
+                         'confirmed stop permits recovery but old fence remains rejected')
         self.stop(successor)
         task = self.task('D04-running-file', [[call('read', file_path='not-yet-read')]])
         old = self.start('D04-running-file-paused', 'worker', 'T0')
@@ -361,6 +368,48 @@ class DirectoryExperiment(Experiment):
         (worker['folder']/'release').touch()
         self.state(task, 'SUCCEEDED')
         self.stop(worker)
+
+        self.claim_fairness()
+
+    def claim_fairness(self):
+        self.sql("UPDATE tenant_budget SET running_limit=2 WHERE tenant_id='tenant-a';")
+        task = self.task('R1-live-writer', [[call('working_directory')]])
+        old = self.start('R1-paused', 'worker', 'M2')
+        self.barrier(old)
+        self.expire(task)
+        successor = self.start('R1-successor', 'worker')
+        for phase in ('expired-lease', 'expired-deadline'):
+            if phase == 'expired-deadline':
+                self.sql("UPDATE task SET deadline=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE id='"+task+"';")
+            other = self.task('R1-other-'+phase, [[call('working_directory')]], subject='b')
+            directory = self.task('R1-directory-'+phase, self.sentinels())
+            legacy = self.task('R1-legacy-'+phase, [[call('read', file_path='legacy.txt'),
+                call('write', file_path='legacy.txt', content='legacy-before'),
+                call('edit', file_path='legacy.txt', old_string='before', new_string='after')]],
+                capabilityIds=['read', 'write', 'edit'])
+            self.state(other, 'SUCCEEDED')
+            for candidate in (directory, legacy):
+                self.state(candidate, 'SUCCEEDED')
+                self.assert_that(self.sql("SELECT fence FROM task WHERE id='"+candidate+"';") == '1',
+                                 'same-tenant runnable task claimed behind live writer '+phase, task=candidate)
+            self.assert_that(self.view(directory)['cwd'] == '/b' and self.view(directory)['revision'] == 2 and
+                             self.sql("SELECT COUNT(*) FROM task_directory WHERE task_id='"+legacy+"';") == '0',
+                             'directory and legacy profiles execute independently '+phase)
+            self.assert_that(old['process'].poll() is None and
+                             self.sql('SELECT stopped FROM worker_process WHERE pid='+str(old['process'].pid)+';') == '0' and
+                             self.sql("SELECT state,fence,tools_used FROM task WHERE id='"+task+"';") == 'RUNNING\t1\t0' and
+                             self.sql("SELECT COUNT(*) FROM task_attempt WHERE task_id='"+task+"';") == '1' and
+                             self.fixture.models['R1-live-writer'] == 1,
+                             'fairness never takes over unconfirmed writer '+phase, oldPid=old['process'].pid)
+            (self.evidence/('R1-'+phase+'.tsv')).write_text(self.sql(
+                "SELECT tenant_id,id,goal,state,fence,models_used,tools_used FROM task ORDER BY tenant_id,ready_at,id;"))
+        self.stop(old, kill=True)
+        self.expire(task)
+        self.state(task, 'FAILED')
+        self.assert_that(self.sql("SELECT code FROM task WHERE id='"+task+"';") == 'DEADLINE_EXCEEDED' and
+                         self.probe(task, old, 'old-fence')['code'] == 'FENCE_REJECTED',
+                         'only supervisor-confirmed stop permits expired task finalization; old fence rejected')
+        self.stop(successor)
 
     def authorization(self):
         task = self.task('D07-owner', [[call('working_directory')]])
@@ -583,7 +632,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--jar', type=Path, required=True)
     parser.add_argument('--evidence', type=Path, required=True)
-    parser.add_argument('--case', choices=['D'+str(i).zfill(2) for i in range(1,13)], default='D01')
+    parser.add_argument('--case', choices=['D'+str(i).zfill(2) for i in range(1,13)]+['R1'], default='D01')
     parser.add_argument('--v17-jar', type=Path)
     args = parser.parse_args()
     if args.case == 'D11':
@@ -600,7 +649,7 @@ if __name__ == '__main__':
             {'D01': experiment.normal, 'D02': experiment.ordered, 'D03': experiment.recovery,
              'D04': experiment.transaction, 'D05': experiment.invalid_paths, 'D06': experiment.observation,
              'D07': experiment.authorization, 'D08': experiment.events, 'D09': experiment.budgets,
-             'D10': experiment.retention, 'D12': experiment.regressions}[args.case]()
+             'D10': experiment.retention, 'D12': experiment.regressions, 'R1': experiment.claim_fairness}[args.case]()
     except BaseException:
         (experiment.evidence/'failure.txt').write_text(traceback.format_exc())
         raise
