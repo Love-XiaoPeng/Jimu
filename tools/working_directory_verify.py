@@ -29,7 +29,7 @@ class Model(Handler):
         goal = next(m['content'] for m in body['messages'] if m['role'] == 'user')
         replies = [json.loads(m['content']) for m in body['messages'] if m['role'] == 'tool']
         if goal.startswith('R1-legacy-'):
-            assert {t['function']['name'] for t in body['tools']} == {'read', 'write', 'edit'}
+            assert {t['function']['name'] for t in body['tools']} == {'todo_write'}
             assert not any('working_directory_context' in m['content'] for m in body['messages'])
         else:
             assert {t['function']['name'] for t in body['tools']} == set(CAPS)
@@ -373,6 +373,16 @@ class DirectoryExperiment(Experiment):
         self.claim_fairness()
 
     def claim_fairness(self):
+        # Exercise the accepted V17 todo-only profile alongside the new directory profile.
+        # Both use the same explicit local paid=false model and public-mode workers.
+        self.sql("GRANT INSERT,UPDATE ON jimu.task_todo_projection TO 'runtime'@'%';")
+        resource = Path(__file__).resolve().parents[1]/'src/main/resources/todo/todo_write-0.1.0/output.schema.json'
+        digest = hashlib.sha256(resource.read_bytes()).hexdigest()
+        self.sql("INSERT INTO installation(tenant_id,plugin_id,plugin_version,plugin_digest) VALUES"
+                 +','.join("('"+tenant+"','todo_write','0.1.0','"+digest+"')" for tenant in ('tenant-a', 'tenant-b'))+';')
+        self.stop(self.control)
+        self.common['jimu.todos.enabled'] = 'true'
+        self.control = self.start('R1-control-todo', 'control')
         self.sql("UPDATE tenant_budget SET running_limit=2 WHERE tenant_id='tenant-a';")
         task = self.task('R1-live-writer', [[call('working_directory')]])
         old = self.start('R1-paused', 'worker', 'M2')
@@ -384,17 +394,16 @@ class DirectoryExperiment(Experiment):
                 self.sql("UPDATE task SET deadline=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE id='"+task+"';")
             other = self.task('R1-other-'+phase, [[call('working_directory')]], subject='b')
             directory = self.task('R1-directory-'+phase, self.sentinels())
-            legacy = self.task('R1-legacy-'+phase, [[call('read', file_path='legacy.txt'),
-                call('write', file_path='legacy.txt', content='legacy-before'),
-                call('edit', file_path='legacy.txt', old_string='before', new_string='after')]],
-                capabilityIds=['read', 'write', 'edit'])
+            legacy = self.task('R1-legacy-'+phase, [[call('todo_write', todos=[{'content':'legacy queue progress', 'status':'completed'}])]],
+                capabilityIds=['todo_write'])
             self.state(other, 'SUCCEEDED')
             for candidate in (directory, legacy):
                 self.state(candidate, 'SUCCEEDED')
                 self.assert_that(self.sql("SELECT fence FROM task WHERE id='"+candidate+"';") == '1',
                                  'same-tenant runnable task claimed behind live writer '+phase, task=candidate)
             self.assert_that(self.view(directory)['cwd'] == '/b' and self.view(directory)['revision'] == 2 and
-                             self.sql("SELECT COUNT(*) FROM task_directory WHERE task_id='"+legacy+"';") == '0',
+                             self.sql("SELECT COUNT(*) FROM task_directory WHERE task_id='"+legacy+"';") == '0' and
+                             self.sql("SELECT revision FROM task_todo_projection WHERE task_id='"+legacy+"';") == '1',
                              'directory and legacy profiles execute independently '+phase)
             self.assert_that(old['process'].poll() is None and
                              self.sql('SELECT stopped FROM worker_process WHERE pid='+str(old['process'].pid)+';') == '0' and
@@ -404,12 +413,13 @@ class DirectoryExperiment(Experiment):
                              'fairness never takes over unconfirmed writer '+phase, oldPid=old['process'].pid)
             (self.evidence/('R1-'+phase+'.tsv')).write_text(self.sql(
                 "SELECT tenant_id,id,goal,state,fence,models_used,tools_used FROM task ORDER BY tenant_id,ready_at,id;"))
+        (self.evidence/'R1-legacy-todo.tsv').write_text(self.sql('SELECT * FROM task_todo_projection;'))
         self.stop(old, kill=True)
         self.expire(task)
         self.state(task, 'FAILED')
         self.assert_that(self.sql("SELECT code FROM task WHERE id='"+task+"';") == 'DEADLINE_EXCEEDED' and
-                         self.probe(task, old, 'old-fence')['code'] == 'FENCE_REJECTED',
-                         'only supervisor-confirmed stop permits expired task finalization; old fence rejected')
+                         self.probe(task, old, 'old-fence')['code'] == 'DEADLINE_EXCEEDED',
+                         'only supervisor-confirmed stop permits expired task finalization; late commit rejected by deadline')
         self.stop(successor)
 
     def authorization(self):
