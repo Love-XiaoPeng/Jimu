@@ -64,6 +64,11 @@ class WorkspaceEditContractTest {
     assertEquals("aaaa", text(store, "many"));
     ((EditPort) port(store)).edit("many", "aa", "b", true);
     assertEquals("bb", text(store, "many"));
+    put(store, "expansion", "a".repeat(2000));
+    code(
+        "WORKSPACE_LIMIT",
+        () -> ((EditPort) port(store)).edit("expansion", "a", "b".repeat(16384), true));
+    assertEquals(1, store.inspect("test", task, "expansion", () -> {}).version());
     code("FS_EDIT_NOT_FOUND", () -> ((EditPort) port(store)).edit("many", "z", "b", false));
     assertEquals("bb", text(store, "many"));
   }

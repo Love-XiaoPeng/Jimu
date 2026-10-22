@@ -418,6 +418,19 @@ public final class SecureWorkspaceStore {
     if (first < 0) throw new FileFailure("FS_EDIT_NOT_FOUND");
     if (!all && text.indexOf(old, first + old.length()) >= 0)
       throw new FileFailure("FS_AMBIGUOUS_EDIT");
+    long matches = 1;
+    if (all)
+      for (int at = text.indexOf(old, first + old.length());
+          at >= 0;
+          at = text.indexOf(old, at + old.length())) matches++;
+    long bytes = utf8Size(text) + matches * (utf8Size(replacement) - utf8Size(old));
+    if (crlf > lf)
+      bytes +=
+          text.chars().filter(c -> c == '\n').count()
+              + matches
+                  * (replacement.chars().filter(c -> c == '\n').count()
+                      - old.chars().filter(c -> c == '\n').count());
+    if (bytes > MAX_BYTES) throw new FileFailure("WORKSPACE_LIMIT");
     // String.replace is literal and advances non-overlapping matches; no regex replacement rules.
     String result =
         all
