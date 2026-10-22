@@ -40,7 +40,7 @@ task JSON, profiles or logs. Both roles validate V15 and the byte-pinned catalog
 Host startup/readiness and idle worker polling perform no MCP network I/O and do
 not require any enabled server. Upstream liveness is checked only when a task
 needs a new network operation, through its audited initialize/initialized handshake.
-An offline server therefore fails that call with `MCP_UPSTREAM_ERROR` without
+An offline server therefore fails that call with `MCP_UNAVAILABLE` without
 blocking unrelated tasks, successful cached output or local cursor recovery.
 Current authorization, revocation, epoch and pins are still checked on recovery;
 revoking the last server permits the worker to claim and terminate affected tasks.

@@ -202,7 +202,7 @@ class McpExperiment(Experiment):
         self.assert_that(len(self.outputs(tid)) == 1, 'online tenant executes while other tenant MCP endpoint refuses connections')
         failed = self.task('r1-offline-new-call', [(NAMES[2], {'server': 'controlled', 'uri': 'jimu-fixture://tenant-b/docs/text'})], subject='b')
         view = self.state(failed, 'FAILED')
-        self.assert_that(view['code'] == 'MCP_UPSTREAM_ERROR', 'new offline call fails explicitly within its task', code=view['code'])
+        self.assert_that(view['code'] == 'MCP_UNAVAILABLE', 'new offline call fails explicitly within its task', code=view['code'])
         self.assert_that(self.sql("SELECT COUNT(*) FROM mcp_io WHERE task_id='"+failed+"' AND method='initialize';") == '1', 'offline handshake dispatch recorded in task wire ledger')
         before = len(self.wire())
         io_before = self.sql('SELECT COUNT(*) FROM mcp_io;')
