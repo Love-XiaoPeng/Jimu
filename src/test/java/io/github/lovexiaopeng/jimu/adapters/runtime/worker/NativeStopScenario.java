@@ -20,7 +20,8 @@ public final class NativeStopScenario {
   public static void main(String[] args) throws Exception {
     var bundle = new NativeRunner.Bundle(args[1], args[2], args[3], args[4]);
     var target =
-        new ProcessIdentity(Long.parseLong(args[5]), Long.parseLong(args[6]), args[7], args[8]);
+        new ProcessIdentity(
+            Long.parseLong(args[5]), Long.parseLong(args[6]), args[7], args[8], args[9]);
     var operations = new OperationThreads();
     var runtime = new NativeSearchRuntime(Path.of(args[0]), bundle, operations);
     var runner = new NativeRunner(bundle, operations);
@@ -53,7 +54,12 @@ public final class NativeStopScenario {
                     case "processes" ->
                         List.of(
                             new ExecutionLedger.WorkerProcess(
-                                "worker", target.pid(), target.startTicks(), false));
+                                "worker",
+                                target.pid(),
+                                target.startTicks(),
+                                false,
+                                target.bootId(),
+                                target.observerPidNamespace()));
                     case "expiredSearches" -> List.of();
                     case "nativeSearches" -> List.of(run);
                     case "searchStopped" -> {
@@ -74,12 +80,19 @@ public final class NativeStopScenario {
                 });
     var self = NativeProcesses.identity(ProcessHandle.current().pid());
     var reused =
-        new ProcessIdentity(self.pid(), self.startTicks() + 1, self.bootId(), self.pidNamespace());
+        new ProcessIdentity(
+            self.pid(),
+            self.startTicks() + 1,
+            self.bootId(),
+            self.pidNamespace(),
+            self.observerPidNamespace());
     if (!runner.stopped(reused))
       throw new AssertionError("Stale ticks must not match live identity");
     runner.signal(new NativeIdentity(reused, null, null), true);
     if (runner.stopped(self)) throw new AssertionError("Reused identity was signalled");
-    var wrongNamespace = new ProcessIdentity(self.pid(), self.startTicks(), self.bootId(), "0");
+    var wrongNamespace =
+        new ProcessIdentity(
+            self.pid(), self.startTicks(), self.bootId(), "0", self.observerPidNamespace());
     try {
       runner.signal(new NativeIdentity(wrongNamespace, null, null), true);
       throw new AssertionError("Namespace mismatch accepted");
@@ -90,7 +103,32 @@ public final class NativeStopScenario {
       System.out.println("READY");
       var input = new BufferedReader(new InputStreamReader(System.in));
       for (String command; (command = input.readLine()) != null; ) {
-        if (command.equals("live")) {
+        if (command.equals("foreign")) {
+          expectUnproven(() -> runner.stopped(target));
+          expectUnproven(() -> NativeProcesses.stopped(target));
+          expectUnproven(
+              () -> {
+                runner.signal(identity, true);
+                return false;
+              });
+          // A readable local PID with changed ticks must not bypass the observer guard either.
+          expectUnproven(
+              () ->
+                  runner.stopped(
+                      new ProcessIdentity(
+                          self.pid(),
+                          self.startTicks() + 1,
+                          target.bootId(),
+                          self.pidNamespace(),
+                          target.observerPidNamespace())));
+          supervisor.reconcile();
+          try (var disabled = new LocalWorkerSupervisor(ledger, "host")) {
+            disabled.reconcile();
+          }
+          if (stops.get() != 0 || workerStops.get() != 0 || refunds.get() != 0)
+            throw new AssertionError("Foreign observer permitted stop/refund");
+          System.out.println("PASS foreign observer: no signal, no STOPPED, no refund");
+        } else if (command.equals("live")) {
           try {
             if (NativeProcesses.stopped(target))
               throw new AssertionError("Static API falsely stopped live process");
@@ -103,7 +141,7 @@ public final class NativeStopScenario {
           } catch (IOException conservative) {
             System.out.println("PASS conservative runner observation");
           }
-          if (runner.absent(target.pid()))
+          if (runner.absent(target.pid(), target.bootId(), target.observerPidNamespace()))
             throw new AssertionError("Kernel falsely proved absence");
           supervisor.reconcile();
           if (stops.get() != 0 || workerStops.get() != 0 || refunds.get() != 0)
@@ -119,13 +157,24 @@ public final class NativeStopScenario {
           System.out.println("PASS exited: one STOPPED, no early refund");
         } else if (command.startsWith("denied ")) {
           try {
-            runner.absent(Long.parseLong(command.substring(7)));
+            runner.absent(
+                Long.parseLong(command.substring(7)), self.bootId(), self.observerPidNamespace());
             throw new AssertionError("EPERM was accepted as absence/presence");
           } catch (IOException conservative) {
             System.out.println("PASS EPERM unproven");
           }
         } else throw new AssertionError(command);
       }
+    }
+  }
+
+  private static void expectUnproven(java.util.concurrent.Callable<Boolean> observation)
+      throws Exception {
+    try {
+      observation.call();
+      throw new AssertionError("Foreign observer accepted");
+    } catch (IOException conservative) {
+      // Reject even a true/false answer: this coordinate system cannot identify the receipt.
     }
   }
 }

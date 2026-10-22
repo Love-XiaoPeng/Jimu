@@ -74,8 +74,8 @@ public final class NativeSearchRuntime {
     return runner != null;
   }
 
-  public boolean absent(long pid) throws IOException {
-    return runner != null && runner.absent(pid);
+  public boolean absent(long pid, String bootId, String observerPidNamespace) throws IOException {
+    return runner != null && runner.absent(pid, bootId, observerPidNamespace);
   }
 
   /** Disabled or unprovable recovery keeps the durable run and its storage reservation. */

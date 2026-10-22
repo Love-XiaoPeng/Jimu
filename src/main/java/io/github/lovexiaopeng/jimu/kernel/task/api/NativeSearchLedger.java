@@ -7,7 +7,8 @@ import java.util.Map;
 public interface NativeSearchLedger {
   boolean searchQuiescent(ExecutionLedger.Lease lease, String invocation);
 
-  record ProcessIdentity(long pid, long startTicks, String bootId, String pidNamespace) {}
+  record ProcessIdentity(
+      long pid, long startTicks, String bootId, String pidNamespace, String observerPidNamespace) {}
 
   record NativeIdentity(
       ProcessIdentity launcher, ProcessIdentity bubblewrap, ProcessIdentity init) {}

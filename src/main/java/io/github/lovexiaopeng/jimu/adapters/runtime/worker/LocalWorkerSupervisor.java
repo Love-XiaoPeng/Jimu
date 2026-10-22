@@ -45,6 +45,11 @@ public final class LocalWorkerSupervisor implements AutoCloseable {
     try {
       reconcileNative();
       for (var receipt : ledger.processes(host)) {
+        try {
+          NativeProcesses.requireObserver(receipt.bootId(), receipt.observerPidNamespace());
+        } catch (java.io.IOException unproven) {
+          continue;
+        }
         // Capture the JDK handle before validating /proc identity, so its own native
         // start-time check also protects destroyForcibly against subsequent PID reuse.
         var process = ProcessHandle.of(receipt.pid());
@@ -57,9 +62,8 @@ public final class LocalWorkerSupervisor implements AutoCloseable {
             // Native recovery also relies on this worker/drainer exit receipt. When native
             // search is enabled, it must use the same independent proof as the native tree.
             boolean gone =
-                nativeSearch.available()
-                    ? nativeSearch.absent(receipt.pid())
-                    : ProcessHandle.of(receipt.pid()).isEmpty();
+                nativeSearch.absent(
+                    receipt.pid(), receipt.bootId(), receipt.observerPidNamespace());
             if (gone) ledger.processStopped(receipt.id());
           } catch (java.io.IOException unproven) {
             // Keep the registered worker and attempt non-quiescent.
@@ -108,11 +112,13 @@ public final class LocalWorkerSupervisor implements AutoCloseable {
         boolean workerGone = true;
         for (var worker : workers)
           if (worker.id().equals(run.worker())) {
+            NativeProcesses.requireObserver(worker.bootId(), worker.observerPidNamespace());
             try {
               var status = LinuxProcessReceipt.status(worker.pid());
               workerGone = status.startTicks() != worker.startTicks() || status.exited();
             } catch (java.nio.file.NoSuchFileException absent) {
-              workerGone = nativeSearch.absent(worker.pid());
+              workerGone =
+                  nativeSearch.absent(worker.pid(), worker.bootId(), worker.observerPidNamespace());
             }
             break;
           }

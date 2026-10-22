@@ -2915,13 +2915,21 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
   }
 
   @Override
-  public void registerWorker(String worker, String host, long pid, long startTicks) {
+  public void registerWorker(
+      String worker,
+      String host,
+      long pid,
+      long startTicks,
+      String bootId,
+      String observerPidNamespace) {
     db.update(
-        "INSERT INTO worker_process(id,host_id,pid,start_ticks) VALUES(?,?,?,?)",
+        "INSERT INTO worker_process(id,host_id,pid,start_ticks,boot_id,observer_pid_namespace) VALUES(?,?,?,?,?,?)",
         worker,
         host,
         pid,
-        startTicks);
+        startTicks,
+        bootId,
+        observerPidNamespace);
   }
 
   @Override
@@ -2933,7 +2941,12 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
         .map(
             w ->
                 new WorkerProcess(
-                    s(w, "id"), n(w, "pid"), n(w, "start_ticks"), n(w, "overdue") == 1))
+                    s(w, "id"),
+                    n(w, "pid"),
+                    n(w, "start_ticks"),
+                    n(w, "overdue") == 1,
+                    s(w, "boot_id"),
+                    s(w, "observer_pid_namespace")))
         .toList();
   }
 
@@ -3039,13 +3052,13 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12') AND success=TRUE",
             Integer.class)
-        != 11) throw new IllegalStateException("Required migration unavailable");
+        != 12) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 11) throw new IllegalStateException("Unsupported schema version");
+        != 12) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override

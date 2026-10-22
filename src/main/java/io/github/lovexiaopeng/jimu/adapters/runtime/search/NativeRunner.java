@@ -42,7 +42,8 @@ public final class NativeRunner {
   }
 
   /** A missing proc entry is ambiguous; only the fixed helper's ESRCH proves absence. */
-  public boolean absent(long pid) throws IOException {
+  public boolean absent(long pid, String bootId, String observerPidNamespace) throws IOException {
+    NativeProcesses.requireObserver(bootId, observerPidNamespace);
     verify(Path.of(bundle.launcher()), bundle.launcherSha256());
     Process probe =
         new ProcessBuilder(bundle.launcher(), "--probe-absent", Long.toString(pid))
@@ -80,7 +81,7 @@ public final class NativeRunner {
     try {
       return NativeProcesses.stopped(identity);
     } catch (NoSuchFileException invisibleOrExited) {
-      return absent(identity.pid());
+      return absent(identity.pid(), identity.bootId(), identity.observerPidNamespace());
     }
   }
 

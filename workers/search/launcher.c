@@ -66,7 +66,7 @@ static void inode(int fd, const char *dev, const char *ino, bool directory) {
     require(directory ? S_ISDIR(st.st_mode) : S_ISREG(st.st_mode));
     require(!(st.st_mode & (S_ISUID | S_ISGID)));
 }
-struct identity { pid_t pid; unsigned long long ticks, ns; char boot[80]; };
+struct identity { pid_t pid; unsigned long long ticks, ns, observer_ns; char boot[80]; };
 static struct identity identify(pid_t pid) {
     struct identity id = {.pid = pid}; char name[128], text[4096];
     snprintf(name, sizeof(name), "/proc/%ld/stat", (long)pid);
@@ -78,14 +78,15 @@ static struct identity identify(pid_t pid) {
     require(token != NULL); id.ticks = number(token);
     snprintf(name, sizeof(name), "/proc/%ld/ns/pid", (long)pid);
     struct stat st; require(stat(name, &st) == 0); id.ns = (unsigned long long)st.st_ino;
+    require(stat("/proc/self/ns/pid", &st) == 0); id.observer_ns = (unsigned long long)st.st_ino;
     fd = open("/proc/sys/kernel/random/boot_id", O_RDONLY | O_CLOEXEC); require(fd >= 0);
     n = read(fd, id.boot, sizeof(id.boot)-1); close(fd); require(n > 0);
     id.boot[strcspn(id.boot, "\r\n")] = 0;
     return id;
 }
 static void print_id(FILE *out, struct identity id) {
-    fprintf(out, "{\"pid\":%ld,\"startTicks\":%llu,\"bootId\":\"%s\",\"pidNamespace\":\"%llu\"}",
-            (long)id.pid, id.ticks, id.boot, id.ns);
+    fprintf(out, "{\"pid\":%ld,\"startTicks\":%llu,\"bootId\":\"%s\",\"pidNamespace\":\"%llu\",\"observerPidNamespace\":\"%llu\"}",
+            (long)id.pid, id.ticks, id.boot, id.ns, id.observer_ns);
 }
 static FILE *receipt(int root, const char *name) {
     int fd = openat(root, name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);

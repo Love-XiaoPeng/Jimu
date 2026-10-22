@@ -112,9 +112,21 @@ public interface ExecutionLedger {
 
   void cleanupArtifacts(ArtifactStore store);
 
-  record WorkerProcess(String id, long pid, long startTicks, boolean cancellationOverdue) {}
+  record WorkerProcess(
+      String id,
+      long pid,
+      long startTicks,
+      boolean cancellationOverdue,
+      String bootId,
+      String observerPidNamespace) {}
 
-  void registerWorker(String worker, String host, long pid, long startTicks);
+  void registerWorker(
+      String worker,
+      String host,
+      long pid,
+      long startTicks,
+      String bootId,
+      String observerPidNamespace);
 
   List<WorkerProcess> processes(String host);
 

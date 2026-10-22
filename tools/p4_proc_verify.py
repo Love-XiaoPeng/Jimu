@@ -17,7 +17,8 @@ def identity(pid):
     proc = Path('/proc') / str(pid)
     return [str(pid), proc.joinpath('stat').read_text().rsplit(') ', 1)[1].split()[19],
             Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
-            str(proc.joinpath('ns/pid').stat().st_ino)]
+            str(proc.joinpath('ns/pid').stat().st_ino),
+            str(Path('/proc/self/ns/pid').stat().st_ino)]
 
 
 def inner(args):

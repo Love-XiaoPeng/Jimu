@@ -25,18 +25,28 @@ public final class NativeProcesses {
         pid,
         Long.parseLong(fields[19]),
         Files.readString(Path.of("/proc/sys/kernel/random/boot_id")).strip(),
-        ns);
+        ns,
+        observerPidNamespace());
   }
 
-  public static boolean stopped(ProcessIdentity expected) throws IOException {
-    if (expected == null) return true;
+  public static String observerPidNamespace() throws IOException {
     if (!Files.readSymbolicLink(Path.of("/proc/self"))
         .toString()
         .equals(Long.toString(ProcessHandle.current().pid())))
       throw new IOException("Proc PID namespace does not match observer");
-    if (!expected
-        .bootId()
-        .equals(Files.readString(Path.of("/proc/sys/kernel/random/boot_id")).strip())) return true;
+    return Files.getAttribute(Path.of("/proc/self/ns/pid"), "unix:ino").toString();
+  }
+
+  /** Validate the coordinate system before interpreting any numeric PID observation. */
+  public static void requireObserver(String bootId, String pidNamespace) throws IOException {
+    if (!observerPidNamespace().equals(pidNamespace)
+        || !Files.readString(Path.of("/proc/sys/kernel/random/boot_id")).strip().equals(bootId))
+      throw new IOException("Process receipt observer identity is missing or mismatched");
+  }
+
+  public static boolean stopped(ProcessIdentity expected) throws IOException {
+    if (expected == null) return true;
+    requireObserver(expected.bootId(), expected.observerPidNamespace());
     String stat = Files.readString(Path.of("/proc", Long.toString(expected.pid()), "stat"));
     String[] fields = stat.substring(stat.lastIndexOf(')') + 2).split(" ");
     if (Long.parseLong(fields[19]) != expected.startTicks()) return true;

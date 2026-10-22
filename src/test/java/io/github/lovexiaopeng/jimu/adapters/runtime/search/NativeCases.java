@@ -266,7 +266,11 @@ final class NativeCases {
     var self = NativeProcesses.identity(ProcessHandle.current().pid());
     var stale =
         new io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger.ProcessIdentity(
-            self.pid(), self.startTicks() + 1, self.bootId(), self.pidNamespace());
+            self.pid(),
+            self.startTicks() + 1,
+            self.bootId(),
+            self.pidNamespace(),
+            self.observerPidNamespace());
     check(NativeProcesses.stopped(stale), "PID reuse receipt cannot match live process");
     NativeProcesses.signal(stale, true);
     check(!NativeProcesses.stopped(self), "stale receipt never signals reused live PID");
