@@ -104,6 +104,53 @@ class ImageNormalizerTest {
     assertTrue(result.png().length <= ImageNormalizer.MAX_BYTES);
   }
 
+  private byte[] chunk(byte[] png, String type, byte[] data) throws Exception {
+    var result = new ByteArrayOutputStream();
+    result.write(png, 0, 33);
+    var output = new java.io.DataOutputStream(result);
+    output.writeInt(data.length);
+    byte[] name = type.getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+    output.write(name);
+    output.write(data);
+    var crc = new CRC32();
+    crc.update(name);
+    crc.update(data);
+    output.writeInt((int) crc.getValue());
+    result.write(png, 33, png.length - 33);
+    return result.toByteArray();
+  }
+
+  private byte[] icc(byte[] bytes) throws Exception {
+    var result = new ByteArrayOutputStream();
+    result.write(new byte[] {'p', 0, 0});
+    try (var zip = new java.util.zip.DeflaterOutputStream(result)) {
+      zip.write(bytes);
+    }
+    return result.toByteArray();
+  }
+
+  @Test
+  void boundsIccInflationAndStripsMetadataWithoutLosingAlphaOrSixteenBitPixels() throws Exception {
+    byte[] png = image("png", 3, 2);
+    failure("INVALID_IMAGE", "a.png", chunk(png, "iCCP", icc(new byte[65537])));
+    failure("INVALID_IMAGE", "a.png", chunk(png, "iCCP", icc(new byte[128])));
+    var profile =
+        java.awt.color.ICC_Profile.getInstance(java.awt.color.ColorSpace.CS_sRGB).getData();
+    var result = codec.normalize("a.png", chunk(png, "iCCP", icc(profile)), () -> {});
+    var decoded = ImageIO.read(new ByteArrayInputStream(result.png()));
+    assertEquals(0xffff0000, decoded.getRGB(0, 0));
+    assertEquals(0, decoded.getRGB(1, 0) >>> 24);
+    assertFalse(
+        new String(result.png(), java.nio.charset.StandardCharsets.ISO_8859_1).contains("iCCP"));
+    var gray = new BufferedImage(2, 1, BufferedImage.TYPE_USHORT_GRAY);
+    gray.getRaster().setSample(0, 0, 0, 65535);
+    var bytes = new ByteArrayOutputStream();
+    ImageIO.write(gray, "png", bytes);
+    var normalized = codec.normalize("a.png", bytes.toByteArray(), () -> {});
+    assertEquals(0xffffffff, ImageIO.read(new ByteArrayInputStream(normalized.png())).getRGB(0, 0));
+    failure("IMAGE_FORMAT_UNSUPPORTED", "a.png", chunk(png, "acTL", new byte[8]));
+  }
+
   @Test
   void exifOrientationsApplyBeforeDimensionsAndMetadataIsStripped() throws Exception {
     var jpeg = image("jpg", 7, 3);

@@ -40,6 +40,11 @@ public final class WorkspaceRuntime {
   private final Map<String, WorkspaceContracts.Contract> contracts;
   private final ReportPolicy reports = new ReportPolicy();
   private final NativeSearchRuntime searches;
+  private final io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageRuntime images;
+
+  public io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageRuntime images() {
+    return images;
+  }
 
   public WorkspaceRuntime(SecureWorkspaceStore workspace) throws IOException {
     this(workspace, new NativeSearchRuntime());
@@ -47,15 +52,30 @@ public final class WorkspaceRuntime {
 
   public WorkspaceRuntime(SecureWorkspaceStore workspace, NativeSearchRuntime searches)
       throws IOException {
+    this(
+        workspace,
+        searches,
+        new io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageRuntime(
+            null, new io.github.lovexiaopeng.jimu.adapters.runtime.worker.OperationThreads()));
+  }
+
+  public WorkspaceRuntime(
+      SecureWorkspaceStore workspace,
+      NativeSearchRuntime searches,
+      io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageRuntime images)
+      throws IOException {
     this.workspace = workspace;
+    this.images = images;
     this.searches = searches;
     var loaded = new LinkedHashMap<String, WorkspaceContracts.Contract>();
     for (String name : WorkspaceContracts.NAMES)
       loaded.put(name, new WorkspaceContracts().load(name));
+    loaded.put("compose_report:0.2.0", new WorkspaceContracts().load("compose_report", "0.2.0"));
     contracts = Map.copyOf(loaded);
   }
 
   public void available(String name) {
+    if (name.equals("read_image")) images.available();
     if (name.equals("glob") || name.equals("grep")) searches.requireAvailable();
   }
 
@@ -63,6 +83,15 @@ public final class WorkspaceRuntime {
     var contract = contracts.get(name);
     if (contract == null) throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
     return contract;
+  }
+
+  public WorkspaceContracts.Contract contract(String name, String version) {
+    var value =
+        contracts.get(
+            name.equals("compose_report") && version.equals("0.2.0") ? name + ":" + version : name);
+    if (value == null || !value.descriptor().version().equals(version))
+      throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+    return value;
   }
 
   public void prepareEvaluation(Lease lease, ExecutionLedger ledger) {
@@ -91,10 +120,15 @@ public final class WorkspaceRuntime {
   }
 
   public void validate(String name, JsonNode input) {
-    contract(name).in().validate(input);
+    validate(name, "0.1.0", input);
+  }
+
+  public void validate(String name, String version, JsonNode input) {
+    contract(name, version).in().validate(input);
     Set<String> allowed =
         switch (name) {
           case "read" -> Set.of("file_path", "offset", "limit");
+          case "read_image" -> Set.of("file_path");
           case "write" -> Set.of("file_path", "content");
           case "present" -> Set.of("files");
           case "compose_report" -> Set.of("file_path", "draft");
@@ -168,6 +202,18 @@ public final class WorkspaceRuntime {
       ExecutionLedger ledger,
       ArtifactStore store,
       BoundaryProbe probe) {
+    if (lease.capabilities().contains("read_image")) {
+      String path = input.path("file_path").asText();
+      if (path.equals("inputs/images") || path.startsWith("inputs/images/")) {
+        if (name.equals("read")) throw new FileFailure("FS_NOT_TEXT");
+        if (List.of("write", "edit", "compose_report").contains(name))
+          throw new FileFailure("FS_READ_ONLY");
+      }
+      if (name.equals("present"))
+        for (var file : input.path("files"))
+          if (file.path("path").asText().startsWith("inputs/images/"))
+            throw new TaskFailure(409, "REPORT_INVALID");
+    }
     // admit returns RUNNING only for new admission; all unconfirmed recovery is refused by
     // the ledger. Never catch a missing binding and rebind an older invocation.
     boolean search = name.equals("glob") || name.equals("grep");
@@ -179,7 +225,8 @@ public final class WorkspaceRuntime {
                 lease.taskId(),
                 invocation.effectId(),
                 () -> ledger.checkpoint(lease));
-    var descriptor = contract(name).descriptor();
+    var selected = contract(name, ledger.toolSnapshot(lease).pins().get(name).version());
+    var descriptor = selected.descriptor();
     var context =
         new ExecutionContext(invocation.id(), lease.deadline(), () -> ledger.checkpoint(lease));
     var searchPort =
@@ -195,6 +242,14 @@ public final class WorkspaceRuntime {
             : null;
     Object result =
         switch (name) {
+          case "read_image" ->
+              new io.github.lovexiaopeng.jimu.plugins.builtin.workspace.ReadImagePlugin(
+                      images.bind(ledger, lease, invocation), descriptor)
+                  .execute(
+                      new io.github.lovexiaopeng.jimu.plugins.builtin.workspace.ReadImagePlugin
+                          .Input(input.path("file_path").asText()),
+                      context)
+                  .output();
           case "read" ->
               new ReadPlugin(port, descriptor)
                   .execute(
@@ -241,19 +296,37 @@ public final class WorkspaceRuntime {
                       context)
                   .output();
           case "compose_report" ->
-              new ComposeReportPlugin(
-                      (path, draft) -> {
-                        var composed =
-                            new ReportComposer().compose(path, draft, ledger.reportContext(lease));
-                        probe.hit("C0", lease.taskId());
-                        var written = port.write(path, composed.markdown());
-                        probe.hit("C1", lease.taskId());
-                        return composed.receipt(written);
-                      },
-                      descriptor)
-                  .execute(
-                      Payloads.read(input.toString(), ComposeReportPlugin.Input.class), context)
-                  .output();
+              descriptor.version().equals("0.2.0")
+                  ? new ComposeReportPlugin.Images(
+                          (path, draft) -> {
+                            var evidence =
+                                ((io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger) ledger)
+                                    .imageReportContext(lease, invocation.id());
+                            var composed = new ImageReportComposer().compose(path, draft, evidence);
+                            probe.hit("C0", lease.taskId());
+                            var written = port.write(path, composed.markdown());
+                            probe.hit("C1", lease.taskId());
+                            return composed.receipt(written);
+                          },
+                          descriptor)
+                      .execute(
+                          Payloads.read(input.toString(), ComposeReportPlugin.Images.Input.class),
+                          context)
+                      .output()
+                  : new ComposeReportPlugin(
+                          (path, draft) -> {
+                            var composed =
+                                new ReportComposer()
+                                    .compose(path, draft, ledger.reportContext(lease));
+                            probe.hit("C0", lease.taskId());
+                            var written = port.write(path, composed.markdown());
+                            probe.hit("C1", lease.taskId());
+                            return composed.receipt(written);
+                          },
+                          descriptor)
+                      .execute(
+                          Payloads.read(input.toString(), ComposeReportPlugin.Input.class), context)
+                      .output();
           case "present" ->
               new PresentPlugin(
                       port,
@@ -263,7 +336,7 @@ public final class WorkspaceRuntime {
                   .output();
           default -> throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
         };
-    contract(name).out().validateObject(result);
+    selected.out().validateObject(result);
     String output = Payloads.json(result);
     if (output.getBytes(StandardCharsets.UTF_8).length > (search ? 65536 : 1048576))
       throw new FileFailure("TOOL_OUTPUT_TOO_LARGE");
@@ -278,7 +351,12 @@ public final class WorkspaceRuntime {
       ArtifactStore store,
       BoundaryProbe probe) {
     var context = ledger.reportContext(lease);
-    files.forEach(file -> reports.validate(file, context));
+    if (!ledger
+        .toolSnapshot(lease)
+        .pins()
+        .getOrDefault("compose_report", new ExecutionLedger.PluginPin("0.1.0", "", 0))
+        .version()
+        .equals("0.2.0")) files.forEach(file -> reports.validate(file, context));
     probe.hit("P_BEFORE_STAGE", lease.taskId());
     var receipts =
         files.stream()

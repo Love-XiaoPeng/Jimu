@@ -33,6 +33,27 @@ public final class ImageNormalizer {
   public static final int MAX_BYTES = 1048576;
   public static final long MAX_PIXELS = 4194304L;
 
+  public static void available() {
+    var readers =
+        providers(ImageReaderSpi.class)
+            .filter(p -> "java.desktop".equals(p.getClass().getModule().getName()))
+            .map(p -> p.getClass().getName())
+            .toList();
+    boolean writer =
+        providers(ImageWriterSpi.class)
+            .anyMatch(
+                p ->
+                    "java.desktop".equals(p.getClass().getModule().getName())
+                        && p.getClass()
+                            .getName()
+                            .equals("com.sun.imageio.plugins.png.PNGImageWriterSpi"));
+    if (!readers.containsAll(
+            java.util.List.of(
+                "com.sun.imageio.plugins.png.PNGImageReaderSpi",
+                "com.sun.imageio.plugins.jpeg.JPEGImageReaderSpi"))
+        || !writer) throw new FileFailure("IMAGE_CODEC_UNAVAILABLE");
+  }
+
   public record Normalized(
       byte[] png, int width, int height, int originalWidth, int originalHeight) {
     public Normalized {
@@ -63,6 +84,7 @@ public final class ImageNormalizer {
       if (png != extension.equals("png")) throw new FileFailure("IMAGE_TYPE_MISMATCH");
     }
     int orientation = png ? pngContainer(raw) : jpegContainer(raw);
+    var profile = colorProfile(raw, png);
     String readerName =
         "com.sun.imageio.plugins." + (png ? "png.PNGImageReaderSpi" : "jpeg.JPEGImageReaderSpi");
     var spi =
@@ -80,7 +102,8 @@ public final class ImageNormalizer {
             (source, warning) -> {
               throw invalid();
             });
-        reader.setInput(input, false, false);
+        // Metadata is parsed by the bounded host parser, never by unbounded text/ICC inflation.
+        reader.setInput(input, false, true);
         int width = reader.getWidth(0), height = reader.getHeight(0);
         dimensions(width, height);
         if (reader.getNumImages(true) != 1) throw new FileFailure("IMAGE_FORMAT_UNSUPPORTED");
@@ -89,6 +112,21 @@ public final class ImageNormalizer {
         if (decoded == null || decoded.getWidth() != width || decoded.getHeight() != height)
           throw invalid();
         cancellation.throwIfCancelled();
+        if (png && profile != null) {
+          var target =
+              new BufferedImage(
+                  width,
+                  height,
+                  decoded.getColorModel().hasAlpha()
+                      ? BufferedImage.TYPE_INT_ARGB
+                      : BufferedImage.TYPE_INT_RGB);
+          new java.awt.image.ColorConvertOp(
+                  new java.awt.color.ICC_ColorSpace(profile),
+                  java.awt.color.ColorSpace.getInstance(java.awt.color.ColorSpace.CS_sRGB),
+                  null)
+              .filter(decoded, target);
+          decoded = target;
+        }
         var oriented = orient(decoded, orientation);
         int ow = oriented.getWidth(), oh = oriented.getHeight();
         double scale =
@@ -108,7 +146,75 @@ public final class ImageNormalizer {
       } finally {
         reader.dispose();
       }
-    } catch (IOException | IllegalArgumentException e) {
+    } catch (IOException | IllegalArgumentException | java.awt.color.CMMException e) {
+      throw invalid();
+    }
+  }
+
+  private static java.awt.color.ICC_Profile colorProfile(byte[] raw, boolean png) {
+    try {
+      byte[] profile = null;
+      if (png) {
+        for (int at = 8; at < raw.length; ) {
+          int length = ByteBuffer.wrap(raw, at, 4).getInt();
+          String type = new String(raw, at + 4, 4, StandardCharsets.US_ASCII);
+          if (type.equals("iCCP")) {
+            if (profile != null) throw invalid();
+            int start = at + 8, end = start + length, zero = start;
+            while (zero < end && raw[zero] != 0) zero++;
+            if (zero == start || zero - start > 79 || zero + 2 >= end || raw[zero + 1] != 0)
+              throw invalid();
+            try (var input =
+                new java.util.zip.InflaterInputStream(
+                    new ByteArrayInputStream(raw, zero + 2, end - zero - 2))) {
+              profile = input.readNBytes(65537);
+              if (profile.length > 65536) throw invalid();
+            }
+          }
+          at += length + 12;
+        }
+      } else {
+        var parts = new java.util.TreeMap<Integer, byte[]>();
+        int count = 0, total = 0;
+        for (int at = 2; at < raw.length; ) {
+          if ((raw[at++] & 255) != 255) throw invalid();
+          while ((raw[at] & 255) == 255) at++;
+          int marker = raw[at++] & 255;
+          if (marker == 217 || marker == 218) break;
+          int length = ((raw[at] & 255) << 8) | (raw[at + 1] & 255);
+          if (marker == 226
+              && length >= 16
+              && new String(raw, at + 2, 12, StandardCharsets.ISO_8859_1).equals("ICC_PROFILE\0")) {
+            int sequence = raw[at + 14] & 255, expected = raw[at + 15] & 255;
+            if (expected == 0
+                || sequence < 1
+                || sequence > expected
+                || count != 0 && count != expected
+                || parts.containsKey(sequence)) throw invalid();
+            count = expected;
+            byte[] part = Arrays.copyOfRange(raw, at + 16, at + length);
+            total += part.length;
+            if (total > 65536) throw invalid();
+            parts.put(sequence, part);
+          }
+          at += length;
+        }
+        if (count != 0) {
+          if (parts.size() != count) throw invalid();
+          var joined = new ByteArrayOutputStream();
+          for (var part : parts.values()) joined.write(part);
+          profile = joined.toByteArray();
+        }
+      }
+      if (profile == null) return null;
+      if (profile.length < 128 || ByteBuffer.wrap(profile).getInt() != profile.length)
+        throw invalid();
+      var result = java.awt.color.ICC_Profile.getInstance(profile);
+      if (!java.util.List.of(
+              java.awt.color.ColorSpace.TYPE_RGB, java.awt.color.ColorSpace.TYPE_GRAY)
+          .contains(result.getColorSpaceType())) throw invalid();
+      return result;
+    } catch (IOException | IllegalArgumentException | java.awt.color.CMMException invalid) {
       throw invalid();
     }
   }

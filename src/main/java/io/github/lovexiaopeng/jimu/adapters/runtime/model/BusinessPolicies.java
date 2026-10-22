@@ -19,7 +19,32 @@ public final class BusinessPolicies {
       String instructionDigest,
       Map<String, String> profileDigests,
       String requestStrategy,
-      boolean localOnly) {
+      boolean localOnly,
+      @com.fasterxml.jackson.annotation.JsonInclude(
+              com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+          String reportMode) {
+    public Policy(
+        int version,
+        String id,
+        String mode,
+        ExecutionScopes.Requirement anchor,
+        String instructionDigest,
+        Map<String, String> profileDigests,
+        String requestStrategy,
+        boolean localOnly) {
+      this(
+          version,
+          id,
+          mode,
+          anchor,
+          instructionDigest,
+          profileDigests,
+          requestStrategy,
+          localOnly,
+          null);
+    }
+
+    @org.springframework.boot.context.properties.bind.ConstructorBinding
     public Policy {
       if (profileDigests != null)
         profileDigests =
@@ -31,7 +56,10 @@ public final class BusinessPolicies {
 
   public static void validate(Policy p) {
     if (p == null
-        || p.version() != 1
+        || !(p.version() == 1 && p.reportMode() == null && STRATEGY.equals(p.requestStrategy())
+            || p.version() == 2
+                && "task-image-v1".equals(p.reportMode())
+                && ModelImages.DEEPSEEK.equals(p.requestStrategy()))
         || p.id() == null
         || !p.id().matches("[a-zA-Z0-9_-]{1,80}")
         || !"BUSINESS".equals(p.mode())
@@ -51,8 +79,7 @@ public final class BusinessPolicies {
         || !ExecutionScopes.digest(p.instructionDigest())
         || p.profileDigests() == null
         || p.profileDigests().isEmpty()
-        || !p.profileDigests().values().stream().allMatch(ExecutionScopes::digest)
-        || !STRATEGY.equals(p.requestStrategy()))
+        || !p.profileDigests().values().stream().allMatch(ExecutionScopes::digest))
       throw new IllegalArgumentException("Invalid business policy");
   }
 

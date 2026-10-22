@@ -17,12 +17,24 @@ public final class Payloads {
       JsonMapper.builder()
           .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
           .addMixIn(ModelSnapshot.class, ModelSnapshotJson.class)
+          .addMixIn(
+              io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Request.class,
+              TaskRequestJson.class)
           .build();
 
   // Missing optional policy must retain the exact v2 canonical bytes/digest on old tasks.
   private abstract static class ModelSnapshotJson {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     abstract ModelSnapshot.InputLimit inputLimit();
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    abstract ModelSnapshot.ImageInput imageInput();
+  }
+
+  private abstract static class TaskRequestJson {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    abstract java.util.List<io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages.Descriptor>
+        images();
   }
 
   private Payloads() {}

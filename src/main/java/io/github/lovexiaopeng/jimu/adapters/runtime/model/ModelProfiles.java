@@ -14,6 +14,45 @@ import org.springframework.core.env.Environment;
 
 /** Operator configuration only; request JSON cannot select profiles, endpoints or secrets. */
 public final class ModelProfiles {
+  // Spring needs one unambiguous binding constructor. Keep its DTO outside the leaf model API,
+  // whose v2 Java constructor remains source compatible and contains no Spring annotations.
+  public record ProfileBinding(
+      int version,
+      String profile,
+      int configVersion,
+      String adapter,
+      String baseUrl,
+      String model,
+      String revision,
+      String authMode,
+      String credentialRef,
+      int credentialVersion,
+      String transportPolicy,
+      int connectTimeoutMs,
+      int requestTimeoutMs,
+      int responseBytes,
+      boolean stream,
+      int maxOutputTokens,
+      String outputLimitField,
+      int outputMarginTokens,
+      ModelSnapshot.Capabilities capabilities,
+      Map<String, Boolean> providerOptions,
+      boolean paid,
+      ModelSnapshot.Price price,
+      ModelSnapshot.InputLimit inputLimit,
+      ModelSnapshot.ImageInput imageInput) {}
+
+  public record SettingsBinding(
+      String defaultProfileRef,
+      Map<String, String> tenantProfiles,
+      Map<String, ProfileBinding> profiles,
+      List<String> allowedOrigins,
+      boolean paidDispatchEnabled,
+      String evaluationRunId,
+      String evaluationPlanRef,
+      String evaluationPhase,
+      String evaluationSample) {}
+
   public record Settings(
       String defaultProfileRef,
       Map<String, String> tenantProfiles,
@@ -51,13 +90,35 @@ public final class ModelProfiles {
                   throw new IllegalArgumentException("Business policy identity mismatch");
               });
     }
-    settings =
+    var bound =
         Binder.get(env)
             .bind(
                 "jimu.model",
-                Bindable.of(Settings.class),
+                Bindable.of(SettingsBinding.class),
                 new NoUnboundElementsBindHandler(BindHandler.DEFAULT))
             .orElse(null);
+    if (bound == null) settings = null;
+    else {
+      Map<String, ModelSnapshot> profiles =
+          bound.profiles() == null
+              ? null
+              : bound.profiles().entrySet().stream()
+                  .collect(
+                      java.util.stream.Collectors.toMap(
+                          Map.Entry::getKey,
+                          e -> Payloads.read(Payloads.json(e.getValue()), ModelSnapshot.class)));
+      settings =
+          new Settings(
+              bound.defaultProfileRef(),
+              bound.tenantProfiles(),
+              profiles,
+              bound.allowedOrigins(),
+              bound.paidDispatchEnabled(),
+              bound.evaluationRunId(),
+              bound.evaluationPlanRef(),
+              bound.evaluationPhase(),
+              bound.evaluationSample());
+    }
     fixture = settings == null;
     if (fixture && !env.getProperty("jimu.test-mode", Boolean.class, false))
       throw new IllegalArgumentException("Explicit model profiles required outside test assembly");
@@ -189,8 +250,10 @@ public final class ModelProfiles {
 
   public void available(ModelSnapshot snapshot) {
     if (snapshot == null
-        || snapshot.version() != 2
-        || !List.of("openai-chat-v1", BusinessPolicies.STRATEGY).contains(snapshot.adapter()))
+        || !(snapshot.version() == 2
+                && snapshot.imageInput() == null
+                && List.of("openai-chat-v1", BusinessPolicies.STRATEGY).contains(snapshot.adapter())
+            || snapshot.version() == 3 && ModelImages.enabled(snapshot)))
       throw new TaskFailure(503, "MODEL_CONFIG_UNAVAILABLE");
     if (fixture) {
       if (!"p2-fixture".equals(snapshot.profile()))
@@ -211,7 +274,7 @@ public final class ModelProfiles {
             || evaluationRunId().isBlank()))
       throw new TaskFailure(503, "MODEL_COST_BOUND_UNAVAILABLE");
     var selection = evaluationSelection();
-    if (!BusinessPolicies.STRATEGY.equals(snapshot.adapter())
+    if (!ModelImages.deepseek(snapshot.adapter())
         && selection != null
         && !(env.getProperty("jimu.test-mode", Boolean.class, false)
             && "trusted-local-v1".equals(snapshot.transportPolicy())
@@ -239,6 +302,7 @@ public final class ModelProfiles {
   }
 
   public void checkInput(ModelSnapshot snapshot, String body) {
+    if (snapshot.version() == 3) ModelImages.body(snapshot, body);
     ModelInputBounds.check(snapshot, body, env.getProperty("jimu.test-mode", Boolean.class, false));
   }
 
@@ -270,9 +334,14 @@ public final class ModelProfiles {
     } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException("Invalid model base URL");
     }
-    if (p.version() != 2
-        || !("openai-chat-v1".equals(p.adapter())
-            || business && BusinessPolicies.STRATEGY.equals(p.adapter()))
+    if (!(p.version() == 2
+                && p.imageInput() == null
+                && ("openai-chat-v1".equals(p.adapter())
+                    || business && BusinessPolicies.STRATEGY.equals(p.adapter()))
+            || p.version() == 3
+                && ModelImages.enabled(p)
+                && (ModelImages.OPENAI.equals(p.adapter())
+                    || business && ModelImages.DEEPSEEK.equals(p.adapter())))
         || p.configVersion() < 1
         || p.model() == null
         || p.model().isBlank()
@@ -319,7 +388,7 @@ public final class ModelProfiles {
         || c.evidence().isBlank()
         || p.stream() && (!c.streamText() || !c.streamTools()))
       throw new TaskFailure(503, "MODEL_CAPABILITY_UNSUPPORTED");
-    if (BusinessPolicies.STRATEGY.equals(p.adapter())
+    if (ModelImages.deepseek(p.adapter())
         && (!business
             || !p.paid()
             || !"deepseek-flash".equals(p.model())
@@ -329,7 +398,7 @@ public final class ModelProfiles {
             || c.parallelToolField()
             || !c.usageCall()
             || !c.usageStream()
-            || !"deepseek-nonthinking-v1".equals(c.evidence())
+            || !p.adapter().equals(c.evidence())
             || !(testMode
                     && "trusted-local-v1".equals(p.transportPolicy())
                     && List.of("127.0.0.1", "[::1]").contains(uri.getHost())

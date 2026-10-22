@@ -46,9 +46,19 @@ public class RuntimeConfiguration {
     descriptors.add(descriptor);
     if (env.containsProperty("jimu.workspace-root")) {
       for (String name : WorkspaceContracts.NAMES) {
+        if (name.equals("read_image")
+            && !env.getProperty("jimu.images.enabled", Boolean.class, false)) continue;
         if ((name.equals("glob") || name.equals("grep"))
             && !env.getProperty("jimu.search.enabled", Boolean.class, false)) continue;
-        descriptors.add(new WorkspaceContracts().load(name).descriptor());
+        descriptors.add(
+            new WorkspaceContracts()
+                .load(
+                    name,
+                    name.equals("compose_report")
+                            && env.getProperty("jimu.images.enabled", Boolean.class, false)
+                        ? "0.2.0"
+                        : "0.1.0")
+                .descriptor());
       }
     }
     return new PluginRegistry(descriptors);

@@ -4,6 +4,7 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.EventFeed;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
 import java.io.IOException;
 import java.net.URI;
@@ -18,7 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -34,7 +34,18 @@ public final class TaskController {
       Long maxCostMicros) {}
 
   public record SubmitRequest(
-      String goal, List<String> capabilityIds, List<String> resourceIds, BudgetRequest budget) {}
+      String goal,
+      List<String> capabilityIds,
+      List<String> resourceIds,
+      BudgetRequest budget,
+      List<TaskImages.Input> images) {}
+
+  private static final com.fasterxml.jackson.databind.ObjectMapper STRICT =
+      new com.fasterxml.jackson.databind.ObjectMapper()
+          .disable(com.fasterxml.jackson.databind.DeserializationFeature.ACCEPT_FLOAT_AS_INT)
+          .disable(com.fasterxml.jackson.databind.MapperFeature.ALLOW_COERCION_OF_SCALARS)
+          .enable(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+          .enable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
 
   private final Tasks tasks;
   private final Authenticator authentication;
@@ -53,8 +64,19 @@ public final class TaskController {
   public ResponseEntity<Tasks.View> submit(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestHeader(value = "Idempotency-Key", required = false) String key,
-      @RequestBody SubmitRequest request) {
+      jakarta.servlet.http.HttpServletRequest http)
+      throws IOException {
     var identity = authentication.authenticate(authorization);
+    byte[] body = http.getInputStream().readNBytes(6291457);
+    if (body.length > 6291456) throw new TaskFailure(413, "REQUEST_TOO_LARGE");
+    SubmitRequest request;
+    try {
+      request = STRICT.readValue(body, SubmitRequest.class);
+    } catch (com.fasterxml.jackson.core.JsonProcessingException invalid) {
+      throw new TaskFailure(400, "INVALID_IMAGE_INPUT");
+    }
+    if (request != null && request.images() != null && request.images().isEmpty())
+      throw new TaskFailure(400, "INVALID_IMAGE_INPUT");
     if (request == null
         || key == null
         || !key.matches("[!-~]{1,128}")
@@ -74,6 +96,7 @@ public final class TaskController {
         || !List.of(
                 "web_fetch",
                 "read",
+                "read_image",
                 "write",
                 "present",
                 "web_search",
@@ -96,7 +119,10 @@ public final class TaskController {
             b == null ? null : b.maxCostMicros());
     var result =
         tasks.submit(
-            identity, key, new Tasks.Request(request.goal(), capabilities, List.of(), budget));
+            identity,
+            key,
+            new Tasks.Request(request.goal(), capabilities, List.of(), budget),
+            request.images() == null ? List.of() : request.images());
     return ResponseEntity.accepted()
         .location(URI.create("/api/tasks/" + result.taskId()))
         .body(result);

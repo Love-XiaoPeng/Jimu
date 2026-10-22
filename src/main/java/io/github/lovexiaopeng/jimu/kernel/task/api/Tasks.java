@@ -10,10 +10,21 @@ public interface Tasks {
   record Budget(
       int deadlineSeconds, int maxModelRequests, int maxToolInvocations, Long maxCostMicros) {}
 
-  record Request(String goal, List<String> capabilityIds, List<String> resourceIds, Budget budget) {
+  record Request(
+      String goal,
+      List<String> capabilityIds,
+      List<String> resourceIds,
+      Budget budget,
+      List<TaskImages.Descriptor> images) {
+    public Request(
+        String goal, List<String> capabilityIds, List<String> resourceIds, Budget budget) {
+      this(goal, capabilityIds, resourceIds, budget, null);
+    }
+
     public Request {
       capabilityIds = List.copyOf(capabilityIds);
       resourceIds = List.copyOf(resourceIds);
+      if (images != null) images = List.copyOf(images);
     }
   }
 
@@ -56,6 +67,12 @@ public interface Tasks {
   record Download(Artifact artifact, String tenant, String snapshotKey) {}
 
   View submit(Identity identity, String key, Request request);
+
+  default View submit(
+      Identity identity, String key, Request request, List<TaskImages.Input> images) {
+    if (!images.isEmpty()) throw new TaskFailure(503, "IMAGE_STORE_UNAVAILABLE");
+    return submit(identity, key, request);
+  }
 
   View get(Identity identity, String taskId);
 

@@ -157,7 +157,7 @@ public final class ReportComposer {
     }
   }
 
-  private String blocks(
+  String blocks(
       List<Segment> segments,
       Map<String, Source> sources,
       List<Binding> bindings,
@@ -244,7 +244,7 @@ public final class ReportComposer {
     return Character.isWhitespace(c) || "（()）【[]】<>\"'`：，。；！？".indexOf(c) >= 0;
   }
 
-  private static String plain(String value, int max) {
+  static String plain(String value, int max) {
     require(
         value != null
             && !value.isBlank()

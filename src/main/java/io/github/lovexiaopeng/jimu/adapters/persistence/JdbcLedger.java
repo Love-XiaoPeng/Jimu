@@ -29,12 +29,33 @@ import org.springframework.transaction.support.TransactionTemplate;
  * InnoDB is the only authority. Every write locks budget before task and checks ownership inside
  * the transaction.
  */
-public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLedger {
+public final class JdbcLedger
+    implements Tasks,
+        ExecutionLedger,
+        NativeSearchLedger,
+        io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger {
   private final JdbcTemplate db;
   private final TransactionTemplate transactions;
   private final ModelProfiles models;
   private final JdbcExecutionScopes executionScopes;
   private java.util.function.BooleanSupplier searchAvailable = () -> false;
+  private final JdbcImageRecords images;
+  private ArtifactStore imageStore;
+
+  public void imageStorage(ArtifactStore store) {
+    imageStore = store;
+  }
+
+  private boolean imagesAvailable() {
+    if (imageStore == null) return false;
+    try {
+      imageStore.check();
+      io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageNormalizer.available();
+      return true;
+    } catch (io.github.lovexiaopeng.jimu.plugin.api.FileFailure unavailable) {
+      return false;
+    }
+  }
 
   public void nativeSearchAvailability(java.util.function.BooleanSupplier availability) {
     this.searchAvailable = availability;
@@ -43,6 +64,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
   public JdbcLedger(DataSource source, ModelProfiles models) {
     this.models = models;
     db = new JdbcTemplate(source);
+    images = new JdbcImageRecords(db);
     db.setQueryTimeout(5);
     executionScopes = new JdbcExecutionScopes(db, models);
     transactions = new TransactionTemplate(new DataSourceTransactionManager(source));
@@ -69,6 +91,104 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
             });
     if (result.rejection() != null) throw result.rejection();
     return result.value();
+  }
+
+  @Override
+  public io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages.Snapshot mediaSnapshot(
+      Lease lease) {
+    return leaseTx(lease, () -> images.snapshot(fenced(lease, true)));
+  }
+
+  @Override
+  public io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.Raw imageInput(
+      Lease lease, String path) {
+    return leaseTx(
+        lease,
+        () -> {
+          var task = fenced(lease, true);
+          io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelImages.require(snapshot(task));
+          return images.raw(task, path);
+        });
+  }
+
+  @Override
+  public String reserveImage(Lease lease, String invocation, String inputId) {
+    return leaseTx(
+        lease,
+        () -> {
+          var budget = bucket(lease.tenant());
+          var task = fenced(lease, true);
+          if (1048576 > n(budget, "storage_limit") - n(budget, "storage_held"))
+            throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
+          String image = id();
+          images.reserve(task, invocation, image, inputId);
+          db.update(
+              "UPDATE tenant_budget SET storage_held=storage_held+1048576 WHERE tenant_id=?",
+              lease.tenant());
+          reserve(
+              lease.tenant(),
+              lease.taskId(),
+              image,
+              null,
+              "MEDIA_STORAGE",
+              1048576,
+              "RESERVED",
+              "KNOWN");
+          return image;
+        });
+  }
+
+  @Override
+  public void imageSucceeded(
+      Lease lease,
+      String invocation,
+      String key,
+      io.github.lovexiaopeng.jimu.plugin.api.ImagePort.Result result) {
+    leaseTx(
+        lease,
+        () -> {
+          bucket(lease.tenant());
+          var task = fenced(lease, true);
+          images.succeeded(task, invocation, key, result);
+          db.update(
+              "UPDATE reservation SET state='SETTLED',actual=? WHERE tenant_id=? AND id=? AND category='MEDIA_STORAGE' AND state='RESERVED'",
+              result.image().size(),
+              lease.tenant(),
+              result.image().imageId());
+          db.update(
+              "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
+              1048576 - result.image().size(),
+              lease.tenant());
+          toolSucceeded(lease, invocation, Payloads.json(result));
+          return null;
+        });
+  }
+
+  @Override
+  public io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ObjectValue imageObject(
+      Lease lease, io.github.lovexiaopeng.jimu.plugin.api.ImagePort.Result ref) {
+    return leaseTx(lease, () -> images.object(fenced(lease, true), ref));
+  }
+
+  @Override
+  public List<io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ObjectValue> stepImages(
+      Lease lease, String step) {
+    return leaseTx(lease, () -> images.step(fenced(lease, true), step));
+  }
+
+  @Override
+  public void imageDecodeTimedOut(Lease lease) {
+    leaseTx(
+        lease,
+        () -> {
+          var task = fenced(lease, false);
+          db.update(
+              "UPDATE task SET state='CANCEL_REQUESTED',cancel_requested_at=COALESCE(cancel_requested_at,CURRENT_TIMESTAMP(6)),code=COALESCE(code,'IMAGE_DECODE_TIMEOUT') WHERE tenant_id=? AND id=?",
+              lease.tenant(),
+              lease.taskId());
+          event(task, "image-decode-timeout", "task.cancel_requested", "IMAGE_DECODE_TIMEOUT");
+          return null;
+        });
   }
 
   private String requireScope(
@@ -134,7 +254,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
       if (task == null) policy = models.businessPolicy();
       else {
         String json = s(task, "business_policy_snapshot");
-        if (n(task, "record_version") != 2
+        if (!(n(task, "record_version") == 2 || n(task, "record_version") == 3)
             || json == null
             || !Payloads.hash(json).equals(task.get("business_policy_digest"))
             || task.get("execution_scope_digest") != null
@@ -143,6 +263,9 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
                 task.get("evaluation_run_id"), run == null ? null : run.get("id")))
           throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
         policy = Payloads.read(json, BusinessPolicies.Policy.class);
+        if (!(n(task, "record_version") == 2 && policy.version() == 1
+            || n(task, "record_version") == 3 && policy.version() == 2))
+          throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
         if (!BusinessPolicies.canonical(policy).equals(json))
           throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
         model = historicalSnapshot(task);
@@ -259,12 +382,42 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
               .stream()
               .filter(
                   name -> searchAvailable.getAsBoolean() || !List.of("glob", "grep").contains(name))
+              .filter(
+                  name ->
+                      !name.equals("read_image")
+                          || imagesAvailable()
+                              && io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelImages
+                                  .enabled(models.selected(identity.tenant())))
               .toList();
         });
   }
 
   @Override
   public View submit(Identity identity, String key, Request request) {
+    return submit(identity, key, request, List.of());
+  }
+
+  @Override
+  public View submit(
+      Identity identity,
+      String key,
+      Request original,
+      List<io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages.Input> input) {
+    var descriptors =
+        input.isEmpty()
+            ? null
+            : io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageInputs.describe(input);
+    if (original.images() != null && !original.images().equals(descriptors))
+      throw new TaskFailure(400, "INVALID_IMAGE_INPUT");
+    var request =
+        new Request(
+            original.goal(),
+            original.capabilityIds(),
+            original.resourceIds(),
+            original.budget(),
+            descriptors);
+    boolean media = request.capabilityIds().contains("read_image");
+    if (descriptors != null && !media) throw new TaskFailure(400, "INVALID_IMAGE_INPUT");
     return tx(
         () -> {
           // InnoDB also locks the evaluation parent while checking task's FK. Acquire that
@@ -301,6 +454,17 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
                 .equals(request)) throw new TaskFailure(409, "IDEMPOTENCY_CONFLICT");
             return view(old.getFirst());
           }
+          if (media) {
+            io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelImages.require(
+                models.selected(identity.tenant()));
+            if (!imagesAvailable()
+                || db.queryForObject("SELECT @@max_allowed_packet", Long.class) < 16777216)
+              throw new TaskFailure(503, "IMAGE_STORE_UNAVAILABLE");
+            if (request.capabilityIds().contains("write")
+                || request.capabilityIds().contains("present")
+                    && !request.capabilityIds().contains("compose_report"))
+              throw new TaskFailure(400, "INVALID_CAPABILITIES");
+          }
           long installationEpoch = epoch(identity, request.capabilityIds());
           if (request.capabilityIds().stream()
                   .anyMatch(name -> List.of("glob", "grep").contains(name))
@@ -321,6 +485,9 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
                     n(installed, "epoch")));
           }
           String toolSnapshot = Payloads.json(new ToolSnapshot(1, pins));
+          if (pins.containsKey("compose_report")
+              && media != pins.get("compose_report").version().equals("0.2.0"))
+            throw new TaskFailure(503, "PLUGIN_PIN_MISMATCH");
           var model = models.selected(identity.tenant());
           String scopeDigest = requireScope(identity.tenant(), evaluation, null, model);
           var businessPolicy = models.businessPolicy();
@@ -328,11 +495,21 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
               && request.capabilityIds().contains("write"))
             throw new TaskFailure(400, "INVALID_CAPABILITIES");
           if (businessPolicy != null
+              && businessPolicy.version() == 1
               && request.capabilityIds().contains("present")
               && !request.capabilityIds().stream()
                   .filter(name -> !List.of("edit", "glob", "grep").contains(name))
                   .toList()
                   .equals(List.of("web_fetch", "read", "compose_report", "present")))
+            throw new TaskFailure(400, "INVALID_CAPABILITIES");
+          if (businessPolicy != null
+              && businessPolicy.version() == 2
+              && (!media
+                  || !request
+                      .capabilityIds()
+                      .containsAll(List.of("read", "read_image", "compose_report", "present"))
+                  || request.capabilityIds().stream()
+                      .anyMatch(c -> List.of("write", "web_search").contains(c))))
             throw new TaskFailure(400, "INVALID_CAPABILITIES");
           Long explicitCost = request.budget().maxCostMicros();
           if (explicitCost != null
@@ -421,6 +598,31 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
                 taskTokens,
                 identity.tenant(),
                 task);
+          }
+          if (media) {
+            long held = input.stream().mapToLong(i -> i.dataBase64().length()).sum();
+            if (held > n(budget, "storage_limit") - n(budget, "storage_held"))
+              throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
+            images.insert(identity, task, input, descriptors == null ? List.of() : descriptors);
+            if (held > 0) {
+              db.update(
+                  "UPDATE tenant_budget SET storage_held=storage_held+? WHERE tenant_id=?",
+                  held,
+                  identity.tenant());
+              reserve(
+                  identity.tenant(),
+                  task,
+                  task + ":media-input",
+                  null,
+                  "MEDIA_INPUT",
+                  held,
+                  "SETTLED",
+                  "KNOWN");
+              db.update(
+                  "UPDATE reservation SET actual=amount WHERE tenant_id=? AND id=?",
+                  identity.tenant(),
+                  task + ":media-input");
+            }
           }
           if (evaluationBinding != null) {
             var selection = models.evaluationSelection();
@@ -683,7 +885,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
       // Every worker transaction takes run -> tenant -> task, including recovery claims.
       var ready =
           rows(
-              "SELECT id,evaluation_run_id FROM task WHERE tenant_id=? AND record_version IN (1,2) AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) ORDER BY ready_at,id LIMIT 1",
+              "SELECT id,evaluation_run_id FROM task WHERE tenant_id=? AND record_version IN (1,2,3) AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) ORDER BY ready_at,id LIMIT 1",
               tenant);
       if (ready.isEmpty()) continue;
       var candidate = ready.getFirst();
@@ -697,7 +899,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
                 var budget = bucket(tenant);
                 var candidates =
                     rows(
-                        "SELECT *,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND id=? AND record_version IN (1,2) AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) FOR UPDATE SKIP LOCKED",
+                        "SELECT *,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND id=? AND record_version IN (1,2,3) AND (state='QUEUED' OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) FOR UPDATE SKIP LOCKED",
                         tenant,
                         s(candidate, "id"));
                 if (candidates.isEmpty()) return Optional.empty();
@@ -987,7 +1189,8 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
   private void materialBody(Map<String, Object> task, String request, int ordinal) {
     var material = material(task);
     boolean business = businessTask(task);
-    if (material == null && !business) return;
+    boolean media = n(task, "record_version") == 3;
+    if (material == null && !business && !media) return;
     var wire = Payloads.read(request, com.fasterxml.jackson.databind.JsonNode.class);
     if (material != null) {
       initialFile(task);
@@ -1007,19 +1210,23 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
         Payloads.read(
             wire.path("requestBody").asText(), com.fasterxml.jackson.databind.JsonNode.class);
     var expected = Payloads.read("[]", com.fasterxml.jackson.databind.node.ArrayNode.class);
-    if (business) {
+    if (business || media) {
       if (caps(task).contains("present")) {
         var reports = new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportPolicy();
         var context = new ReportContext(time(task, "report_time"), List.of());
         String instruction = body.path("messages").path(0).path("content").asText();
         // Recovery retains the original fixed template; no model-selected instruction is allowed.
         EvaluationMaterials.require(
-            tools(task).pins().containsKey("compose_report")
-                ? new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer()
+            media
+                ? new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ImageReportComposer()
                     .instruction(context)
                     .equals(instruction)
-                : List.of(reports.instruction(context), reports.currentInstruction(context))
-                    .contains(instruction));
+                : tools(task).pins().containsKey("compose_report")
+                    ? new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer()
+                        .instruction(context)
+                        .equals(instruction)
+                    : List.of(reports.instruction(context), reports.currentInstruction(context))
+                        .contains(instruction));
         if (!preceding.isEmpty()) {
           String first = s(preceding.getFirst(), "request_snapshot");
           EvaluationMaterials.require(
@@ -1035,11 +1242,20 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
         expected.addObject().put("role", "system").put("content", instruction);
       }
       expected.addObject().put("role", "user").put("content", s(task, "goal"));
+      if (media)
+        expected
+            .addObject()
+            .put("role", "user")
+            .put(
+                "content",
+                io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.directory(
+                    images.snapshot(task)));
     } else {
       expected.add(body.path("messages").get(0));
       expected.add(body.path("messages").get(1));
     }
     int position = 0;
+    var seen = new java.util.HashSet<String>();
     for (var prior : preceding) {
       String response = s(prior, "response_snapshot");
       EvaluationMaterials.require(
@@ -1087,8 +1303,91 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
             .put("role", "tool")
             .put("tool_call_id", s(invocation, "provider_id"))
             .put("content", s(invocation, "output_snapshot"));
+      if (media)
+        for (var image : images.step(task, s(prior, "id"))) {
+          var ref = image.result();
+          if (seen.add(
+              io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.identity(ref)))
+            expected.add(
+                io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.provider(
+                    ref,
+                    imageStore.read(
+                        s(task, "tenant_id"),
+                        image.key(),
+                        ref.image().sha256(),
+                        ref.image().size())));
+        }
     }
     EvaluationMaterials.require(expected.equals(body.path("messages")));
+    if (media) {
+      var cp =
+          Payloads.read(
+              request,
+              io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Checkpoint.class);
+      if (cp.version() != 3
+          || request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 12582912
+          || !Payloads.hash(cp.requestBody()).equals(cp.bodyDigest())
+          || !ModelProfiles.digest(snapshot(task)).equals(cp.configDigest()))
+        throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      // Every serialized reference is reloaded from this task and projected into exact data bytes.
+      var definitions =
+          new java.util.ArrayList<org.springframework.ai.tool.definition.ToolDefinition>();
+      int toolIndex = 0;
+      for (String name : caps(task)) {
+        var pin = tools(task).pins().get(name);
+        try {
+          String schema;
+          if (name.equals("web_fetch"))
+            schema =
+                new String(
+                    io.github.lovexiaopeng.jimu.adapters.runtime.contract.BuiltinManifestLoader
+                        .resource("input.schema.json"),
+                    java.nio.charset.StandardCharsets.UTF_8);
+          else {
+            var contract =
+                new io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceContracts()
+                    .load(name, pin.version());
+            if (!contract.descriptor().outputSha256().equals(pin.digest()))
+              throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+            schema = contract.input();
+          }
+          var saved = body.path("tools").path(toolIndex++).path("function");
+          String description =
+              io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceContracts.description(
+                  name);
+          if (!saved.path("name").asText().equals(name)
+              || !saved.path("description").asText().equals(description)
+              || !saved
+                  .path("parameters")
+                  .equals(Payloads.read(schema, com.fasterxml.jackson.databind.JsonNode.class)))
+            throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+          definitions.add(
+              org.springframework.ai.tool.definition.ToolDefinition.builder()
+                  .name(name)
+                  .description(description)
+                  .inputSchema(schema)
+                  .build());
+        } catch (java.io.IOException invalid) {
+          throw new TaskFailure(503, "PLUGIN_SNAPSHOT_UNAVAILABLE");
+        }
+      }
+      String projected =
+          new io.github.lovexiaopeng.jimu.adapters.ai.springai.OpenAiProtocol()
+              .body(
+                  snapshot(task),
+                  cp.messages(),
+                  definitions,
+                  ref -> {
+                    var object = images.object(task, ref);
+                    return imageStore.read(
+                        s(task, "tenant_id"),
+                        object.key(),
+                        ref.image().sha256(),
+                        ref.image().size());
+                  });
+      if (!projected.equals(cp.requestBody())) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      models.checkInput(snapshot(task), projected);
+    }
   }
 
   private String runRejection(Map<String, Object> evaluation) {
@@ -2088,6 +2387,20 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
                       invocationId);
               if ("present".equals(s(producer, "tool")))
                 throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
+              if ("read_image".equals(s(producer, "tool"))) {
+                var committed =
+                    rows(
+                        "SELECT image_id FROM task_image_object WHERE tenant_id=? AND task_id=? AND producer_invocation=? AND phase='COMMITTED'",
+                        lease.tenant(),
+                        lease.taskId(),
+                        invocationId);
+                var image =
+                    Payloads.read(
+                        output, io.github.lovexiaopeng.jimu.plugin.api.ImagePort.Result.class);
+                if (committed.size() != 1
+                    || !committed.getFirst().get("image_id").equals(image.image().imageId()))
+                  throw new TaskFailure(409, "IMAGE_COMMIT_REQUIRED");
+              }
               var receipts =
                   rows(
                       "SELECT code FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
@@ -2489,6 +2802,86 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
     return new ReportContext(time(task, "report_time"), sources);
   }
 
+  @Override
+  public io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ReportEvidence imageReportContext(
+      Lease lease, String invocation) {
+    return leaseTx(lease, () -> imageReportContext(fenced(lease, true), invocation));
+  }
+
+  private io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ReportEvidence imageReportContext(
+      Map<String, Object> task, String invocation) {
+    var compose =
+        one(
+            "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND tool='compose_report'",
+            s(task, "tenant_id"),
+            s(task, "id"),
+            invocation);
+    var step =
+        one(
+            "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=?",
+            s(task, "tenant_id"),
+            s(task, "id"),
+            s(compose, "step_id"));
+    if (step.get("response_snapshot") == null
+        || !Payloads.hash(s(step, "response_snapshot")).equals(step.get("response_digest"))
+        || step.get("dispatch_id") == null)
+      throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
+    var dispatch =
+        one(
+            "SELECT * FROM model_dispatch WHERE tenant_id=? AND task_id=? AND id=?",
+            s(task, "tenant_id"),
+            s(task, "id"),
+            s(step, "dispatch_id"));
+    if (!"RESPONDED".equals(s(dispatch, "state"))
+        || !Payloads.hash(s(step, "request_snapshot")).equals(step.get("request_digest")))
+      throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
+    var checkpoint =
+        Payloads.read(
+            s(step, "request_snapshot"),
+            io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Checkpoint.class);
+    if (checkpoint.version() != 3
+        || !Payloads.hash(checkpoint.requestBody()).equals(checkpoint.bodyDigest())
+        || !s(task, "model_digest").equals(checkpoint.configDigest()))
+      throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
+    var body =
+        Payloads.read(checkpoint.requestBody(), com.fasterxml.jackson.databind.JsonNode.class);
+    var result =
+        new java.util.ArrayList<
+            io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ImageSource>();
+    for (var message : checkpoint.messages())
+      if (message.images() != null)
+        for (var ref : message.images()) {
+          var object = images.object(task, ref);
+          byte[] bytes =
+              imageStore.read(
+                  s(task, "tenant_id"), object.key(), ref.image().sha256(), ref.image().size());
+          var part =
+              io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.provider(ref, bytes);
+          boolean present = false;
+          for (var actual : body.path("messages")) if (actual.equals(part)) present = true;
+          if (!present) throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
+          var source =
+              one(
+                  "SELECT output_digest FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
+                  s(task, "tenant_id"),
+                  s(task, "id"),
+                  ref.sourceRef().substring(6));
+          result.add(
+              new io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ImageSource(
+                  ref,
+                  s(source, "output_digest"),
+                  s(step, "id"),
+                  s(step, "dispatch_id"),
+                  checkpoint.configDigest(),
+                  checkpoint.bodyDigest(),
+                  s(step, "response_digest")));
+        }
+    return new io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ReportEvidence(
+        reportContext(task),
+        List.copyOf(result),
+        !snapshot(task).paid() && models.localEvaluation(snapshot(task)));
+  }
+
   private void requirePresent(Lease lease, Map<String, Object> task, String invocationId) {
     if (!publicReport(task)) throw new TaskFailure(409, "REPORT_POLICY_REQUIRED");
     var invocation =
@@ -2611,7 +3004,7 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
     if (pin == null) return;
     var confirmed =
         rows(
-            "SELECT input_snapshot,input_digest,output_snapshot,output_digest,plugin_version,plugin_digest FROM invocation WHERE tenant_id=? AND task_id=? AND tool='compose_report' AND state='SUCCEEDED' ORDER BY ordinal",
+            "SELECT id,input_snapshot,input_digest,output_snapshot,output_digest,plugin_version,plugin_digest FROM invocation WHERE tenant_id=? AND task_id=? AND tool='compose_report' AND state='SUCCEEDED' ORDER BY ordinal",
             s(task, "tenant_id"),
             s(task, "id"));
     for (var row : confirmed) {
@@ -2622,7 +3015,10 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
           || !pin.version().equals(s(row, "plugin_version"))
           || !pin.digest().equals(s(row, "plugin_digest")))
         throw new TaskFailure(409, "REPORT_COMPOSITION_INVALID");
-      if (new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer()
+      if (pin.version().equals("0.2.0")) {
+        if (new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ImageReportComposer()
+            .matches(input, output, file, imageReportContext(task, s(row, "id")))) return;
+      } else if (new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer()
           .matches(input, output, file, reportContext(task))) return;
     }
     throw new TaskFailure(409, "REPORT_COMPOSITION_REQUIRED");
@@ -3052,17 +3448,18 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13') AND success=TRUE",
             Integer.class)
-        != 12) throw new IllegalStateException("Required migration unavailable");
+        != 13) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 12) throw new IllegalStateException("Unsupported schema version");
+        != 13) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override
   public void cleanupArtifacts(ArtifactStore store) {
+    cleanupImages();
     var candidates =
         rows(
             "SELECT a.tenant_id,a.id,a.task_id,a.upload_id FROM artifact a JOIN task t ON t.tenant_id=a.tenant_id AND t.id=a.task_id JOIN reservation r ON r.tenant_id=a.tenant_id AND r.id=a.id WHERE r.state<>'RELEASED' AND ((a.state IN ('STAGING','VERIFIED','ABANDONED') AND a.updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 1 HOUR AND t.state IN ('FAILED','CANCELLED')) OR (a.state IN ('PUBLISHED','EXPIRED') AND a.expires_at<CURRENT_TIMESTAMP(6))) LIMIT 64");
@@ -3116,6 +3513,81 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
                   tenant,
                   artifact);
             }
+            return null;
+          });
+    }
+  }
+
+  private void cleanupImages() {
+    if (imageStore == null) return;
+    var candidates =
+        rows(
+            "SELECT tenant_id,id FROM task WHERE record_version=3 AND media_cleanup_state='RETAINED' AND state IN ('SUCCEEDED','FAILED','CANCELLED') AND updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY LIMIT 32");
+    for (var candidate : candidates) {
+      String tenant = s(candidate, "tenant_id"), taskId = s(candidate, "id");
+      boolean ready =
+          tx(
+              () -> {
+                bucket(tenant);
+                var task = locked(tenant, taskId);
+                if (!writersQuiescent(task)
+                    || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(task, "state")))
+                  return false;
+                if (!rows(
+                        "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND state='HELD_UNKNOWN' AND category IN ('MEDIA_INPUT','MEDIA_STORAGE')",
+                        tenant,
+                        taskId)
+                    .isEmpty()) return false;
+                db.update(
+                    "UPDATE task_image_object SET cleanup_state='DELETING' WHERE tenant_id=? AND task_id=? AND cleanup_state='RETAINED'",
+                    tenant,
+                    taskId);
+                return true;
+              });
+      if (!ready) continue;
+      var objects =
+          rows(
+              "SELECT image_id FROM task_image_object WHERE tenant_id=? AND task_id=? AND cleanup_state='DELETING'",
+              tenant,
+              taskId);
+      // Exact host-issued object identities only; no scan of unknown active uploads.
+      for (var object : objects) imageStore.removeUpload(tenant, s(object, "image_id"));
+      tx(
+          () -> {
+            bucket(tenant);
+            var task = locked(tenant, taskId);
+            if (!writersQuiescent(task)) throw new TaskFailure(409, "IMAGE_UNAVAILABLE");
+            var held =
+                rows(
+                    "SELECT * FROM reservation WHERE tenant_id=? AND task_id=? AND category IN ('MEDIA_INPUT','MEDIA_STORAGE') AND state IN ('RESERVED','SETTLED') FOR UPDATE",
+                    tenant,
+                    taskId);
+            for (var reservation : held) {
+              long bytes =
+                  reservation.get("actual") == null
+                      ? n(reservation, "amount")
+                      : n(reservation, "actual");
+              db.update(
+                  "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
+                  bytes,
+                  tenant);
+              db.update(
+                  "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=?",
+                  tenant,
+                  s(reservation, "id"));
+            }
+            db.update(
+                "UPDATE task_image_input SET raw_base64=NULL WHERE tenant_id=? AND task_id=?",
+                tenant,
+                taskId);
+            db.update(
+                "UPDATE task_image_object SET cleanup_state='DELETED' WHERE tenant_id=? AND task_id=? AND cleanup_state='DELETING'",
+                tenant,
+                taskId);
+            db.update(
+                "UPDATE task SET media_cleanup_state='DELETED' WHERE tenant_id=? AND id=?",
+                tenant,
+                taskId);
             return null;
           });
     }

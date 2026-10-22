@@ -14,8 +14,30 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 /** Only packaged entries, never model-selected classes or paths. */
 public final class WorkspaceContracts {
+  /** Frozen host descriptions are also used when reconstructing a media checkpoint. */
+  public static String description(String name) {
+    return switch (name) {
+      case "web_fetch" -> "Fetch from the configured origin";
+      case "read" -> "Read a UTF-8 task file with line numbers; observe missing files before write";
+      case "read_image" ->
+          "Read an authorized task PNG/JPEG as actual model media; use the host directory, never host paths or URLs";
+      case "write" -> "Create or replace UTF-8 task file using the host's observed version";
+      case "edit" ->
+          "Replace observed literal UTF-8 text atomically; read first; replace_all defaults false";
+      case "glob" ->
+          "Find task files using native glob semantics; cursor reads the same immutable snapshot";
+      case "grep" ->
+          "Search task file lines with native Rust regex semantics; read matches before editing";
+      case "compose_report" ->
+          "Compose a source-bound report from typed fields and exact fetched evidence; read target first";
+      case "present" ->
+          "Publish existing observed Markdown reports as immutable authorized deliverables";
+      default -> throw new IllegalArgumentException("Unknown workspace tool");
+    };
+  }
+
   public static final List<String> NAMES =
-      List.of("read", "write", "present", "compose_report", "edit", "glob", "grep");
+      List.of("read", "write", "present", "compose_report", "edit", "glob", "grep", "read_image");
   private static final Map<String, String> ENTRIES =
       Map.of(
           "read",
