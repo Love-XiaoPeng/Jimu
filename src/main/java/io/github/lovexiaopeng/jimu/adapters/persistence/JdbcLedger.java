@@ -118,7 +118,7 @@ public final class JdbcLedger
         () -> {
           var budget = bucket(lease.tenant());
           var task = fenced(lease, true);
-          if (1048576 > n(budget, "storage_limit") - n(budget, "storage_held"))
+          if (1048576 > n(budget, "storage_limit") - storageHeld(budget))
             throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
           String image = id();
           images.reserve(task, invocation, image, inputId);
@@ -601,7 +601,7 @@ public final class JdbcLedger
           }
           if (media) {
             long held = input.stream().mapToLong(i -> i.dataBase64().length()).sum();
-            if (held > n(budget, "storage_limit") - n(budget, "storage_held"))
+            if (held > n(budget, "storage_limit") - storageHeld(budget))
               throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
             images.insert(identity, task, input, descriptors == null ? List.of() : descriptors);
             if (held > 0) {
@@ -822,6 +822,10 @@ public final class JdbcLedger
             throw new TaskFailure(410, "ARTIFACT_EXPIRED");
           return new Download(artifact(row), identity.tenant(), s(row, "snapshot_key"));
         });
+  }
+
+  private long storageHeld(Map<String, Object> budget) {
+    return n(budget, "storage_held") + n(budget, "media_checkpoint_held");
   }
 
   private void reserve(
@@ -1440,6 +1444,8 @@ public final class JdbcLedger
   }
 
   private Step step(Map<String, Object> row) {
+    if (!"RETAINED".equals(s(row, "request_cleanup_state")))
+      throw new TaskFailure(410, "CHECKPOINT_MEDIA_PURGED");
     if (n(row, "record_version") != 1) throw new TaskFailure(409, "PAYLOAD_VERSION_UNSUPPORTED");
     if (row.get("response_snapshot") != null
         && !Payloads.hash(s(row, "response_snapshot")).equals(s(row, "response_digest")))
@@ -1733,6 +1739,29 @@ public final class JdbcLedger
                           s(previous.getFirst(), "id"))
                       .isEmpty())) throw new TaskFailure(409, "CHECKPOINT_INCOMPLETE");
           String stepId = id();
+          if (n(task, "record_version") == 3) {
+            var budget = bucket(lease.tenant());
+            long bytes = request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+            if (bytes > n(budget, "storage_limit") - storageHeld(budget))
+              throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
+            db.update(
+                "UPDATE tenant_budget SET media_checkpoint_held=media_checkpoint_held+? WHERE tenant_id=?",
+                bytes,
+                lease.tenant());
+            reserve(
+                lease.tenant(),
+                lease.taskId(),
+                stepId + ":media-checkpoint",
+                null,
+                "MEDIA_CHECKPOINT",
+                bytes,
+                "SETTLED",
+                "KNOWN");
+            db.update(
+                "UPDATE reservation SET actual=amount WHERE tenant_id=? AND id=?",
+                lease.tenant(),
+                stepId + ":media-checkpoint");
+          }
           db.update(
               "INSERT INTO step(tenant_id,id,task_id,attempt_id,ordinal,state,request_snapshot,request_digest,model_version) VALUES(?,?,?,?,?,'PREPARED',?,?,?)",
               lease.tenant(),
@@ -2511,7 +2540,7 @@ public final class JdbcLedger
                   lease.taskId());
           if (n(aggregate, "roots") >= 20 || n(aggregate, "bytes") + 4194304 > 8388608)
             throw new TaskFailure(429, "SEARCH_RESULT_LIMIT");
-          if (n(budget, "storage_held") + 4194304 > n(budget, "storage_limit"))
+          if (storageHeld(budget) + 4194304 > n(budget, "storage_limit"))
             throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
           String host =
               s(
@@ -2956,7 +2985,7 @@ public final class JdbcLedger
                     invocationId)
                 .isEmpty()) throw new TaskFailure(409, "REPORT_ALREADY_STAGED");
             var budget = bucket(lease.tenant());
-            if (n(budget, "storage_held") + file.size() > n(budget, "storage_limit"))
+            if (storageHeld(budget) + file.size() > n(budget, "storage_limit"))
               throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
             String artifact = id(), upload = id();
             db.update(
@@ -3139,7 +3168,7 @@ public final class JdbcLedger
                       lease.tenant(),
                       lease.taskId()),
                   "id");
-          if (size > 1048576 || n(budget, "storage_held") + size > n(budget, "storage_limit"))
+          if (size > 1048576 || storageHeld(budget) + size > n(budget, "storage_limit"))
             throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
           String artifact = id(), upload = id();
           db.update(
@@ -3448,13 +3477,13 @@ public final class JdbcLedger
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14') AND success=TRUE",
             Integer.class)
-        != 13) throw new IllegalStateException("Required migration unavailable");
+        != 14) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 13) throw new IllegalStateException("Unsupported schema version");
+        != 14) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override
@@ -3530,11 +3559,12 @@ public final class JdbcLedger
               () -> {
                 bucket(tenant);
                 var task = locked(tenant, taskId);
-                if (!writersQuiescent(task)
+                if (!"RETAINED".equals(s(task, "media_cleanup_state"))
+                    || !writersQuiescent(task)
                     || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(task, "state")))
                   return false;
                 if (!rows(
-                        "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND state='HELD_UNKNOWN' AND category IN ('MEDIA_INPUT','MEDIA_STORAGE')",
+                        "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND state='HELD_UNKNOWN'",
                         tenant,
                         taskId)
                     .isEmpty()) return false;
@@ -3556,10 +3586,38 @@ public final class JdbcLedger
           () -> {
             bucket(tenant);
             var task = locked(tenant, taskId);
-            if (!writersQuiescent(task)) throw new TaskFailure(409, "IMAGE_UNAVAILABLE");
+            if ("DELETED".equals(s(task, "media_cleanup_state"))) return null;
+            if (!writersQuiescent(task)
+                || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(task, "state"))
+                || !rows(
+                        "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND state='HELD_UNKNOWN'",
+                        tenant,
+                        taskId)
+                    .isEmpty()) throw new TaskFailure(409, "IMAGE_UNAVAILABLE");
+            for (var checkpoint :
+                rows(
+                    "SELECT id,request_snapshot,request_digest FROM step WHERE tenant_id=? AND task_id=? AND request_cleanup_state='RETAINED' FOR UPDATE",
+                    tenant,
+                    taskId)) {
+              String original = s(checkpoint, "request_snapshot");
+              if (!Payloads.hash(original).equals(s(checkpoint, "request_digest")))
+                throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+              var retained =
+                  Payloads.read(original, com.fasterxml.jackson.databind.node.ObjectNode.class);
+              // Only terminal, proven quiescent checkpoints are no longer replayable.
+              // Keep the original request/body digests and all scoped metadata as audit facts.
+              retained.remove("requestBody");
+              String redacted = Payloads.json(retained);
+              db.update(
+                  "UPDATE step SET request_snapshot=?,request_cleanup_state='MEDIA_PURGED',retained_request_digest=? WHERE tenant_id=? AND id=?",
+                  redacted,
+                  Payloads.hash(redacted),
+                  tenant,
+                  s(checkpoint, "id"));
+            }
             var held =
                 rows(
-                    "SELECT * FROM reservation WHERE tenant_id=? AND task_id=? AND category IN ('MEDIA_INPUT','MEDIA_STORAGE') AND state IN ('RESERVED','SETTLED') FOR UPDATE",
+                    "SELECT * FROM reservation WHERE tenant_id=? AND task_id=? AND category IN ('MEDIA_INPUT','MEDIA_STORAGE','MEDIA_CHECKPOINT') AND state IN ('RESERVED','SETTLED') FOR UPDATE",
                     tenant,
                     taskId);
             for (var reservation : held) {
@@ -3568,7 +3626,9 @@ public final class JdbcLedger
                       ? n(reservation, "amount")
                       : n(reservation, "actual");
               db.update(
-                  "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
+                  "MEDIA_CHECKPOINT".equals(s(reservation, "category"))
+                      ? "UPDATE tenant_budget SET media_checkpoint_held=media_checkpoint_held-? WHERE tenant_id=?"
+                      : "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
                   bytes,
                   tenant);
               db.update(

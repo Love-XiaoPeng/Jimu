@@ -9,6 +9,8 @@ import re
 import signal
 import struct
 import subprocess
+import time
+import uuid
 import zlib
 
 from p2_verify import Experiment, Handler, eventually
@@ -242,11 +244,121 @@ def verify(e):
     e.stop(worker)
 
 
+def verify_retention(e):
+    def snapshots(task=None):
+        condition = " WHERE task_id='"+task+"'" if task else ''
+        return [json.loads(line) for line in e.sql(
+            "SELECT JSON_OBJECT('id',id,'task',task_id,'snapshot',request_snapshot,'digest',request_digest) FROM step"+condition+" ORDER BY task_id,ordinal;").splitlines()]
+
+    def metered():
+        return e.sql("SELECT COUNT(*) FROM step s JOIN task t ON t.tenant_id=s.tenant_id AND t.id=s.task_id LEFT JOIN reservation r ON r.tenant_id=s.tenant_id AND r.id=CONCAT(s.id,':media-checkpoint') WHERE t.record_version=3 AND (r.id IS NULL OR r.amount<>OCTET_LENGTH(s.request_snapshot) OR r.actual<>r.amount OR r.state<>'SETTLED');") == '0'
+
+    # Recreate the V13 representation in this private fixture, then let real Flyway upgrade it.
+    # No product snapshot bytes are fabricated or rewritten by this setup.
+    original = snapshots()
+    e.assert_that(metered(), 'every retained image checkpoint is metered by exact UTF-8 bytes')
+    e.stop(e.control)
+    missed = e.sql("SELECT id FROM task WHERE goal='image-call';")
+    e.sql("DELETE FROM reservation WHERE category='MEDIA_CHECKPOINT'; ALTER TABLE tenant_budget DROP CHECK tenant_media_checkpoint_nonnegative,DROP COLUMN media_checkpoint_held; ALTER TABLE step DROP COLUMN request_cleanup_state,DROP COLUMN retained_request_digest; DELETE FROM flyway_schema_history WHERE version='14'; UPDATE task SET media_cleanup_state='DELETED' WHERE id='"+missed+"'; UPDATE tenant_budget SET storage_limit=storage_held WHERE tenant_id='tenant-a';")
+    e.control = e.start('checkpoint-v14-upgrade', 'control')
+    e.assert_that(snapshots() == original and metered(), 'V13 upgrade meters old checkpoint bytes without changing original history')
+    e.assert_that(e.sql("SELECT media_cleanup_state FROM task WHERE id='"+missed+"';") == 'RETAINED', 'V14 re-enqueues previously missed checkpoint copies')
+    held = e.sql("SELECT storage_held,media_checkpoint_held,storage_limit FROM tenant_budget WHERE tenant_id='tenant-a';")
+    e.assert_that(sum(map(int, held.split()[:2])) > int(held.split()[2]), 'pre-existing excess occupancy is visible without raising quota', counters=held)
+    body = {'goal': 'image-cleanup-live', 'capabilityIds': ['read', 'read_image', 'compose_report', 'present'],
+            'images': [{'filePath': 'inputs/images/sample.png', 'dataBase64': base64.b64encode(png()).decode()}]}
+    before = e.sql('SELECT COUNT(*) FROM task;')
+    status, rejection = e.http('POST', '/api/tasks', body, key='over-checkpoint-budget')
+    e.assert_that(status == 429 and rejection['code'] == 'STORAGE_BUDGET_EXCEEDED' and e.sql('SELECT COUNT(*) FROM task;') == before,
+                  'checkpoint debt blocks new media admission atomically', response=rejection)
+    e.sql("UPDATE tenant_budget SET storage_limit=16777216 WHERE tenant_id='tenant-a';")
+
+    _, view = e.http('POST', '/api/tasks', body, key='image-cleanup-live')
+    live = view['taskId']
+    worker = e.start('cleanup-live-worker', 'worker', 'READ_MODEL_PREPARED')
+    e.barrier(worker)
+    active = snapshots(live)
+    e.assert_that(any('data:image/png;base64,' in row['snapshot'] for row in active), 'live checkpoint contains actual recoverable PNG bytes')
+    # Stop maintenance only while installing deterministic negative fixtures; the live worker
+    # remains a real process at an external boundary with no held DB transaction.
+    e.stop(e.control)
+    unknown = e.sql("SELECT id FROM task WHERE goal='image-foreign';")
+    reconciliation = e.sql("SELECT id FROM task WHERE goal='image-stream';")
+    unproven = e.sql("SELECT id FROM task WHERE goal='image-restore';")
+    attempt = e.sql("SELECT id,worker_id,quiescent FROM task_attempt WHERE task_id='"+unproven+"' ORDER BY fence LIMIT 1;").split()
+    e.sql("INSERT INTO reservation(tenant_id,id,task_id,category,amount,state,usage_quality,cost_quality) VALUES('tenant-a','"+unknown+":retention-proof','"+unknown+"','MODEL_COST',0,'HELD_UNKNOWN','UNKNOWN','UNKNOWN'); UPDATE task SET state='NEEDS_RECONCILIATION' WHERE id='"+reconciliation+"'; UPDATE task_attempt SET worker_id='"+str(uuid.uuid4())+"',quiescent=FALSE WHERE id='"+attempt[0]+"'; CREATE TRIGGER checkpoint_cleanup_failure BEFORE UPDATE ON step FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='controlled checkpoint purge rollback'; UPDATE task SET updated_at=CURRENT_TIMESTAMP(6)-INTERVAL 8 DAY WHERE id IN ('"+"','".join((missed,live,unknown,reconciliation,unproven))+"');")
+    protected = {task: snapshots(task) for task in (live, unknown, reconciliation, unproven)}
+    protected_facts = e.sql("SELECT id,state,amount,actual,usage_quality,cost_quality FROM reservation WHERE task_id IN ('"+"','".join(protected)+"') ORDER BY tenant_id,id;")
+    before_held = e.sql("SELECT tenant_id,storage_held,media_checkpoint_held FROM tenant_budget ORDER BY tenant_id;")
+    files = list((e.root / 'images').iterdir())
+    e.control = e.start('checkpoint-cleanup-control', 'control')
+    eventually(lambda: e.sql("SELECT COUNT(*) FROM task_image_object WHERE task_id='"+missed+"' AND cleanup_state='DELETING';") == '1', 'real object deletion begins before injected final transaction failure')
+    eventually(lambda: 'controlled checkpoint purge rollback' in (e.control['folder'] / 'checkpoint-cleanup-control.log').read_text()
+               or 'controlled checkpoint purge rollback' in (worker['folder'] / 'cleanup-live-worker.log').read_text(), 'real maintenance observes injected SQL failure')
+    e.assert_that(snapshots(missed) == [row for row in original if row['task'] == missed]
+                  and e.sql("SELECT tenant_id,storage_held,media_checkpoint_held FROM tenant_budget ORDER BY tenant_id;") == before_held
+                  and e.sql("SELECT media_cleanup_state FROM task WHERE id='"+missed+"';") == 'RETAINED',
+                  'failed purge rolls back checkpoint mutations and all quota releases after filesystem deletion')
+    e.sql('DROP TRIGGER checkpoint_cleanup_failure;')
+    eventually(lambda: e.sql("SELECT media_cleanup_state FROM task WHERE id='"+missed+"';") == 'DELETED', 'real maintenance purges terminal checkpoint media')
+    # Require an additional full maintenance period, not a one-time observation.
+    time.sleep(11)
+    for task, expected in protected.items():
+        e.assert_that(snapshots(task) == expected and e.sql("SELECT media_cleanup_state FROM task WHERE id='"+task+"';") == 'RETAINED',
+                      'cleanup preserves exact bytes with active/recoverable/UNKNOWN/missing-stop proof', task=task)
+    e.assert_that(e.sql("SELECT id,state,amount,actual,usage_quality,cost_quality FROM reservation WHERE task_id IN ('"+"','".join(protected)+"') ORDER BY tenant_id,id;") == protected_facts,
+                  'protected media reservations and UNKNOWN cost facts remain unchanged')
+    cleaned = e.sql("SELECT JSON_OBJECT('snapshot',request_snapshot,'originalDigest',request_digest,'retainedDigest',retained_request_digest,'cleanup',request_cleanup_state) FROM step WHERE task_id='"+missed+"' ORDER BY ordinal;")
+    originals = [row for row in original if row['task'] == missed]
+    for row, old in zip(map(json.loads, cleaned.splitlines()), originals, strict=True):
+        retained, prior = json.loads(row['snapshot']), json.loads(old['snapshot'])
+        e.assert_that(row['cleanup'] == 'MEDIA_PURGED' and 'requestBody' not in retained and 'data:image/' not in row['snapshot']
+                      and row['originalDigest'] == old['digest'] and row['retainedDigest'] == hashlib.sha256(row['snapshot'].encode()).hexdigest()
+                      and retained == {k:v for k,v in prior.items() if k != 'requestBody'},
+                      'purged checkpoint removes image bytes and preserves original body/config/history digests')
+    e.assert_that(e.sql("SELECT COUNT(*) FROM task_image_input WHERE task_id='"+missed+"' AND raw_base64 IS NOT NULL;") == '0'
+                  and e.sql("SELECT COUNT(*) FROM task_image_object WHERE task_id='"+missed+"' AND cleanup_state<>'DELETED';") == '0'
+                  and e.sql("SELECT COUNT(*) FROM reservation WHERE task_id='"+missed+"' AND category LIKE 'MEDIA_%' AND state<>'RELEASED';") == '0',
+                  'real cleanup removes all raw/object/checkpoint copies before media reservations release')
+    e.assert_that(len(list((e.root / 'images').iterdir())) < len(files), 'recorded normalized PNG removed from native store')
+    after_held = e.sql("SELECT tenant_id,storage_held,media_checkpoint_held FROM tenant_budget ORDER BY tenant_id;")
+    time.sleep(11)
+    e.assert_that(e.sql("SELECT tenant_id,storage_held,media_checkpoint_held FROM tenant_budget ORDER BY tenant_id;") == after_held, 'repeated maintenance does not double-refund any media category')
+    (e.evidence / 'checkpoint-cleanup.json').write_text(json.dumps({'original': original, 'purged': list(map(json.loads, cleaned.splitlines())), 'protected': protected,
+        'heldBefore': before_held, 'heldAfter': after_held, 'protectedReservations': protected_facts}, ensure_ascii=False, indent=2))
+    # The preserved live checkpoint is then recovered by the real worker, not a JSON surrogate.
+    e.stop(worker, kill=True); e.expire(live)
+    e.sql("UPDATE task_attempt SET worker_id='"+attempt[1]+"',quiescent="+attempt[2]+" WHERE id='"+attempt[0]+"';")
+    worker = e.start('cleanup-recovery-worker', 'worker')
+    e.state(live, 'SUCCEEDED')
+    e.stop(worker)
+    e.assert_that(all(row in snapshots(live) for row in active), 'real crash recovery reuses retained checkpoint bytes without rewriting or duplicate charging')
+    e.assert_that(e.sql("SELECT COUNT(*) FROM reservation WHERE task_id='"+live+"' AND category='MEDIA_CHECKPOINT';") == e.sql("SELECT COUNT(*) FROM step WHERE task_id='"+live+"';"), 'recovery charges each checkpoint exactly once')
+    # Prior killed workers may still lack an independent process-stop receipt. Keep their
+    # conservative run reservations intact; give this separate storage-boundary case a slot.
+    e.sql("UPDATE tenant_budget SET running_limit=4 WHERE tenant_id='tenant-a';")
+    _, view = e.http('POST', '/api/tasks', dict(body, goal='image-checkpoint-budget'), key='image-checkpoint-budget')
+    limited = view['taskId']
+    worker = e.start('checkpoint-budget-worker', 'worker', 'READ_MODEL_PREPARED')
+    e.barrier(worker)
+    count = e.sql("SELECT COUNT(*) FROM step WHERE task_id='"+limited+"';")
+    e.sql("UPDATE tenant_budget SET storage_limit=storage_held+media_checkpoint_held WHERE tenant_id='tenant-a';")
+    (worker['folder'] / 'release').touch()
+    failed = e.state(limited, 'FAILED')
+    e.stop(worker)
+    e.assert_that(failed['code'] == 'STORAGE_BUDGET_EXCEEDED'
+                  and e.sql("SELECT COUNT(*) FROM step WHERE task_id='"+limited+"';") == count
+                  and e.sql("SELECT COUNT(*) FROM reservation WHERE task_id='"+limited+"' AND category='MEDIA_CHECKPOINT';") == count
+                  and e.fixture.models.get('image-checkpoint-budget') == int(count),
+                  'checkpoint storage exhaustion rolls back new checkpoint and reservation before HTTP dispatch', code=failed['code'])
+    e.sql("UPDATE tenant_budget SET storage_limit=16777216 WHERE tenant_id='tenant-a';")
+
+
 def main():
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     parser=argparse.ArgumentParser();parser.add_argument('--jar',type=Path,required=True);parser.add_argument('--evidence',type=Path,required=True)
     args=parser.parse_args();e=ImageExperiment(args.jar,args.evidence)
-    try: e.prepare();verify(e)
+    try: e.prepare();verify(e);verify_retention(e)
     finally: e.cleanup()
 
 
