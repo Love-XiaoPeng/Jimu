@@ -1,0 +1,9 @@
+{
+  "questions": [
+    {
+      "id": "detail",
+      "question": "What detail should I use?"
+    }
+  ],
+  "timeout": -1
+}

@@ -1,0 +1,7 @@
+Question field shapes, answer matching, and the two settlements of timed user
+questions are adapted from DeepSeek Harness, fixed revision
+571902028a75c64c1d767f4ae5fd099485f0ddf0, under the MIT License.
+
+The original license is included in LICENSE. The reviewed original source and
+behavior differences are in docs/verification/XIAO-49/architecture/.
+No TypeScript package or client UI is bundled as a runtime dependency.

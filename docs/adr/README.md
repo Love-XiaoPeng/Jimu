@@ -37,5 +37,6 @@
 
 - [ADR-0004: durable execution](0004-p2-durable-execution.md)
 - [ADR-0005: atomic edit and native search](0005-workspace-edit-native-search.md)
+- [ADR-0008: durable user questions](0008-durable-user-questions.md)
 
 The dated handoff above remains historical; current P4 configuration and evidence are in ../implementation-p4-runtime.md.

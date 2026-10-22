@@ -1,0 +1,18 @@
+{
+  "questions": [
+    {
+      "id": "mode",
+      "question": "Choose a mode",
+      "header": "Mode",
+      "options": [
+        {
+          "label": "Fast",
+          "description": "Shorter wait"
+        },
+        {
+          "label": "Careful"
+        }
+      ]
+    }
+  ]
+}

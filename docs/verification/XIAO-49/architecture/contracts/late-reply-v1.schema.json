@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:interaction:late-reply:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "answer_to_pending_question"
+    },
+    "tool": {
+      "const": "ask_user_question"
+    },
+    "callId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "header": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                }
+              },
+              "required": [
+                "label"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 8
+          },
+          "multi_select": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "question"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 4
+    },
+    "answers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+          },
+          "selected": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "minItems": 0,
+            "maxItems": 8,
+            "uniqueItems": true
+          },
+          "custom": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "id",
+          "selected"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 4
+    }
+  },
+  "required": [
+    "kind",
+    "tool",
+    "callId",
+    "requestId",
+    "questions",
+    "answers"
+  ]
+}

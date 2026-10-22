@@ -1,0 +1,107 @@
+# G04/T11 durable user questions
+
+XIAO-49 implements the ask-only profile in [ADR-0008](adr/0008-durable-user-questions.md)
+and its [implementation contract](verification/XIAO-49/architecture/implementation-contract.md).
+The architecture package remains immutable, including upstream source, MIT license,
+schema examples and original framework probe failures. Runtime contracts are packaged
+under `interaction/`; the catalog pins both manifest and schema bytes.
+
+## Enablement and API
+
+`jimu.questions.enabled=false` is the default on both roles. The operator must explicitly
+enable the same setting on control and workers and provision the existing actor and
+installation records. Enabling the flag never creates authorization. Only the existing
+local model assembly with `paid=false` is admitted, without business/evaluation scope,
+images, resources or mixed capabilities. No UI, notifications or external approval flow
+is added. Use the existing signed owner identity and `Idempotency-Key`:
+
+```json
+{"goal":"Choose the requested format","capabilityIds":["ask_user_question"],"budget":{"deadlineSeconds":180}}
+```
+
+Install capability `ask_user_question` with the catalog's output digest and either
+`0.1.0` (default blocking) or explicitly `0.2.0` (timed). One version is pinned per task;
+changing an enabled pin returns `409 PLUGIN_PIN_MISMATCH`; disabling an actor or
+installation returns 403. Timed defaults to 120 seconds and accepts integer 1–180 or -1.
+Every mode remains bounded by the original task deadline, at most 180 seconds.
+
+- GET `/api/tasks/{taskId}/questions` returns the owner-visible question batches and revisions.
+- POST `/api/tasks/{taskId}/questions/{requestId}/answers` accepts the following strict body.
+
+```json
+{"questionVersion":1,"expectedRevision":1,"answers":[{"id":"format","selected":["Markdown"]}]}
+```
+
+202 means the answer and its durable resumption fact committed. Retrying the same key
+and canonical command returns 200 with the original receipt, including across control
+restarts. A different command with the same task/key returns 409. Every replay still
+checks current owner, actor, installation, pin and retention. Body identity fields,
+duplicate JSON keys, trailing tokens, coerced numbers and invalid selections are rejected.
+Answer POST reads at most 32768 bytes. A visible task without this capability has an empty
+list; other tenant/owner tasks return `TASK_NOT_FOUND` without revealing questions.
+
+## Persistence and execution
+
+V16 adds nullable task binding/continuation/retention columns, bounded question capacity,
+and `user_question`. V1–V15 migrations, old model/tool snapshots, Request and checkpoint
+serialization stay unchanged. The dedicated gateway atomically consumes the tool budget,
+creates the question, saves `WAITING_USER`, pauses the attempt and invalidates the old
+lease/fence. The sole ToolCallingAdvisor unwinds through a private pause signal.
+The original finally block drains operations and records actual quiescence. Only then can
+the RUNNING reservation be released. A killed worker still needs the original exact
+PID/startTicks/boot/namespace supervisor receipt.
+
+An answer or persisted foreground due atomically completes the original invocation and
+makes the task `RESUME_READY`. Claim reuses the existing released run reservation, checks
+current authority, deadline, pin, storage and quiescence, then creates one new fenced
+attempt. Successful slots replay their original checked output without spending another
+tool count. New model/tool dispatch still requires its own budget. Waiting and resumable
+tasks do not occupy ordinary queue slots or worker threads.
+
+Timed pending results are immutable even if an answer arrives later. A late answer becomes
+one source-bound ordinary user message in a new model checkpoint. Prepared requests are
+replayed as stored. An answer racing a final model response either loses to committed task
+completion, or forces a durable continuation through the same advisor protocol. It cannot
+revive a terminal task, release another batch's wait, become a system message, or expand
+the task's tool catalog or other permissions.
+
+Each accepted question task reserves one interaction task slot and 2 MiB of storage.
+The task slot releases after terminal state and all writers are quiescent. Storage stays
+reserved until actual payload cleanup at acceptance time +7 days. Cleanup tombstones all
+task, checkpoint, invocation and question text copies in one transaction, keeps source
+IDs/digests/sizes/answer identity and original accounting, then releases storage. UNKNOWN
+facts prevent cleanup. Purged reads/receipts return 410. Feature disable closes unfinished
+question tasks while preserving authorized history and receipts; readiness stays independent
+of human responses. Completion writes summary only, with no staged or fabricated report.
+
+## Local verification
+
+First stop old binaries before the V16 upgrade. Application grants generated by
+`tools/evaluation/application_grants.py` include SELECT/INSERT/UPDATE for `user_question`
+and no question DDL. Both roles require exactly V1–V16; an old V15 binary must fail
+startup on the upgraded database. Rollback keeps V16 and uses a compatible binary with
+new question admission disabled.
+
+Build the exact old master in a separate worktree for the migration fixture:
+
+```powershell
+git -c core.longpaths=true worktree add --detach ../v15 0e630f28e39c157788886694e2b16dc0831bb571
+.\mvnw.cmd -f ../v15/pom.xml -B -ntp -DskipTests package
+$env:JIMU_V15_JAR='../v15/target/jimu-0.1.0-SNAPSHOT.jar'
+$env:JIMU_IT_JAVA='<reviewed local Linux Java21 executable>'
+.\mvnw.cmd -B -ntp '-Dtest=UserQuestionContractTest,PackageBoundariesTest,WorkerLoopTest,McpContractTest' '-Dit.test=UserQuestionIT' verify
+```
+
+The old build command prepares a compatibility fixture; it is not acceptance verification.
+The current verify runs formatting, imports, package/dependency checks, targeted unit tests,
+packaging, real MySQL/HTTP/worker tests, static analysis and failsafe verification. Windows
+uses WSL, Docker and a local Linux Java21 runtime; missing resources fail. Each fixture
+owns a labeled private database/container, nonroot child JVMs, credentials and durable
+foreground logs. Its `finally` exports raw protocol/ledger/failures and confirms child,
+container and temporary-root cleanup. It does not modify shared services or use paid models.
+Evidence directories are under `target/failsafe-reports/question-evidence/`; preserve them
+outside target before clean. No GitHub CI is enabled, run, retried or awaited.
+
+Acceptance still requires the exact PR source SHA/tree and JAR digest, independent review,
+QA and product acceptance. Local driver assertions are evidence only for the cases actually
+executed; architecture probes and unexecuted cases are not product acceptance.

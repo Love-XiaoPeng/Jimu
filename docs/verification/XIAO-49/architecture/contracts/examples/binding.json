@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "profile": "local-durable-questions-v1",
+  "mode": "blocking",
+  "defaultTimeoutSeconds": 120,
+  "catalogDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "maxBatches": 8,
+  "maxQuestions": 4,
+  "maxWaitSeconds": 180,
+  "maxTaskBytes": 2097152
+}

@@ -1,0 +1,40 @@
+{
+  "manifestVersion": 1,
+  "id": "jimu.interaction.ask-user",
+  "version": "0.2.0",
+  "kind": "tool",
+  "hostApi": ">=0.1.0 <0.2.0",
+  "entry": {
+    "type": "trusted-jvm",
+    "class": "io.github.lovexiaopeng.jimu.plugins.builtin.interaction.AskUserQuestionPlugin"
+  },
+  "capabilities": [
+    {
+      "name": "ask_user_question",
+      "inputSchema": "input.schema.json",
+      "outputSchema": "output.schema.json",
+      "sideEffect": "write"
+    }
+  ],
+  "permissions": {},
+  "secretRefs": [],
+  "dependencies": [],
+  "limits": {
+    "timeoutMs": 30000,
+    "outputBytes": 16384
+  },
+  "healthCheck": {
+    "operation": "question-ledger-readiness",
+    "timeoutMs": 2000
+  },
+  "errorContract": "jimu-invocation-result",
+  "eventTypes": [
+    "invocation.started",
+    "invocation.completed",
+    "invocation.failed",
+    "question.created",
+    "question.answered",
+    "question.continued",
+    "question.closed"
+  ]
+}

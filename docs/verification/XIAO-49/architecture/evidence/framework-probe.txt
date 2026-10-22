@@ -1,0 +1,8 @@
+PASS call: same suspension marker, models=1 prior=1 ask=1 later=0; no error tool reply or next model call
+22:02:26.083 [boundedElastic-2] ERROR org.springframework.ai.chat.model.MessageAggregator -- Aggregation Error
+SuspensionProbe$Suspended
+	at SuspensionProbe.main(SuspensionProbe.java:34)
+22:02:26.090 [boundedElastic-2] ERROR org.springframework.ai.chat.model.MessageAggregator -- Aggregation Error
+SuspensionProbe$Suspended
+	at SuspensionProbe.main(SuspensionProbe.java:34)
+PASS stream: same suspension marker, models=1 prior=1 ask=1 later=0; no error tool reply or next model call

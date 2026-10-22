@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "sourceGroup": "G04",
+  "sourceTool": "T11",
+  "upstreamCommit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+  "defaultVersion": "0.1.0",
+  "profile": "local-durable-questions-v1",
+  "variants": [
+    {
+      "id": "jimu.interaction.ask-user",
+      "version": "0.1.0",
+      "mode": "blocking",
+      "tool": "ask_user_question",
+      "root": "ask_user_question-0.1.0",
+      "inputSha256": "b4826a19462ff68aa2325843edf26b9d60ac0558d3f0c3f800e53875345102dc",
+      "outputSha256": "01a8cfc1f700d5d7a6be665480284073143841a27d8fd99b4ad76f9e3a7a4fe0",
+      "manifestSha256": "8131479a7640390bd1bbe282fe337588c2cec0bd101005b4262e1779a22cd60c"
+    },
+    {
+      "id": "jimu.interaction.ask-user",
+      "version": "0.2.0",
+      "mode": "timed",
+      "tool": "ask_user_question",
+      "root": "ask_user_question-0.2.0",
+      "inputSha256": "57fabb51fa4dbfc961f455e559bdc17aac95ead256e46c0d6f9f41f8eee913f4",
+      "outputSha256": "298380b43ca65139d77a05ff886a21b82eead5444d86f7109b76ec04ba1853b7",
+      "manifestSha256": "c7d14d8bfa825bc249da3eb8457d90ffc20ca587855e64f612e17da482c26378"
+    }
+  ],
+  "schemaDigest": "18a4863b00c5bb875ca9a62a3ed79b2fa99009a2cefa939a8c722cd7dc2ce005",
+  "pendingNotice": "No answer batch arrived before the timeout. This is pending, not a skipped answer. Continue useful independent work. The user can still answer; their reply will be a user message identified as answer_to_pending_question with this callId and the original questions. Do not treat this as permission.",
+  "notes": [
+    "Select one installed version per task, never two duplicate function entries.",
+    "Manifest timeoutMs covers one bounded host/DB operation, never the duration of human wait.",
+    "UTF-8 byte limits, unique question IDs/labels and original-question answer matching require runtime validation."
+  ]
+}

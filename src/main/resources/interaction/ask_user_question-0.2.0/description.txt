@@ -1,0 +1,1 @@
+Ask brief, direct, self-contained questions about missing information, preferences, or decisions. Use distinct stable question IDs. An explicit skipped answer has empty selected and no custom. Pending means no answer batch arrived before the foreground timeout; it grants no permission. The task deadline still applies.

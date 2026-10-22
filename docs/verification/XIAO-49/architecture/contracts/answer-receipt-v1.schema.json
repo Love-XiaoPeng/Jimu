@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:interaction:answer-receipt:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "answerId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "questionVersion": {
+      "const": 1
+    },
+    "acceptedRevision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "answeredBy": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "answeredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "delivery": {
+      "enum": [
+        "TOOL_RESULT",
+        "USER_MESSAGE"
+      ]
+    }
+  },
+  "required": [
+    "version",
+    "requestId",
+    "answerId",
+    "questionVersion",
+    "acceptedRevision",
+    "answeredBy",
+    "answeredAt",
+    "delivery"
+  ]
+}

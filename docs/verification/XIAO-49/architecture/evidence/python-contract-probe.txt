@@ -1,0 +1,1 @@
+PASS 9 schemas, 13 indexed files, 14 positive and 34 negative cases

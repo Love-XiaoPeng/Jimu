@@ -8,7 +8,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = TaskController.class)
+@RestControllerAdvice(assignableTypes = {TaskController.class, UserQuestionController.class})
 public final class TaskErrors {
   public record Error(String code, String message, String traceId) {}
 

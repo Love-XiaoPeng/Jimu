@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "answer-receipt-v1.schema.json",
+      "sha256": "869e2ca6debd97f80ac35378112c7a3cfab7c5f50d6e46b7059ccd41b0c05e6b"
+    },
+    {
+      "path": "answer-request-v1.schema.json",
+      "sha256": "35fbb2c105f94b3f3e3cd8507d4aa6412ea57912d54c4c3c6469ec93e4df4112"
+    },
+    {
+      "path": "ask_user_question-0.1.0/description.txt",
+      "sha256": "25aea8b40ebb02a055b0c8522f5a1c5c8982808a91e146fa316708719f69dd30"
+    },
+    {
+      "path": "ask_user_question-0.1.0/input.schema.json",
+      "sha256": "b4826a19462ff68aa2325843edf26b9d60ac0558d3f0c3f800e53875345102dc"
+    },
+    {
+      "path": "ask_user_question-0.1.0/output.schema.json",
+      "sha256": "01a8cfc1f700d5d7a6be665480284073143841a27d8fd99b4ad76f9e3a7a4fe0"
+    },
+    {
+      "path": "ask_user_question-0.1.0/plugin.yaml",
+      "sha256": "8131479a7640390bd1bbe282fe337588c2cec0bd101005b4262e1779a22cd60c"
+    },
+    {
+      "path": "ask_user_question-0.2.0/description.txt",
+      "sha256": "6cf520f97ce9afb915f02dda551130f04f2c16f613b7ffa0e28fad38e7b76c52"
+    },
+    {
+      "path": "ask_user_question-0.2.0/input.schema.json",
+      "sha256": "57fabb51fa4dbfc961f455e559bdc17aac95ead256e46c0d6f9f41f8eee913f4"
+    },
+    {
+      "path": "ask_user_question-0.2.0/output.schema.json",
+      "sha256": "298380b43ca65139d77a05ff886a21b82eead5444d86f7109b76ec04ba1853b7"
+    },
+    {
+      "path": "ask_user_question-0.2.0/plugin.yaml",
+      "sha256": "c7d14d8bfa825bc249da3eb8457d90ffc20ca587855e64f612e17da482c26378"
+    },
+    {
+      "path": "late-reply-v1.schema.json",
+      "sha256": "e02623a944bc41114c0c0c8c1bbb7b66ab53fd133dd81a962f71edda42a65489"
+    },
+    {
+      "path": "question-list-v1.schema.json",
+      "sha256": "e965de1b107ede8acf06a0f543ef595ddd3d1909e3baf1673e75ea61073ebe2f"
+    },
+    {
+      "path": "task-binding-v1.schema.json",
+      "sha256": "d6d6828a4a16bf222d5af3eda83d44b222f11c22db8e2a100559e101313dfa89"
+    }
+  ]
+}

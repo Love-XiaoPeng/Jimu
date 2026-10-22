@@ -1,0 +1,12 @@
+{
+  "questionVersion": 1,
+  "expectedRevision": 1,
+  "answers": [
+    {
+      "id": "mode",
+      "selected": [
+        "Fast"
+      ]
+    }
+  ]
+}
