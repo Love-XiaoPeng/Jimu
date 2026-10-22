@@ -370,7 +370,50 @@ class DirectoryExperiment(Experiment):
         self.state(task, 'SUCCEEDED')
         self.stop(worker)
 
+        self.binding_versions()
         self.claim_fairness()
+
+    def binding_versions(self):
+        # Future-version rows can only be injected in this private compatibility fixture.
+        for table in ('task_directory', 'invocation_path_binding'):
+            constraints = self.sql("SELECT c.CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS c JOIN information_schema.CHECK_CONSTRAINTS k ON k.CONSTRAINT_SCHEMA=c.CONSTRAINT_SCHEMA AND k.CONSTRAINT_NAME=c.CONSTRAINT_NAME WHERE c.TABLE_SCHEMA='jimu' AND c.TABLE_NAME='"+table+"' AND k.CHECK_CLAUSE LIKE '%record_version%';").splitlines()
+            for name in constraints:
+                self.sql('ALTER TABLE '+table+' ALTER CHECK `'+name+'` NOT ENFORCED;')
+        task = self.task('QA01-binding-versions', [[call('working_directory')]])
+        worker = self.start('QA01-paused', 'worker', 'M2')
+        self.barrier(worker)
+        original = self.probe(task, worker)
+        self.assert_that(original == {'code': 'OK', 'result': {'cwd': '/'}}, 'QA01 original slot committed')
+        def facts():
+            return [self.sql(query+" WHERE task_id='"+task+"' ORDER BY "+order+';') for query, order in (
+                ('SELECT * FROM task_directory', 'task_id'),
+                ('SELECT * FROM invocation', 'id'),
+                ('SELECT * FROM reservation', 'id'),
+                ('SELECT * FROM event', 'seq'))] + [self.sql("SELECT tools_used,models_used FROM task WHERE id='"+task+"';")]
+        baseline = facts()
+        for table, columns in (('invocation_path_binding', ('record_version', 'path_policy_version')),
+                               ('task_directory', ('record_version', 'directory_version', 'path_policy_version'))):
+            for column in columns:
+                self.sql("UPDATE "+table+" SET "+column+"=99 WHERE task_id='"+task+"';")
+                before = facts()
+                try:
+                    result = self.probe(task, worker)
+                    self.assert_that(result['code'] == 'DIRECTORY_BINDING_UNSUPPORTED' and facts() == before,
+                                     'QA01 unsupported version refuses replay without side effects '+table+'.'+column, result=result)
+                finally:
+                    self.sql("UPDATE "+table+" SET "+column+"=1 WHERE task_id='"+task+"';")
+                self.assert_that(self.probe(task, worker) == original and facts() == baseline,
+                                 'QA01 supported version replays original without new charge '+table+'.'+column)
+        self.sql("UPDATE invocation_path_binding SET canonical_paths_digest=REPEAT('0',64) WHERE task_id='"+task+"';")
+        try:
+            self.assert_that(self.probe(task, worker)['code'] == 'SNAPSHOT_CORRUPT' and facts() == baseline,
+                             'QA01 supported version with damaged digest remains SNAPSHOT_CORRUPT')
+        finally:
+            self.sql("UPDATE invocation_path_binding SET canonical_paths_digest=SHA2(CAST(canonical_paths_snapshot AS BINARY),256) WHERE task_id='"+task+"';")
+        (self.evidence/'QA01-facts.json').write_text(json.dumps(baseline, indent=2))
+        (worker['folder']/'release').touch()
+        self.state(task, 'SUCCEEDED')
+        self.stop(worker)
 
     def claim_fairness(self):
         # Exercise the accepted V17 todo-only profile alongside the new directory profile.
@@ -643,7 +686,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--jar', type=Path, required=True)
     parser.add_argument('--evidence', type=Path, required=True)
-    parser.add_argument('--case', choices=['D'+str(i).zfill(2) for i in range(1,13)]+['R1'], default='D01')
+    parser.add_argument('--case', choices=['D'+str(i).zfill(2) for i in range(1,13)]+['R1', 'QA01'], default='D01')
     parser.add_argument('--v17-jar', type=Path)
     args = parser.parse_args()
     if args.case == 'D11':
@@ -660,7 +703,8 @@ if __name__ == '__main__':
             {'D01': experiment.normal, 'D02': experiment.ordered, 'D03': experiment.recovery,
              'D04': experiment.transaction, 'D05': experiment.invalid_paths, 'D06': experiment.observation,
              'D07': experiment.authorization, 'D08': experiment.events, 'D09': experiment.budgets,
-             'D10': experiment.retention, 'D12': experiment.regressions, 'R1': experiment.claim_fairness}[args.case]()
+             'D10': experiment.retention, 'D12': experiment.regressions, 'R1': experiment.claim_fairness,
+             'QA01': experiment.binding_versions}[args.case]()
     except BaseException:
         (experiment.evidence/'failure.txt').write_text(traceback.format_exc())
         raise

@@ -450,6 +450,10 @@ public final class JdbcLedger
             "SELECT * FROM invocation_path_binding WHERE tenant_id=? AND invocation_id=?",
             s(task, "tenant_id"),
             s(i, "id"));
+    if (!existing.isEmpty()
+        && (n(existing.getFirst(), "record_version") != 1
+            || n(existing.getFirst(), "path_policy_version") != 1))
+      throw new TaskFailure(409, "DIRECTORY_BINDING_UNSUPPORTED");
     String base = existing.isEmpty() ? s(p, "cwd") : s(existing.getFirst(), "base_cwd");
     long revision = existing.isEmpty() ? n(p, "revision") : n(existing.getFirst(), "base_revision");
     String mode, target = null;
@@ -502,9 +506,7 @@ public final class JdbcLedger
             "SELECT * FROM invocation_path_binding WHERE tenant_id=? AND invocation_id=?",
             s(task, "tenant_id"),
             s(i, "id"));
-    if (n(frozen, "record_version") != 1
-        || n(frozen, "path_policy_version") != 1
-        || !"PRESENT".equals(s(frozen, "content_state"))
+    if (!"PRESENT".equals(s(frozen, "content_state"))
         || !s(p, "binding_digest").equals(s(frozen, "binding_digest"))
         || !s(p, "namespace_digest").equals(s(frozen, "namespace_digest"))
         || !s(i, "step_id").equals(s(frozen, "step_id"))
