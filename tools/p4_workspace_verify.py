@@ -1,5 +1,6 @@
 """Selectable P4 verification, owned MySQL + non-root JVMs + actual native search. No paid IO."""
 import argparse
+import ctypes
 import hashlib
 import json
 import os
@@ -14,6 +15,20 @@ import tempfile
 sys.dont_write_bytecode = True
 from p2_verify import Handler, eventually
 from p3_business_verify import BusinessExperiment, BusinessTls, EVIDENCE, SOURCE, report_draft
+
+
+def deny_unshare():
+    # Per-child x86_64 seccomp fixture. Never changes host namespace/sysctl policy.
+    class Filter(ctypes.Structure):
+        _fields_=[('code',ctypes.c_ushort),('jt',ctypes.c_ubyte),('jf',ctypes.c_ubyte),('k',ctypes.c_uint)]
+    class Program(ctypes.Structure):
+        _fields_=[('length',ctypes.c_ushort),('filters',ctypes.POINTER(Filter))]
+    filters=(Filter*9)(Filter(0x20,0,0,0),Filter(0x15,6,0,272),Filter(0x15,4,0,435),
+        Filter(0x15,0,2,56),Filter(0x20,0,0,16),Filter(0x45,2,0,0x7e020000),
+        Filter(0x06,0,0,0x7fff0000),Filter(0x06,0,0,0x50026),Filter(0x06,0,0,0x50001))
+    program=Program(9,filters);libc=ctypes.CDLL(None,use_errno=True)
+    if libc.prctl(38,1,0,0,0)!=0 or libc.prctl(22,2,ctypes.byref(program),0,0)!=0:
+        os._exit(127)
 
 
 class P4Model(Handler):
@@ -74,6 +89,10 @@ class P4Model(Handler):
                     'path': 'data.txt', 'cursor': page_replies[0]['nextCursor']})]]
         if goal.startswith('lifecycle-'):
             stages = [[('grep', {'pattern': 'ROW', 'path': 'data.txt'})]]
+        if goal.startswith('quota-roots'):
+            stages = [[('grep', {'pattern':'ROW','path':'data.txt'})]*5 for _ in range(4)] + [[('grep',{'pattern':'ROW','path':'data.txt'})]]
+        if goal.startswith('quota-bytes'):
+            stages = [[('grep',{'pattern':'^x','path':'data.txt'})] for _ in range(3)]
         if rounds == 5 and not goal.startswith('B02'):
             actual = json.loads(replies[-1]['content'])
             assert actual['seen'] > 0 and any('修订结论' in m['line'] for m in actual['matches'])
@@ -98,7 +117,7 @@ class P4Experiment(BusinessExperiment):
         self.sql("GRANT INSERT ON jimu.native_search_stop TO 'runtime'@'%';")
         # This fixture deliberately returns hundreds of rows through cumulative model history.
         # Give only the private synthetic tenants room for that history; product defaults stay fixed.
-        self.sql("UPDATE tenant_budget SET token_limit=8388608;")
+        self.sql("UPDATE tenant_budget SET token_limit=8388608,storage_limit=134217728;")
         resources = Path(__file__).resolve().parents[1] / 'src/main/resources/plugins/builtin'
         for name in ['edit', 'glob', 'grep']:
             digest = hashlib.sha256((resources / name / 'output.schema.json').read_bytes()).hexdigest()
@@ -134,7 +153,8 @@ class P4Experiment(BusinessExperiment):
                 '--spring.profiles.active=local-tls-worker']
         command += ['--spring.config.additional-location=file:' + str(properties)]
         logfile = folder / (name + '.log')
-        with logfile.open('w') as log: child = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
+        with logfile.open('w') as log: child = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT,
+            preexec_fn=deny_unshare if getattr(self,'deny_unshare',False) else None)
         self.children.append(child)
         def started():
             if child.poll() is not None: raise AssertionError(name + ' startup failed\n' + logfile.read_text()[-16000:])
@@ -271,14 +291,25 @@ class P4Experiment(BusinessExperiment):
         else:
             task=self.submit_search('lifecycle-stale-fence');self.seed(task)
             old=self.start('stale-result','worker','S_BEFORE_RESULT');self.barrier(old)
-            fence=self.sql("SELECT fence FROM task WHERE id='"+task+"';")
             self.expire(task)
             fresh=self.start('stale-recovery','worker')
-            eventually(lambda:self.sql("SELECT fence FROM task WHERE id='"+task+"';")!=fence,'new attempt advances fence')
+            # A saved native result without T1 is still UNKNOWN. Recovery must not replay it or
+            # invent a new successful attempt merely to make the old lease test easier.
+            eventually(lambda:self.http('GET','/api/tasks/'+task)[1]['state']=='NEEDS_RECONCILIATION','expired unknown result refuses replay')
             (old['folder']/'release').touch()
             eventually(lambda:self.http('GET','/api/tasks/'+task)[1]['state']=='NEEDS_RECONCILIATION','uncertain old search stays reconciliable')
             self.stop(old);self.stop(fresh)
             self.assert_that(self.fixture.models.get('lifecycle-stale-fence')==1 and self.sql("SELECT COUNT(*) FROM invocation WHERE task_id='"+task+"' AND state='SUCCEEDED';")=='0','old fence cannot publish saved result or dispatch next model')
+            task=self.submit_search('lifecycle-new-fence');self.seed(task)
+            old=self.start('old-before-admission','worker','T0_BEFORE');self.barrier(old)
+            fence=self.sql("SELECT fence FROM task WHERE id='"+task+"';")
+            self.expire(task);fresh=self.start('new-after-admission','worker');self.state(task,'FAILED')
+            self.assert_that(self.sql("SELECT fence FROM task WHERE id='"+task+"';")!=fence,'safe recovery actually advances fence')
+            before=self.sql("SELECT COUNT(*) FROM native_search_run WHERE task_id='"+task+"';")
+            models=self.fixture.models.get('lifecycle-new-fence')
+            (old['folder']/'release').touch();self.stop(old);self.stop(fresh)
+            self.assert_that(before=='1' and self.sql("SELECT COUNT(*) FROM native_search_run WHERE task_id='"+task+"';")==before
+                and self.fixture.models.get('lifecycle-new-fence')==models,'actual old fence cannot launch another native tree or next model')
 
     def verify_versioning(self):
         from p4_legacy_verify import verify_legacy
@@ -293,13 +324,34 @@ class P4Experiment(BusinessExperiment):
         self.assert_that(status==503 and body['code']=='SEARCH_NOT_CONFIGURED','disabled search rejects admission without native launch')
         self.stop(disabled)
         for name,extra in [('wrong-bundle',{'jimu.search.launcher-sha256':'0'*64}),
-                           ('missing-bundle',{'jimu.search.rg':str(self.root/'missing-rg')})]:
+                           ('missing-bundle',{'jimu.search.rg':str(self.root/'missing-rg')}),
+                           ('namespace-denied',{})]:
             try:
+                self.deny_unshare=name=='namespace-denied'
                 self.start(name,'worker',extra=extra)
                 raise AssertionError('invalid native assembly became ready')
             except AssertionError as error:
                 self.assert_that('startup failed' in str(error),'invalid native assembly fails readiness without host fallback',variant=name)
+            finally:self.deny_unshare=False
         (self.evidence/'V01-catalog.json').write_text(json.dumps({'enabled':enabled,'disabled':without}))
+
+    def verify_limits(self):
+        for goal,content,count in [('quota-roots','ROW\n',20),('quota-bytes',('x'*2000+'\n')*1100,2)]:
+            task=self.submit_search(goal);self.seed(task,files={'data.txt':content})
+            self.sql("UPDATE task SET max_tokens=1048576 WHERE id='"+task+"';")
+            worker=self.start(goal,'worker');self.state(task,'FAILED')
+            expected='REPORT_NOT_PUBLISHED' if count==20 else 'SEARCH_RESULT_LIMIT'
+            # The existing tool manager reaches its 20-call ceiling before the root guard's 21st call.
+            self.assert_that(self.sql("SELECT code FROM task WHERE id='"+task+"';")==expected,goal+' blocks further roots without a successful task')
+            self.assert_that(self.sql("SELECT COUNT(*) FROM native_search_run WHERE task_id='"+task+"';")==str(count),goal+' preserves accepted roots only')
+            self.assert_that(self.sql("SELECT COUNT(*) FROM reservation WHERE task_id='"+task+"' AND category='SEARCH_STORAGE' AND state='SETTLED' AND actual=amount;")=='0',goal+' settles actual bytes rather than reserved 4MiB')
+            self.stop(worker)
+            eventually(lambda:self.sql("SELECT COUNT(*) FROM task_attempt WHERE task_id='"+task+"' AND quiescent=FALSE;")=='0','quota task quiescent')
+            directories=self.sql("SELECT runtime_directory FROM native_search_run WHERE task_id='"+task+"';").splitlines()
+            self.sql("UPDATE native_search_run SET expires_at=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE task_id='"+task+"';")
+            eventually(lambda:self.sql("SELECT COUNT(*) FROM native_search_run WHERE task_id='"+task+"' AND storage_removed=FALSE;")=='0','TTL physically removes stopped results')
+            self.assert_that(not any(Path(directory).exists() for directory in directories)
+                and self.sql("SELECT COUNT(*) FROM reservation WHERE task_id='"+task+"' AND category='SEARCH_STORAGE' AND state<>'RELEASED';")=='0','TTL refunds search storage only after physical removal',variant=goal)
 
     def cleanup(self):
         if self.schema_ready:
@@ -397,6 +449,7 @@ def main():
         e=P4Experiment(args.jar,original/'persistent',args.test_classes)
         try:
             e.prepare_p4(bundle)
+            e.verify_limits()
             e.verify_business('B01');e.verify_business('B02')
             e.verify_pages('S05');e.verify_pages('S04')
             e.verify_lifecycle('L01');e.verify_lifecycle('L02');e.verify_versioning()
@@ -404,11 +457,12 @@ def main():
         return
     if args.case.startswith('E') or args.case in ['S01', 'S02', 'S03', 'S06']:
         local_case(args, bundle)
-        return
+        if args.case!='S06':return
     e = P4Experiment(args.jar, args.evidence, args.test_classes)
     try:
         e.prepare_p4(bundle)
-        if args.case in ['S04','S05']: e.verify_pages(args.case)
+        if args.case=='S06': e.verify_limits()
+        elif args.case in ['S04','S05']: e.verify_pages(args.case)
         elif args.case in ['L01','L02']: e.verify_lifecycle(args.case)
         elif args.case == 'V01': e.verify_versioning()
         else: e.verify_business(args.case)
