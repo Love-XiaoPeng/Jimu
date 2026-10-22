@@ -281,6 +281,8 @@ class P4Experiment(BusinessExperiment):
             self.assert_that(self.fixture.models.get('lifecycle-stale-fence')==1 and self.sql("SELECT COUNT(*) FROM invocation WHERE task_id='"+task+"' AND state='SUCCEEDED';")=='0','old fence cannot publish saved result or dispatch next model')
 
     def verify_versioning(self):
+        from p4_legacy_verify import verify_legacy
+        verify_legacy(self.jar,self.classes,self.java,self.evidence/'legacy-worker')
         enabled=self.http('GET','/api/capabilities')[1]
         disabled=self.start('native-disabled','control',extra={'jimu.search.enabled':'false'})
         without=self.http('GET','/api/capabilities',instance=disabled)[1]
