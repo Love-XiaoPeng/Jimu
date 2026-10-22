@@ -1,0 +1,22 @@
+2026-10-22 architecture-only attempts (UTC)
+
+1. multica repo checkout https://github.com/Love-XiaoPeng/Jimu.git --output json
+   Exit 1: unknown flag --output. Retried supported checkout; exit 0.
+2. git ls-remote https://github.com/deepseek-ai/deepseek-harness.git HEAD
+   Shell exit 1: Recv failure: Connection was reset. Native exit code was not captured.
+3. git -c http.sslBackend=schannel -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=15 fetch origin master
+   Shell exit 1: Failed to connect to github.com:443 after 21095 ms. Native exit code was not captured.
+   API compare and all 8 changed-file Git blob hashes subsequently verified.
+4. gh API command could not run: gh is not in PATH. No write attempted through gh.
+5. java architecture/ProtocolProbe.java architecture/evidence/protocol-probe.txt
+   Initial exit 1: assertion "cancelled future cannot yield success" used isCancelled().
+   Java HttpClient returns a dependent CompletableFuture which can complete with a
+   CompletionException wrapping CancellationException rather than isCancelled=true.
+   Corrected assertion to require exceptional completion from join(); no normal
+   response can be accepted. Original wire trace retained as protocol-probe-attempt-1.txt.
+   Final exit 0: 17 assertions passed. Probe is not production adapter code.
+6. wsl python3 architecture/verify-contracts.py
+   Initial exit 1: this Python jsonschema environment does not enforce URI format
+   without an optional format checker dependency. Added scheme/no-whitespace lexical
+   pattern to schema; strict URI parsing and policy checks remain runtime requirements.
+   Final command/result is recorded in VERIFICATION.md.

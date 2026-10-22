@@ -1,0 +1,74 @@
+[
+  {
+    "path": "docs/baseline/XIAO-33-可行性与总体方案-v0.3.md",
+    "checkout": "fdb38138f60b92a556b276e6c3ef96d287a8d0f6",
+    "unchangedToActualMaster": true,
+    "sha256": "2b8e53c700aab0d96a6f06351ee9f924a43c8d5af4b5f62837b20e6f92e6c014"
+  },
+  {
+    "path": "docs/baseline/XIAO-33-tool-migration-evidence-v1.1.md",
+    "checkout": "fdb38138f60b92a556b276e6c3ef96d287a8d0f6",
+    "unchangedToActualMaster": true,
+    "sha256": "2111bc4a0be86a3cc69420fb9b9d08adc0bc5b609686d859b38830edce17c0f7"
+  },
+  {
+    "path": "docs/baseline/XIAO-33-harness-tool-inventory-v1.1.json",
+    "checkout": "fdb38138f60b92a556b276e6c3ef96d287a8d0f6",
+    "unchangedToActualMaster": true,
+    "sha256": "30b6904aad8d85dac3e789434e434c449575383cb23e254329a84930436f5b02"
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskController.java",
+    "checkout": "fdb38138f60b92a556b276e6c3ef96d287a8d0f6",
+    "unchangedToActualMaster": true,
+    "sha256": "6b04fcc434a7a2c492fb4f1fa88551e4473b30c30ac75734e09e08eb1b110dcc"
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+    "checkout": "fdb38138f60b92a556b276e6c3ef96d287a8d0f6",
+    "unchangedToActualMaster": true,
+    "sha256": "02197a3298f0883684db50e5f0c537e4935a37d916fafd393140b7c0b1c4b975"
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+    "checkout": "fdb38138f60b92a556b276e6c3ef96d287a8d0f6",
+    "unchangedToActualMaster": true,
+    "sha256": "1b17d3fd374455e7bec9001c3bb8563da58c59a404f67d4da52f51760508bba5"
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/SchemaContract.java",
+    "checkout": "fdb38138f60b92a556b276e6c3ef96d287a8d0f6",
+    "unchangedToActualMaster": true,
+    "sha256": "bfd42fccd264dd9b5b00cb69c0ccc771d89abfbf2fc083d73da66d912c92e5d9"
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/ExecutionLedger.java",
+    "checkout": "fdb38138f60b92a556b276e6c3ef96d287a8d0f6",
+    "unchangedToActualMaster": true,
+    "sha256": "76645a63d5756dbebdecfdd361229ee28ca305249fcee100332bce443f1ae60b"
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+    "checkout": "fdb38138f60b92a556b276e6c3ef96d287a8d0f6",
+    "unchangedToActualMaster": true,
+    "sha256": "aff8548bdd9eb096f5e0092260d2ec1602eac7f7f3d923fadaea1ff6419c6a2d"
+  },
+  {
+    "path": "src/main/resources/db/migration/V5__task_tool_snapshots.sql",
+    "checkout": "fdb38138f60b92a556b276e6c3ef96d287a8d0f6",
+    "unchangedToActualMaster": true,
+    "sha256": "f87c2370145760e4d712bb9ff62a1ebcfac0d3461aea67b0f4b7c59f32c72615"
+  },
+  {
+    "path": "src/main/resources/db/migration/V14__image_checkpoint_retention.sql",
+    "checkout": "fdb38138f60b92a556b276e6c3ef96d287a8d0f6",
+    "unchangedToActualMaster": true,
+    "sha256": "3efa3e1240e1f3917265915d0e3713d799b7839a45618f97577fc1029a9801ab"
+  },
+  {
+    "path": "pom.xml",
+    "checkout": "fdb38138f60b92a556b276e6c3ef96d287a8d0f6",
+    "unchangedToActualMaster": true,
+    "sha256": "97bcb08a228d3d8e12816094b48168e2d6bee6b00aadb80f0d79687e05be067b"
+  }
+]

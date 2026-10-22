@@ -1,0 +1,55 @@
+{
+  "retrievedAt": "2026-10-22T11:11:07.386486Z",
+  "actualMaster": "a04bc49a047827b292c7929312ea8d1ae9e31afc",
+  "actualTree": "74f134b2dbaa0c984256129fab2c41a9fb70a15d",
+  "checkout": "fdb38138f60b92a556b276e6c3ef96d287a8d0f6",
+  "checkoutTree": "10b993f03fb45a5e334739c5b6227aa60ccdd80d",
+  "changedFiles": [
+    {
+      "path": "docs/implementation-p4-runtime.md",
+      "status": "modified",
+      "blob": "2b0bdca6d47a00aacabff8a45a184e8afec1f3d0"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeRunner.java",
+      "status": "modified",
+      "blob": "14f9707ff472fe2a68161eae6fdc61dc8f0605a8"
+    },
+    {
+      "path": "tools/native_bundle_verify.py",
+      "status": "added",
+      "blob": "c86b34fa2ba5b96ae83f984689302fa1555a0186"
+    },
+    {
+      "path": "tools/native_rebuild.py",
+      "status": "added",
+      "blob": "2a4f8ffe2ee52f5744701b9fc53a034e1cde5a36"
+    },
+    {
+      "path": "workers/search/README.md",
+      "status": "modified",
+      "blob": "63bfd08877cba930308a5bd306d39f2494db1a45"
+    },
+    {
+      "path": "workers/search/v2/README.md",
+      "status": "added",
+      "blob": "830d843b330c0fc7c4db50fbb9765b981580302e"
+    },
+    {
+      "path": "workers/search/v2/pins.json",
+      "status": "added",
+      "blob": "273441b1ebdf244bf1e60b287d4078252bf6670f"
+    },
+    {
+      "path": "workers/search/v2/source-inputs.json",
+      "status": "added",
+      "blob": "467d34b70411309c58574824b29530ad96b657f5"
+    }
+  ],
+  "failureHistory": [
+    "multica repo checkout --output json: unknown flag, exit 1; retried supported command successfully",
+    "git ls-remote upstream: connection reset, shell exit 1; native exit not captured",
+    "git schannel fetch origin master: connect timeout, shell exit 1; native exit not captured"
+  ],
+  "scope": "Architecture source/API evidence only; no product MCP execution or deployment"
+}

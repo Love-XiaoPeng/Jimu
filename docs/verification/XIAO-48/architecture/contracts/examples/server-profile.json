@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "tenant": "tenant-a",
+  "server": "docs",
+  "epoch": 1,
+  "hostId": "fixture-host",
+  "endpoint": "http://127.0.0.1:18081/mcp",
+  "credentialRef": "fixture-docs-bearer",
+  "credentialVersion": 1,
+  "allowedActors": [
+    "owner-a"
+  ],
+  "allowedUris": [],
+  "allowedUriPrefixes": [
+    "jimu-fixture://docs/"
+  ],
+  "allowedTemplates": [
+    "jimu-fixture://docs/{name}"
+  ],
+  "protocolVersion": "2025-06-18",
+  "serverInfo": {
+    "name": "jimu-controlled-resource",
+    "version": "0.1.0"
+  },
+  "serverCapabilities": {
+    "resources": {}
+  },
+  "schemaDigest": "4ff8e6e0c9ef697c02517426a948479f5976806c9f4249c954a69fa579b826db"
+}

@@ -1,0 +1,51 @@
+ENV java=21.0.12.1 os=Windows 11 endpoint=http://127.0.0.1:52173/mcp
+CLIENT {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"jimu-probe","version":"0.1.0"}}}
+FIXTURE method=POST accept=application/json, text/event-stream protocol=2025-06-18
+SERVER 200 {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"resources":{}},"serverInfo":{"name":"jimu-controlled-resource","version":"0.1.0"}}}
+PASS initialize resource capability
+CLIENT {"jsonrpc":"2.0","method":"notifications/initialized"}
+FIXTURE method=POST accept=application/json, text/event-stream protocol=2025-06-18
+SERVER 202 
+PASS initialized notification HTTP 202
+CLIENT {"jsonrpc":"2.0","id":2,"method":"resources/templates/list","params":{}}
+FIXTURE method=POST accept=application/json, text/event-stream protocol=2025-06-18
+SERVER 200 {"jsonrpc":"2.0","id":2,"result":{"resourceTemplates":[{"uriTemplate":"jimu-fixture://docs/{name}","name":"docs"}]}}
+PASS templates protocol
+CLIENT {"jsonrpc":"2.0","id":3,"method":"resources/list","params":{}}
+FIXTURE method=POST accept=application/json, text/event-stream protocol=2025-06-18
+SERVER 200 {"jsonrpc":"2.0","id":3,"result":{"resources":[{"uri":"jimu-fixture://docs/a","name":"a"}],"nextCursor":"page2"}}
+PASS upstream page one cursor
+CLIENT {"jsonrpc":"2.0","id":4,"method":"resources/list","params":{"cursor":"page2"}}
+FIXTURE method=POST accept=application/json, text/event-stream protocol=2025-06-18
+SERVER 200 {"jsonrpc":"2.0","id":4,"result":{"resources":[{"uri":"jimu-fixture://docs/b","name":"b"}]}}
+PASS upstream page two
+CLIENT {"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"jimu-fixture://docs/a"}}
+FIXTURE method=POST accept=application/json, text/event-stream protocol=2025-06-18
+SERVER 200 {"jsonrpc":"2.0","id":5,"result":{"contents":[{"uri":"jimu-fixture://docs/a","mimeType":"text/plain","text":"controlled MCP content"}]}}
+PASS read actual protocol
+CLIENT {"jsonrpc":"2.0","id":6,"method":"resources/read","params":{"uri":"jimu-fixture://docs/missing"}}
+FIXTURE method=POST accept=application/json, text/event-stream protocol=2025-06-18
+SERVER 200 {"jsonrpc":"2.0","id":6,"error":{"code":-32002,"message":"Resource not found"}}
+PASS resource not found error
+CLIENT {"jsonrpc":"2.0","id":7,"method":"resources/read","params":{"uri":"jimu-fixture://docs/sse"}}
+FIXTURE method=POST accept=application/json, text/event-stream protocol=2025-06-18
+SERVER 200 event: message
+data: {"jsonrpc":"2.0","id":7,"result":{"contents":[{"uri":"jimu-fixture://docs/sse","text":"SSE text"}]}}
+
+
+PASS POST SSE wire path
+CLIENT {"jsonrpc":"2.0","id":9,"method":"resources/read","params":{"uri":"jimu-fixture://docs/redirect"}}
+FIXTURE method=POST accept=application/json, text/event-stream protocol=2025-06-18
+SERVER 302 
+PASS redirect not followed
+PASS exact endpoint rejects DNS alias other port other path public endpoint before I/O
+PASS slow request reached dedicated fixture
+PASS client cancellation accepted
+CLIENT {"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":8,"reason":"task cancelled"}}
+FIXTURE method=POST accept=application/json, text/event-stream protocol=2025-06-18
+FIXTURE method=POST accept=application/json, text/event-stream protocol=2025-06-18
+FIXTURE closed cancelled response
+SERVER 202 
+PASS best effort cancel notification
+PASS owned fixture threads terminated
+PASS fixture bound literal loopback

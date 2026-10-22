@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:plugin:mcp.read-resource:0.1.0:input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "server",
+    "uri"
+  ],
+  "properties": {
+    "server": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+    },
+    "uri": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^[A-Za-z][A-Za-z0-9+.-]*:[^\\s\\u0000-\\u001F\\u007F]+$",
+      "minLength": 1,
+      "maxLength": 2048
+    }
+  }
+}

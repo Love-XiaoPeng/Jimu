@@ -1,0 +1,79 @@
+{
+  "scope": "Architecture only; cross-field hash/URI/authorization checks and product execution not covered",
+  "schemasChecked": 9,
+  "catalogFilesChecked": 9,
+  "cases": [
+    {
+      "case": "list-input.json",
+      "result": "PASS"
+    },
+    {
+      "case": "list-input.json",
+      "result": "PASS"
+    },
+    {
+      "case": "read-input.json",
+      "result": "PASS"
+    },
+    {
+      "case": "resources-output.json",
+      "result": "PASS"
+    },
+    {
+      "case": "templates-output.json",
+      "result": "PASS"
+    },
+    {
+      "case": "read-output.json",
+      "result": "PASS"
+    },
+    {
+      "case": "server-profile.json",
+      "result": "PASS"
+    },
+    {
+      "case": {
+        "server": "docs",
+        "endpoint": "http://127.0.0.1:1/mcp"
+      },
+      "result": "REJECTED"
+    },
+    {
+      "case": {
+        "server": "docs",
+        "cursor": "raw-upstream-cursor"
+      },
+      "result": "REJECTED"
+    },
+    {
+      "case": {
+        "server": "docs",
+        "cursor": null
+      },
+      "result": "REJECTED"
+    },
+    {
+      "case": {
+        "server": "docs",
+        "uri": "not a URI"
+      },
+      "result": "REJECTED"
+    },
+    {
+      "case": {
+        "server": "docs",
+        "uri": "jimu-fixture://docs/a",
+        "tenant": "tenant-b"
+      },
+      "result": "REJECTED"
+    },
+    {
+      "case": "DNS alias endpoint",
+      "result": "REJECTED"
+    },
+    {
+      "case": "task binding v1",
+      "result": "PASS"
+    }
+  ]
+}

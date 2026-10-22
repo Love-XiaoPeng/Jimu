@@ -1,0 +1,40 @@
+{
+  "manifestVersion": 1,
+  "id": "jimu.mcp.list-resources",
+  "version": "0.1.0",
+  "kind": "tool",
+  "hostApi": ">=0.1.0 <0.2.0",
+  "entry": {
+    "type": "trusted-jvm",
+    "class": "io.github.lovexiaopeng.jimu.plugins.builtin.mcp.ListMcpResourcesPlugin"
+  },
+  "capabilities": [
+    {
+      "name": "list_mcp_resources",
+      "inputSchema": "input.schema.json",
+      "outputSchema": "output.schema.json",
+      "sideEffect": "read"
+    }
+  ],
+  "permissions": {
+    "network": [
+      "host-task-mcp-server-whitelist"
+    ]
+  },
+  "secretRefs": [],
+  "dependencies": [],
+  "limits": {
+    "timeoutMs": 30000,
+    "outputBytes": 65536
+  },
+  "healthCheck": {
+    "operation": "mcp-profile-readiness",
+    "timeoutMs": 2000
+  },
+  "errorContract": "jimu-invocation-result",
+  "eventTypes": [
+    "invocation.started",
+    "invocation.completed",
+    "invocation.failed"
+  ]
+}

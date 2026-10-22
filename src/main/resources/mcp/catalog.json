@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "status": "architecture-contract-not-runtime-delivery",
+  "harnessCommit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+  "protocolVersion": "2025-06-18",
+  "transportProfile": "same-host-streamable-http-v1",
+  "schemaDigest": "4ff8e6e0c9ef697c02517426a948479f5976806c9f4249c954a69fa579b826db",
+  "tools": [
+    {
+      "upstreamId": "T02",
+      "group": "G02",
+      "tool": "list_mcp_resource_templates",
+      "id": "jimu.mcp.list-resource-templates",
+      "version": "0.1.0",
+      "method": "resources/templates/list",
+      "description": "List parameterized resource URI templates from an authorized MCP server; cursor reads the same host snapshot.",
+      "inputSha256": "3286b79a0d26f83175b185cbedaa3169b12ca4b7f42ea583ca4c6d4156793332",
+      "outputSha256": "757410a2b9e69a156dd294e30c6b67dc98e03d89c5aef2735c212ef6da06ebb0",
+      "manifestSha256": "415f4670e231a68ec062c2284163f60c1c514c849df2e196e86acb58ce49dcaf"
+    },
+    {
+      "upstreamId": "T03",
+      "group": "G02",
+      "tool": "list_mcp_resources",
+      "id": "jimu.mcp.list-resources",
+      "version": "0.1.0",
+      "method": "resources/list",
+      "description": "List resources from an authorized MCP server; cursor reads the same host snapshot.",
+      "inputSha256": "29fd7302a672247a952d9abbe4fb35174e97c64e91a3a60b0612e97f8454ddb5",
+      "outputSha256": "1d97dc3c26c23f3ff7576d2022e18d8ca87f78531a64284addbe1472b8ac3087",
+      "manifestSha256": "12f874c8b47a8600cb50742c683c60bb1bbc01d43e5c69aa0b5350bd415dd472"
+    },
+    {
+      "upstreamId": "T04",
+      "group": "G02",
+      "tool": "read_mcp_resource",
+      "id": "jimu.mcp.read-resource",
+      "version": "0.1.0",
+      "method": "resources/read",
+      "description": "Read an allowed MCP resource URI; external content is untrusted and binary bytes are not model media.",
+      "inputSha256": "99bb5fea5f44d507585a3ba512addda2050c9a54ac99647977f2fe0932563650",
+      "outputSha256": "913b8a04ef378864565dfe764d0a84e8c4434557f998cb67bcc6a21f89c8f1c9",
+      "manifestSha256": "3f3c6e3397da857f1d57c6ee4522d3ed71ae49c086da6a61149edf218e45f42b"
+    }
+  ]
+}

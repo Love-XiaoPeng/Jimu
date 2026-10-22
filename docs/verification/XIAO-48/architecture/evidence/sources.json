@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "LICENSE",
+    "file": "LICENSE",
+    "gitBlob": "c1f7a78e89e4e4dc7b86664c3b3c76eb5eee1785",
+    "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+    "bytes": 1065,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/LICENSE"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "THIRD_PARTY_NOTICES.md",
+    "file": "THIRD_PARTY_NOTICES.md",
+    "gitBlob": "6a2fbda5ebec2d259fd90e22eaee819aec9e4edf",
+    "sha256": "260b8f9e14d68c083c8abe5d0c6b4cb5212d5f03025f327fdcd9656629222879",
+    "bytes": 24780,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/THIRD_PARTY_NOTICES.md"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/mcp/mcp-resources/package.json",
+    "file": "packages__mcp__mcp-resources__package.json",
+    "gitBlob": "482cf586e74d21b217aeb8006f27f4257223fc7d",
+    "sha256": "cba024e9f05b7538e204d584b99d6c69a726040a2eab9016142297d5ebca61fd",
+    "bytes": 1563,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/mcp/mcp-resources/package.json"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/mcp/mcp-resources/src/tools.ts",
+    "file": "packages__mcp__mcp-resources__src__tools.ts",
+    "gitBlob": "5e03887477034d4a5a8b83e9a62a8bbd600967ad",
+    "sha256": "a415aa6edea0ae5efdb71e02bb48d79a454ce97e0cc9f3b5f0c15631d5994090",
+    "bytes": 2704,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/mcp/mcp-resources/src/tools.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/mcp/mcp-resources/src/index.ts",
+    "file": "packages__mcp__mcp-resources__src__index.ts",
+    "gitBlob": "0ecaaa555bb653a0ae12c59fc2a0015a92302c16",
+    "sha256": "6b19614393d187629b7d273d8e8bca3d30f45cf0eac75b51493d0678eb809b65",
+    "bytes": 5314,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/mcp/mcp-resources/src/index.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/mcp/mcp-resources/src/render.ts",
+    "file": "packages__mcp__mcp-resources__src__render.ts",
+    "gitBlob": "d79c59775a4881b7633fb9038b279ae8bdb0bbf0",
+    "sha256": "10a9d2bea66851c5cbf47c263bd673f20b72072d0dd514baf8a8bd2a0e68822c",
+    "bytes": 913,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/mcp/mcp-resources/src/render.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/mcp/mcp-resources/tests/resources.spec.ts",
+    "file": "packages__mcp__mcp-resources__tests__resources.spec.ts",
+    "gitBlob": "8460d80c96f21a38c9386d9e69d70575b458ee1e",
+    "sha256": "5e351ff55611236c72e6c4dce458d2f43465927c92e91154a0d76dafa767773c",
+    "bytes": 18495,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/mcp/mcp-resources/tests/resources.spec.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/mcp/mcp-client/package.json",
+    "file": "packages__mcp__mcp-client__package.json",
+    "gitBlob": "c792a50900f4a37dc217497f24d6cf62f90a5138",
+    "sha256": "b6b39815c81557dfbfc643da56a12f14439361d88552728b434b4c79cdfc9578",
+    "bytes": 2309,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/mcp/mcp-client/package.json"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/mcp/mcp-client/src/transport.ts",
+    "file": "packages__mcp__mcp-client__src__transport.ts",
+    "gitBlob": "52030772febd9e55e9e6ffbe2e54a4ea3cec0aca",
+    "sha256": "6f3fca685af3d5654c476e95db24e1245dc1fa021a0bd7f477ce4ad997e1c8f6",
+    "bytes": 1594,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/mcp/mcp-client/src/transport.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/mcp/mcp-client/src/connection.ts",
+    "file": "packages__mcp__mcp-client__src__connection.ts",
+    "gitBlob": "9a4ec9123aea0e416178b45da6e788bade46274f",
+    "sha256": "06dc1b3a1297b8b23f6ac5c44f3ba6740716c76db71c28cfb8f14d6c0340030e",
+    "bytes": 18741,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/mcp/mcp-client/src/connection.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/mcp/mcp-client/src/server-context.ts",
+    "file": "packages__mcp__mcp-client__src__server-context.ts",
+    "gitBlob": "b0ba4ccd78883ac4730c3facc35b7e4b609c7fd6",
+    "sha256": "02ca9fe759891788572385a00f0cc7b6e92d6e98e103c1d00dd99ccec0d6319a",
+    "bytes": 1475,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/mcp/mcp-client/src/server-context.ts"
+  },
+  {
+    "repo": "deepseek-ai/deepseek-harness",
+    "commit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "path": "packages/mcp/mcp-client/tests/fixtures/resources-server.ts",
+    "file": "packages__mcp__mcp-client__tests__fixtures__resources-server.ts",
+    "gitBlob": "303706014db3342b5a2593f6b85888c2aa16de9e",
+    "sha256": "09e869798f4ad88aa43845904b9ca933eb82b1b93b81bed3315bdd86742f4153",
+    "bytes": 1354,
+    "url": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/mcp/mcp-client/tests/fixtures/resources-server.ts"
+  },
+  {
+    "repo": "modelcontextprotocol/modelcontextprotocol",
+    "commit": "80041ab0a139a8f4fb3adbc99f7ae9113ea59671",
+    "path": "schema/2025-06-18/schema.ts",
+    "file": "mcp-spec__schema__2025-06-18__schema.ts",
+    "gitBlob": "b7aa52452874c81981008e709678bfe4f7e3bc02",
+    "sha256": "7d7f4cc6f3adb76e3fd5e1eee6bab8b1e183cfaf719da66d2aa5661737ca9539",
+    "bytes": 42430,
+    "url": "https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/80041ab0a139a8f4fb3adbc99f7ae9113ea59671/schema/2025-06-18/schema.ts"
+  },
+  {
+    "repo": "modelcontextprotocol/modelcontextprotocol",
+    "commit": "80041ab0a139a8f4fb3adbc99f7ae9113ea59671",
+    "path": "docs/specification/2025-06-18/basic/transports.mdx",
+    "file": "mcp-spec__docs__specification__2025-06-18__basic__transports.mdx",
+    "gitBlob": "014097e44cfd7c5644eeadc1d758947c34dbde81",
+    "sha256": "df1217279334b6f3af8bb457191884ba831dce2c5389d7a0556ba920270ca902",
+    "bytes": 13956,
+    "url": "https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/80041ab0a139a8f4fb3adbc99f7ae9113ea59671/docs/specification/2025-06-18/basic/transports.mdx"
+  },
+  {
+    "repo": "modelcontextprotocol/modelcontextprotocol",
+    "commit": "80041ab0a139a8f4fb3adbc99f7ae9113ea59671",
+    "path": "docs/specification/2025-06-18/basic/lifecycle.mdx",
+    "file": "mcp-spec__docs__specification__2025-06-18__basic__lifecycle.mdx",
+    "gitBlob": "43475bd8f3c93e45489958d8be6f33670c31391c",
+    "sha256": "9800e66e16cb0b71c339f6007fd14f6d17cc48741d4a8d381cc38f916bb6d05e",
+    "bytes": 8196,
+    "url": "https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/80041ab0a139a8f4fb3adbc99f7ae9113ea59671/docs/specification/2025-06-18/basic/lifecycle.mdx"
+  },
+  {
+    "repo": "modelcontextprotocol/modelcontextprotocol",
+    "commit": "80041ab0a139a8f4fb3adbc99f7ae9113ea59671",
+    "path": "docs/specification/2025-06-18/basic/utilities/cancellation.mdx",
+    "file": "mcp-spec__docs__specification__2025-06-18__basic__utilities__cancellation.mdx",
+    "gitBlob": "cef9444a13003fe4f03f0da36881cf1cc2ed1a25",
+    "sha256": "a95b0cccf6842dafddd4d5a421d36232d469229770341283cc6cebd57026b4d7",
+    "bytes": 2491,
+    "url": "https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/80041ab0a139a8f4fb3adbc99f7ae9113ea59671/docs/specification/2025-06-18/basic/utilities/cancellation.mdx"
+  },
+  {
+    "repo": "modelcontextprotocol/modelcontextprotocol",
+    "commit": "80041ab0a139a8f4fb3adbc99f7ae9113ea59671",
+    "path": "docs/specification/2025-06-18/server/resources.mdx",
+    "file": "mcp-spec__docs__specification__2025-06-18__server__resources.mdx",
+    "gitBlob": "33d22aeeffc2b2d512c86907c2cfdd0437b7388e",
+    "sha256": "2e5b6dafc9f7a40196064e7ce3d1615c5820f78e663d0d064f1a1a3cfdcf935e",
+    "bytes": 9519,
+    "url": "https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/80041ab0a139a8f4fb3adbc99f7ae9113ea59671/docs/specification/2025-06-18/server/resources.mdx"
+  },
+  {
+    "repo": "modelcontextprotocol/modelcontextprotocol",
+    "commit": "80041ab0a139a8f4fb3adbc99f7ae9113ea59671",
+    "path": "LICENSE",
+    "file": "mcp-spec__LICENSE",
+    "gitBlob": "4a93985763241755401a10678395303de4e720ba",
+    "sha256": "0382b0057770ca05e9c350a50aa3b1c1fea84da0bc81d723bf00b9aa841be58a",
+    "bytes": 12227,
+    "url": "https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/80041ab0a139a8f4fb3adbc99f7ae9113ea59671/LICENSE"
+  }
+]
