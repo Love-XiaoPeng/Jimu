@@ -261,7 +261,7 @@ class SessionExperiment(Experiment):
         self.state(task,'SUCCEEDED')
         self.stop(worker)
         for goal, expected in [('transport-invalid-slot', 'MODEL_RESPONSE_INVALID'),
-            ('transport-provider-failure', 'MODEL_HTTP_ERROR')]:
+            ('transport-provider-failure', 'MODEL_UNAVAILABLE')]:
             task = self.task(goal, [{'seq':0}])
             worker = self.start(goal, 'worker')
             view = self.state(task, 'FAILED')
