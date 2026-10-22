@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "compose_report-v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "file_path",
+    "draft"
+  ],
+  "properties": {
+    "file_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "draft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "subject",
+        "summary",
+        "conclusions",
+        "limitations"
+      ],
+      "properties": {
+        "version": {
+          "const": 2
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "summary": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/segment"
+          }
+        },
+        "conclusions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/segment"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 400
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "segment": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sourceType",
+            "kind",
+            "text",
+            "sourceRef",
+            "evidence"
+          ],
+          "properties": {
+            "kind": {
+              "const": "text"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 600
+            },
+            "protocol": {
+              "type": "null"
+            },
+            "identifier": {
+              "type": "null"
+            },
+            "sourceRef": {
+              "type": "string",
+              "format": "uri",
+              "maxLength": 2048
+            },
+            "evidence": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 800
+            },
+            "sourceType": {
+              "const": "web"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sourceType",
+            "kind",
+            "protocol",
+            "identifier",
+            "sourceRef",
+            "evidence"
+          ],
+          "properties": {
+            "kind": {
+              "const": "endpoint"
+            },
+            "text": {
+              "type": "null"
+            },
+            "protocol": {
+              "enum": [
+                "http",
+                "https"
+              ]
+            },
+            "identifier": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "sourceRef": {
+              "type": "string",
+              "format": "uri",
+              "maxLength": 2048
+            },
+            "evidence": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 800
+            },
+            "sourceType": {
+              "const": "web"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sourceType",
+            "kind",
+            "text",
+            "sourceRef"
+          ],
+          "properties": {
+            "sourceType": {
+              "const": "image"
+            },
+            "kind": {
+              "const": "text"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 600
+            },
+            "sourceRef": {
+              "type": "string",
+              "pattern": "^image:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

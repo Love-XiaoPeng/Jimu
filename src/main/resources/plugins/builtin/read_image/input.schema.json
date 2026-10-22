@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "read_image-v0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "file_path"
+  ],
+  "properties": {
+    "file_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    }
+  }
+}

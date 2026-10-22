@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "read-image-result-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "filePath",
+    "inputId",
+    "sourceRef",
+    "sourceSha256",
+    "sourceSize",
+    "image"
+  ],
+  "properties": {
+    "filePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "inputId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+    },
+    "sourceRef": {
+      "type": "string",
+      "pattern": "^image:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+    },
+    "sourceSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "sourceSize": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1048576
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "imageId",
+        "mediaType",
+        "sha256",
+        "size",
+        "width",
+        "height",
+        "originalWidth",
+        "originalHeight",
+        "normalizerVersion"
+      ],
+      "properties": {
+        "imageId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+        },
+        "mediaType": {
+          "const": "image/png"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2048
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2048
+        },
+        "originalWidth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "originalHeight": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "normalizerVersion": {
+          "const": "jimu-image-v1"
+        }
+      }
+    }
+  }
+}

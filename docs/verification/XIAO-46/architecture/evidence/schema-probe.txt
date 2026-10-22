@@ -1,0 +1,11 @@
+read-image-required-input: PASS
+read-image-missing-path: PASS
+read-image-foreign-scope-field: PASS
+compose-v2-image-shape: PASS
+compose-v1-rejected-by-v2-schema: PASS
+web-evidence-still-required: PASS
+image-endpoint-forbidden: PASS
+image-quote-forbidden: PASS
+upload-json-shape-only: PASS
+upload-url-field-forbidden: PASS
+schemas=6 cases=10 all=PASS; semantic authorization/decoding/product not executed
