@@ -1,5 +1,14 @@
 # Optional native search bundle
 
+Current preparation uses [explicit rebuild version v2.0.0](v2/README.md) and
+`tools/native_rebuild.py`. It changes both rg/bwrap runtime pins and supplies
+actual compilation/link evidence. The recipe, pins and limitations below are
+the retained **legacy v1** record, not the current application's accepted bundle.
+The old npm provenance limitation remains unclosed. `tools/native_bundle.py`
+continues to prepare legacy bytes for historical verification only; it does not
+produce a bundle admitted by the v2 application. External distribution and
+production enablement remain prohibited pending the required acceptance.
+
 Linux x86_64, non-root, private POSIX storage and working unprivileged user/mount/PID/network namespaces are required. The application never downloads native code. `rg` is the exact static binary from `@vscode/ripgrep-linux-x64@1.18.0`, SHA256 `193906679498de4d939345b937fa24e0e69a03c244bd70c859f5e41232713f21`. `bwrap` is Ubuntu `0.9.0-1ubuntu0.3`, SHA256 `e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71`, dynamically linked to the host libc/libcap. The launcher is built from the adjacent C source; its local build digest must be configured explicitly.
 
 `source-inputs.json` records exact local input SHA256 and retrieval locations. Obtain these inputs during bundle preparation, verify them, then run offline:
