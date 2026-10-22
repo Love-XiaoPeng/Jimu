@@ -28,7 +28,8 @@ class TodoIT {
         "JIMU_V16_JAR requires exact old master artifact");
     Path evidence = Path.of("target/failsafe-reports/todo-evidence", UUID.randomUUID().toString());
     Files.createDirectories(evidence);
-    for (String script : List.of("todo_verify.py", "todo_migration_verify.py")) {
+    for (String script :
+        List.of("todo_verify.py", "todo_migration_verify.py", "todo_review_verify.py")) {
       Path folder = evidence.resolve(script.replace(".py", ""));
       Files.createDirectories(folder);
       var command = new ArrayList<String>();

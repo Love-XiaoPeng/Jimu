@@ -475,9 +475,31 @@ public final class JdbcLedger
   }
 
   private void cleanupTodos() {
+    // Retained UNKNOWN facts or old writers must not occupy the entire bounded batch.
+    // Candidate filters do not replace the checks below under the task lock.
     for (var candidate :
         rows(
-            "SELECT tenant_id,task_id FROM task_todo_projection WHERE content_state<>'PURGED' AND retain_until<=CURRENT_TIMESTAMP(6) ORDER BY retain_until,tenant_id,task_id LIMIT 32")) {
+            """
+            SELECT p.tenant_id,p.task_id FROM task_todo_projection p
+            JOIN task t ON t.tenant_id=p.tenant_id AND t.id=p.task_id
+            WHERE p.content_state<>'PURGED' AND p.retain_until<=CURRENT_TIMESTAMP(6)
+              AND t.state IN ('SUCCEEDED','FAILED','CANCELLED')
+              AND NOT EXISTS (SELECT 1 FROM native_search_run n
+                WHERE n.tenant_id=p.tenant_id AND n.task_id=p.task_id AND n.phase<>'STOPPED')
+              AND NOT EXISTS (SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id
+                WHERE a.tenant_id=p.tenant_id AND a.task_id=p.task_id
+                  AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE))
+              AND NOT EXISTS (SELECT 1 FROM reservation r
+                WHERE r.tenant_id=p.tenant_id AND r.task_id=p.task_id
+                  AND (r.state='HELD_UNKNOWN' OR r.usage_quality='UNKNOWN'
+                    OR (r.state='RESERVED' AND r.category<>'TODO_STORAGE')))
+              AND NOT EXISTS (SELECT 1 FROM invocation i
+                WHERE i.tenant_id=p.tenant_id AND i.task_id=p.task_id
+                  AND i.state IN ('RUNNING','OUTCOME_UNKNOWN'))
+              AND NOT EXISTS (SELECT 1 FROM model_dispatch d
+                WHERE d.tenant_id=p.tenant_id AND d.task_id=p.task_id AND d.state='DISPATCHED')
+            ORDER BY p.retain_until,p.tenant_id,p.task_id LIMIT 32
+            """)) {
       tx(
           () -> {
             String tenant = s(candidate, "tenant_id"), taskId = s(candidate, "task_id");
@@ -3810,6 +3832,8 @@ public final class JdbcLedger
                   || calls.size() > 4) throw new TaskFailure(409, "MODEL_RESPONSE_TOO_LARGE");
               if (invocations + calls.size() > 20)
                 throw new TaskFailure(429, "TODO_EXECUTION_LIMIT");
+              if (invocations + calls.size() > n(task, "max_tools"))
+                throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
               for (var call : calls) {
                 if (!"todo_write".equals(call.tool()))
                   throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
