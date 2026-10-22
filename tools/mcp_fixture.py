@@ -111,8 +111,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', type=Path, required=True)
+    parser.add_argument('--port', type=int, default=0)
     args = parser.parse_args()
-    service = Service(('127.0.0.1', 0), Handler)
+    service = Service(('127.0.0.1', args.port), Handler)
     service.root, service.lock = args.root, threading.Lock()
     (args.root / 'port').write_text(str(service.server_port))
     service.serve_forever()

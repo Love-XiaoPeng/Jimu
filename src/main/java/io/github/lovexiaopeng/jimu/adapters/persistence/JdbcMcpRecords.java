@@ -1,7 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpContracts;
-import io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpRuntime;
 import io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings;
 import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
@@ -12,12 +11,11 @@ import java.util.Map;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-/** Called only inside the ledger's run/budget/task fenced transactions, except readiness. */
+/** Called only inside the ledger's run/budget/task fenced transactions. */
 final class JdbcMcpRecords {
   private final JdbcTemplate db;
   private final McpContracts contracts;
   private McpSettings settings = new McpSettings(new StandardEnvironment());
-  private McpRuntime runtime;
 
   JdbcMcpRecords(JdbcTemplate db) {
     this.db = db;
@@ -28,9 +26,8 @@ final class JdbcMcpRecords {
     }
   }
 
-  void configure(McpSettings settings, McpRuntime runtime) {
+  void configure(McpSettings settings) {
     this.settings = settings;
-    this.runtime = runtime;
   }
 
   boolean enabled() {
@@ -113,16 +110,6 @@ final class JdbcMcpRecords {
       settings.credential(pinned.profile());
     }
     return binding;
-  }
-
-  void ready() {
-    if (!enabled()) return;
-    var rows =
-        db.queryForList(
-            "SELECT * FROM mcp_server WHERE enabled=TRUE ORDER BY tenant_id,server_id LIMIT 5");
-    if (rows.isEmpty() || rows.size() > 4 || runtime == null)
-      throw new TaskFailure(503, "MCP_NOT_CONFIGURED");
-    for (var row : rows) runtime.readiness(server(row).profile());
   }
 
   static TaskFailure unauthorized() {

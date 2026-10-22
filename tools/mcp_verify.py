@@ -11,6 +11,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import time
 import traceback
 import uuid
 
@@ -168,6 +169,88 @@ class McpExperiment(Experiment):
     def outputs(self, task):
         rows = self.sql("SELECT i.output_snapshot FROM invocation i JOIN step s ON s.tenant_id=i.tenant_id AND s.id=i.step_id WHERE i.task_id='"+task+"' AND i.state='SUCCEEDED' ORDER BY s.ordinal,i.slot;")
         return [json.loads(line) for line in rows.splitlines()] if rows else []
+
+    def restart_service(self):
+        script = Path(__file__).with_name('mcp_fixture.py')
+        with (self.root / 'mcp-service.log').open('a') as log:
+            child = subprocess.Popen(['setpriv', '--reuid=65534', '--regid=65534', '--clear-groups', sys.executable, str(script), '--root', str(self.mcp_root), '--port', str(self.mcp_port)], stdout=log, stderr=subprocess.STDOUT)
+        self.children.append(child)
+        self.service = child
+        def listening():
+            assert child.poll() is None, 'restarted MCP service exited'
+            with socket.socket() as client: return client.connect_ex(('127.0.0.1', self.mcp_port)) == 0
+        eventually(listening, 'same endpoint MCP service restarted')
+
+    def readiness_cases(self):
+        prefix = 'jimu-fixture://tenant-a/docs/'
+        original = self.sql("SELECT profile_snapshot FROM mcp_server WHERE tenant_id='tenant-b';")
+        with socket.socket() as unused:
+            unused.bind(('127.0.0.1', 0))
+            refused_port = unused.getsockname()[1]
+        profile = dict(json.loads(original), epoch=2, endpoint=f'http://127.0.0.1:{refused_port}/mcp')
+        raw = canonical(profile)
+        self.sql("UPDATE mcp_server SET epoch=2,profile_snapshot='"+raw+"',profile_digest='"+hashlib.sha256(raw.encode()).hexdigest()+"' WHERE tenant_id='tenant-b';")
+        before = len(self.wire())
+        self.stop(self.control)
+        self.control = self.start('control-other-tenant-offline', 'control')
+        worker = self.start('worker-other-tenant-offline', 'worker')
+        legacy = self.state(self.legacy_task, 'SUCCEEDED')
+        self.assert_that(len(legacy['artifacts']) == 1 and self.sql("SELECT mcp_snapshot IS NULL FROM task WHERE id='"+self.legacy_task+"';") == '1', 'offline other tenant does not block old NULL-binding task')
+        self.assert_that(len(self.wire()) == before, 'startup and legacy task perform zero MCP handshakes')
+        tid = self.task('r1-unrelated-tenant', [(NAMES[2], {'server': 'controlled', 'uri': prefix+'text'})])
+        self.state(tid, 'SUCCEEDED')
+        self.assert_that(len(self.outputs(tid)) == 1, 'online tenant executes while other tenant MCP endpoint refuses connections')
+        failed = self.task('r1-offline-new-call', [(NAMES[2], {'server': 'controlled', 'uri': 'jimu-fixture://tenant-b/docs/text'})], subject='b')
+        view = self.state(failed, 'FAILED')
+        self.assert_that(view['code'] == 'MCP_UPSTREAM_ERROR', 'new offline call fails explicitly within its task', code=view['code'])
+        self.assert_that(self.sql("SELECT COUNT(*) FROM mcp_io WHERE task_id='"+failed+"' AND method='initialize';") == '1', 'offline handshake dispatch recorded in task wire ledger')
+        before = len(self.wire())
+        io_before = self.sql('SELECT COUNT(*) FROM mcp_io;')
+        time.sleep(1.2)  # More than ten idle worker polling periods.
+        self.assert_that(self.http('GET', '/readyz', instance=worker)[0] == 200 and len(self.wire()) == before and self.sql('SELECT COUNT(*) FROM mcp_io;') == io_before, 'idle polling and readiness produce zero MCP sends')
+        self.stop(worker)
+        self.sql("UPDATE mcp_server SET epoch=1,profile_snapshot='"+original+"',profile_digest='"+hashlib.sha256(original.encode()).hexdigest()+"' WHERE tenant_id='tenant-b';")
+
+        for label, plan in [
+            ('list', [(NAMES[1], {'server': 'controlled'}), (NAMES[1], {'server': 'controlled', 'cursor': '$next'})]),
+            ('read', [(NAMES[2], {'server': 'controlled', 'uri': prefix+'text'})]),
+        ]:
+            tid = self.task('r1-offline-recover-'+label, plan)
+            first = self.start('worker-r1-checkpoint-'+label, 'worker', 'T1')
+            self.barrier(first)
+            output = self.outputs(tid)[0]
+            before = len(self.wire())
+            self.stop(self.service_instance(), kill=False)
+            with socket.socket() as client:
+                self.assert_that(client.connect_ex(('127.0.0.1', self.mcp_port)) != 0, label+' upstream port actually closed')
+            self.stop(first, kill=True)
+            self.expire(tid)
+            self.stop(self.control)
+            self.control = self.start('control-r1-offline-'+label, 'control')
+            fresh = self.start('worker-r1-offline-recover-'+label, 'worker')
+            self.state(tid, 'SUCCEEDED')
+            values = self.outputs(tid)
+            self.assert_that(values[0] == output and len(self.wire()) == before, 'offline restart restores successful '+label+' without any MCP send')
+            if label == 'list':
+                self.assert_that(len(values) == 2 and values[1]['page'] == 1 and values[1]['total'] == 201 and values[1]['snapshotSha256'] == output['snapshotSha256'], 'offline recovery executes next local cursor from original immutable list')
+            self.stop(fresh)
+            self.restart_service()
+
+        revoked = self.task('r1-all-servers-revoked', [(NAMES[2], {'server': 'controlled', 'uri': prefix+'text'})])
+        self.sql('UPDATE mcp_server SET enabled=FALSE;')
+        self.stop(self.service_instance())
+        before = len(self.wire())
+        self.stop(self.control)
+        self.control = self.start('control-r1-no-servers', 'control')
+        worker = self.start('worker-r1-no-servers', 'worker')
+        eventually(lambda: self.sql("SELECT state FROM task WHERE id='"+revoked+"';") == 'FAILED', 'revoke last server task terminates')
+        self.assert_that(self.sql("SELECT code FROM task WHERE id='"+revoked+"';") == 'MCP_SERVER_NOT_AUTHORIZED' and len(self.wire()) == before, 'empty enabled server set allows claim and precise revocation termination without network')
+        self.stop(worker)
+        self.sql('UPDATE mcp_server SET enabled=TRUE;')
+        self.restart_service()
+
+    def service_instance(self):
+        return {'process': self.service, 'name': 'private MCP service'}
 
     def main_cases(self):
         worker = self.start('worker-main', 'worker')
@@ -410,14 +493,17 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--jar', type=Path, required=True)
     parser.add_argument('--evidence', type=Path, required=True)
+    parser.add_argument('--readiness-only', action='store_true')
     args = parser.parse_args()
     experiment = McpExperiment(args.jar, args.evidence)
     try:
         experiment.prepare()
-        experiment.main_cases()
-        experiment.authorization_cases()
-        experiment.recovery_cases()
-        experiment.limit_and_cleanup_cases()
+        experiment.readiness_cases()
+        if not args.readiness_only:
+            experiment.main_cases()
+            experiment.authorization_cases()
+            experiment.recovery_cases()
+            experiment.limit_and_cleanup_cases()
     except BaseException:
         (experiment.evidence / 'failure.txt').write_text(traceback.format_exc())
         raise

@@ -48,10 +48,8 @@ public final class JdbcLedger
     imageStore = store;
   }
 
-  public void mcpRuntime(
-      io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings settings,
-      io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpRuntime runtime) {
-    mcp.configure(settings, runtime);
+  public void mcpSettings(io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings settings) {
+    mcp.configure(settings);
   }
 
   @Override
@@ -3898,7 +3896,6 @@ public final class JdbcLedger
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
         != 15) throw new IllegalStateException("Unsupported schema version");
-    mcp.ready();
   }
 
   @Override

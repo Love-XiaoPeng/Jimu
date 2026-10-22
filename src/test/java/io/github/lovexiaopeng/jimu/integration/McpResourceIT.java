@@ -39,6 +39,7 @@ class McpResourceIT {
             windows ? linuxPath(jar) : jar.toString(),
             "--evidence",
             windows ? linuxPath(evidence) : evidence.toString()));
+    if (Boolean.getBoolean("jimu.mcp.readiness-only")) command.add("--readiness-only");
     Process process =
         new ProcessBuilder(command)
             .redirectErrorStream(true)

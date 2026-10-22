@@ -62,7 +62,6 @@ public class DurableConfiguration {
       ModelProfiles models,
       NativeSearchRuntime searches,
       io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings mcpSettings,
-      io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpRuntime mcpRuntime,
       @Qualifier("imageStore") java.util.Optional<ArtifactStore> images) {
     if ("control".equals(env.getRequiredProperty("jimu.role"))) {
       Flyway.configure()
@@ -78,7 +77,7 @@ public class DurableConfiguration {
     var ledger = new JdbcLedger(source, models);
     ledger.nativeSearchAvailability(searches::available);
     ledger.imageStorage(images.orElse(null));
-    ledger.mcpRuntime(mcpSettings, mcpRuntime);
+    ledger.mcpSettings(mcpSettings);
     ledger.check();
     return ledger;
   }

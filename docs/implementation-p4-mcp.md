@@ -36,14 +36,17 @@ The enabling property is `jimu.mcp.enabled=true`. Secrets resolve only from host
 properties named
 `jimu.mcp.credentials.<tenant>.<server>.<credentialRef>.<credentialVersion>`.
 Keep values in a private host configuration file; do not place them in CLI arguments,
-task JSON, profiles or logs. Both roles validate V15 and the byte-pinned catalog;
-enabled readiness performs bounded initialize/initialized handshakes. No MCP I/O
-occurs while disabled. A task cannot supply an endpoint, credential, command,
-host path, tenant or task identity as tool arguments.
-
-The first host assembly bounds readiness to one through four enabled profiles
-across the host. This is an additional configuration limit; it does not grant
-access to another tenant's profiles. The controlled verification uses two tenants.
+task JSON, profiles or logs. Both roles validate V15 and the byte-pinned catalog.
+Host startup/readiness and idle worker polling perform no MCP network I/O and do
+not require any enabled server. Upstream liveness is checked only when a task
+needs a new network operation, through its audited initialize/initialized handshake.
+An offline server therefore fails that call with `MCP_UPSTREAM_ERROR` without
+blocking unrelated tasks, successful cached output or local cursor recovery.
+Current authorization, revocation, epoch and pins are still checked on recovery;
+revoking the last server permits the worker to claim and terminate affected tasks.
+The four-server bound applies to each authorized task binding, not the whole host.
+No MCP I/O occurs while disabled. A task cannot supply an endpoint, credential,
+command, host path, tenant or task identity as tool arguments.
 
 ## Runtime and persistence limits
 
@@ -98,6 +101,13 @@ and resource service processes run as uid65534. It never changes shared services
 $env:JIMU_IT_JAVA='/operator/linux-jdk21/bin/java'
 .\mvnw.cmd -B -ntp '-Dtest=McpContractTest,ModelProtocolTest,PackageBoundariesTest' '-Dit.test=McpResourceIT' verify
 ```
+
+For the R1 readiness regression alone, add `-Djimu.mcp.readiness-only=true`.
+It uses refused connections for the other tenant, stops the real MCP service
+during read/list checkpoint recovery, restarts both control and worker while
+offline, checks local pagination and revocation of all servers, and observes idle
+polling without additional wire sends. The default integration includes this
+regression before the remaining resource, authorization and recovery cases.
 
 On Linux set the same environment variable and use `./mvnw`. The integration entry
 runs `tools/mcp_verify.py` in the foreground. Evidence includes raw redacted MCP

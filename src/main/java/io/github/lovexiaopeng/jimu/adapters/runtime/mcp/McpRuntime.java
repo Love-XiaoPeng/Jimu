@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
@@ -107,31 +106,6 @@ public final class McpRuntime {
       contract(name).out().validate(McpWire.parse(McpWire.textBytes(output)));
     } catch (IllegalArgumentException error) {
       throw new TaskFailure(502, "MCP_PROTOCOL_INVALID");
-    }
-  }
-
-  public void readiness(McpLedger.Profile profile) {
-    try (var wire =
-        new McpWire(
-            profile,
-            settings.credential(profile),
-            Instant.now().plusSeconds(2),
-            Duration.ofSeconds(2),
-            new McpWire.Audit() {
-              private int count;
-
-              @Override
-              public int dispatch(String method, String id, String digest, boolean cleanup) {
-                return ++count;
-              }
-
-              @Override
-              public void responded(int ordinal, String error) {}
-
-              @Override
-              public void check() {}
-            })) {
-      wire.initialize();
     }
   }
 
