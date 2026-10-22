@@ -4,6 +4,8 @@ PR: https://github.com/Love-XiaoPeng/Jimu/pull/10, base master. The final issue 
 
 The implementation adds atomic literal edit in the existing POSIX workspace transaction, immutable native glob/grep results and cursor pages, and V11 search lifecycle/storage receipts in the existing ledger and worker supervisor. The source contract, packaged schemas and runtime configuration are documented in `docs/implementation-p4-workspace.md`, ADR-0005 and `docs/implementation-p4-runtime.md`. Large literal expansions are byte-counted before allocation; a rejected edit preserves file version/content.
 
+Safe takeover keeps a tool proposal's original attempt identity. Search admission checks the current fenced lease and the proposal's task/effect/state, then records the actual native writer's current attempt separately. Requiring the proposal attempt to equal the current attempt incorrectly rejected an unexecuted proposal after safe takeover; the new-fence integration case exercises this correction.
+
 ## Reproduce the necessary local checks
 
 Use JDK21/Maven3.9.9, Python3, dedicated local Docker MySQL8.0.46, native POSIX storage, the reviewed offline bundle and a test supervisor permitted to set uid65534. No resource is silently skipped. Product JVMs and C/bwrap/rg run as uid65534. The controlled model and TLS provider are local fixtures; this is no claim of a new real-model evaluation.
@@ -23,6 +25,8 @@ L01 checks cancellation at snapshot, export, gate, result-save and committed-res
 ## Preserved failures and practical limits
 
 The evidence attachment retains attempts that found migration-gate omission, nanosecond timestamp rounding, stdout flood, cleanup stream closure, fixture token/storage exhaustion, fixture legacy IDs/read oracle, an incomplete namespace-denial fixture, and the correct refusal to replay UNKNOWN on lease expiry. A premature JAR copy during packaging produced a corrupt-test-JAR failure and is retained. Subsequent attempts use completed JARs. Earlier source/toolchain download failures and the vendor/npm binary mismatch are recorded, not relabelled as success. XIAO-42's seven historical failures and the eight frozen baselines remain unchanged.
+
+Evidence directories must be new; the JUnit entry allocates a unique directory per run. Reusing an old evidence path previously collided during copy-out (the underlying finally still stopped all fixtures). SIGTERM enters the driver's foreground finally cleanup. A superseded old-JAR run was explicitly interrupted after the takeover defect was identified; its result is interrupted, not passed.
 
 The bundle recipe, conservative notices/SBOM and hashed source-input inventory are in `workers/search`. The vendor release digest differs from the pinned npm binary. The inventory conservatively covers the known source graph; exact npm linked-feature/vendor rebuild attestation is unavailable. Do not claim bit-identical provenance or an all-MIT closure. Keep corresponding bubblewrap source/Ubuntu patches and notices with redistribution. The optional native assembly is disabled by default, requires non-root Linux x86_64 namespaces and has no host-execution fallback.
 

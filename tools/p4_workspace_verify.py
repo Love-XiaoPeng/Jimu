@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -306,6 +307,7 @@ class P4Experiment(BusinessExperiment):
             self.expire(task);fresh=self.start('new-after-admission','worker');self.state(task,'FAILED')
             self.assert_that(self.sql("SELECT fence FROM task WHERE id='"+task+"';")!=fence,'safe recovery actually advances fence')
             before=self.sql("SELECT COUNT(*) FROM native_search_run WHERE task_id='"+task+"';")
+            self.assert_that(self.sql("SELECT COUNT(*) FROM native_search_run n JOIN task t ON t.tenant_id=n.tenant_id AND t.id=n.task_id JOIN invocation i ON i.tenant_id=n.tenant_id AND i.id=n.root_invocation WHERE n.task_id='"+task+"' AND n.attempt_id=t.current_attempt_id AND i.attempt_id<>n.attempt_id;")=='1','recovered native writer uses current attempt while retaining original proposal')
             models=self.fixture.models.get('lifecycle-new-fence')
             (old['folder']/'release').touch();self.stop(old);self.stop(fresh)
             self.assert_that(before=='1' and self.sql("SELECT COUNT(*) FROM native_search_run WHERE task_id='"+task+"';")==before
@@ -433,6 +435,9 @@ def local_case(args, bundle):
 
 
 def main():
+    def terminate(signum, frame):
+        raise KeyboardInterrupt('P4 fixture supervisor terminated')
+    signal.signal(signal.SIGTERM, terminate)
     parser = argparse.ArgumentParser()
     parser.add_argument('--case', required=True, choices=['ALL','E01', 'E02', 'E03', 'E04', 'S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'L01', 'L02', 'V01', 'B01', 'B02'])
     parser.add_argument('--jar', type=Path, required=True)
@@ -440,6 +445,7 @@ def main():
     parser.add_argument('--bundle', type=Path, required=True)
     parser.add_argument('--evidence', type=Path, required=True)
     args = parser.parse_args()
+    assert not args.evidence.exists() or not any(args.evidence.iterdir()), 'use a new evidence directory; prior attempts must remain intact'
     assert sys.platform == 'linux' and os.geteuid() == 0, 'driver owns private MySQL; product JVMs run as nobody'
     bundle = json.loads(args.bundle.read_text())
     if args.case == 'ALL':

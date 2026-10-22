@@ -16,7 +16,8 @@ class P4WorkspaceWorkerIT {
     assertTrue(
         bundle != null && Files.isRegularFile(Path.of(bundle)),
         "JIMU_NATIVE_BUNDLE must name a reviewed offline bundle manifest; missing native resources fail");
-    Path evidence = Path.of("target/failsafe-reports/p4-evidence");
+    Path evidence =
+        Path.of("target/failsafe-reports/p4-evidence", java.util.UUID.randomUUID().toString());
     Files.createDirectories(evidence);
     Process process =
         new ProcessBuilder(

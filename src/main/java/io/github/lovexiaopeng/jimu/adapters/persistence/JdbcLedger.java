@@ -2181,11 +2181,12 @@ public final class JdbcLedger implements Tasks, ExecutionLedger, NativeSearchLed
           var budget = bucket(lease.tenant());
           var call =
               one(
-                  "SELECT * FROM invocation WHERE tenant_id=? AND id=? AND task_id=? AND attempt_id=?",
+                  "SELECT * FROM invocation WHERE tenant_id=? AND id=? AND task_id=?",
                   lease.tenant(),
                   invocation.id(),
-                  lease.taskId(),
-                  lease.attemptId());
+                  lease.taskId());
+          // A PROPOSED invocation can be admitted by a newer fenced attempt. Its original
+          // proposal attempt is historical; the native run below records the current writer.
           if (!"RUNNING".equals(s(call, "state"))
               || !List.of("glob", "grep").contains(s(call, "tool"))
               || !invocation.effectId().equals(s(call, "effect_intent_id")))
