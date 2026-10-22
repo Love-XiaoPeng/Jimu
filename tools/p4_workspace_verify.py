@@ -445,7 +445,8 @@ def main():
     parser.add_argument('--bundle', type=Path, required=True)
     parser.add_argument('--evidence', type=Path, required=True)
     args = parser.parse_args()
-    assert not args.evidence.exists() or not any(args.evidence.iterdir()), 'use a new evidence directory; prior attempts must remain intact'
+    # The JUnit parent opens its stdout log before this child starts.
+    assert not args.evidence.exists() or not any(path.name!='driver.log' for path in args.evidence.iterdir()), 'use a new evidence directory; prior attempts must remain intact'
     assert sys.platform == 'linux' and os.geteuid() == 0, 'driver owns private MySQL; product JVMs run as nobody'
     bundle = json.loads(args.bundle.read_text())
     if args.case == 'ALL':
