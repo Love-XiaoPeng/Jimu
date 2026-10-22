@@ -328,18 +328,21 @@ class SessionExperiment(Experiment):
     def diagnostics(self):
         task = self.primary_task
         old = self.sql("SELECT event_digest,source_digest FROM session_public_event WHERE task_id='"+task+"' AND seq=0;").split('\t')
+        original_hex = self.sql("SELECT HEX(event_snapshot) FROM session_public_event WHERE task_id='"+task+"' AND seq=0;")
+        original_raw = bytes.fromhex(original_hex).decode()
+        future_raw = original_raw.replace('"version":1', '"version":2', 1)
+        assert future_raw != original_raw
         for field, value, code in [('event_digest', '0'*64, 'SESSION_HISTORY_CORRUPT'),
-            ('source_digest', '0'*64, 'SESSION_HISTORY_CORRUPT'), ('event_version', '2', 'SESSION_HISTORY_VERSION_UNSUPPORTED')]:
-            # Only this root-owned private fixture connection may inject a future row version;
-            # normal writers are additionally protected by the V19 CHECK(version=1).
-            setup = 'SET SESSION check_constraint_checks=OFF; ' if field == 'event_version' else ''
-            self.sql(setup+"UPDATE session_public_event SET "+field+"='"+value+"' WHERE task_id='"+task+"' AND seq=0;")
+            ('source_digest', '0'*64, 'SESSION_HISTORY_CORRUPT'), ('event_snapshot', future_raw.encode().hex(), 'SESSION_HISTORY_VERSION_UNSUPPORTED')]:
+            # A future public payload version keeps the database's current row-version CHECK intact.
+            expression = "CONVERT(UNHEX('"+value+"') USING utf8mb4)" if field == 'event_snapshot' else "'"+value+"'"
+            self.sql("UPDATE session_public_event SET "+field+"="+expression+" WHERE task_id='"+task+"' AND seq=0;")
             try:
                 actual, response = self.http('GET', '/api/tasks/'+task+'/session-history/0')
                 self.assert_that(actual == 409 and response['code'] == code, 'reject persisted corruption/version ' + field)
             finally:
-                original = '1' if field == 'event_version' else old[0 if field == 'event_digest' else 1]
-                self.sql("UPDATE session_public_event SET "+field+"='"+original+"' WHERE task_id='"+task+"' AND seq=0;")
+                original = "CONVERT(UNHEX('"+original_hex+"') USING utf8mb4)" if field == 'event_snapshot' else "'"+old[0 if field == 'event_digest' else 1]+"'"
+                self.sql("UPDATE session_public_event SET "+field+"="+original+" WHERE task_id='"+task+"' AND seq=0;")
         plan = self.sql("EXPLAIN SELECT * FROM session_public_event WHERE tenant_id='tenant-a' AND task_id='"+task+"' AND seq BETWEEN 0 AND 8 ORDER BY seq LIMIT 9;")
         (self.evidence/'pk-explain.tsv').write_text(plan)
         self.assert_that('PRIMARY' in plan and '\tALL\t' not in plan, 'native window query uses bounded primary key range')
@@ -369,7 +372,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--jar', type=Path, required=True)
     parser.add_argument('--evidence', type=Path, required=True)
-    parser.add_argument('--case', choices=['normal', 'core', 'recovery', 'redaction', 'authorization', 'transport', 'all'], default='normal')
+    parser.add_argument('--case', choices=['normal', 'core', 'recovery', 'redaction', 'authorization', 'transport', 'diagnostics', 'all'], default='normal')
     args = parser.parse_args()
     experiment = SessionExperiment(args.jar, args.evidence)
     try:
@@ -379,6 +382,13 @@ if __name__ == '__main__':
         if args.case in ('redaction', 'all'): experiment.redaction()
         if args.case in ('authorization', 'all'): experiment.authorization()
         if args.case == 'transport': experiment.transport()
+        if args.case == 'diagnostics':
+            experiment.primary_task = experiment.task('H08 diagnostics seed', [])
+            worker = experiment.start('diagnostic-seed-worker', 'worker')
+            experiment.state(experiment.primary_task, 'SUCCEEDED')
+            experiment.stop(worker)
+            experiment.diagnostics()
+            experiment.retention()
         if args.case in ('core', 'all'):
             experiment.failures()
             experiment.diagnostics()
