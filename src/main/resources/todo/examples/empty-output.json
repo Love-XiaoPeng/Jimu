@@ -1,0 +1,8 @@
+{
+  "todos": [],
+  "counts": {
+    "pending": 0,
+    "inProgress": 0,
+    "completed": 0
+  }
+}

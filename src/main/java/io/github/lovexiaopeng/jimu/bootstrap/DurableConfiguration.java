@@ -78,6 +78,7 @@ public class DurableConfiguration {
     ledger.nativeSearchAvailability(searches::available);
     ledger.imageStorage(images.orElse(null));
     ledger.mcpSettings(mcpSettings);
+    ledger.todosEnabled(env.getProperty("jimu.todos.enabled", Boolean.class, false));
     ledger.questionsEnabled(env.getProperty("jimu.questions.enabled", Boolean.class, false));
     ledger.check();
     return ledger;

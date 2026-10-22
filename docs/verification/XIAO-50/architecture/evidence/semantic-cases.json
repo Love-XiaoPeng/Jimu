@@ -1,0 +1,1274 @@
+[
+  {
+    "name": "empty",
+    "input": {
+      "todos": []
+    },
+    "valid": true,
+    "expected": {
+      "todos": [],
+      "counts": {
+        "pending": 0,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "zero active",
+    "input": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "one active",
+    "input": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "in_progress"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "in_progress"
+        }
+      ],
+      "counts": {
+        "pending": 0,
+        "inProgress": 1,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ordered replacement",
+    "input": {
+      "todos": [
+        {
+          "content": "b",
+          "status": "completed"
+        },
+        {
+          "content": "a",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "b",
+          "status": "completed"
+        },
+        {
+          "content": "a",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 1
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "case-sensitive",
+    "input": {
+      "todos": [
+        {
+          "content": "A",
+          "status": "pending"
+        },
+        {
+          "content": "a",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "A",
+          "status": "pending"
+        },
+        {
+          "content": "a",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 2,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "normalization forms preserved",
+    "input": {
+      "todos": [
+        {
+          "content": "é",
+          "status": "pending"
+        },
+        {
+          "content": "é",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "é",
+          "status": "pending"
+        },
+        {
+          "content": "é",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 2,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+0009",
+    "input": {
+      "todos": [
+        {
+          "content": "\tx\t",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+000A",
+    "input": {
+      "todos": [
+        {
+          "content": "\nx\n",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+000B",
+    "input": {
+      "todos": [
+        {
+          "content": "\u000bx\u000b",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+000C",
+    "input": {
+      "todos": [
+        {
+          "content": "\fx\f",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+000D",
+    "input": {
+      "todos": [
+        {
+          "content": "\rx\r",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+0020",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+00A0",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+1680",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+2000",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+2001",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+2002",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+2003",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+2004",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+2005",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+2006",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+2007",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+2008",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+2009",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+200A",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+2028",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+2029",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+202F",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+205F",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+3000",
+    "input": {
+      "todos": [
+        {
+          "content": "　x　",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "ECMAScript trim U+FEFF",
+    "input": {
+      "todos": [
+        {
+          "content": "﻿x﻿",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "preserve U+0085",
+    "input": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "preserve U+180E",
+    "input": {
+      "todos": [
+        {
+          "content": "᠎x᠎",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "᠎x᠎",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "preserve U+200B",
+    "input": {
+      "todos": [
+        {
+          "content": "​x​",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "​x​",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "1024 UTF8 exact",
+    "input": {
+      "todos": [
+        {
+          "content": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": true,
+    "expected": {
+      "todos": [
+        {
+          "content": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+          "status": "pending"
+        }
+      ],
+      "counts": {
+        "pending": 1,
+        "inProgress": 0,
+        "completed": 0
+      }
+    },
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "1028 UTF8 rejects",
+    "input": {
+      "todos": [
+        {
+          "content": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": false,
+    "expected": null,
+    "cloudOnly": true,
+    "raw": null
+  },
+  {
+    "name": "empty content",
+    "input": {
+      "todos": [
+        {
+          "content": "",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": false,
+    "expected": null,
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "whitespace only",
+    "input": {
+      "todos": [
+        {
+          "content": "﻿  ",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": false,
+    "expected": null,
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "trimmed duplicate",
+    "input": {
+      "todos": [
+        {
+          "content": " x ",
+          "status": "pending"
+        },
+        {
+          "content": "x",
+          "status": "completed"
+        }
+      ]
+    },
+    "valid": false,
+    "expected": null,
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "two active",
+    "input": {
+      "todos": [
+        {
+          "content": "x",
+          "status": "in_progress"
+        },
+        {
+          "content": "y",
+          "status": "in_progress"
+        }
+      ]
+    },
+    "valid": false,
+    "expected": null,
+    "cloudOnly": false,
+    "raw": null
+  },
+  {
+    "name": "33 entries",
+    "input": {
+      "todos": [
+        {
+          "content": "0",
+          "status": "pending"
+        },
+        {
+          "content": "1",
+          "status": "pending"
+        },
+        {
+          "content": "2",
+          "status": "pending"
+        },
+        {
+          "content": "3",
+          "status": "pending"
+        },
+        {
+          "content": "4",
+          "status": "pending"
+        },
+        {
+          "content": "5",
+          "status": "pending"
+        },
+        {
+          "content": "6",
+          "status": "pending"
+        },
+        {
+          "content": "7",
+          "status": "pending"
+        },
+        {
+          "content": "8",
+          "status": "pending"
+        },
+        {
+          "content": "9",
+          "status": "pending"
+        },
+        {
+          "content": "10",
+          "status": "pending"
+        },
+        {
+          "content": "11",
+          "status": "pending"
+        },
+        {
+          "content": "12",
+          "status": "pending"
+        },
+        {
+          "content": "13",
+          "status": "pending"
+        },
+        {
+          "content": "14",
+          "status": "pending"
+        },
+        {
+          "content": "15",
+          "status": "pending"
+        },
+        {
+          "content": "16",
+          "status": "pending"
+        },
+        {
+          "content": "17",
+          "status": "pending"
+        },
+        {
+          "content": "18",
+          "status": "pending"
+        },
+        {
+          "content": "19",
+          "status": "pending"
+        },
+        {
+          "content": "20",
+          "status": "pending"
+        },
+        {
+          "content": "21",
+          "status": "pending"
+        },
+        {
+          "content": "22",
+          "status": "pending"
+        },
+        {
+          "content": "23",
+          "status": "pending"
+        },
+        {
+          "content": "24",
+          "status": "pending"
+        },
+        {
+          "content": "25",
+          "status": "pending"
+        },
+        {
+          "content": "26",
+          "status": "pending"
+        },
+        {
+          "content": "27",
+          "status": "pending"
+        },
+        {
+          "content": "28",
+          "status": "pending"
+        },
+        {
+          "content": "29",
+          "status": "pending"
+        },
+        {
+          "content": "30",
+          "status": "pending"
+        },
+        {
+          "content": "31",
+          "status": "pending"
+        },
+        {
+          "content": "32",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": false,
+    "expected": null,
+    "cloudOnly": true,
+    "raw": null
+  },
+  {
+    "name": "total list bytes",
+    "input": {
+      "todos": [
+        {
+          "content": "0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "status": "pending"
+        },
+        {
+          "content": "1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "status": "pending"
+        },
+        {
+          "content": "2xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "status": "pending"
+        },
+        {
+          "content": "3xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "status": "pending"
+        },
+        {
+          "content": "4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "status": "pending"
+        },
+        {
+          "content": "5xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "status": "pending"
+        },
+        {
+          "content": "6xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "status": "pending"
+        },
+        {
+          "content": "7xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "status": "pending"
+        },
+        {
+          "content": "8xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "status": "pending"
+        }
+      ]
+    },
+    "valid": false,
+    "expected": null,
+    "cloudOnly": true,
+    "raw": null
+  },
+  {
+    "name": "input bytes",
+    "input": {
+      "todos": []
+    },
+    "valid": false,
+    "expected": null,
+    "cloudOnly": true,
+    "raw": "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 {\"todos\":[]}"
+  },
+  {
+    "name": "unpaired surrogate",
+    "input": {
+      "todos": []
+    },
+    "valid": false,
+    "expected": null,
+    "cloudOnly": true,
+    "raw": "{\"todos\":[{\"content\":\"\\ud800\",\"status\":\"pending\"}]}"
+  },
+  {
+    "name": "duplicate key",
+    "input": {
+      "todos": []
+    },
+    "valid": false,
+    "expected": null,
+    "cloudOnly": true,
+    "raw": "{\"todos\":[],\"todos\":[]}"
+  },
+  {
+    "name": "trailing JSON",
+    "input": {
+      "todos": []
+    },
+    "valid": false,
+    "expected": null,
+    "cloudOnly": true,
+    "raw": "{\"todos\":[]} {}"
+  }
+]

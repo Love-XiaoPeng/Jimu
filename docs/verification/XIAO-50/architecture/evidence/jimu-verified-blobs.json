@@ -1,0 +1,4034 @@
+[
+  {
+    "path": ".gitattributes",
+    "gitBlob": "d593afb7d07f1fd3c05c9a0786fbeb67b27224b1",
+    "sha256": "e77b5ad4bb46f1dbde8eadc02585317165d4f4263396752688a68a11ea1969d5",
+    "bytes": 1054
+  },
+  {
+    "path": ".github/workflows/verify.yml",
+    "gitBlob": "8e7b090cecb563534d571ce2691fe07638a750db",
+    "sha256": "31494b5c755eec183a3fe2beb6ad8461b2666bd79961d0bbdfd33b88c06a02cc",
+    "bytes": 1436
+  },
+  {
+    "path": ".gitignore",
+    "gitBlob": "4d8d803905654c42b0de60657d7dda8c6d04033b",
+    "sha256": "f3502f21d655db407d1bea1b9f9c189a1188975fcb393fad3bf2cb80af79241a",
+    "bytes": 34
+  },
+  {
+    "path": ".mvn/wrapper/maven-wrapper.properties",
+    "gitBlob": "753b7d0b4fa6905d02673f36aed926abcc043005",
+    "sha256": "f10312f5efd2c132f7176f663d0a6ff6cb194148062a234a62d8302ff1ac687f",
+    "bytes": 253
+  },
+  {
+    "path": "AGENTS.md",
+    "gitBlob": "fce92cf098c725af77108a57c18a17f38aa62e47",
+    "sha256": "65d6c6106f55a04b209ce7198cbc6a630c173762a5d289575d7aeddead9c9226",
+    "bytes": 1568
+  },
+  {
+    "path": "CONTRIBUTING.md",
+    "gitBlob": "b4a89f313eb6cdc87ae06d2025cc3f102ca68e59",
+    "sha256": "9d8f0db6426a83a9244a071d510a21cfd32c410e241aed2ca184f0bea255dbe0",
+    "bytes": 3952
+  },
+  {
+    "path": "README.md",
+    "gitBlob": "69448b6dce685029e41450f77bdbfb19742dd5d9",
+    "sha256": "6388273e9728cf29de360f671174efdc0392f272e0584c8eec9833c990a1dddb",
+    "bytes": 4037
+  },
+  {
+    "path": "VERIFICATION.md",
+    "gitBlob": "7f0465ae691868d8708e7c33dda3ed05645a6f12",
+    "sha256": "d3a9ef629dde1baf2f009e302c7b414ef9d3b87719a6f0d3a6ace2fd767835d6",
+    "bytes": 15222
+  },
+  {
+    "path": "checkstyle.xml",
+    "gitBlob": "4c4eafb2bac497eb7a0d31db44d0b897eca8856d",
+    "sha256": "7b5aa25789aee361044a297695e36a0b5f2ce925879b1ffcd04e7b218681e76b",
+    "bytes": 257
+  },
+  {
+    "path": "docs/adr/0001-jimu-naming.md",
+    "gitBlob": "e114f147b6ad96833963a6bc34233e5930347491",
+    "sha256": "7aa1515876c369d2691bd8c0af67f8fca5c78d6c4f16473db7f0d542d6a8ba74",
+    "bytes": 5681
+  },
+  {
+    "path": "docs/adr/0002-dependency-baseline.md",
+    "gitBlob": "0f63ebf05600767d135a395459fad4dc5b978474",
+    "sha256": "27593a28480308bf1d978f0c7f6180bdbb9bcb2980ecf5fa56b5568911c2ad23",
+    "bytes": 5544
+  },
+  {
+    "path": "docs/adr/0003-package-boundaries.md",
+    "gitBlob": "4b83fdd6b44c1d69b9af44463f47d3c2ca6fcadc",
+    "sha256": "45a482a1cef2c69e69c870ed2779c12a67a25806263fe164d918570b2e70937a",
+    "bytes": 6829
+  },
+  {
+    "path": "docs/adr/0004-p2-durable-execution.md",
+    "gitBlob": "4a5caab938812ac8ee0eb3d03314448f588e47bb",
+    "sha256": "09730bf54d87c44b0420579f71adbeb3588daab6eb6c2f4b508b3fc002f790c7",
+    "bytes": 23026
+  },
+  {
+    "path": "docs/adr/0005-workspace-edit-native-search.md",
+    "gitBlob": "0a0a8ace0f6c405d9c3b38edaeca786747b9a34b",
+    "sha256": "12f2568f32c77e5c1d5cf00c417bca9d9ebca1c7b081b148e54bad1413f87e49",
+    "bytes": 1416
+  },
+  {
+    "path": "docs/adr/0006-task-image-input.md",
+    "gitBlob": "2ce699879258afb93930b8999be033aa12597389",
+    "sha256": "d9c04889e835c916cad95a526fbce388f0237c557cb242eb993314544f025922",
+    "bytes": 2962
+  },
+  {
+    "path": "docs/adr/0007-mcp-readonly-same-host.md",
+    "gitBlob": "11e69280fdc4046dcbedf5d18468ec34cf8622f5",
+    "sha256": "b2cb9cd5652e8a0d97cbeb43239cbe9dc081b997e2e83658932686916b529fa5",
+    "bytes": 9544
+  },
+  {
+    "path": "docs/adr/0008-durable-user-questions.md",
+    "gitBlob": "ef277c817cbbf3ec8cbe14c40fd77d9e0a3babb2",
+    "sha256": "f7845c1c34466de1e40591d910dc422c156c0f339d97be8271ee299502ab63e4",
+    "bytes": 6781
+  },
+  {
+    "path": "docs/adr/README.md",
+    "gitBlob": "2ee4d92a683c24bbafd7f7fbc85f00f40ec84ec7",
+    "sha256": "85a6c148823fb50a2c7d1361d452973e9011d427eab34b80882d58e1cb44cd70",
+    "bytes": 3819
+  },
+  {
+    "path": "docs/adr/sources.json",
+    "gitBlob": "67c61eaccb94246c552e8ab5dfa167cf876e6bc8",
+    "sha256": "5c23b37930be800e9e621e7a5ec1e64b4f707b8ae6d95a4b978a885ab868f498",
+    "bytes": 1569
+  },
+  {
+    "path": "docs/adr/verification.txt",
+    "gitBlob": "055fabf75fcac6d2e4553a3b63cfac74b333a58f",
+    "sha256": "911a17f64a2e0040f9ef127b004a8e00443025b73f987f469eea08827a2848e2",
+    "bytes": 1188
+  },
+  {
+    "path": "docs/architecture.md",
+    "gitBlob": "9007333242ea4bbfde80bb10f6b33ee9841705f8",
+    "sha256": "dc11f54fb8a6fdae745019825ae033c76f5424a677db821cf7bac367cdb23edb",
+    "bytes": 1815
+  },
+  {
+    "path": "docs/baseline/README.md",
+    "gitBlob": "c79fe3c6d5c2c8b6fbe50baebc63d13c4fd8ec2b",
+    "sha256": "15760921d7c1a6d805d306f6b179d7cbd280d2cba577daf11d07bca31ed1bf15",
+    "bytes": 1917
+  },
+  {
+    "path": "docs/baseline/XIAO-33-harness-tool-inventory-v1.1.json",
+    "gitBlob": "b788c5703af0ee40a5df4d439b8209211ed132cf",
+    "sha256": "30b6904aad8d85dac3e789434e434c449575383cb23e254329a84930436f5b02",
+    "bytes": 196149
+  },
+  {
+    "path": "docs/baseline/XIAO-33-security-performance-recheck-v2.md",
+    "gitBlob": "48943e58e5c12e5a4e5feac5d427104347ceb40d",
+    "sha256": "6839750256d799baaa2bdbed4472c9a36afb7ef7deb1415cea1db6f4d70f9792",
+    "bytes": 5808
+  },
+  {
+    "path": "docs/baseline/XIAO-33-testability-recheck-v2.md",
+    "gitBlob": "65cfde6796d0bc3a2f3112959b49f30ca23582a2",
+    "sha256": "4b8b4a3893fb55ceafdef0937c1b78818931d433a86949dd36d55165a19d9725",
+    "bytes": 7632
+  },
+  {
+    "path": "docs/baseline/XIAO-33-tool-migration-evidence-v1.1.md",
+    "gitBlob": "4b5aa6dfcab31ad139cd7d6e71a971dfcc316761",
+    "sha256": "2111bc4a0be86a3cc69420fb9b9d08adc0bc5b609686d859b38830edce17c0f7",
+    "bytes": 87122
+  },
+  {
+    "path": "docs/baseline/XIAO-33-web-fetch-output-v0.2.0.schema.json",
+    "gitBlob": "15e74867e02dca0cbcc35386204bc19c11f70c14",
+    "sha256": "08a144489ed9ea37b5b33a5ffdc815237f31d4f229b76ba1d5e465b9e13f9ff8",
+    "bytes": 602
+  },
+  {
+    "path": "docs/baseline/XIAO-33-可行性与总体方案-v0.3.md",
+    "gitBlob": "2649667071d8013edd056ca89803cd7601ce3361",
+    "sha256": "2b8e53c700aab0d96a6f06351ee9f924a43c8d5af4b5f62837b20e6f92e6c014",
+    "bytes": 95190
+  },
+  {
+    "path": "docs/baseline/XIAO-33-合稿修订与评审对照-v0.3.md",
+    "gitBlob": "b4d4f48121aedb08a455083dccee18d09aa4110e",
+    "sha256": "ca708c3693ffd385cbedc5b5bb4a619c5bbd72e3a1e39031bc4f528974278ea5",
+    "bytes": 8322
+  },
+  {
+    "path": "docs/baseline/XIAO-33-工程规范-v0.2.md",
+    "gitBlob": "1d7a4d0627b96ccb65725e2b34dd774bc5cf42ba",
+    "sha256": "36553f58e0b129903f04389c852f75560cf4879bbe9fbdac0e2759cb3f8298b7",
+    "bytes": 27621
+  },
+  {
+    "path": "docs/baseline/sources.json",
+    "gitBlob": "0932785538c7978121ef2608b03c87a55aa81c0c",
+    "sha256": "6bb5d032f661b2575c5d17b16bec91135ea1c3896ce588ee0225a23d412add28",
+    "bytes": 3311
+  },
+  {
+    "path": "docs/evaluation-material-binding.md",
+    "gitBlob": "15417c03c2fb8c03e940ed9f1d3815638d90fda6",
+    "sha256": "41f39fbdbfa5040b7c41ac579d2d809249be12916b0a18992a8e7e965efc8b6a",
+    "bytes": 4910
+  },
+  {
+    "path": "docs/implementation-p1.md",
+    "gitBlob": "1f2efe6f31e992ebfdd0cde318cd4f47973646d5",
+    "sha256": "869074d506afab78377d18c985fd05a87740329909c162c047ecd973fd50aff2",
+    "bytes": 8101
+  },
+  {
+    "path": "docs/implementation-p2.md",
+    "gitBlob": "29b7eb0051b08c19db05c70ecda5e94eff629d62",
+    "sha256": "1b2a404ef80c65e94cfe47ac9f5f8dd8889a1e70021fda1a54f0ddd3da63eb66",
+    "bytes": 12312
+  },
+  {
+    "path": "docs/implementation-p3-core.md",
+    "gitBlob": "2662298dc08dcc977da0362daf3735ee4e9fc6db",
+    "sha256": "ea3dc5b48f61ee5bd51f668391a9d00d9f7fe7cef0f9d52db9e683e4f3b2742e",
+    "bytes": 13016
+  },
+  {
+    "path": "docs/implementation-p3-evaluation-plans.md",
+    "gitBlob": "7a61b98a61c4375189635bbbd8cef82fe467eb68",
+    "sha256": "8a63a2a822389833460e4b28f740292e9a559e4a177a83c71aa96750d29ec96a",
+    "bytes": 7520
+  },
+  {
+    "path": "docs/implementation-p3-execution-scope.md",
+    "gitBlob": "4ca6d8632cef7131794101998d29c0b8363ca91a",
+    "sha256": "954d5601a855ec6e135a003dc82919e36e3fa4936922ac5cbc01c8fcfbc7c4a6",
+    "bytes": 7599
+  },
+  {
+    "path": "docs/implementation-p3-input-bound.md",
+    "gitBlob": "6d8db5da626ed56ffba8a038d6111af1543ed994",
+    "sha256": "713b677a9b2545f23754dd051235a44e849020fc857f0717fc15e45fbd631285",
+    "bytes": 8037
+  },
+  {
+    "path": "docs/implementation-p3-public-fetch.md",
+    "gitBlob": "e611f883ca2422bd301008687afa50a26ef7e204",
+    "sha256": "723dc53b087c17b819e3a1279f6cb8a6e726e712e821884f3b1cf183851cb500",
+    "bytes": 8617
+  },
+  {
+    "path": "docs/implementation-p3-public-worker.md",
+    "gitBlob": "ed0ee60ec2ba8f97e0262193eeb439980add2f5e",
+    "sha256": "be5956e505ad849d166b4ab5f90672b776e1c4ed668d60ee4f3c2265c96d3033",
+    "bytes": 5598
+  },
+  {
+    "path": "docs/implementation-p3-r5.md",
+    "gitBlob": "46a48c9c36e405321204ee0df8034dfb6f7a814f",
+    "sha256": "d2244fe0f1e76fe6eb77b33eaddc63bc1ab5b8d881493a192914569f9357627a",
+    "bytes": 2493
+  },
+  {
+    "path": "docs/implementation-p3-r6.md",
+    "gitBlob": "e21bc2e1279d5824e8c227dfd1e378d757608fb4",
+    "sha256": "890ee5e167198b2b728ae6e6a91066aa6e8c993d8deb8b9957a6c64cc437a811",
+    "bytes": 2956
+  },
+  {
+    "path": "docs/implementation-p3-reports.md",
+    "gitBlob": "d92b7c2b607550e883cd137c59515174743fdb14",
+    "sha256": "4c4c813e4d21cc0f1385cbb623ebff91a48669163dd77a3962d9a6127ff5198a",
+    "bytes": 8206
+  },
+  {
+    "path": "docs/implementation-p3-worker-snapshots.md",
+    "gitBlob": "2e45a595bdf6bbd95ca27936b891e64e1508641b",
+    "sha256": "d51883a7b398fa0deff23ca7ea9917615bed94dd150ccab3a294763059f45290",
+    "bytes": 4743
+  },
+  {
+    "path": "docs/implementation-p3-workspace.md",
+    "gitBlob": "aded39b6c87cbe348e1f3852b6a829fada1060f2",
+    "sha256": "7c610986ae3730bdf1a414937dc949095764299f962f444ae36c50a3fbf6edda",
+    "bytes": 5392
+  },
+  {
+    "path": "docs/implementation-p4-image-runtime.md",
+    "gitBlob": "49a12e2f4fc36461ef225dd71bd705a7f9cdbfc7",
+    "sha256": "ca929d8a5c37181a49f56fa55b1258ba8a9566ac88d96c0fb96bf57fa5c9d214",
+    "bytes": 9445
+  },
+  {
+    "path": "docs/implementation-p4-mcp.md",
+    "gitBlob": "1e0b53f7d719a93fd82b514eb0878806f26e88ec",
+    "sha256": "f799dace25493bd592965673acb1f75920ecab0cfdbccf4166f559fd824b1322",
+    "bytes": 7400
+  },
+  {
+    "path": "docs/implementation-p4-read-image.md",
+    "gitBlob": "385f8148000f5a0b3a331d853c128f2b926fe56b",
+    "sha256": "1e9f2b20ee8235696fe38497fe2a0776cc9f58524fd27e5b8cef9039770fa84b",
+    "bytes": 32218
+  },
+  {
+    "path": "docs/implementation-p4-runtime.md",
+    "gitBlob": "2b0bdca6d47a00aacabff8a45a184e8afec1f3d0",
+    "sha256": "9790d771813b3dbe44a095c9f64a0b599d0663564e8dcc701515891951dd2d94",
+    "bytes": 11656
+  },
+  {
+    "path": "docs/implementation-p4-user-questions.md",
+    "gitBlob": "1cf3228fa752d6ebe140ab648343d6fdf8bc2ecc",
+    "sha256": "3c9e37db68a2ecdb0d0fa7e059981d6b1b69ecd9df8329eadd150fd2452375d7",
+    "bytes": 6829
+  },
+  {
+    "path": "docs/implementation-p4-workspace.md",
+    "gitBlob": "aa97a35c5e472707f7154fdbf5fa65a5ea7c3529",
+    "sha256": "5ec3f0a6078f17a8b46d9c4f70d5e37dd40e95c41fd1b351c7425cae150f51db",
+    "bytes": 43332
+  },
+  {
+    "path": "docs/normal-business-admission.md",
+    "gitBlob": "f71158b32bee199b1585800316c63193bcb53d92",
+    "sha256": "4a1bc81841dd35290b794daa1f4effb2aaf82f8069c75f5f560a16eb223c20cf",
+    "bytes": 7254
+  },
+  {
+    "path": "docs/report-time-contract.md",
+    "gitBlob": "cb675022cea9261755b82e15deecee2e60db1532",
+    "sha256": "96efcf9be42e85bab471565e9e1eb4e387d303777d022c3126a76fd74f43111f",
+    "bytes": 1472
+  },
+  {
+    "path": "docs/source-bound-report-composition.md",
+    "gitBlob": "92c88ba410f6bb952c0555f5a80ae25043c8a138",
+    "sha256": "83a70870ea86d82193ceb004cb4e3e15d30c537accfca0ababc09446d8ca952b",
+    "bytes": 5010
+  },
+  {
+    "path": "docs/verification/XIAO-36/architecture-handoff.md",
+    "gitBlob": "ecbe2e059699053d8e70d84b2e78501044a3a9be",
+    "sha256": "2cfdd7af1775d43a416ba177c1944d12f71bf965d8cb4c3761d4ab61d06c6bd2",
+    "bytes": 16026
+  },
+  {
+    "path": "docs/verification/XIAO-37/backend-handoff.md",
+    "gitBlob": "5878d21a2bef8a1fd3641a8944de6bcd7aa2d553",
+    "sha256": "1111bf6c1834672449fc2b57adcacf38240a7f8d5da0acc658ebb4096a17ea00",
+    "bytes": 10825
+  },
+  {
+    "path": "docs/verification/XIAO-37/r5-r6-handoff.md",
+    "gitBlob": "9cab5117b82d694cf770c299a815da9a94077507",
+    "sha256": "f4865dd7a9999c80c529d7bcf86b5ea40b1b0a12e77e28fc2db56f64dbfc8e42",
+    "bytes": 7343
+  },
+  {
+    "path": "docs/verification/XIAO-43/Harness-LICENSE.txt",
+    "gitBlob": "c1f7a78e89e4e4dc7b86664c3b3c76eb5eee1785",
+    "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+    "bytes": 1065
+  },
+  {
+    "path": "docs/verification/XIAO-43/backend-handoff.md",
+    "gitBlob": "fe02f9c58c63802709e2b4723bcf3bbf1c60f269",
+    "sha256": "265155e023251da0b24c2a7a26f47e56d7c8cc2adca71f0e0985d4d0a3b353a2",
+    "bytes": 5854
+  },
+  {
+    "path": "docs/verification/XIAO-43/checkpoint-90m.md",
+    "gitBlob": "17f4b0b55ed15a058c444385b23273379a892f8b",
+    "sha256": "a7d05c5801237ea2b04c2d8c7bb78e4447f1115fc9ac7bed9ba2fd5f0090c434",
+    "bytes": 2085
+  },
+  {
+    "path": "docs/verification/XIAO-43/qa01-handoff.md",
+    "gitBlob": "98a31900522b20b8f70aabb9d4f2ee79b77fa524",
+    "sha256": "7141d202f73ec57c081c4b168e88fbc3bbd44dc89bf585ae04415e6847a8ce01",
+    "bytes": 7152
+  },
+  {
+    "path": "docs/verification/XIAO-43/r1-observer-handoff.md",
+    "gitBlob": "b57803a04621c7cc8f9c9ea4817537d9f55fedcc",
+    "sha256": "7e9bd4a46c688f0cf4d299ca38cb8c9d366a0b9997b5005dcd578ad9cb7a151e",
+    "bytes": 6836
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/contract-manifest.json",
+    "gitBlob": "2c3451f9046028e57477a36b2050ef13d80f4f67",
+    "sha256": "ccafd9c765a37f1eb2b16d7571a6cfd083435369df9bc0d5c43f0aa385841a54",
+    "bytes": 2385
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/contracts/compose_report-0.2.0/input.schema.json",
+    "gitBlob": "c0ef299117f3ec37361cfd33042f4d42551cd210",
+    "sha256": "4901da65bf56c28822d76e4a8eee0803097c3c43a6a8ccd026529b061d3a4400",
+    "bytes": 4070
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/contracts/compose_report-0.2.0/output.schema.json",
+    "gitBlob": "f0e72bce8770c56a82f479aa07527a608978b13c",
+    "sha256": "183994b16bdc7b3f0de711674a639c741fa85a58ff618ac7d3d378d3dca1fe79",
+    "bytes": 5181
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/contracts/compose_report-0.2.0/plugin.yaml",
+    "gitBlob": "3947bc4e19ea4f01c3a1d794845f3e6e6aae8b16",
+    "sha256": "894bd18c387715169d9117cd9dde2a8392141e8cc03e6f7865a1b0bdd409f430",
+    "bytes": 878
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/contracts/image-input-capability.schema.json",
+    "gitBlob": "a298a19eff4977ad3f575fac2732eda48e3298da",
+    "sha256": "1b00c95513e266badf0e3a3e347eec9e2cb6fbdde081af394a3c74a50a9d1989",
+    "bytes": 1009
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/contracts/read_image/input.schema.json",
+    "gitBlob": "67e2f677b9b5e66ef00087593be6ed864e906d42",
+    "sha256": "cdf5a6395bfa7123c880d03869b8d595e15e2e4c8f0cda188278afb21990355c",
+    "bytes": 303
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/contracts/read_image/output.schema.json",
+    "gitBlob": "5229d854e476de4b0af4140f415c3e2edebb6dd9",
+    "sha256": "2b3e16c2ba0318dc62f26fb6410622997eb2591d074e1f7acf8c8c5d2da68108",
+    "bytes": 2118
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/contracts/read_image/plugin.yaml",
+    "gitBlob": "f3e580e038054805cba258f05c001cef87663fbe",
+    "sha256": "9b08fea3c0de3facd8fc6898a27981176ad28970683962a48568a2cbf0a50d1e",
+    "bytes": 865
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/contracts/task-images-field.schema.json",
+    "gitBlob": "2c79bf615b8f60c6204930bfd8143c459f09b724",
+    "sha256": "9b1b59d8c09242deaa6a7cdc33c75409fb4ab238ec04f79d77516cb9afd8c331",
+    "bytes": 833
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence-manifest.json",
+    "gitBlob": "f8bf6431205ed52531cd959088e33269c9b6eb8b",
+    "sha256": "27fcff61cb2e4e020da45cb1399e2b6c9444b5cbea16301a5534df513bb40f10",
+    "bytes": 6960
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/CodecProbe.java",
+    "gitBlob": "db8b5c6269ab284af7844670ddf308f39e2380e0",
+    "sha256": "209bde556d7f23381be9b6334921f018706da2f534a34daf0cd711d4cbe2fa65",
+    "bytes": 772
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/ContractProbe.java",
+    "gitBlob": "99e3c5fb24a8a5372645227b2f5e200413c40013",
+    "sha256": "9efd3e1bd542b49f1f792e56779bf1ec1e9fd29026444f1c4b1b86752d21062d",
+    "bytes": 3159
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/LICENSE",
+    "gitBlob": "c1f7a78e89e4e4dc7b86664c3b3c76eb5eee1785",
+    "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+    "bytes": 1065
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/deepseek-pricing.html",
+    "gitBlob": "ab48927afe1baef890a0858ca7d71e3bf0ff2f1c",
+    "sha256": "1c09ddb597f14a905666181d9079fab4af97ea316a1390a343680461b38ec708",
+    "bytes": 26044
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/deepseek-pricing.txt",
+    "gitBlob": "b4a627c0321a469975e0ffbbe766472a658d40c6",
+    "sha256": "bb8b714e126bb76ad09ea6a285fbaf73966b748ab3ec47f025b6781e7fcba13f",
+    "bytes": 4312
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/deepseek-vision.html",
+    "gitBlob": "a1397d1984fbf6249fc895ab23e03cb2d06cd831",
+    "sha256": "774f6a580df711123b21eef86f1dee8af1bdc564c58ed80c6f182de871231ba0",
+    "bytes": 81888
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/deepseek-vision.txt",
+    "gitBlob": "e54fa36d76afbcda0583ae137970999e2e9094d5",
+    "sha256": "e8ad3623963204d21ab867d14a9f881221566aac2c462fffdcbafd78df8d3d73",
+    "bytes": 10263
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/jdk-imageio-probe.txt",
+    "gitBlob": "ea7367428fb37d2a89b5e7a5b33c63425ffcc5e1",
+    "sha256": "95f706adb883798f5e531648d7130fbe3b97cd7a7d657e8566745f5eee857cd4",
+    "bytes": 379
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/master-baseline.json",
+    "gitBlob": "3cd7732650487fa1704ec44a2e2e311ba08a5f75",
+    "sha256": "1b951644e599569c94893598e5c0e0325748bde6e2b117b2753ec24eb94c67c9",
+    "bytes": 177
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/packages__attachment__attachment-local__src__image.ts",
+    "gitBlob": "402f076840cd31062dbf7cd1a21e92450f2fd500",
+    "sha256": "ec48db7f7702bb06317c10c393c1fc6a8ec0927f87f63021f419f015dd69827f",
+    "bytes": 5594
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/packages__attachment__attachment-local__src__index.ts",
+    "gitBlob": "34959d088a53e61a8eaf78d14cf52580627d70da",
+    "sha256": "1a1d3fda491bbb0789447e6f9ab92840d6652eff8d68fbccc2a4307ccc5f9f8b",
+    "bytes": 12601
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/packages__attachment__attachment-local__src__request-image.ts",
+    "gitBlob": "74d4934b2faad1b7262ac5bee30e538eac0342d7",
+    "sha256": "bbb89a0150520a8c73d96fa884066e4b2cc82085864c5899500e45bd6aac889e",
+    "bytes": 7715
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/packages__attachment__attachment__src__types.ts",
+    "gitBlob": "455d6c9de06f09ac4cbac5590d41fff0dab326b8",
+    "sha256": "893a8d2501251873d7a885ac9d7249f9a79c3e71e18ef921c260bf56e2c6c354",
+    "bytes": 6116
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/packages__fs__tool-fs__src__read-image.ts",
+    "gitBlob": "4a452e21c44f7253465e13f5e96c9ccbe7dd4ccc",
+    "sha256": "36cef763f246effda50ad7e3a50de46380bb65eb6cd87f758f07d716f10f2f54",
+    "bytes": 16573
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/packages__fs__tool-fs__src__read-target.ts",
+    "gitBlob": "6fc61e7f5a968ab1d948807af8bf34b0e64fc657",
+    "sha256": "3e89ce59dae8d4d568ed0833d4c939ac9cd62eda380e1b4addf697a311b56d43",
+    "bytes": 1464
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/packages__fs__tool-fs__tests__read-image.spec.ts",
+    "gitBlob": "7765b5b8e4c04bac21c192f37c01e7d2aa07b60c",
+    "sha256": "1df54c209c3269299b97398386c6972ea0962d819b5e87a79fc41b3d5c94d3c0",
+    "bytes": 40481
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/schema-probe.txt",
+    "gitBlob": "b9f1668cc604880486eee95f9154a61bbffc5add",
+    "sha256": "5652be9aa2ef2934b32ef68d4aa11cbb03353fdd38e24274def79f6438b517ce",
+    "bytes": 404
+  },
+  {
+    "path": "docs/verification/XIAO-46/architecture/evidence/spring-ai-media-signatures.txt",
+    "gitBlob": "e44ceb811dd5efbfc1172cab057199e1be7cd457",
+    "sha256": "f1205912290e375090459d822c1cf6aa492076235473900b31acb9f7378cd571",
+    "bytes": 2093
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/ADR-0007-mcp-readonly-same-host.md",
+    "gitBlob": "11e69280fdc4046dcbedf5d18468ec34cf8622f5",
+    "sha256": "b2cb9cd5652e8a0d97cbeb43239cbe9dc081b997e2e83658932686916b529fa5",
+    "bytes": 9544
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/ContractProbe.java",
+    "gitBlob": "fea67502af9dfaafde4f17fc73508b00efe840da",
+    "sha256": "6131126b116f96fa09c98655292a9b710f9c2b066e431f11c17778a489c42ae8",
+    "bytes": 2535
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/PACKAGE-MANIFEST.json",
+    "gitBlob": "e0f55b337cb9e6d3aa4f4972bbe49cfc468ecf00",
+    "sha256": "99d6a5f06e10335df9cdf39e048d5bc0c1433223ac1941ce54318038d3fe6871",
+    "bytes": 12185
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/ProtocolProbe.java",
+    "gitBlob": "c4283a7b241800371e56790563b5d3bd3b039648",
+    "sha256": "e3a9331c9e4ddb37e6edc9d4fc55e60b09d93cc7f885945ee08c12b09f3f8ea4",
+    "bytes": 10204
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/README.md",
+    "gitBlob": "d48ad170bf5bc1faa8d142f90fab655b229d8e32",
+    "sha256": "3086cf9a519eb4797f33dfb537b55c50930b6bfc048e96cb40afbebc8dd42c0a",
+    "bytes": 1679
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/VERIFICATION.md",
+    "gitBlob": "c259f36050cbae1f09ff8ee6674b72b8bec628df",
+    "sha256": "f538208e4b04583f151b29ecba6dcd469159e398d200d11890bee2f4dbe6e576",
+    "bytes": 5917
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/catalog.json",
+    "gitBlob": "7b1857eb2ad71dd87a55641fc1484c11e00a087f",
+    "sha256": "c5da8a217cd0c5fe2b2a4ef118187f3ed737f7e8ccb2f412218e875381ad82d9",
+    "bytes": 2126
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/examples/list-input.json",
+    "gitBlob": "ed0a807a0d94e6461b7718c0881fd7488da5485c",
+    "sha256": "a158decdb2a26324110b4e0488dbfa0d93329501bde3a7e2101f952e3ebeb838",
+    "bytes": 23
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/examples/read-input.json",
+    "gitBlob": "616c22810829ce1b2548f4b70cb8ca2af8b9abdc",
+    "sha256": "60567f9cebf49e1b65fe4ebd9e15f8c822e904983c24cf8a54ba1a9bda866697",
+    "bytes": 57
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/examples/read-output.json",
+    "gitBlob": "f15d8f6ee9e57f0d4ffab3653a32f6b02f008335",
+    "sha256": "c1aa6e3f9b4360cda805461f3a1e1bed8ae9e70116d6de7ff811e148deb40c49",
+    "bytes": 769
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/examples/resources-output.json",
+    "gitBlob": "6a61b3660b0d1f88c883b76e644beead3e9ddba4",
+    "sha256": "ff521850353c6a48c64d964c09e359ba734252ad851987a4e2476ab6dcdcb9fa",
+    "bytes": 618
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/examples/server-profile.json",
+    "gitBlob": "f73ec277edbae25dac7f5eb719f2e714f95920b0",
+    "sha256": "01fc79b51eb1357174a40c14df5efb5c751d5817116fcd3fd52c264be1be2494",
+    "bytes": 656
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/examples/templates-output.json",
+    "gitBlob": "5a1365a61f9a550392adb95c68c2173ba45a43bb",
+    "sha256": "3cbfcd1598d0dcff359f1ed05e86871815db573d059a10d2709700f012b07d53",
+    "bytes": 610
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/list-snapshot-v1.schema.json",
+    "gitBlob": "7ad45b4d414094d911373f5819dae926bdf40404",
+    "sha256": "3305bee394e407a1cd376f07a159e2b01028141efca037a136189de99a0409af",
+    "bytes": 1886
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/list_mcp_resource_templates/input.schema.json",
+    "gitBlob": "521fed758c5cadbda1fa93fab57c80555fc4c41a",
+    "sha256": "3286b79a0d26f83175b185cbedaa3169b12ca4b7f42ea583ca4c6d4156793332",
+    "bytes": 472
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/list_mcp_resource_templates/output.schema.json",
+    "gitBlob": "daba999c8621b14354852c19c169d6c17369e33d",
+    "sha256": "757410a2b9e69a156dd294e30c6b67dc98e03d89c5aef2735c212ef6da06ebb0",
+    "bytes": 2363
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/list_mcp_resource_templates/plugin.yaml",
+    "gitBlob": "eb2c5237edf09a92a0d421aad1dc7a7e7edc0266",
+    "sha256": "415f4670e231a68ec062c2284163f60c1c514c849df2e196e86acb58ce49dcaf",
+    "bytes": 906
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/list_mcp_resources/input.schema.json",
+    "gitBlob": "c16938accf210a7b49d8c00272714a1b718a129a",
+    "sha256": "29fd7302a672247a952d9abbe4fb35174e97c64e91a3a60b0612e97f8454ddb5",
+    "bytes": 463
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/list_mcp_resources/output.schema.json",
+    "gitBlob": "23a38f340fecfe93d491da2594cfd50a35c002a4",
+    "sha256": "1d97dc3c26c23f3ff7576d2022e18d8ca87f78531a64284addbe1472b8ac3087",
+    "bytes": 2522
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/list_mcp_resources/plugin.yaml",
+    "gitBlob": "6c644467833fa510013dd6760122e84d4ae56c02",
+    "sha256": "12f874c8b47a8600cb50742c683c60bb1bbc01d43e5c69aa0b5350bd415dd472",
+    "bytes": 880
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/read_mcp_resource/input.schema.json",
+    "gitBlob": "4702941beff26986a5e390da50a0b45645be0198",
+    "sha256": "99bb5fea5f44d507585a3ba512addda2050c9a54ac99647977f2fe0932563650",
+    "bytes": 576
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/read_mcp_resource/output.schema.json",
+    "gitBlob": "cb13d3b65e59c3d0df4d7523bd1b9d303054ec50",
+    "sha256": "913b8a04ef378864565dfe764d0a84e8c4434557f998cb67bcc6a21f89c8f1c9",
+    "bytes": 3007
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/read_mcp_resource/plugin.yaml",
+    "gitBlob": "0236a156593bee0491f7814136308afff32d5a55",
+    "sha256": "3f3c6e3397da857f1d57c6ee4522d3ed71ae49c086da6a61149edf218e45f42b",
+    "bytes": 877
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/schema-index.json",
+    "gitBlob": "0798f5188bf06dacf3702ba4a5c0145d7b9f68a3",
+    "sha256": "4ff8e6e0c9ef697c02517426a948479f5976806c9f4249c954a69fa579b826db",
+    "bytes": 1395
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/server-profile-v1.schema.json",
+    "gitBlob": "51f8dfd3e91220566df93c3458a18014966177b2",
+    "sha256": "906bffc7e23bfb3a7065d2059aff541a07061c8941318855462d0999a75c5b13",
+    "bytes": 2986
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/contracts/task-binding-v1.schema.json",
+    "gitBlob": "33ad813ba84f817828da4dfebe6801637bbe2f67",
+    "sha256": "eac67f85d9d731b12a51bb7bcd214776da07566ec0a25db7aba5bf2d158961cf",
+    "bytes": 5115
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/G02-inventory-extract.json",
+    "gitBlob": "4337c49f62d54b1f1bb91c0af70a255440bd2a82",
+    "sha256": "c1aa8eb0566ff1497ddefd696a173fce78cd58eb0ea1314e0583c70d538e98cc",
+    "bytes": 4301
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/LICENSE",
+    "gitBlob": "c1f7a78e89e4e4dc7b86664c3b3c76eb5eee1785",
+    "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+    "bytes": 1065
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/THIRD_PARTY_NOTICES.md",
+    "gitBlob": "6a2fbda5ebec2d259fd90e22eaee819aec9e4edf",
+    "sha256": "260b8f9e14d68c083c8abe5d0c6b4cb5212d5f03025f327fdcd9656629222879",
+    "bytes": 24780
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/attempt-history.txt",
+    "gitBlob": "947647440d742dd2cd44470d5debbde5f3b4ebae",
+    "sha256": "26dff66ac0d1f68636fd1761be9a95e0e76446f335ab71c56115a4c53081b127",
+    "bytes": 1672
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/contract-check.json",
+    "gitBlob": "b476620e6dd0366bd8a65cc4a90a9e483f67423e",
+    "sha256": "9b16aa7e8b8d80a035792ff202b9ed701a4b64b0988535514aebcdb0d6828c2f",
+    "bytes": 1484
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__docs__implementation-p4-runtime.md",
+    "gitBlob": "2b0bdca6d47a00aacabff8a45a184e8afec1f3d0",
+    "sha256": "9790d771813b3dbe44a095c9f64a0b599d0663564e8dcc701515891951dd2d94",
+    "bytes": 11656
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__src__main__java__io__github__lovexiaopeng__jimu__adapters__runtime__search__NativeRunner.java",
+    "gitBlob": "14f9707ff472fe2a68161eae6fdc61dc8f0605a8",
+    "sha256": "97b1ce948d96b81a7419c923c05442b9db1ecc0ea873f9473fcde44e1e26f636",
+    "bytes": 13727
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__tools__native_bundle_verify.py",
+    "gitBlob": "c86b34fa2ba5b96ae83f984689302fa1555a0186",
+    "sha256": "6b98a4adc15fb946103d94842f34e2f0fd690dfa80aac4f5b9d6f3b93bb99c49",
+    "bytes": 2464
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__tools__native_rebuild.py",
+    "gitBlob": "2a4f8ffe2ee52f5744701b9fc53a034e1cde5a36",
+    "sha256": "7cbefe392d4f6b2f779ca12b4e84642fb7a599665c23cf94586c1010e73def1a",
+    "bytes": 22586
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__workers__search__README.md",
+    "gitBlob": "63bfd08877cba930308a5bd306d39f2494db1a45",
+    "sha256": "0a0859f70135d7dce6f530e366e576223821e4b12b722278cc96c00aee11f9eb",
+    "bytes": 5763
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__workers__search__v2__README.md",
+    "gitBlob": "830d843b330c0fc7c4db50fbb9765b981580302e",
+    "sha256": "6669a1f63c9d65967aa4ee5df7ea34a363ec814ab93bfc36edaf3491990c63df",
+    "bytes": 6675
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__workers__search__v2__pins.json",
+    "gitBlob": "273441b1ebdf244bf1e60b287d4078252bf6670f",
+    "sha256": "b38e8e58440da8e718af8ec2376c256d9361f80b69b6f99d598965d5bf252f11",
+    "bytes": 610
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__workers__search__v2__source-inputs.json",
+    "gitBlob": "467d34b70411309c58574824b29530ad96b657f5",
+    "sha256": "5676dcde7cfc2c21121eaaed1caf49536c52db3e64c6e90e586d3b3e0924100a",
+    "bytes": 25208
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/jvm-contract-probe.txt",
+    "gitBlob": "ce9e443f0b2eb98d0289292a0eede7fc94707c69",
+    "sha256": "0817f7f9b8e7e32a168330474751b6e167eb37a3742d651635780b86d934a0e3",
+    "bytes": 285
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/jvm-probe-dependencies.json",
+    "gitBlob": "290ad7c7fd31fab8f17b0a55689728bf038d7fd7",
+    "sha256": "43d5d6fc03b39fff1c67683f4f8040163dd1a2e378f4c5222b95dd1f80b91a76",
+    "bytes": 2065
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/master-baseline.json",
+    "gitBlob": "4207a4aa2fb735b2e7a86e6ad0027cc0bd385be8",
+    "sha256": "8e9190372bb8d35b6c108c18f6539dba5287ea62e9bb2e797da5a4574906bf33",
+    "bytes": 1920
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/master-compare.json",
+    "gitBlob": "20c78a9111a19e4c4b0c7651bef455585003b6ca",
+    "sha256": "4a0de909ee578579e60cbc43bea397a494e856eff3cdd3c0022385b0aa67e3c2",
+    "bytes": 1267
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/mcp-spec__LICENSE",
+    "gitBlob": "4a93985763241755401a10678395303de4e720ba",
+    "sha256": "0382b0057770ca05e9c350a50aa3b1c1fea84da0bc81d723bf00b9aa841be58a",
+    "bytes": 12227
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/mcp-spec__docs__specification__2025-06-18__basic__lifecycle.mdx",
+    "gitBlob": "43475bd8f3c93e45489958d8be6f33670c31391c",
+    "sha256": "9800e66e16cb0b71c339f6007fd14f6d17cc48741d4a8d381cc38f916bb6d05e",
+    "bytes": 8196
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/mcp-spec__docs__specification__2025-06-18__basic__transports.mdx",
+    "gitBlob": "014097e44cfd7c5644eeadc1d758947c34dbde81",
+    "sha256": "df1217279334b6f3af8bb457191884ba831dce2c5389d7a0556ba920270ca902",
+    "bytes": 13956
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/mcp-spec__docs__specification__2025-06-18__basic__utilities__cancellation.mdx",
+    "gitBlob": "cef9444a13003fe4f03f0da36881cf1cc2ed1a25",
+    "sha256": "a95b0cccf6842dafddd4d5a421d36232d469229770341283cc6cebd57026b4d7",
+    "bytes": 2491
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/mcp-spec__docs__specification__2025-06-18__server__resources.mdx",
+    "gitBlob": "33d22aeeffc2b2d512c86907c2cfdd0437b7388e",
+    "sha256": "2e5b6dafc9f7a40196064e7ce3d1615c5820f78e663d0d064f1a1a3cfdcf935e",
+    "bytes": 9519
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/mcp-spec__schema__2025-06-18__schema.ts",
+    "gitBlob": "b7aa52452874c81981008e709678bfe4f7e3bc02",
+    "sha256": "7d7f4cc6f3adb76e3fd5e1eee6bab8b1e183cfaf719da66d2aa5661737ca9539",
+    "bytes": 42430
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-client__package.json",
+    "gitBlob": "c792a50900f4a37dc217497f24d6cf62f90a5138",
+    "sha256": "b6b39815c81557dfbfc643da56a12f14439361d88552728b434b4c79cdfc9578",
+    "bytes": 2309
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-client__src__connection.ts",
+    "gitBlob": "9a4ec9123aea0e416178b45da6e788bade46274f",
+    "sha256": "06dc1b3a1297b8b23f6ac5c44f3ba6740716c76db71c28cfb8f14d6c0340030e",
+    "bytes": 18741
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-client__src__server-context.ts",
+    "gitBlob": "b0ba4ccd78883ac4730c3facc35b7e4b609c7fd6",
+    "sha256": "02ca9fe759891788572385a00f0cc7b6e92d6e98e103c1d00dd99ccec0d6319a",
+    "bytes": 1475
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-client__src__transport.ts",
+    "gitBlob": "52030772febd9e55e9e6ffbe2e54a4ea3cec0aca",
+    "sha256": "6f3fca685af3d5654c476e95db24e1245dc1fa021a0bd7f477ce4ad997e1c8f6",
+    "bytes": 1594
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-client__tests__fixtures__resources-server.ts",
+    "gitBlob": "303706014db3342b5a2593f6b85888c2aa16de9e",
+    "sha256": "09e869798f4ad88aa43845904b9ca933eb82b1b93b81bed3315bdd86742f4153",
+    "bytes": 1354
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-resources__package.json",
+    "gitBlob": "482cf586e74d21b217aeb8006f27f4257223fc7d",
+    "sha256": "cba024e9f05b7538e204d584b99d6c69a726040a2eab9016142297d5ebca61fd",
+    "bytes": 1563
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-resources__src__index.ts",
+    "gitBlob": "0ecaaa555bb653a0ae12c59fc2a0015a92302c16",
+    "sha256": "6b19614393d187629b7d273d8e8bca3d30f45cf0eac75b51493d0678eb809b65",
+    "bytes": 5314
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-resources__src__render.ts",
+    "gitBlob": "d79c59775a4881b7633fb9038b279ae8bdb0bbf0",
+    "sha256": "10a9d2bea66851c5cbf47c263bd673f20b72072d0dd514baf8a8bd2a0e68822c",
+    "bytes": 913
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-resources__src__tools.ts",
+    "gitBlob": "5e03887477034d4a5a8b83e9a62a8bbd600967ad",
+    "sha256": "a415aa6edea0ae5efdb71e02bb48d79a454ce97e0cc9f3b5f0c15631d5994090",
+    "bytes": 2704
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-resources__tests__resources.spec.ts",
+    "gitBlob": "8460d80c96f21a38c9386d9e69d70575b458ee1e",
+    "sha256": "5e351ff55611236c72e6c4dce458d2f43465927c92e91154a0d76dafa767773c",
+    "bytes": 18495
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/protocol-probe-attempt-1.txt",
+    "gitBlob": "7f4ef2b9c6b724e33df4480aee70c4f3987831ea",
+    "sha256": "9eb1c1e58f1b82ffc7cf06e8286b36eeee43719ba0f65094e06a7bcae44603cd",
+    "bytes": 3482
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/protocol-probe.txt",
+    "gitBlob": "5e5df0b1c64bf5021c52b73b6cf5b2c3e23cd805",
+    "sha256": "7a145ea98be7454659dd51d804f724c245e9e3bd2edad4d6618f2f4211d882bc",
+    "bytes": 3694
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/reviewed-jimu-sources.json",
+    "gitBlob": "8d46946b7add2e5ea681d563185d88d29ad5cf92",
+    "sha256": "3b25e38ba14c12ff71c37f8fe44a6dac1beb5421842a00f252e2ab1a9ae1ee2a",
+    "bytes": 3197
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/evidence/sources.json",
+    "gitBlob": "37ec850978f527edf2973a01ad16a93fa8415d05",
+    "sha256": "cf8bd80241698675c1c7f5ca6520927f7d42db14cf74b8c612da51bd3ac2f6f3",
+    "bytes": 9963
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/fetch-evidence.ps1",
+    "gitBlob": "de3f5aee0baa7178a4db52ffaf21e53ada25b127",
+    "sha256": "7180ed64af00fc228c62f9ecbe668d16483b1cf0de58807b76db286f387e32b7",
+    "bytes": 4518
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/implementation-contract.md",
+    "gitBlob": "dfe0b62ec99004f8d739a88810c686dae130f783",
+    "sha256": "b1d5c37dd0792748e1a75f2045899b93e4afe015301299fe7ce87deae5c272ac",
+    "bytes": 23524
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/make-contracts.cjs",
+    "gitBlob": "18d8cd3b5f31c6d3ce54816adb570e362e811165",
+    "sha256": "1665e3f365b5ce11d0b3f59c5581a538eb612a66690d1465c90efef885523315",
+    "bytes": 8190
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/package.ps1",
+    "gitBlob": "078e2e376683780c4986a88ecabf187608113442",
+    "sha256": "8b794d966802a503653572cb37495166225a0d4ee1ccb925b5352a2d372d40a8",
+    "bytes": 2190
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/verify-contracts.py",
+    "gitBlob": "c069f520ca1fb5521c9087a08ded7f83dd087add",
+    "sha256": "422ae56ed12920599f0374e933fefae5fe926576d4be1635de25c21532442a0c",
+    "bytes": 3132
+  },
+  {
+    "path": "docs/verification/XIAO-48/architecture/verify-jvm.ps1",
+    "gitBlob": "6fab107b0aae55f6c11765430fe8e789b421ea61",
+    "sha256": "09290f13079d6687713a092c3181657807005a93c124a0dc2ac55cdb86678342",
+    "bytes": 1936
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/ADR-0008-durable-user-questions.md",
+    "gitBlob": "ef277c817cbbf3ec8cbe14c40fd77d9e0a3babb2",
+    "sha256": "f7845c1c34466de1e40591d910dc422c156c0f339d97be8271ee299502ab63e4",
+    "bytes": 6781
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/ContractProbe.java",
+    "gitBlob": "6feaab3bcef62ef990fb787366765ac1fd7e4e80",
+    "sha256": "1519f8d4ee7e05467fdbd367c38f630cb3f7d7e0acc62f042fdc2c36404221f8",
+    "bytes": 1391
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/PACKAGE-MANIFEST.json",
+    "gitBlob": "b3ad572cf97ec2f8812edb51d66eefd191bbc821",
+    "sha256": "9be58ffe2dab580ea7ab07c93c9530bee4f32f2bf00396a16e8be5a41cf9114e",
+    "bytes": 13776
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/README.md",
+    "gitBlob": "1a5e23f4fad25ba7a8b4ebfe738a8ff5b9d47b26",
+    "sha256": "ff291d57285a484d6a03edfb36f5326af1873d8e4252bf4406c9505fb9d9a64a",
+    "bytes": 2009
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/SuspensionProbe.java",
+    "gitBlob": "c2d96dbb298dcff80c18df3cc0cbabd9d519f544",
+    "sha256": "0c693ce9a3fd47f75bb1f3c4a5e263b0ceeef2b3f9cf69e1084dc3454ac1b990",
+    "bytes": 3809
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/VERIFICATION.md",
+    "gitBlob": "3de51e7672028888aa6df70e3854549832fd2475",
+    "sha256": "0f6d553721dceb57e33631dcc88caadc62c6083cb63d9e91b8ef79bf297cf9df",
+    "bytes": 5476
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/answer-receipt-v1.schema.json",
+    "gitBlob": "20ba4ab0438c77f98b1804abd3c354677cac255a",
+    "sha256": "869e2ca6debd97f80ac35378112c7a3cfab7c5f50d6e46b7059ccd41b0c05e6b",
+    "bytes": 967
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/answer-request-v1.schema.json",
+    "gitBlob": "821d8933d10d6f83f72b7cc55db80be42d7d9444",
+    "sha256": "35fbb2c105f94b3f3e3cd8507d4aa6412ea57912d54c4c3c6469ec93e4df4112",
+    "bytes": 1280
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.1.0/description.txt",
+    "gitBlob": "5f19dc940ca837b97b693f1144ee28c7f0cc9a80",
+    "sha256": "25aea8b40ebb02a055b0c8522f5a1c5c8982808a91e146fa316708719f69dd30",
+    "bytes": 112
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.1.0/input.schema.json",
+    "gitBlob": "a4f264ee05bd1873956db9e31c0f11b7d8bc2829",
+    "sha256": "b4826a19462ff68aa2325843edf26b9d60ac0558d3f0c3f800e53875345102dc",
+    "bytes": 1597
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.1.0/output.schema.json",
+    "gitBlob": "0e6eb2e8ec80f053507a6f445880c9fe321c91d5",
+    "sha256": "01a8cfc1f700d5d7a6be665480284073143841a27d8fd99b4ad76f9e3a7a4fe0",
+    "bytes": 1026
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.1.0/plugin.yaml",
+    "gitBlob": "5e7939473fc76a26f173184ff775afa911da47b5",
+    "sha256": "8131479a7640390bd1bbe282fe337588c2cec0bd101005b4262e1779a22cd60c",
+    "bytes": 926
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.2.0/description.txt",
+    "gitBlob": "3ac76e5504d94eaec6c697a66546350a3aaaf2b7",
+    "sha256": "6cf520f97ce9afb915f02dda551130f04f2c16f613b7ffa0e28fad38e7b76c52",
+    "bytes": 320
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.2.0/input.schema.json",
+    "gitBlob": "091a4f6e7efbbfb96c745ade41f0eee77481de35",
+    "sha256": "57fabb51fa4dbfc961f455e559bdc17aac95ead256e46c0d6f9f41f8eee913f4",
+    "bytes": 1899
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.2.0/output.schema.json",
+    "gitBlob": "b32506b4d00bf0f9a2a0e8a323262fb6c651e7a0",
+    "sha256": "298380b43ca65139d77a05ff886a21b82eead5444d86f7109b76ec04ba1853b7",
+    "bytes": 1929
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.2.0/plugin.yaml",
+    "gitBlob": "419b1d31efc914842773a81b3bde84fa0a7504bf",
+    "sha256": "c7d14d8bfa825bc249da3eb8457d90ffc20ca587855e64f612e17da482c26378",
+    "bytes": 926
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/catalog.json",
+    "gitBlob": "08873ec3f39242bc4c3b1e258fa8d1143ce9d7d5",
+    "sha256": "7ba04c41f8ce7129ff427d6202637ed9d4d9ec060028615a346359f0e88844b6",
+    "bytes": 1847
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/examples/answer-receipt.json",
+    "gitBlob": "c859eacd1f960121f110a1642b32430a8995ae41",
+    "sha256": "23fc0e6f769bb1b22638310d3394f88016affa4d997042a8941bec58409021e5",
+    "bytes": 273
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/examples/answer-request.json",
+    "gitBlob": "e4bac7e628e98ad7357c8f4507fc3bbc92e7ad22",
+    "sha256": "1546a93beaf90cbfea486769a5f6292d3d6dedb0115ef6e108ee4289c62fb553",
+    "bytes": 147
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/examples/answer-result.json",
+    "gitBlob": "8859bb1ae9289d17daa2e7de2cc2f409062c4eda",
+    "sha256": "9079f80708d0236ba2ac34d68198a85d784de46bb7bc2c20772f39a7534d1e1e",
+    "bytes": 137
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/examples/binding.json",
+    "gitBlob": "1bb6932255464b9497c9f34705237a8572b00d16",
+    "sha256": "6babc22a82bc650f362bef630849aa2f63a6472648c44e9041e959d6e2988d75",
+    "bytes": 295
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/examples/blocking-input.json",
+    "gitBlob": "894c862030bdd9cc2d24ade792ede102c9cb1898",
+    "sha256": "e4d923be83f19acb12d25eb4914e79a035f5e314851a90124771291e5c287785",
+    "bytes": 280
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/examples/empty-list.json",
+    "gitBlob": "189020e18bc9acace96439ae7cb707449522be03",
+    "sha256": "da6fa0fb6dc64a3faf1f81f830b8696ccf02b9c654135111429090fa240870f8",
+    "bytes": 34
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/examples/indefinite-input.json",
+    "gitBlob": "5b1b65bf7e73a9879fb39746f45a748851a27c28",
+    "sha256": "bc172f14cc7308d559e7e3a516b86d304480eedf9b1c4a13fe8c8132c7ec8aa1",
+    "bytes": 122
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/examples/late-reply.json",
+    "gitBlob": "46744b50d2d665d9febfc55205c03d830cf5b404",
+    "sha256": "4c2e569c730506b3cc0e9b74531c70e50b5f529491839053573e89d37c8a73a4",
+    "bytes": 532
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/examples/open-list.json",
+    "gitBlob": "8135382c92bbeb0794ffbb0dc323f0c7aa98ec4a",
+    "sha256": "e0eb63912914a4a380a3af10b0187e23616982e5415bd9aadf2cb390896c8742",
+    "bytes": 749
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/examples/pending-result.json",
+    "gitBlob": "df98c648c547c4eea64f2826f948921ae8e503ce",
+    "sha256": "d4a8617e6fa063e2da34e68b2e1ae02ae40953d1d49331996251ac145eaddedf",
+    "bytes": 367
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/examples/skip-result.json",
+    "gitBlob": "c7818b52164e9a9c96de8d47a030343f4218b0ea",
+    "sha256": "9631cdea506f30b8e818524e3c04ee27ad9325de3b5dcb3b2f3044107d5fd590",
+    "bytes": 76
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/examples/timed-input.json",
+    "gitBlob": "aa6fcfddc8ebcb21b6092a4a0843defbc4886bef",
+    "sha256": "3264ad23740d56b99bb328175007b4ebf864d769a139d4b644a18e3e9882dc11",
+    "bytes": 256
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/late-reply-v1.schema.json",
+    "gitBlob": "db8a00f0ba7b40e0736ac6e4ef2b095013541289",
+    "sha256": "e02623a944bc41114c0c0c8c1bbb7b66ab53fd133dd81a962f71edda42a65489",
+    "bytes": 2743
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/question-list-v1.schema.json",
+    "gitBlob": "1d02cf91f3ff1a3c2a519729e83659e1beea902c",
+    "sha256": "e965de1b107ede8acf06a0f543ef595ddd3d1909e3baf1673e75ea61073ebe2f",
+    "bytes": 6346
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/schema-index.json",
+    "gitBlob": "e9d0457c67d233348385040e3df09161df142294",
+    "sha256": "18a4863b00c5bb875ca9a62a3ed79b2fa99009a2cefa939a8c722cd7dc2ce005",
+    "bytes": 1970
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/contracts/task-binding-v1.schema.json",
+    "gitBlob": "5259c6ab62b1f6146334c15bdf98ca755afd93bb",
+    "sha256": "d6d6828a4a16bf222d5af3eda83d44b222f11c22db8e2a100559e101313dfa89",
+    "bytes": 907
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/.agents__notes__implemented__architecture__2026-09-19-timed-user-question-two-settlements.md",
+    "gitBlob": "014912c9a817dc18024e0d401e3acf147c718c07",
+    "sha256": "2f81984cbaef261d79f384636efd4b2979a1e2accd2173bd35db5c9ec74c2730",
+    "bytes": 15141
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/DefaultToolCallingManager.javap.txt",
+    "gitBlob": "b5c1abfb13eb7f291ccfe7c4a9a7be4a8a0632d2",
+    "sha256": "a6a569def219ee612d6b2d91df4dc629b50b6b5675914717be23e773aead77ea",
+    "bytes": 44997
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/LICENSE",
+    "gitBlob": "c1f7a78e89e4e4dc7b86664c3b3c76eb5eee1785",
+    "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+    "bytes": 1065
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/THIRD_PARTY_NOTICES.md",
+    "gitBlob": "6a2fbda5ebec2d259fd90e22eaee819aec9e4edf",
+    "sha256": "260b8f9e14d68c083c8abe5d0c6b4cb5212d5f03025f327fdcd9656629222879",
+    "bytes": 24780
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/ToolCallingAdvisor.javap.txt",
+    "gitBlob": "9b998a45cbe5f7a182417ade6f470b271f6e708e",
+    "sha256": "f86279920be8a90cf5da45878fde1a52be1e73bbba699634fe8e493144b1a97c",
+    "bytes": 52843
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/contract-check.json",
+    "gitBlob": "042bb82b34d8c53e0d865a7f9a46f6515fc33915",
+    "sha256": "e9ca9bc864d24f5d67f8c8e05d6da03ca71b4da71efb7ff48398b94f14dc6165",
+    "bytes": 690
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/contract-probe-compile.txt",
+    "gitBlob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/dependency-classpath-log.txt",
+    "gitBlob": "abb093880c875208e8bb9a6d12c2ee328ce681fd",
+    "sha256": "4295f6c9ef1c60f1e9812daebba6c5be03a000d030079a744fecae71845558e5",
+    "bytes": 894
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/docs__persistence-changes__2026-09-21-user-question-reply.md",
+    "gitBlob": "c8e86c40d4975a074ff86a6a15b28541616c20f1",
+    "sha256": "6dc43e2b60727a294526d7643cdbeb8e918b9e22c93508425841fbc117e5848f",
+    "bytes": 2305
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/docs__subsystems__user-questions.md",
+    "gitBlob": "e409bff7477e933f6d7544e2fab41034c9e6f9d8",
+    "sha256": "9d90ad794fc1fe22ae9c54a8162b27d0e6f46dfd6fe0a3ba81ea05d1e037ea7a",
+    "bytes": 16654
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/framework-probe-compile.txt",
+    "gitBlob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/framework-probe.txt",
+    "gitBlob": "146c4304f89ef31cd0d78a98467bf5242593b6a9",
+    "sha256": "6f232d9ba41147dd157eb6299bdc2243647427c84d3714d35e98b8bfa48bf7fe",
+    "bytes": 596
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/java-version.txt",
+    "gitBlob": "86e6335bd0085a6c4a59bf2aa6e71347f74f34e9",
+    "sha256": "c09b3f6e7993628681d0f0e0fdfa12ccbfef6d7798ad260ec13807486db8b267",
+    "bytes": 208
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/jvm-contract-probe.txt",
+    "gitBlob": "20f0fce4bd505d311653c06af5c9f968b3cd3702",
+    "sha256": "fdffb8b9f33fa3065874f67d5cc07b83a003f6cc3a01ef98da7c998e19b1e820",
+    "bytes": 74
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/master-baseline.json",
+    "gitBlob": "2af696bcbe80bc2329208222f90a3a6ea6ff70a3",
+    "sha256": "f6eed23222d720779776ed653312e0d157783f47a9bc5459454673c7f0d90e28",
+    "bytes": 531
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__client__ui-user-questions__src__client__QuestionComposer.tsx",
+    "gitBlob": "8d3ad551ba057d1c5d57f38c362d7695e6619ff7",
+    "sha256": "e6a763552a3ebb3dcc18f1043f5437e7c4a32b5c796128ee284a5cf21108df20",
+    "bytes": 28612
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__client__ui-user-questions__src__client__index.ts",
+    "gitBlob": "8ee3962c395b14c024e97fecd2d8db9b734eb078",
+    "sha256": "909f686a18a45ea81119355c1d9c3aa199c722578478e3e8e1332f9606863ce2",
+    "bytes": 17729
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__client__ui-user-questions__src__client__question-reply.ts",
+    "gitBlob": "68973b32dfbbf850249d340bbd5825e2c7afd6ba",
+    "sha256": "2ce7aa0e8b469412b68a61c7ffee7007c6cc66600bfdf3d19904774040d512fe",
+    "bytes": 7494
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__client__ui-user-questions__src__index.ts",
+    "gitBlob": "9357c3bba6e3f5ed3019acb3cb904b5afc30a225",
+    "sha256": "76a004fd33761675527d201d9870079e6ece96bbf3083037530b0f7679470b69",
+    "bytes": 457
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__client__ui-user-questions__tests__pending-question.client.spec.ts",
+    "gitBlob": "d96bea972feb494bd2292fc85272c7c5b9aad9f1",
+    "sha256": "5c6ff23069e22ec07271a01853f5785f8a0610da299f2450e0fd22dd7ba9a5f4",
+    "bytes": 6319
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__client__ui-user-questions__tests__user-questions-composer.client.spec.tsx",
+    "gitBlob": "8ece0da77766a6819aa4b448270eb504e823ab65",
+    "sha256": "a7a2514b30436178e251c5e3212a57302c448500c9239edda43dbac39748e08b",
+    "bytes": 45403
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__tool-ask-user__package.json",
+    "gitBlob": "f7acb9c7985575c983fc9d7a52c9b7b188483734",
+    "sha256": "b826ac166ecf18d6f3bedee4db9517d73fe7732ffc8eb2f75bcc1ce2cb0ebadd",
+    "bytes": 1380
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__tool-ask-user__src__index.ts",
+    "gitBlob": "e9ca98d0485600a24c8ea8c58d9b8ba65cd73a92",
+    "sha256": "592f5b7b2e8528180b1bce69b33010d38b1e4352514484cada991c0add0e5bef",
+    "bytes": 4419
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__tool-ask-user__src__timed.ts",
+    "gitBlob": "2396e56e5207bc84fb87f04ee27a4ea23e8b649a",
+    "sha256": "c11da1a785add253eb99cda4a56e6729bb3a6191cc59b07533a8165faabdd942",
+    "bytes": 9097
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__tool-ask-user__tests__tool-ask-user.spec.ts",
+    "gitBlob": "5ba9c7f5449168626161925e8ec427dc78ccb358",
+    "sha256": "5590a4c4efd6edfd63be7a477426a7737c2666beb9f3bd2c275f7aad4c652b51",
+    "bytes": 25664
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__user-questions__src__index.ts",
+    "gitBlob": "06cb67b8b6a2bf0c9b44e78db3d87fa695ff5887",
+    "sha256": "5bf54301a5560daf36a75ec12496a57dc7d2f20d741e17895df3c03584673106",
+    "bytes": 15058
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__user-questions__src__projection.ts",
+    "gitBlob": "7453a265a5617a2b796ac0862c01cd224dd8a720",
+    "sha256": "d01796bd8d4fd098bf8f004ccced882c8a243bb88b563871abc26dc98c9a3e7a",
+    "bytes": 13979
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__user-questions__src__timed-wait.ts",
+    "gitBlob": "cc43cd98af45340d68d7e176b4a278d8c5d9b40e",
+    "sha256": "adc8a7ac7d079a8d468a0607329aec6025865ff366482790cf62edeb269c61ae",
+    "bytes": 3107
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__user-questions__src__types.ts",
+    "gitBlob": "8cccf99c3c702b7059cd231495330d0a5768511c",
+    "sha256": "682e2c58e1915019b3ef50be91a4edcdd7ba6cf3e4637baeb0fb4efa7319fa93",
+    "bytes": 6385
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__user-questions__tests__timed-wait.spec.ts",
+    "gitBlob": "4cdb0d7e2b18d7ca974b2e2cfae974d0e2d2035c",
+    "sha256": "dd9cf726d25092931b671468b3b7c407679493b886313b2a23a1583b435ddb59",
+    "bytes": 4196
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__user-questions__tests__user-questions.spec.ts",
+    "gitBlob": "f0f744259a97ca665c98d912403b96fe50defe75",
+    "sha256": "e654e9dc67b3f1bc04d49dbf31ee34fc009f398de08e35e49b85982ceff9b612",
+    "bytes": 37725
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/probe-compile-log.txt",
+    "gitBlob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/probe-dependencies.json",
+    "gitBlob": "d836b493741c7b7783707eab8dfcb2df1723ed73",
+    "sha256": "a0074ad2f8f661948dca9d286841fc169950d7ac1a94cc3640d585034a597137",
+    "bytes": 14097
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/python-contract-probe.txt",
+    "gitBlob": "1267d331d9759bee1127dabc1ae9fc690e2a3292",
+    "sha256": "4c5dd55622b89cc44c572f0c5ff7f890600507f066805a8401272c62909137d1",
+    "bytes": 69
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/reviewed-jimu-sources.json",
+    "gitBlob": "5630da2e7e332f5a68cdeaf8c7e6ad6bf5834e1d",
+    "sha256": "ba0ffb4182027fbf75b967744b1057cc9b44422e0bcc07bace36159bcefb8124",
+    "bytes": 11596
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/schema-cases.json",
+    "gitBlob": "df8ade326f9b27e3f27d1dc7eebe74ffe90564e6",
+    "sha256": "12d578d952d6d8faa91dc82b49d1e49f792fbdb6d475735ba34cd486cbbffd66",
+    "bytes": 26970
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/source-layout.json",
+    "gitBlob": "2cff27ee030c75c53bdefb1549ab1ea59a686295",
+    "sha256": "c1ba54e82ca417d2b4bd8cf31a7866036f35073e5c6e34a0d0bbb6384b591ebb",
+    "bytes": 156
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/sources.json",
+    "gitBlob": "fb5aee36e942f75e54d47b10f0c13e351367f183",
+    "sha256": "10cdd368d4c8b661baacd36ff7ef37438fe0403d44f1c9b10ca7fcf856970050",
+    "bytes": 7900
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/evidence/upstream-tree.json",
+    "gitBlob": "4e99017cf06a6fcefd9ab2bf3040271ef74222b5",
+    "sha256": "4656134c0ff0aef89018356e0ec0da54f74f6da43871436f25eb59a97169284d",
+    "bytes": 6280144
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/implementation-contract.md",
+    "gitBlob": "5d55edebfeb7d840370a40b29193523a5d49141a",
+    "sha256": "12384ab9e3b184efa571307be08a8eb7ab045765eda895574e93fbae0be1023c",
+    "bytes": 24182
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/make-contracts.py",
+    "gitBlob": "5f7f522d64f573ba193cb5547a243c005b047cca",
+    "sha256": "4c45dd3000d9e8adaf684f22fb83db4c0dcad0b59e29bc66a1084643cd85ffff",
+    "bytes": 11448
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/package.py",
+    "gitBlob": "2f729a0203f220efc8f54ed9c51bed119384cec6",
+    "sha256": "799740b34b66d1d6303fe3475bf8ae65480f4660abe2d3c418e7eec818c0da26",
+    "bytes": 2754
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/verify-contracts.py",
+    "gitBlob": "45a637764e3d15569b97ae3a833f5c4af05d0d84",
+    "sha256": "aacd2195fc366456b1595f7ab649b2f3c3936ebcc2eda323d9c5ca03a4c1b999",
+    "bytes": 7122
+  },
+  {
+    "path": "docs/verification/XIAO-49/architecture/verify.ps1",
+    "gitBlob": "13287ee28f7d5bd84ba623d07d26b9b77181b8aa",
+    "sha256": "34eaf1be4f3ec112f78951d9fa16721088fc8351c3e9d439a2c95b8e44aa6218",
+    "bytes": 2700
+  },
+  {
+    "path": "docs/verification/xiao-40-web-cancellation.md",
+    "gitBlob": "7e46ca8f288513547e93aec4bbcf543ca399e24d",
+    "sha256": "3b930764ae20c0d13eb5d6964cffca56d288762fe243da12c2aae527bb0f0c77",
+    "bytes": 2678
+  },
+  {
+    "path": "docs/web-fetch-result-proof.md",
+    "gitBlob": "882a7e4d61db3cb5a52c5d77c3c3f8a5af502241",
+    "sha256": "5d961179dca0acc2c892b7d07eb7e57b76c98c8ee7266f173af5ef5287e15e49",
+    "bytes": 2321
+  },
+  {
+    "path": "mvnw",
+    "gitBlob": "bd8896bf2217b46faa0291585e01ac1a3441a958",
+    "sha256": "cae96cef89ebea3531221f4ae17c23cf8edf67d00eae8306d4186ae1bbed4d02",
+    "bytes": 11790
+  },
+  {
+    "path": "mvnw.cmd",
+    "gitBlob": "92450f93273470af42eeee491874afb2039b700a",
+    "sha256": "4a361e1374a3e5ad6d03e18e9adc0cf181ac5058ac6203b76f0ba3b456b56481",
+    "bytes": 8292
+  },
+  {
+    "path": "pom.xml",
+    "gitBlob": "f13344b920287f912bd2e38456f6464825b7c335",
+    "sha256": "97bcb08a228d3d8e12816094b48168e2d6bee6b00aadb80f0d79687e05be067b",
+    "bytes": 7246
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+    "gitBlob": "d86cbd406fd7b23af322616057914e6539dde826",
+    "sha256": "395b5429f8611a191768223f95e0ab1aecf62e9b91edca10b4d796a6502b355c",
+    "bytes": 39259
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/OpenAiProtocol.java",
+    "gitBlob": "9d9adae7c36a7b9c3c89fe3b30e95e9643290bfb",
+    "sha256": "ac74a81a984201cc5fab26792df54d2943dcffba201512fe476d1b2f115fcd27",
+    "bytes": 16678
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/ToolDefinitionMapper.java",
+    "gitBlob": "68b3ef039c90cfed24758aecda07c74483cc5659",
+    "sha256": "1e84ea7d68a8e6ae7f2c67944fcf04f11406c0ea29a6c644424180d3b1369469",
+    "bytes": 574
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ExecutionScopeBinding.java",
+    "gitBlob": "d7d5a6403f97cbbfef58e412e699f98cc94c79cb",
+    "sha256": "f0a8c0c8583a9982143ba2c8e67b5eb34c89dc51951481a66228bf86dec8a4a9",
+    "bytes": 8565
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+    "gitBlob": "a2fe5c17472861c0e62f9c94649a0226c41c67de",
+    "sha256": "0f322c6001d3158338e07e499076797b21ca634cab83b10644f273959f01f87b",
+    "bytes": 11384
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+    "gitBlob": "4356725ac1c68a04f8a84e4c1be47fd413abf925",
+    "sha256": "6792da37985bf4c0d4ab3b60d981200068e1559851de3df26b70ad0726a7a7fe",
+    "bytes": 10864
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+    "gitBlob": "00cf1b43d61b5e475b0e6b81ff1d69c8015e8f0e",
+    "sha256": "07a169daa8fae2460c8cf183efdc2a1e32daa4e6929508064fe068a47e67d081",
+    "bytes": 223696
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcMcpRecords.java",
+    "gitBlob": "dba0dae9c6dfdde056ff70aa365e74285b74a117",
+    "sha256": "d17a56615356167c16997f540457beb2c031fa4595fb0d4ee5e0cae3498a6859",
+    "bytes": 4852
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ModelCosts.java",
+    "gitBlob": "f21644449acc532bbb8cb3280fa1f62535c88e1f",
+    "sha256": "2ab0740004b7d24772b801cd5676c1bf40a4db9a28846cfc18d709dd281adc69",
+    "bytes": 779
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+    "gitBlob": "12fe5ec352abe8d40dfa405ad8074ad12e4e3af3",
+    "sha256": "cebef6fc345093030bdca81c7fe6405739bf67bfa013c96e1513ca4f69364fcc",
+    "bytes": 3326
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReceipts.java",
+    "gitBlob": "2cd527a6ee196063587222cd424b0569b54dc600",
+    "sha256": "8d572688019d8daf1d787bf49b50be35647c208825475fa25f44859cb5febc4a",
+    "bytes": 5690
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReconciliation.java",
+    "gitBlob": "664484192e5419300faba2aa85f0866ad9669b8a",
+    "sha256": "fafd9eb5ceb7e0ce5641adfafa5eceebedbfb83814dea5e3cb032dacff092cb0",
+    "bytes": 3205
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/BuiltinManifestLoader.java",
+    "gitBlob": "fe252c572748b3669e5898f7a78475a5693796d2",
+    "sha256": "f8036afd48514492030f1595807b7eaa52dc4237b1f44ad232dab50a55df6453",
+    "bytes": 5347
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ImageReportComposer.java",
+    "gitBlob": "a7eaacc30e1aa29a12d2c19e363413c1594e0a1d",
+    "sha256": "0728a87e94f8e2771ea6d17e29173831820778c8f0034a3ee7ac1ac19f49f356",
+    "bytes": 10949
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportComposer.java",
+    "gitBlob": "77f5d16f72d514f9fcd1f74fbd1835ea11041352",
+    "sha256": "e7895ca1a9ee38302040e63950e3a24258c859e4ba50d0e7ffb6b80d92426f54",
+    "bytes": 12377
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportPolicy.java",
+    "gitBlob": "01970b207f02f181d5aeb0e36cab61975a5e03d6",
+    "sha256": "7853c63d08a3881fc3c24d10325f96e1ca19184ed7f0c07156ddf3aee1da7a9d",
+    "bytes": 6029
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/SchemaContract.java",
+    "gitBlob": "5bd7bed4a666c927d037cb2937080fa729a1ff88",
+    "sha256": "bfd42fccd264dd9b5b00cb69c0ccc771d89abfbf2fc083d73da66d912c92e5d9",
+    "bytes": 1977
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceContracts.java",
+    "gitBlob": "30a7904307bedc2daebd8f2cc5cfeaeb1c7beb44",
+    "sha256": "1881bb2466bba25898eae86a438175c02b850292c65709293e6dc8eea218918d",
+    "bytes": 6493
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceRuntime.java",
+    "gitBlob": "77b954930404bb21290e9362225916c4b68085d9",
+    "sha256": "20dcf7b1d89018b458f079ba8f41a85d6046331b0a598da13f9395c45146aac8",
+    "bytes": 17630
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/events/DatabaseEventFeed.java",
+    "gitBlob": "6f3c5e0feeb83d3b06acbf5ed312a956acbdf062",
+    "sha256": "f4ac0600de96ba7ca73427726c924d121d59d8d0f580f3b2d5e7e4e0f0860250",
+    "bytes": 3507
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/health/HttpResourceProbe.java",
+    "gitBlob": "e9544ad005fa9b410e635babe5508d9ef09be67c",
+    "sha256": "cceba91ef394b68d29bb3e4e5053d0c8db84d90fecdf9ade674b30d5ab7ea54b",
+    "bytes": 1764
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/health/LedgerProbe.java",
+    "gitBlob": "12dc38bc266f65a868f312fb1fb0d3ec13877629",
+    "sha256": "19db133527b85e5fd876cb2e56f8a7bcf013da9880048b45b77b3b5fdf87002a",
+    "bytes": 1151
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/http/BoundedHttp.java",
+    "gitBlob": "59cd4c6ff34c38de96bb735ee503f3f402c39734",
+    "sha256": "fdd03dbd6fa63499587243bcd20999f56a414d8bd274ae61986e53b79abdb9d9",
+    "bytes": 2756
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/http/ProviderHttp.java",
+    "gitBlob": "574d8a2c3a134a52ff4eb51626a1847d39e06c6b",
+    "sha256": "9129e9481a03764423a2368c1026bbee6242bb25a03f4c5ff83a51cc860420c6",
+    "bytes": 1536
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/identity/SignedIdentity.java",
+    "gitBlob": "c581d64b5aecf1c845b4e42e90f0728a7f943729",
+    "sha256": "5414099b410693cc70fcda8f6a62358f16759037d803dc8b800fac4aa49596b3",
+    "bytes": 2660
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/interaction/QuestionContracts.java",
+    "gitBlob": "d6806f2257ed1e859e8476957d147c51a957523a",
+    "sha256": "5dbcd8ce848a412a29e62a9cdc36d1915cd9033c2b53606634885d8da4718ace",
+    "bytes": 9389
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/interaction/QuestionSuspended.java",
+    "gitBlob": "d5add13e4e78df4441c1433ebbc7a91f60c80896",
+    "sha256": "981d10bc1ad384c3ccdcecb82de48f315fec97114856165c04f871e7eb29bceb",
+    "bytes": 310
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpContracts.java",
+    "gitBlob": "f491ec63b9a7ebbbbaf972b1ff8b301a7624dc1a",
+    "sha256": "c5ae2fc15eee2300e817de0241332160f1162a5e1a02ed1a8bcdfb41c526f2e5",
+    "bytes": 3252
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpPolicy.java",
+    "gitBlob": "5ca8e8d45d3e00b86119b9d82f65b8ffbfc39594",
+    "sha256": "6d1f149771c42d75f221083fd18c07ad63eaf77d5240898822acab902579507b",
+    "bytes": 1975
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpRuntime.java",
+    "gitBlob": "3be803544a18fbcb96a9c03798f03c09a2682c37",
+    "sha256": "ca0c41253837446b75439be7548a5d01b31e9dd324fc51158fa9f2c947f52604",
+    "bytes": 16029
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpSettings.java",
+    "gitBlob": "3f6e48dc8c5c002453dc386f3f1bdc8132a70487",
+    "sha256": "55fdb4baafa16dc119b4f6f65f3d15629235bb909b97a3209069caa41da3c05e",
+    "bytes": 1217
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpWire.java",
+    "gitBlob": "78a7c6e5a199f369ab2aa2b016219827ebb9b9f0",
+    "sha256": "aafd34bddd6da5f8c3d6d66dd486c04e1cc33c618ff5c1e53c1164dee4f1353a",
+    "bytes": 14496
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageInputs.java",
+    "gitBlob": "2e228fceff661855c1403dd8bbc793c6c5086399",
+    "sha256": "cf20c3cea2fa7ce7b7229a8c250bed03f17d3a5febf63f3dd9550c7c74bde399",
+    "bytes": 1900
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageMessages.java",
+    "gitBlob": "84838220f772000867d188614ddc0af2e163cb64",
+    "sha256": "76aa2253cd05ab8b2871643381f53621d03ff7c64f43915f6480f6bec1640e8b",
+    "bytes": 1885
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageNormalizer.java",
+    "gitBlob": "fd0f456b907a7f7b37024a7af467daf41ab364e8",
+    "sha256": "da788d612e35866c83bf11104f6c34bb8a626ab0525f79a6eb3d024e13e337d2",
+    "bytes": 17369
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageRuntime.java",
+    "gitBlob": "7e715ae397e69c91061994561c9f17f320b8a5e4",
+    "sha256": "8f4f3595f16dc9cb7ec0e1e7946f412e521b8a8ec73b0c1a7e7d28c2aec09209",
+    "bytes": 5092
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/BusinessPolicies.java",
+    "gitBlob": "c8c14e515726beef19fc324a30d1ef2aadda0690",
+    "sha256": "fa4c110d9bfd98776b81a805e04e6ead8ce869ddffb0ad2cb71cd268a71ef7de",
+    "bytes": 3407
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/EvaluationMaterials.java",
+    "gitBlob": "701b0c6dafdd89918da36a24c390c17b9bcc0a6c",
+    "sha256": "bf10716add7226ed84875499e6d57db97e3e329762984237e3493215304e8335",
+    "bytes": 5521
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/EvaluationPlans.java",
+    "gitBlob": "10d36c0b8578fae4dbb1be22e67c63c797ea1c8f",
+    "sha256": "f0a2a71fc5379741bda6781dbbfdfc136fbb893a8a546315a24292df6309342d",
+    "bytes": 8101
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ExecutionScopeOperator.java",
+    "gitBlob": "c7c7b8a9e4880463a8d6ec27940f8384ec391330",
+    "sha256": "7c83588414a63b6a434c6f772412f8a97a640d04b3c28edc4208ed85d7ed9852",
+    "bytes": 1886
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ExecutionScopes.java",
+    "gitBlob": "f22cd2550230c5065e30052ff1040a5bae945ace",
+    "sha256": "43b997c9731f0996b538e61768eff889cdd62adb091453f8bc4ae7419d373c4b",
+    "bytes": 3636
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelImages.java",
+    "gitBlob": "b351b92697d284a1e228288f3798808db70c61b6",
+    "sha256": "c54bff4cb54099cdeae1347e123bb9b45a16d8cac5fccbbceea78bb4269bcbde",
+    "bytes": 1988
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelInputBounds.java",
+    "gitBlob": "1bb4643cfbcb910c67ae4df28d3fead0a9f07a76",
+    "sha256": "e6ff939225012284f744ee2a44d1c85c46d350b2e0c5b05adefca77050e0a170",
+    "bytes": 1498
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelProfiles.java",
+    "gitBlob": "da17df2c0e4228b60013797e05d3aa760f01bc1b",
+    "sha256": "1ab2ac485c883ed50b9abd8927eaf221d21d8bdbc240d03078f9ba1485448f47",
+    "bytes": 18721
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeProcesses.java",
+    "gitBlob": "1fae665e50c8ce0e3dadd3bbf8442bdee108becd",
+    "sha256": "0824ace713026f3568a4e2761f6d170e9a03998be5fef2ec18c2d7e78446000d",
+    "bytes": 4415
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeResults.java",
+    "gitBlob": "a0d3400e86f484676177b2935833bf780b83d881",
+    "sha256": "fc87a833815a0416da230d3fdf7848b24d05150802838193742bad5051cf80e1",
+    "bytes": 10304
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeRunner.java",
+    "gitBlob": "14f9707ff472fe2a68161eae6fdc61dc8f0605a8",
+    "sha256": "97b1ce948d96b81a7419c923c05442b9db1ecc0ea873f9473fcde44e1e26f636",
+    "bytes": 13727
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchQuery.java",
+    "gitBlob": "b54887f79fdf5c07d841c98873620ef1da7d4025",
+    "sha256": "9aba5732f564c7aff96901774704404a85f50d0c016acaa3c4517d6d0c2f1cca",
+    "bytes": 2091
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchRuntime.java",
+    "gitBlob": "d49fc78569299339dcdb12d4052e023b2d7ccfc6",
+    "sha256": "99ba14bb0670de3dd1afff509a7e7bb0d1fc8ee643b672088b3ea6fd195940cc",
+    "bytes": 10632
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/SearchFiles.java",
+    "gitBlob": "00c5e6287903f13907d854e8f49d1059a8252950",
+    "sha256": "28e2c62c2eeac7552ad34098730391bdbf64e6b52534fa7293224528854059eb",
+    "bytes": 8240
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/ConfiguredOriginReader.java",
+    "gitBlob": "ada098b72076657aad16dfd891c3ff2dec8638f3",
+    "sha256": "a5f38e5af0c0f704069c4b97b89a14d5fc715ac0fb1bb92ee308951aa4c576b4",
+    "bytes": 4520
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/DisabledSearch.java",
+    "gitBlob": "5cca10e6dad3a7366314d0e00aad8c68bcb4ed34",
+    "sha256": "8c829b39255fadc28d6909ae5c6ff8845094ee7d1f84255d9bad20082a4c8b29",
+    "bytes": 612
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/FetchRuntime.java",
+    "gitBlob": "da8017a70ca7028c0b9a95e8a6a0111e37349db5",
+    "sha256": "81eb7ee6453817f7b2141824d42f9ac77102e737dfedd58a5c41c6e7186eb2a2",
+    "bytes": 4027
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PinnedHttpsTransport.java",
+    "gitBlob": "50e72e3fe2977dd6514eb4f39abe2f80c99d0711",
+    "sha256": "298997e7c6781a01e5adeba6738bd877f8fd118e735a159f6350f9000cdc507d",
+    "bytes": 9236
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicPageProjection.java",
+    "gitBlob": "17700bab1b4f11bde545cd5baab3ec5376c21855",
+    "sha256": "a831fdfe913f6cd6af96cfa426c643aa147791af41a0eaac1657713223569121",
+    "bytes": 2818
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicWebPolicy.java",
+    "gitBlob": "b74cc664059bcd4ce4323387a365737371ed6500",
+    "sha256": "5f236d6506a61bebf7561b5e5575a41b5c49cd634c4a763bb29e095abe25ceb5",
+    "bytes": 2928
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicWebReader.java",
+    "gitBlob": "603325c99508d425b0ed77c105e19f2a6fc138b0",
+    "sha256": "db36676de10ea7d3b8ff8d66df0f679023387e06897abe5b32e50dee36ae6613",
+    "bytes": 10482
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/WebFetchCancellation.java",
+    "gitBlob": "3c9fcbca587f6a715a2e91c794b8d1645323bfe4",
+    "sha256": "fcfb7b24cbbf4baf3cfbc4328d53af186c2bc8a643de2f199ecd07b15d859e15",
+    "bytes": 1697
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/BoundaryProbe.java",
+    "gitBlob": "30062a17375d15a94b13c66e1a8eb2a44927455a",
+    "sha256": "1abfea81c601f41a3069e3d927dd2028dde01b70658f05cdb4b848e9faccb6de",
+    "bytes": 1152
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LedgerMaintenance.java",
+    "gitBlob": "c6afe96ec6c3e0cc104fd44ae67b597b7a599aa6",
+    "sha256": "5249eaca4cf07d2cff1aa42b0a00e212d046892c0f96e403737eeba8275a30a3",
+    "bytes": 1321
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LinuxProcessReceipt.java",
+    "gitBlob": "8122e52639e2c2e295dc491d4ea3cee4fa91e07b",
+    "sha256": "b73e2bc362b74ee33f2e056e6495fe5d422382790317083f5c15c7581b88c989",
+    "bytes": 893
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LocalWorkerSupervisor.java",
+    "gitBlob": "df7d0d713938c8bebfff4c0fb166f67419179e93",
+    "sha256": "388d9a5c2bd3e4c5e1f3f93e5442964ab62e801838b44b84415fd5d6b0795bc6",
+    "bytes": 7032
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/OperationThreads.java",
+    "gitBlob": "51ce687305580bd46a0d5c5dbb9664ef1429cb9b",
+    "sha256": "d8c8dfdb65fe7d4df0b785061f360c868a42a444a6771d8a71150cc986fae384",
+    "bytes": 1126
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/WorkerLoop.java",
+    "gitBlob": "345f797dedeb76fa30d8bdc70d8d4d75d8c4aad9",
+    "sha256": "e86cbe664a60e33dd209a63207d9c96ccf2249d8c778f376c7c62818f962dbcb",
+    "bytes": 3902
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/LocalArtifactStore.java",
+    "gitBlob": "6a4d1f615fbccab35ec1ef4e79afeaed0386e402",
+    "sha256": "3feec39b45a251ac6e6d572f26ab4addde0fd38d3d2e7e21ed1374abf6888ddd",
+    "bytes": 4449
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureImageStore.java",
+    "gitBlob": "af17e08f1f128269f2fa2afe61c6d61e438f5db8",
+    "sha256": "86479057a60cad0cb2915d941ee8f61dbeb4b0df8212e8c93d50a8744402ab3f",
+    "bytes": 8305
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureWorkspaceStore.java",
+    "gitBlob": "ae2fe0f94badb674e35dc8aacbb895a23d616787",
+    "sha256": "e25b2ec330b6fee8ec639bdf45b6e5bb08d89e603bac1f7ef06f40c22dbbe7bf",
+    "bytes": 26979
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/api/ReadinessController.java",
+    "gitBlob": "bfd2249f5fb164f8e625c8ca618e1a4b72a81fb4",
+    "sha256": "815a74592e15d792b439a14a474e40ea96d7e497ac2abe2af561b922b662844b",
+    "bytes": 859
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskController.java",
+    "gitBlob": "195319c42d792f4d00730ffe7cd4fa12df9b6f18",
+    "sha256": "dc6d957f407ccbd56cdc4fe75d2ea35b1273694f1b2b5583f7ca20681f7aac0b",
+    "bytes": 10809
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskErrors.java",
+    "gitBlob": "b6da1fad338270a66131826acf071bacc5902842",
+    "sha256": "3a07fb7cbe2cc4d35070eaa53706575ab2f6f554567da95497a5102918188629",
+    "bytes": 1581
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/api/UserQuestionController.java",
+    "gitBlob": "e7b35dc5bb612fe3276e6ab7b60f077057c683a6",
+    "sha256": "2d0ad3660f32a459ebc39d42f9cc5e67de48e2ac3849fc0c07a4fa0de0d7deee",
+    "bytes": 4073
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java",
+    "gitBlob": "342ecde28693197a0c22f59ef8f6fe060838bc7c",
+    "sha256": "0deff4a26c627f1a5ea6bc67b2fb9c8d2ad28c1e324084fb7966029fbe1915c6",
+    "bytes": 10642
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/JimuApplication.java",
+    "gitBlob": "720727a19b5f92f19a939f461dac8072a23afd1b",
+    "sha256": "ad4a4451102dc6c65c4a551ad414c31c4de1bb2e20a3a19e24433ebf6d2a6866",
+    "bytes": 699
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java",
+    "gitBlob": "ea5e97e88b899ea6d96417bdeee27c55e4deb296",
+    "sha256": "78fccd40bd4cf0aafbb4b9d4a5e701d5076bfad0de984e4d09fd93aa5fdcd672",
+    "bytes": 5024
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/plugin/api/PluginCatalog.java",
+    "gitBlob": "a9e9ef3e61442d77ad167b841e053349baa01c48",
+    "sha256": "6b15b0965903035d1e1590a001b005f0a2b72c5d7cb667bf57d3c559244c4846",
+    "bytes": 215
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/plugin/application/PluginRegistry.java",
+    "gitBlob": "b29c7aaf6833dbda02e9b7f2577406e027e8c4d7",
+    "sha256": "49083188504c8a9af9c9a3b06f460cd9b1758d6a108c1f37a7a8bc85e8b6ec06",
+    "bytes": 1108
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/readiness/api/Readiness.java",
+    "gitBlob": "97e9848042caf17ad127b84332f2d4ffff4ebe84",
+    "sha256": "cb0a75a5293d544a79fe01ccb828e706ea487ccc599cebda01de91208999bfd1",
+    "bytes": 176
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/readiness/application/ReadinessService.java",
+    "gitBlob": "386f810103be02def6fc133cf5183353c359e91a",
+    "sha256": "f13943f6a17ebb916ed4eb915dc3af1701c1776170a630471d0b0b78f0261d10",
+    "bytes": 781
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/readiness/port/ResourceProbe.java",
+    "gitBlob": "b1656b8015ef563baf20ebd56fcb91e0765da33a",
+    "sha256": "8f011c76a06d46e89944b78f8adb1f3c17d513351fc1a9a3572cdf93e51b11c3",
+    "bytes": 135
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/ArtifactStore.java",
+    "gitBlob": "4a174a67607ae1b99573843bd7b4982efac767e9",
+    "sha256": "d2af4048e705d68cd68fb8b6f866648c338ccd5593af7151de9d68c9dbc50a13",
+    "bytes": 302
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/Authenticator.java",
+    "gitBlob": "09973caaa2d44427ff5bd0a8d95858b24913cb33",
+    "sha256": "6fc7e5e06dc6a4059a9a658f2672bcb6e71effbd1c7a97261dee0c6d6427877e",
+    "bytes": 142
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/EventFeed.java",
+    "gitBlob": "cb1dda7bc6633026b1cc4a4b4b4d4d5aec44a796",
+    "sha256": "d9f7aecad969c0dcc667de3b29ab6bd5ac7703f6788c399d67ad4a2d088d44ac",
+    "bytes": 278
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/ExecutionLedger.java",
+    "gitBlob": "4c8140c87257b1b04fc24fac23e6251190858682",
+    "sha256": "76645a63d5756dbebdecfdd361229ee28ca305249fcee100332bce443f1ae60b",
+    "bytes": 3747
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/ImageLedger.java",
+    "gitBlob": "949877e104a653120f5d6bcbdc86e2e78257b5fa",
+    "sha256": "8db19ebfa7fafcc3a77273faa9c0fd4d04188932c4edd48b6b7750d16684f171",
+    "bytes": 1497
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/McpLedger.java",
+    "gitBlob": "43970d4601f5ffa380cd801a7d8c5dd38686086e",
+    "sha256": "748bfc24fe81e0b175133bc32523dbc2a18afaa81985727e7ca03c6b426401a5",
+    "bytes": 2171
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/NativeSearchLedger.java",
+    "gitBlob": "210a5e7ef1ba8ddfd31ca0fb5df776b3a15fc159",
+    "sha256": "7a4eab740cb81092c5baeda4879cdacaa67a85efe31ec32007882dc85fef44d7",
+    "bytes": 1630
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/TaskFailure.java",
+    "gitBlob": "d8191eda6e9610a77b8c61c78b7c869128c33bc1",
+    "sha256": "5bdd89e108e20a8892f9f20bbce98a327d2df325992c35a49275a9bfe1d4e4ad",
+    "bytes": 472
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/TaskImages.java",
+    "gitBlob": "6d5055e317eab7734ac6d4d73bb4bca572ca4240",
+    "sha256": "8947074ab0900cd17ec8b260633da2f27ec880f72dd431851d8f7f6eafceff4d",
+    "bytes": 1922
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/Tasks.java",
+    "gitBlob": "4ec8b317cbc2793de9fa8e2e51669151f72e945b",
+    "sha256": "458057b47bdbbc8f2b29cb5f8d77f368d1787d736b6d2a7975db0b414ae05902",
+    "bytes": 2413
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/UserQuestionLedger.java",
+    "gitBlob": "c0034f84c4502015bf2e092c2b2549f93135b2c7",
+    "sha256": "8a797a6de6d9af9a11e5325fe968edc3d4197409cb85543bd65f63fcf2221c69",
+    "bytes": 1112
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/WebFetchObservation.java",
+    "gitBlob": "e0a7e377c0f3c993c60301577e172a92b62601b9",
+    "sha256": "cedc392ac2fe9ff247d89b9f8e3acbf7f8481139c09b23a1c6330f3b0f61a2b8",
+    "bytes": 1749
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/model/api/ModelSnapshot.java",
+    "gitBlob": "49ae327683ab17b3ca21cf95753ad7bc5beddabe",
+    "sha256": "007421dd53efabe2a0c960a86ac709092e7713e520100778c126a8d90b9d2175",
+    "bytes": 3402
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/model/api/ModelUsage.java",
+    "gitBlob": "42687f19c258fa516a541bbe1a8f5d7fba47b828",
+    "sha256": "1ef390c8be45e4b78eaae43e83367142ef94616f0f9d81e8feec69eb41183e12",
+    "bytes": 363
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/Cancellation.java",
+    "gitBlob": "1505130a6b67637408b328e72ac5ef0a832113e6",
+    "sha256": "55394f30122be1227b2f0f368e03fe92b2768bc221963fb8fc222c7f30b612ff",
+    "bytes": 131
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/EditPort.java",
+    "gitBlob": "a3953acbc5b499e171f68d76b4ce5c1aea529c29",
+    "sha256": "d2aeb1ec94a79d5841bf5becb6419361b459f6261679475c432041892647dbc9",
+    "bytes": 305
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ExecutionContext.java",
+    "gitBlob": "bbac83a10a2071324126db42988242f7ee9e2c11",
+    "sha256": "a4a282739704f3a05e60f42eaad513d3aa490a2d5f9b01f92025bd199c957e57",
+    "bytes": 259
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/FileFailure.java",
+    "gitBlob": "d593b227e899c46956cbf4f02481057bc76b037f",
+    "sha256": "d9fa9d6e4e50b0e3dae3c6082f893d3fd462e1fb322d5a171f301a97a8fbe109",
+    "bytes": 449
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/FilePort.java",
+    "gitBlob": "ef787e9d7bd49f9c2570d2e1cf1ca62a32996c7a",
+    "sha256": "a46706c9595a44e88cb2be4619f49497da43cf7b2f85d1ea7151b5e76321eb6c",
+    "bytes": 751
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ImagePort.java",
+    "gitBlob": "1324cd039a41bcb263315ff38dc5a7f48c6413ca",
+    "sha256": "29efe533f2099ca273c71c56738d7d5a3c068dcc6993c7fa7dc0e6b3d27c7de2",
+    "bytes": 585
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ImageReportPort.java",
+    "gitBlob": "e0b7023c3840cb852d974b9c60c4d752463dd4a7",
+    "sha256": "8ad910214d4d037c93157e15fe3f581c7e4e898e9f847a6d2384a3a44b12aff4",
+    "bytes": 1460
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/McpResourcePort.java",
+    "gitBlob": "721b683f9abd0d5d13369907c08b212fe6147aae",
+    "sha256": "f52d2fb14727442f09eed3109297fcc6751e648f0b79df4d77e7ac43b7e2300c",
+    "bytes": 1727
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ReportCompositionPort.java",
+    "gitBlob": "e80041b084afe4369e775fbd8b83ec9d84100527",
+    "sha256": "d9942c07b755a8a98482944d63e7973134881f07353655ba24d38c7d2b06017a",
+    "bytes": 1043
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ReportPort.java",
+    "gitBlob": "1280632ae396e22ffb1cdcbe75f1be9c63802b48",
+    "sha256": "2a86c153af43cc061102f32221205324fd4fa58c54a7da97c4e5677285d87150",
+    "bytes": 475
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/SearchPort.java",
+    "gitBlob": "ea95792f894f08c9e9a5a5741ffa4a9114793e6d",
+    "sha256": "5b3d9fc513a7fdd9aee371505df573f65679453909642c8124770b95ba3998e5",
+    "bytes": 823
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ToolDescriptor.java",
+    "gitBlob": "b6c4668d28cece6bc0d88f0e2d44b4ba45c6f9a0",
+    "sha256": "5bbbdb51166dc926315ca44a8d79b9c16ef2272c0fb18002eeeb32783d57fa41",
+    "bytes": 243
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ToolPlugin.java",
+    "gitBlob": "1e457ddcfcc0002e4c1d7d06fbf679ca1aac9391",
+    "sha256": "cf11e06398fef375efbb42967410aba0d9a3e39d852a65b443f6d51d5fe54bf7",
+    "bytes": 230
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ToolResult.java",
+    "gitBlob": "ea32363b61d365c9c06b0fafd6cd17abe9e58253",
+    "sha256": "bb23d44ebaade8733baad9c2f630daefcedd7bd44a53f6715adf675bdf808903",
+    "bytes": 167
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/UserQuestionPort.java",
+    "gitBlob": "5dd503de19f9c8f3c80d24f9c0e3b10e639837ed",
+    "sha256": "4c15ebe653e006c1dbf40919349d3f4f7a92098d74edaba42886265e26c6df1c",
+    "bytes": 613
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/interaction/AskUserQuestionPlugin.java",
+    "gitBlob": "0f01e29dde7641d33d9c6f8f48935cf2d4b4d7fe",
+    "sha256": "1e0d755d81d4ffba3464bd4efa4482cc5f36969f02949396cc27ffc6ca58b752",
+    "bytes": 1095
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/mcp/ListMcpResourceTemplatesPlugin.java",
+    "gitBlob": "94713718ca94c1ca205adf9d0dcabed75d873653",
+    "sha256": "3812c9f9d676ae998a003f903c2319c97e6bf0ebc5f979cc46fa7682466418e9",
+    "bytes": 1044
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/mcp/ListMcpResourcesPlugin.java",
+    "gitBlob": "f38ec4b1608b0436d56f9cbfc3a9049f98edafe2",
+    "sha256": "c374b3010378d4cebfc4c101c13767438c9a70f29450eda4eb86d8e9ce974138",
+    "bytes": 1028
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/mcp/ReadMcpResourcePlugin.java",
+    "gitBlob": "6ed7d4f6e403f0e1ecfffb9a44ad29cefe8e6cc6",
+    "sha256": "b04697c2de9863b175e4f84067899547865f6c7d2d81b1893f09a7c132f57423",
+    "bytes": 991
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/FetchInput.java",
+    "gitBlob": "936088352d7f65aefa3d0666feafd1c6b479d23f",
+    "sha256": "c396dfd034095c429c80a55bd88e4393dc185973d20c1cfc653eb0847a89c32c",
+    "bytes": 103
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/FetchOutput.java",
+    "gitBlob": "29c416deb4cd537a1e009825bb2eba173487439e",
+    "sha256": "528d18c689440d47fa78c675e1646dcae5b24dff272e64680a65227ef0475de9",
+    "bytes": 161
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/WebFetchPlugin.java",
+    "gitBlob": "4a787cc523979f86cba89d8c151597434126ed90",
+    "sha256": "ebc891d547fa454d989d98be243f5fb4fe0d8afa0e1c4ff31b79f58a2843df34",
+    "bytes": 1243
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/WebPageReader.java",
+    "gitBlob": "ca0b10e9f45fda87d267814057d7a91b7deb1d81",
+    "sha256": "ef42c556fc4ae74fe8214a6c19ee02dd3c19bf05b46c6100c2e2f0f12b620a97",
+    "bytes": 222
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/websearch/SearchProvider.java",
+    "gitBlob": "2ff241f8a1f2208e084607152a23374883392235",
+    "sha256": "867fa92cc93068ec9196cdecd4bf6bf9a85ea23e125f8783ba316c4e06db0ae5",
+    "bytes": 926
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/ComposeReportPlugin.java",
+    "gitBlob": "e4998ef7480532cae0a168995041572f946b68f3",
+    "sha256": "b44196a4ef354be1b0cb05fc2a17d911c5e23c5aa32669e85ad0305a97b5804d",
+    "bytes": 2761
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/EditPlugin.java",
+    "gitBlob": "5b0c8b4b57479aecd4c42c990c17e49b12965a1a",
+    "sha256": "bd34929b2b2901c53105049f676b603faa13854082d915c559c0487936db6bce",
+    "bytes": 1346
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/GlobPlugin.java",
+    "gitBlob": "1f0933ff41d3de0e5bfe97eca2d2e44d980d8912",
+    "sha256": "5077ad9edb22fb036e8dfbd69cf4e454404360d2e16eb8ed7a18b27af6f7c99c",
+    "bytes": 1246
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/GrepPlugin.java",
+    "gitBlob": "c0c8f02dcddd5e27d725808c6c5261ba2ddcd107",
+    "sha256": "f119b029e8091304961c6917996603bb67adb10489560bc5860624fa6a091136",
+    "bytes": 1288
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/PresentPlugin.java",
+    "gitBlob": "dc6adaa030d3d9fddfc3a2db0fe2bb73e5bee510",
+    "sha256": "e85098df332d49c0942f17ccbc3585e89a8e6d21998f51da8c718b87eeaf86e0",
+    "bytes": 1828
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/ReadImagePlugin.java",
+    "gitBlob": "c18aca28b343e94a63f36664a2f58e86067c3b6a",
+    "sha256": "31303b131b665bbdd304f498f44e91ac4a2132f3a6d8a02a7db5e4ef6c92104b",
+    "bytes": 1352
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/ReadPlugin.java",
+    "gitBlob": "f34db3849fd9e9ec75cae09f645030dfcb1bd4ad",
+    "sha256": "993b1216b1a706dbb80dc8377f9296d53d3381adf067836c4b719451a5f2caed",
+    "bytes": 1266
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/WritePlugin.java",
+    "gitBlob": "2c2374b3fb0efe17f442b0d4ac293891bac3e8af",
+    "sha256": "5727802884b6da0ea6203b1f87e29362d11e57a9d927ec93f644aac267ecb2ef",
+    "bytes": 1284
+  },
+  {
+    "path": "src/main/resources/application.properties",
+    "gitBlob": "8d48ac38f9b45bde9479d86c964b15351116f646",
+    "sha256": "bc2cd5b44a139b981cfcbaea61e1a01a18d99d17102bd7b40d1a5fe25935625a",
+    "bytes": 418
+  },
+  {
+    "path": "src/main/resources/db/migration/V10__business_task_policy.sql",
+    "gitBlob": "b0914ee1c41f4051b90d348ca70e27f059743ddb",
+    "sha256": "dd53e8624bbee3fb8e3ed4edf826d67bfa2a074ac1fe6262c4cc7517d5bb20e4",
+    "bytes": 387
+  },
+  {
+    "path": "src/main/resources/db/migration/V11__native_search.sql",
+    "gitBlob": "6145f1a0ef2e0f4cc9422bf2233a5a9f36f6658c",
+    "sha256": "6a13006bd44552a2507a4e15b3a5fec7dfab20326773d60b440fcd0c288fe6a9",
+    "bytes": 1780
+  },
+  {
+    "path": "src/main/resources/db/migration/V12__process_observer_identity.sql",
+    "gitBlob": "63169cfd56ddfe914d7047b3c641a30f6493f86c",
+    "sha256": "0229b5e2064768f14806845e0045a3dfde817b08e397e6747b1f54caee2802d1",
+    "bytes": 205
+  },
+  {
+    "path": "src/main/resources/db/migration/V13__task_images.sql",
+    "gitBlob": "cfa0c4f3610c63ba13e3931c87d5bfabb7204d42",
+    "sha256": "c6f4ad00f2bb2c618cdc5551420e272e883d6bfc53c64e877084d184817f147e",
+    "bytes": 1946
+  },
+  {
+    "path": "src/main/resources/db/migration/V14__image_checkpoint_retention.sql",
+    "gitBlob": "ad05f3f06ba2b4b11682a2b4e071da0cb3f20b16",
+    "sha256": "3efa3e1240e1f3917265915d0e3713d799b7839a45618f97577fc1029a9801ab",
+    "bytes": 1399
+  },
+  {
+    "path": "src/main/resources/db/migration/V15__mcp_resources.sql",
+    "gitBlob": "1259c73af80c1d26a6cb861ff447bff79dcf059c",
+    "sha256": "4a33b950278439feac9b11312381b78207f38f78a298f78923402db86bd03244",
+    "bytes": 2330
+  },
+  {
+    "path": "src/main/resources/db/migration/V16__durable_user_questions.sql",
+    "gitBlob": "64ee58e9b29a653fdd4d8893290ecf6941a6999e",
+    "sha256": "8b24cad2e4cd2c8118274972e81623a832ead2b47f0899f33b51a6ae93258c28",
+    "bytes": 2694
+  },
+  {
+    "path": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "gitBlob": "180577db7e24ad8d5ad10738144022b5906cf578",
+    "sha256": "c1d4c158b1f5c5a9cc955bee9fe93a5cdbed7a2a80e3026f4c835da235977e70",
+    "bytes": 7122
+  },
+  {
+    "path": "src/main/resources/db/migration/V2__local_worker_receipts.sql",
+    "gitBlob": "890703c30a40b60d1dd9d104ada1f08c425c6809",
+    "sha256": "98497bd4a3d2adbe3f401036a123d11b9c2af17309f452c8090ac8158a9c02c5",
+    "bytes": 295
+  },
+  {
+    "path": "src/main/resources/db/migration/V3__attempt_quiescence.sql",
+    "gitBlob": "1acd0b7fd43cf311691a8d2fe50e6aba0a1cc0a2",
+    "sha256": "f2095fb71fd867c5715f7a531ea79b72f4beb3c42f775dd421986d76ebb9e6df",
+    "bytes": 253
+  },
+  {
+    "path": "src/main/resources/db/migration/V4__model_snapshots_and_budgets.sql",
+    "gitBlob": "500036c8e0688ac977416b734fca4d42205c4230",
+    "sha256": "1a1d5fa336be3d55decfab17cd7acf62abdfcab520b35414d3f8fb0cca7ac981",
+    "bytes": 1942
+  },
+  {
+    "path": "src/main/resources/db/migration/V5__task_tool_snapshots.sql",
+    "gitBlob": "5c2f81ace158b51b866646bfeb7f533c36171034",
+    "sha256": "f87c2370145760e4d712bb9ff62a1ebcfac0d3461aea67b0f4b7c59f32c72615",
+    "bytes": 1289
+  },
+  {
+    "path": "src/main/resources/db/migration/V6__report_receipts.sql",
+    "gitBlob": "0cefd0f2647c481a5fe09bfbe28975697454e217",
+    "sha256": "0678241322741e682f02c580f4894f68de8283a17538a2dd70ff350e394a5d7e",
+    "bytes": 257
+  },
+  {
+    "path": "src/main/resources/db/migration/V7__bounded_evaluation_plans.sql",
+    "gitBlob": "f5f9a558234394520c237a42a3dc397038cd055b",
+    "sha256": "cbb04f1f00e5ee468def9fe9d3d309947e691f4f1b1ac54e426a856fc761a314",
+    "bytes": 876
+  },
+  {
+    "path": "src/main/resources/db/migration/V8__evaluation_material_binding.sql",
+    "gitBlob": "465995432ef0b334fd11bfa910ae5704db83daaf",
+    "sha256": "f91f70a6fc008b02942ded03bf25bcb6870bc7f272df8546be0cfdcb7b12d28d",
+    "bytes": 326
+  },
+  {
+    "path": "src/main/resources/db/migration/V9__evaluation_execution_scope.sql",
+    "gitBlob": "9261cecce311aa084506173ff4e0cd7892e492eb",
+    "sha256": "bd4e7327e825554ccf64b2110a9bec7e203a0443b99eb01bc65504ba4cba7066",
+    "bytes": 771
+  },
+  {
+    "path": "src/main/resources/evaluation/qwen-main-v1.json",
+    "gitBlob": "f0a319fd5538d66fee39c719b1f94b0f020bd4b1",
+    "sha256": "f2c2ea68f6027b00b6af5162b8e999471f03844df53ca9298f9b613cd2fa68f4",
+    "bytes": 955
+  },
+  {
+    "path": "src/main/resources/evaluation/qwen-main-v1.source.json",
+    "gitBlob": "b2c4d7b4db4b2552d5d570fac0ab384f45e8b113",
+    "sha256": "b58e55e317cb070e64b1949ea7be623beaa75ad83fc315ca63feaae217bbaab8",
+    "bytes": 7287
+  },
+  {
+    "path": "src/main/resources/evaluation/qwen-pro-optional-v1.json",
+    "gitBlob": "b3860f5a20e5edd7c572f8f2519656455601dfea",
+    "sha256": "ff9bb43db5cc7377ec60a516dab560a7c25ffcd4e0c177fe2cf3eecaec750d37",
+    "bytes": 1081
+  },
+  {
+    "path": "src/main/resources/evaluation/qwen-pro-optional-v1.source.json",
+    "gitBlob": "3e19d3bee690cdd7408e7e6bdabb1daaf3ad1a0a",
+    "sha256": "7af19d6808e81c9d6c77904ff63ee9339fb14d6e5cf47fd2875736977fc024ef",
+    "bytes": 8457
+  },
+  {
+    "path": "src/main/resources/interaction/LICENSE",
+    "gitBlob": "c1f7a78e89e4e4dc7b86664c3b3c76eb5eee1785",
+    "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+    "bytes": 1065
+  },
+  {
+    "path": "src/main/resources/interaction/THIRD_PARTY_NOTICES.txt",
+    "gitBlob": "949c8b2da376c981366a9c18924b76546efcc127",
+    "sha256": "f89efbb13a2077bb2fe8e92abedefe5273ce9d3d9bb355e2fa5252ca34ec4160",
+    "bytes": 422
+  },
+  {
+    "path": "src/main/resources/interaction/answer-receipt-v1.schema.json",
+    "gitBlob": "20ba4ab0438c77f98b1804abd3c354677cac255a",
+    "sha256": "869e2ca6debd97f80ac35378112c7a3cfab7c5f50d6e46b7059ccd41b0c05e6b",
+    "bytes": 967
+  },
+  {
+    "path": "src/main/resources/interaction/answer-request-v1.schema.json",
+    "gitBlob": "821d8933d10d6f83f72b7cc55db80be42d7d9444",
+    "sha256": "35fbb2c105f94b3f3e3cd8507d4aa6412ea57912d54c4c3c6469ec93e4df4112",
+    "bytes": 1280
+  },
+  {
+    "path": "src/main/resources/interaction/ask_user_question-0.1.0/description.txt",
+    "gitBlob": "5f19dc940ca837b97b693f1144ee28c7f0cc9a80",
+    "sha256": "25aea8b40ebb02a055b0c8522f5a1c5c8982808a91e146fa316708719f69dd30",
+    "bytes": 112
+  },
+  {
+    "path": "src/main/resources/interaction/ask_user_question-0.1.0/input.schema.json",
+    "gitBlob": "a4f264ee05bd1873956db9e31c0f11b7d8bc2829",
+    "sha256": "b4826a19462ff68aa2325843edf26b9d60ac0558d3f0c3f800e53875345102dc",
+    "bytes": 1597
+  },
+  {
+    "path": "src/main/resources/interaction/ask_user_question-0.1.0/output.schema.json",
+    "gitBlob": "0e6eb2e8ec80f053507a6f445880c9fe321c91d5",
+    "sha256": "01a8cfc1f700d5d7a6be665480284073143841a27d8fd99b4ad76f9e3a7a4fe0",
+    "bytes": 1026
+  },
+  {
+    "path": "src/main/resources/interaction/ask_user_question-0.1.0/plugin.yaml",
+    "gitBlob": "5e7939473fc76a26f173184ff775afa911da47b5",
+    "sha256": "8131479a7640390bd1bbe282fe337588c2cec0bd101005b4262e1779a22cd60c",
+    "bytes": 926
+  },
+  {
+    "path": "src/main/resources/interaction/ask_user_question-0.2.0/description.txt",
+    "gitBlob": "3ac76e5504d94eaec6c697a66546350a3aaaf2b7",
+    "sha256": "6cf520f97ce9afb915f02dda551130f04f2c16f613b7ffa0e28fad38e7b76c52",
+    "bytes": 320
+  },
+  {
+    "path": "src/main/resources/interaction/ask_user_question-0.2.0/input.schema.json",
+    "gitBlob": "091a4f6e7efbbfb96c745ade41f0eee77481de35",
+    "sha256": "57fabb51fa4dbfc961f455e559bdc17aac95ead256e46c0d6f9f41f8eee913f4",
+    "bytes": 1899
+  },
+  {
+    "path": "src/main/resources/interaction/ask_user_question-0.2.0/output.schema.json",
+    "gitBlob": "b32506b4d00bf0f9a2a0e8a323262fb6c651e7a0",
+    "sha256": "298380b43ca65139d77a05ff886a21b82eead5444d86f7109b76ec04ba1853b7",
+    "bytes": 1929
+  },
+  {
+    "path": "src/main/resources/interaction/ask_user_question-0.2.0/plugin.yaml",
+    "gitBlob": "419b1d31efc914842773a81b3bde84fa0a7504bf",
+    "sha256": "c7d14d8bfa825bc249da3eb8457d90ffc20ca587855e64f612e17da482c26378",
+    "bytes": 926
+  },
+  {
+    "path": "src/main/resources/interaction/catalog.json",
+    "gitBlob": "08873ec3f39242bc4c3b1e258fa8d1143ce9d7d5",
+    "sha256": "7ba04c41f8ce7129ff427d6202637ed9d4d9ec060028615a346359f0e88844b6",
+    "bytes": 1847
+  },
+  {
+    "path": "src/main/resources/interaction/examples/answer-receipt.json",
+    "gitBlob": "c859eacd1f960121f110a1642b32430a8995ae41",
+    "sha256": "23fc0e6f769bb1b22638310d3394f88016affa4d997042a8941bec58409021e5",
+    "bytes": 273
+  },
+  {
+    "path": "src/main/resources/interaction/examples/answer-request.json",
+    "gitBlob": "e4bac7e628e98ad7357c8f4507fc3bbc92e7ad22",
+    "sha256": "1546a93beaf90cbfea486769a5f6292d3d6dedb0115ef6e108ee4289c62fb553",
+    "bytes": 147
+  },
+  {
+    "path": "src/main/resources/interaction/examples/answer-result.json",
+    "gitBlob": "8859bb1ae9289d17daa2e7de2cc2f409062c4eda",
+    "sha256": "9079f80708d0236ba2ac34d68198a85d784de46bb7bc2c20772f39a7534d1e1e",
+    "bytes": 137
+  },
+  {
+    "path": "src/main/resources/interaction/examples/binding.json",
+    "gitBlob": "1bb6932255464b9497c9f34705237a8572b00d16",
+    "sha256": "6babc22a82bc650f362bef630849aa2f63a6472648c44e9041e959d6e2988d75",
+    "bytes": 295
+  },
+  {
+    "path": "src/main/resources/interaction/examples/blocking-input.json",
+    "gitBlob": "894c862030bdd9cc2d24ade792ede102c9cb1898",
+    "sha256": "e4d923be83f19acb12d25eb4914e79a035f5e314851a90124771291e5c287785",
+    "bytes": 280
+  },
+  {
+    "path": "src/main/resources/interaction/examples/empty-list.json",
+    "gitBlob": "189020e18bc9acace96439ae7cb707449522be03",
+    "sha256": "da6fa0fb6dc64a3faf1f81f830b8696ccf02b9c654135111429090fa240870f8",
+    "bytes": 34
+  },
+  {
+    "path": "src/main/resources/interaction/examples/indefinite-input.json",
+    "gitBlob": "5b1b65bf7e73a9879fb39746f45a748851a27c28",
+    "sha256": "bc172f14cc7308d559e7e3a516b86d304480eedf9b1c4a13fe8c8132c7ec8aa1",
+    "bytes": 122
+  },
+  {
+    "path": "src/main/resources/interaction/examples/late-reply.json",
+    "gitBlob": "46744b50d2d665d9febfc55205c03d830cf5b404",
+    "sha256": "4c2e569c730506b3cc0e9b74531c70e50b5f529491839053573e89d37c8a73a4",
+    "bytes": 532
+  },
+  {
+    "path": "src/main/resources/interaction/examples/open-list.json",
+    "gitBlob": "8135382c92bbeb0794ffbb0dc323f0c7aa98ec4a",
+    "sha256": "e0eb63912914a4a380a3af10b0187e23616982e5415bd9aadf2cb390896c8742",
+    "bytes": 749
+  },
+  {
+    "path": "src/main/resources/interaction/examples/pending-result.json",
+    "gitBlob": "df98c648c547c4eea64f2826f948921ae8e503ce",
+    "sha256": "d4a8617e6fa063e2da34e68b2e1ae02ae40953d1d49331996251ac145eaddedf",
+    "bytes": 367
+  },
+  {
+    "path": "src/main/resources/interaction/examples/skip-result.json",
+    "gitBlob": "c7818b52164e9a9c96de8d47a030343f4218b0ea",
+    "sha256": "9631cdea506f30b8e818524e3c04ee27ad9325de3b5dcb3b2f3044107d5fd590",
+    "bytes": 76
+  },
+  {
+    "path": "src/main/resources/interaction/examples/timed-input.json",
+    "gitBlob": "aa6fcfddc8ebcb21b6092a4a0843defbc4886bef",
+    "sha256": "3264ad23740d56b99bb328175007b4ebf864d769a139d4b644a18e3e9882dc11",
+    "bytes": 256
+  },
+  {
+    "path": "src/main/resources/interaction/late-reply-v1.schema.json",
+    "gitBlob": "db8a00f0ba7b40e0736ac6e4ef2b095013541289",
+    "sha256": "e02623a944bc41114c0c0c8c1bbb7b66ab53fd133dd81a962f71edda42a65489",
+    "bytes": 2743
+  },
+  {
+    "path": "src/main/resources/interaction/question-list-v1.schema.json",
+    "gitBlob": "1d02cf91f3ff1a3c2a519729e83659e1beea902c",
+    "sha256": "e965de1b107ede8acf06a0f543ef595ddd3d1909e3baf1673e75ea61073ebe2f",
+    "bytes": 6346
+  },
+  {
+    "path": "src/main/resources/interaction/schema-index.json",
+    "gitBlob": "e9d0457c67d233348385040e3df09161df142294",
+    "sha256": "18a4863b00c5bb875ca9a62a3ed79b2fa99009a2cefa939a8c722cd7dc2ce005",
+    "bytes": 1970
+  },
+  {
+    "path": "src/main/resources/interaction/task-binding-v1.schema.json",
+    "gitBlob": "5259c6ab62b1f6146334c15bdf98ca755afd93bb",
+    "sha256": "d6d6828a4a16bf222d5af3eda83d44b222f11c22db8e2a100559e101313dfa89",
+    "bytes": 907
+  },
+  {
+    "path": "src/main/resources/mcp/catalog.json",
+    "gitBlob": "7b1857eb2ad71dd87a55641fc1484c11e00a087f",
+    "sha256": "c5da8a217cd0c5fe2b2a4ef118187f3ed737f7e8ccb2f412218e875381ad82d9",
+    "bytes": 2126
+  },
+  {
+    "path": "src/main/resources/mcp/examples/list-input.json",
+    "gitBlob": "ed0a807a0d94e6461b7718c0881fd7488da5485c",
+    "sha256": "a158decdb2a26324110b4e0488dbfa0d93329501bde3a7e2101f952e3ebeb838",
+    "bytes": 23
+  },
+  {
+    "path": "src/main/resources/mcp/examples/read-input.json",
+    "gitBlob": "616c22810829ce1b2548f4b70cb8ca2af8b9abdc",
+    "sha256": "60567f9cebf49e1b65fe4ebd9e15f8c822e904983c24cf8a54ba1a9bda866697",
+    "bytes": 57
+  },
+  {
+    "path": "src/main/resources/mcp/examples/read-output.json",
+    "gitBlob": "f15d8f6ee9e57f0d4ffab3653a32f6b02f008335",
+    "sha256": "c1aa6e3f9b4360cda805461f3a1e1bed8ae9e70116d6de7ff811e148deb40c49",
+    "bytes": 769
+  },
+  {
+    "path": "src/main/resources/mcp/examples/resources-output.json",
+    "gitBlob": "6a61b3660b0d1f88c883b76e644beead3e9ddba4",
+    "sha256": "ff521850353c6a48c64d964c09e359ba734252ad851987a4e2476ab6dcdcb9fa",
+    "bytes": 618
+  },
+  {
+    "path": "src/main/resources/mcp/examples/server-profile.json",
+    "gitBlob": "f73ec277edbae25dac7f5eb719f2e714f95920b0",
+    "sha256": "01fc79b51eb1357174a40c14df5efb5c751d5817116fcd3fd52c264be1be2494",
+    "bytes": 656
+  },
+  {
+    "path": "src/main/resources/mcp/examples/templates-output.json",
+    "gitBlob": "5a1365a61f9a550392adb95c68c2173ba45a43bb",
+    "sha256": "3cbfcd1598d0dcff359f1ed05e86871815db573d059a10d2709700f012b07d53",
+    "bytes": 610
+  },
+  {
+    "path": "src/main/resources/mcp/list-snapshot-v1.schema.json",
+    "gitBlob": "7ad45b4d414094d911373f5819dae926bdf40404",
+    "sha256": "3305bee394e407a1cd376f07a159e2b01028141efca037a136189de99a0409af",
+    "bytes": 1886
+  },
+  {
+    "path": "src/main/resources/mcp/list_mcp_resource_templates/input.schema.json",
+    "gitBlob": "521fed758c5cadbda1fa93fab57c80555fc4c41a",
+    "sha256": "3286b79a0d26f83175b185cbedaa3169b12ca4b7f42ea583ca4c6d4156793332",
+    "bytes": 472
+  },
+  {
+    "path": "src/main/resources/mcp/list_mcp_resource_templates/output.schema.json",
+    "gitBlob": "daba999c8621b14354852c19c169d6c17369e33d",
+    "sha256": "757410a2b9e69a156dd294e30c6b67dc98e03d89c5aef2735c212ef6da06ebb0",
+    "bytes": 2363
+  },
+  {
+    "path": "src/main/resources/mcp/list_mcp_resource_templates/plugin.yaml",
+    "gitBlob": "eb2c5237edf09a92a0d421aad1dc7a7e7edc0266",
+    "sha256": "415f4670e231a68ec062c2284163f60c1c514c849df2e196e86acb58ce49dcaf",
+    "bytes": 906
+  },
+  {
+    "path": "src/main/resources/mcp/list_mcp_resources/input.schema.json",
+    "gitBlob": "c16938accf210a7b49d8c00272714a1b718a129a",
+    "sha256": "29fd7302a672247a952d9abbe4fb35174e97c64e91a3a60b0612e97f8454ddb5",
+    "bytes": 463
+  },
+  {
+    "path": "src/main/resources/mcp/list_mcp_resources/output.schema.json",
+    "gitBlob": "23a38f340fecfe93d491da2594cfd50a35c002a4",
+    "sha256": "1d97dc3c26c23f3ff7576d2022e18d8ca87f78531a64284addbe1472b8ac3087",
+    "bytes": 2522
+  },
+  {
+    "path": "src/main/resources/mcp/list_mcp_resources/plugin.yaml",
+    "gitBlob": "6c644467833fa510013dd6760122e84d4ae56c02",
+    "sha256": "12f874c8b47a8600cb50742c683c60bb1bbc01d43e5c69aa0b5350bd415dd472",
+    "bytes": 880
+  },
+  {
+    "path": "src/main/resources/mcp/read_mcp_resource/input.schema.json",
+    "gitBlob": "4702941beff26986a5e390da50a0b45645be0198",
+    "sha256": "99bb5fea5f44d507585a3ba512addda2050c9a54ac99647977f2fe0932563650",
+    "bytes": 576
+  },
+  {
+    "path": "src/main/resources/mcp/read_mcp_resource/output.schema.json",
+    "gitBlob": "cb13d3b65e59c3d0df4d7523bd1b9d303054ec50",
+    "sha256": "913b8a04ef378864565dfe764d0a84e8c4434557f998cb67bcc6a21f89c8f1c9",
+    "bytes": 3007
+  },
+  {
+    "path": "src/main/resources/mcp/read_mcp_resource/plugin.yaml",
+    "gitBlob": "0236a156593bee0491f7814136308afff32d5a55",
+    "sha256": "3f3c6e3397da857f1d57c6ee4522d3ed71ae49c086da6a61149edf218e45f42b",
+    "bytes": 877
+  },
+  {
+    "path": "src/main/resources/mcp/schema-index.json",
+    "gitBlob": "0798f5188bf06dacf3702ba4a5c0145d7b9f68a3",
+    "sha256": "4ff8e6e0c9ef697c02517426a948479f5976806c9f4249c954a69fa579b826db",
+    "bytes": 1395
+  },
+  {
+    "path": "src/main/resources/mcp/server-profile-v1.schema.json",
+    "gitBlob": "51f8dfd3e91220566df93c3458a18014966177b2",
+    "sha256": "906bffc7e23bfb3a7065d2059aff541a07061c8941318855462d0999a75c5b13",
+    "bytes": 2986
+  },
+  {
+    "path": "src/main/resources/mcp/task-binding-v1.schema.json",
+    "gitBlob": "33ad813ba84f817828da4dfebe6801637bbe2f67",
+    "sha256": "eac67f85d9d731b12a51bb7bcd214776da07566ec0a25db7aba5bf2d158961cf",
+    "bytes": 5115
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/compose_report-0.2.0/input.schema.json",
+    "gitBlob": "c0ef299117f3ec37361cfd33042f4d42551cd210",
+    "sha256": "4901da65bf56c28822d76e4a8eee0803097c3c43a6a8ccd026529b061d3a4400",
+    "bytes": 4070
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/compose_report-0.2.0/output.schema.json",
+    "gitBlob": "f0e72bce8770c56a82f479aa07527a608978b13c",
+    "sha256": "183994b16bdc7b3f0de711674a639c741fa85a58ff618ac7d3d378d3dca1fe79",
+    "bytes": 5181
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/compose_report-0.2.0/plugin.yaml",
+    "gitBlob": "3947bc4e19ea4f01c3a1d794845f3e6e6aae8b16",
+    "sha256": "894bd18c387715169d9117cd9dde2a8392141e8cc03e6f7865a1b0bdd409f430",
+    "bytes": 878
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/compose_report/input.schema.json",
+    "gitBlob": "aabd08de40ce946ed01b234e14af85600fc2ad87",
+    "sha256": "b3263debdaff7e1de56fc0e3970b70055e57ff53f8db80157cbd7031984cbcac",
+    "bytes": 3178
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/compose_report/output.schema.json",
+    "gitBlob": "9805b39542d6cae61ea2085e1eb1b430dd2416c4",
+    "sha256": "7bc3e97873dc92d84906d7c924875ada06dc420bd398686f030a36363115ade3",
+    "bytes": 1543
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/compose_report/plugin.yaml",
+    "gitBlob": "5c34a95e1d86201e6d0d0d46e2e5ab928831deb7",
+    "sha256": "3059c113b5527e885f4851bf13a21a7d47a68fdc49c4b31d69da9c9315ac5e99",
+    "bytes": 652
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/edit/input.schema.json",
+    "gitBlob": "7df7ecac660423a4ff6adb4ba7d6993c6584d00f",
+    "sha256": "7d9e0154760864950d077222757e190534777039c953fde1262cc0ef343fe622",
+    "bytes": 612
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/edit/output.schema.json",
+    "gitBlob": "b244576a1c4f16598116b02184f62ca3399aa6f0",
+    "sha256": "af70998ce690b0a518dee65617424900e9ccdb4e7dacc9efd0bf7c4e2d163127",
+    "bytes": 607
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/edit/plugin.yaml",
+    "gitBlob": "ebfe3044c32e556ab7dbcdce3918fcaf24b3e6d5",
+    "sha256": "7f63221c4e64380013294a81f0735756b5e570b9a6753d79cfa04d79275662fa",
+    "bytes": 849
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/glob/input.schema.json",
+    "gitBlob": "86f6f664f5d711d03bab89782d185d1df50448e8",
+    "sha256": "58891d77d67bf50e19d67ba82278bd9f156112d1d8627d05dfe17fca524881d5",
+    "bytes": 543
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/glob/output.schema.json",
+    "gitBlob": "dca649e4845727178f0ba59d373e08f94209d613",
+    "sha256": "03c0d326d3c0053135e31b487e2e54424fc9befcf05b5c47cc73a52177e0d761",
+    "bytes": 971
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/glob/plugin.yaml",
+    "gitBlob": "613b689dfcf1cb053488d7ca1a57a1e882b8d69e",
+    "sha256": "4607188b5c909d7450cfbfda5f644dd32ad783607cefa4e1a03ecfbf47ab3024",
+    "bytes": 850
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/grep/input.schema.json",
+    "gitBlob": "34e09e90874435c977505f7fd9e0930624afb9cd",
+    "sha256": "fd6e5607007ee218e7033a93647e225e2eb7f1f1b52d726c06c9aed1abae7d9d",
+    "bytes": 637
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/grep/output.schema.json",
+    "gitBlob": "d3454cac1c810ed57918107e85531116158ae44d",
+    "sha256": "ea926abbc8c8ce00a68559c79421ba7df4f8c006526fc7acc7dde761148bd37a",
+    "bytes": 1395
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/grep/plugin.yaml",
+    "gitBlob": "3f91b0e81426dadc0185856736a206a014299d18",
+    "sha256": "7731999146b96b1967f3f0f4bff9ec70cf4b80980a20b2b7022f4c9c1da2327e",
+    "bytes": 850
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/present/input.schema.json",
+    "gitBlob": "aebf51f9c660c4b2f9acbf73100d50b6c2af5476",
+    "sha256": "5ee1eecd2798c0795be14c6430133251e56b48f36ea12ab12500a74739401190",
+    "bytes": 753
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/present/output.schema.json",
+    "gitBlob": "45588d120d396b2834b8a662f534544c9ee74108",
+    "sha256": "29533528d028fa1d254fcbe73b189c6500c21202e6b52055382a42ad17a0886a",
+    "bytes": 1106
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/present/plugin.yaml",
+    "gitBlob": "db1950abf0cc5c60169e013a73086c1cb1513a80",
+    "sha256": "6aa35e5900356d675d6e35934ed88f4f725452b2a0e54db0351bc7b93fc7b583",
+    "bytes": 631
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/read/input.schema.json",
+    "gitBlob": "ccdd2c829899b1480f473c2047ec19f5109aaf06",
+    "sha256": "dd957a70a488c9167ee4b1ff79e65790f073492b05c9933919e89adf0dd26cec",
+    "bytes": 503
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/read/output.schema.json",
+    "gitBlob": "5df8286cb1a1d28ff23f65615fe6348b3e7811eb",
+    "sha256": "3afdd8ce04586f381583d26eb91f3000745bf519a3571f702fd8da5b6cfaf4a9",
+    "bytes": 770
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/read/plugin.yaml",
+    "gitBlob": "a7b8295d0a8a3e7a1c3c8011cd4e43d0e6a498fb",
+    "sha256": "9857ab76822692529c5f3ad5fadd3198e161fd08951825f9cc1cdd2b6b0f8759",
+    "bytes": 622
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/read_image/input.schema.json",
+    "gitBlob": "67e2f677b9b5e66ef00087593be6ed864e906d42",
+    "sha256": "cdf5a6395bfa7123c880d03869b8d595e15e2e4c8f0cda188278afb21990355c",
+    "bytes": 303
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/read_image/output.schema.json",
+    "gitBlob": "5229d854e476de4b0af4140f415c3e2edebb6dd9",
+    "sha256": "2b3e16c2ba0318dc62f26fb6410622997eb2591d074e1f7acf8c8c5d2da68108",
+    "bytes": 2118
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/read_image/plugin.yaml",
+    "gitBlob": "f3e580e038054805cba258f05c001cef87663fbe",
+    "sha256": "9b08fea3c0de3facd8fc6898a27981176ad28970683962a48568a2cbf0a50d1e",
+    "bytes": 865
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/webfetch-public/plugin.yaml",
+    "gitBlob": "cbe826994d62b9c7bc8b09fb2afcf9f785b10ba4",
+    "sha256": "3c9d26608f61deb39c86c931daeb5775d20886ce4884d5a4cf862d6121d11483",
+    "bytes": 677
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/webfetch/input.schema.json",
+    "gitBlob": "f611126494f437c9330be3669582f7842c225a59",
+    "sha256": "a08d14641ebb1101f0f95757c569035cf134a17d8faced55ccf11baee1e2163a",
+    "bytes": 218
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/webfetch/plugin.yaml",
+    "gitBlob": "2348d83ee196bc14fb2d491e0ad8e198c04c0b6a",
+    "sha256": "b728d072dee18aae4a9eeea46336c2163e70309fcbb1c15fbc23092575be3c45",
+    "bytes": 625
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/write/input.schema.json",
+    "gitBlob": "558fcbd337c63dc586531f37446e9c42a1cca612",
+    "sha256": "26fbf190900805f120cfdc5f112526fa8b4c683a8f76a629619dcd4a24eeb0b7",
+    "bytes": 442
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/write/output.schema.json",
+    "gitBlob": "869c0ed415c7e90636364841e2ebdaf20834aa00",
+    "sha256": "b80d38a29e6fe4f73bf070971bfdd49bfc06d3f7fbd0e07b41890aef853020af",
+    "bytes": 478
+  },
+  {
+    "path": "src/main/resources/plugins/builtin/write/plugin.yaml",
+    "gitBlob": "b9a4a5e937d7a639fadd0f4de09669c41a0dc9da",
+    "sha256": "41cb80aa705f2588508601b4f2db718d0dca6d55291d28ac0351fe3d01999546",
+    "bytes": 626
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/persistence/ExecutionScopeTestMain.java",
+    "gitBlob": "4fd7340d86829c240042294553bee0940162d886",
+    "sha256": "2d97edd7ec713725024e45f9dad96ba25c4c0f95c602a954f71d20a628db37b0",
+    "bytes": 21028
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/persistence/QuestionFenceProbe.java",
+    "gitBlob": "5d3a89373ce5bae1a388680eda8939688496ac7c",
+    "sha256": "6a7b7411ed44b83d0044beabb34f0d8fd694bfd87d27d34932692794bed3952c",
+    "bytes": 2795
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebCancellationProofMain.java",
+    "gitBlob": "070d5951a604daeff96da38987a18f52b4e66e8c",
+    "sha256": "243c2189379c7f57fb22f84a975c77e73cffed20338d2286389d0224c3a8d76d",
+    "bytes": 2832
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchProofMain.java",
+    "gitBlob": "7f3ea44ea4705d6c1787008daae37d825c8e54a1",
+    "sha256": "91acb0b13de96fcfc79905a856a3787103e52405322b67d075c58bc9e40f1260",
+    "bytes": 1109
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReceiptsTest.java",
+    "gitBlob": "eb6bbd9275b95a92850227953fb7d0528bfafc11",
+    "sha256": "2e151be47d57dc20802d3c4ce85489d47df4806c8524dd4b80ab854c056b5c69",
+    "bytes": 3002
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpWireTest.java",
+    "gitBlob": "3063f51131ff97622129725899deb827a2468485",
+    "sha256": "f28e5042158cbb8fbc154e83681432a33e71a5c74d6d8158da7e1e50d84f69b7",
+    "bytes": 4461
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageInputContractTest.java",
+    "gitBlob": "3b42c28092937437268d87fcb2c4125e90f6dc9a",
+    "sha256": "c8462fd262cbf5bbb3a4031fa3a83767ce6b6ee44e5842ae5025d535f536e866",
+    "bytes": 2930
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageNormalizerTest.java",
+    "gitBlob": "189575e4b1ecd18184ffb2c5ed96e9dbec01309d",
+    "sha256": "87c4fa907a6eb1a28fc947b46bec06a05c83fd9e3b2792ec8759389318c12a84",
+    "bytes": 8664
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageRuntimeScenario.java",
+    "gitBlob": "eeabbb34b225d507fbee8e3bd02cc0b42709035f",
+    "sha256": "671c0e14b3ca12e123641327bf1730d9a375d6e4305bb65a2da45e7f9a395557",
+    "bytes": 4802
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeCases.java",
+    "gitBlob": "dfc62f998d17266542fb9f0da8d63f83c02fb9fd",
+    "sha256": "26ac4832ec06d92187268059f59f269c64fc7f174511de012b88d59d90c2c28a",
+    "bytes": 19213
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeProcessReceiptTest.java",
+    "gitBlob": "381eb2e644d3dcaa7f0c50c383209537dc5c8cd1",
+    "sha256": "27d24b696117f46c71a58ee2c1db2e917af2214c5779f542b66d0e966de31906",
+    "bytes": 1618
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchContractTest.java",
+    "gitBlob": "77133bacc004363045b9b6ba87df8c36dac593ea",
+    "sha256": "24df402969db41973a6fd6ef151ead98e2e064d4816cfe3886de6bb204caf29f",
+    "bytes": 5756
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchScenario.java",
+    "gitBlob": "faba5ff1c4fb48b148d2732a45653f217f0f9e1b",
+    "sha256": "525974585c7b29a036078b131b50e4372f71c6041f9401b093411db5cb46d33f",
+    "bytes": 4069
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/CancelBoundaryDiagnosticTest.java",
+    "gitBlob": "46bc09348164d0b34cf0478af416fd70ce26e84e",
+    "sha256": "08547c51715f025d0d85b109087800b52e161b4957ee0bdada027999eef64467",
+    "bytes": 6937
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/EvaluationWorkspaceMain.java",
+    "gitBlob": "aa24054c105969d247b5461e05a473cfd39572ab",
+    "sha256": "94a6c81b2bc61ccf562d2c2d84c4195ba5041517fe9f693fb58e4898d37652ad",
+    "bytes": 940
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/FetchRuntimeTest.java",
+    "gitBlob": "7fc5cbed759c4cacdb6b000232434fe4f3b44016",
+    "sha256": "b0a255d1809e16d82aa13690e48e4964a1cacfcb5844c93f19a089a290f4a726",
+    "bytes": 3651
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/LocalTlsWorkerMain.java",
+    "gitBlob": "79683cc27387e4d91754a2889637b02b1dd518a2",
+    "sha256": "dd9923c275783989c0a343d84e6062c4fb33dbb3aef223227645723da19731b7",
+    "bytes": 4716
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PinnedHttpsTransportTest.java",
+    "gitBlob": "85e8c7f2ad8d39fb7ac8a9fba265bb26727100e1",
+    "sha256": "24630eccafc0d81b8cc1a9f11c976307c4d611e30ec394ab7f06c21ff58960b2",
+    "bytes": 17630
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicPageProjectionTest.java",
+    "gitBlob": "7c0f8efba4f0bf6b4e3bae48f5d1c9cf4a81916f",
+    "sha256": "76a04dfe34876c6c2dbaa1b3f24dbb3ae86c7fa40f53257618fe55deabab552e",
+    "bytes": 3826
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicWebCancellationRaceTest.java",
+    "gitBlob": "498674056188ca2027e0f954ee5fdfc336fe88e8",
+    "sha256": "e1bcbd1ac692cc2741d6adf2f00833ebd687e0842514acb3b542d0ce10c94b1b",
+    "bytes": 9090
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicWebReaderTest.java",
+    "gitBlob": "a8368fe42363c01beb0f4c32482d37e428804fef",
+    "sha256": "219482e2539d34cf2f4a67df74c829f5d623d2e8701b1478b8d8bfd6b61b669c",
+    "bytes": 14421
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/ReviewerLateDnsTest.java",
+    "gitBlob": "e0073c738001bdb0dd46f28262deefcdde7894d1",
+    "sha256": "2e02989eb5a851ffceaf3f9abf21e27324b44f03f12c0937c868b0170ae5610a",
+    "bytes": 3372
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/WebFetchCancellationTest.java",
+    "gitBlob": "89df786f0a0d6640146ada09193da102f2963e91",
+    "sha256": "496e7ebf58de3c9ef2cfa1c0e72b77d3a010a5bfa8e818c467eb42f1094bb45e",
+    "bytes": 6157
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/WebFetchObservationTest.java",
+    "gitBlob": "e79a8917a78dd91b73e12e7f242003102eefb972",
+    "sha256": "95edf567af1c612ce288ac8d979ca80b1d56dbbeba7f943cd4c0d745b90c41c6",
+    "bytes": 3776
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LocalWorkerSupervisorTest.java",
+    "gitBlob": "2742a7cf52e8976af62f32ba7047cac050b2c4e1",
+    "sha256": "62fa6c4f5b84f1f7f93f91a0df7315741b23d8c0631db5647a38aba37761e7a0",
+    "bytes": 3654
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/NativeStopScenario.java",
+    "gitBlob": "060d388d6337d6993c2d2ea207a236caeecbc58f",
+    "sha256": "08e06b15e9ffc3196c05da3b8e7795b674b5e9de5a2d392d5e2f2e8fbc007cd0",
+    "bytes": 8237
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/WorkerLoopTest.java",
+    "gitBlob": "1b3b44c5d9e1129aa092c9af2fb0264432b8d8a7",
+    "sha256": "8a31f2b8d0098e052ecb41bd1ccef9e8827f3b3c3ecf54d1ce5b8cc7118a2283",
+    "bytes": 6384
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/storage/ImageStoreScenario.java",
+    "gitBlob": "431e2375e1181f285b7757a38b8bbc2a2d9817d4",
+    "sha256": "06604d158ce44561ee2d4025c1609a0c3c20c2d2098f88f176f72b4505d0ca2f",
+    "bytes": 5982
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/storage/WorkspaceEditContractTest.java",
+    "gitBlob": "824866821dcdd80326a36407cd095358b5c7e268",
+    "sha256": "eab4cb7c879f5071e7b77c970b7bdf23098696d32b04ecc2a733f2cf78c3a642",
+    "bytes": 5739
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/storage/WorkspaceEditScenario.java",
+    "gitBlob": "6ccf55026c894bc15c4fd1c7339ecf2e973c564f",
+    "sha256": "65d70fed6b12059fbd9f0e70232675e94ec1ebc318e8207d6996fa2d8627792a",
+    "bytes": 10198
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/storage/WorkspaceRecoveryScenario.java",
+    "gitBlob": "1762cfb749f55b04734ceefdac0fd284450007a9",
+    "sha256": "ee4e28a8c6f412184d7e2b5f0072db008dcbf74789abdc6b0d7fc1bf931de8ce",
+    "bytes": 10799
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/storage/WorkspaceScenario.java",
+    "gitBlob": "75a66b555f292e5953bf4d4a9a5bddae8ebb2109",
+    "sha256": "11ee0bb090acb6b478fb45bf1ad5e8d5a8d9dc4b7e44a539f80b826636cd1326",
+    "bytes": 21472
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/adapters/storage/WorkspaceSeedScenario.java",
+    "gitBlob": "29b19e4e972e4735d4dece55f0b0e3265353d276",
+    "sha256": "afab3ea17faf819656a56a8b39f8d321742f7744a3b03cdfd30b1408fc5da591",
+    "bytes": 1126
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/architecture/PackageBoundariesTest.java",
+    "gitBlob": "706341a3b724dd870c7c14faab3ee7b644ea33e6",
+    "sha256": "7b66fdbc0d629c7a3f9637767901a663be3519c0bf69a08fd252c1f5376acfd4",
+    "bytes": 4031
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/BusinessProfilesTest.java",
+    "gitBlob": "3e3e317aa81886a723c0ba180eba2ef408448de8",
+    "sha256": "87781f1f78f87a1cbf8ec5e44c534c4a28c87445d32118a741e15848883e502a",
+    "bytes": 7474
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/DisabledSearchTest.java",
+    "gitBlob": "989ff05dfc6cccb1557ac4500ec498580da9e234",
+    "sha256": "1a71557b8104c7604a615d5ebd27301f8870d3da37a5f30d25130de8357a9bf0",
+    "bytes": 1871
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/EvaluationMaterialsTest.java",
+    "gitBlob": "3040905f3c99bee7a845a07f47702e612666b221",
+    "sha256": "dc0df0d3f66698b4bb4585350112eb899584e7aaf3fbe7d1fe11e5dc4c889abd",
+    "bytes": 4288
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/EvaluationPlansTest.java",
+    "gitBlob": "4de832b308f60009e1dd4759c0b16b5d148a5063",
+    "sha256": "aa53616564cc9f81188b311df6e5af6fc8a1f77c5fcc6bcfc784f067a55d4ab3",
+    "bytes": 6818
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/ExecutionScopesTest.java",
+    "gitBlob": "e23dd7d17d1d72beee714e0db90689811d7a94b9",
+    "sha256": "bfcf64c50633b9e51a51b80f5cb9009ed3dc1c4d50fd72bea207a87cb1a9b89b",
+    "bytes": 2754
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/FrozenEvaluationMaterialsTest.java",
+    "gitBlob": "e2e3971470fa977c0dbb5f26abfa114267486f2e",
+    "sha256": "d62d446dd4959883dd82d4f734aeb271a4d00d04663b389137b3d84cd6bf99fb",
+    "bytes": 1528
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/McpContractTest.java",
+    "gitBlob": "052110fe4b093dd631b36297968cd46fc891ee58",
+    "sha256": "7ebe1ef894804819706b4cb5f8b8fdbe719d5a17fabfe4325dcd4a43c1686e8f",
+    "bytes": 3395
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/ModelInputBoundTest.java",
+    "gitBlob": "0fc29ee06a1c24e06f2dd14c54200623495a5300",
+    "sha256": "f38457cd9cd62b19a0d59e1ba661b5dbbeb15501de6c9a883da70b81e5fc9953",
+    "bytes": 6395
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/ModelProfilesTest.java",
+    "gitBlob": "b8117dfdb27075ab418ac26c9242b228e1d6fef6",
+    "sha256": "6a1a6fbbc4c8b2738afb51721e5a69f6b0341dc075b431237faed0fd225c131e",
+    "bytes": 11702
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/ModelProtocolTest.java",
+    "gitBlob": "a1d1ee270407005b23f6b21e24005f44d19bd20e",
+    "sha256": "993a1d7c88cb93fa2c3046051f6cd627f3be29ef67e3dc6267926ff4f3e7a9e4",
+    "bytes": 11101
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/ReportComposerTest.java",
+    "gitBlob": "a397a71ae80c545af86a35c0b3fcdc1b4446ca77",
+    "sha256": "51577dfb0c51b70d0290f4d5435b4919ba1ee373c68a29aca36d70c3c5bc9c75",
+    "bytes": 15888
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/ReportPolicyTest.java",
+    "gitBlob": "e40e98d5bb16a2172e4b435e12e926db1be8887d",
+    "sha256": "db78b8670a3233091c7b1a67467b2d1a66e5bb89d431e2a74ac4e2122ed8584b",
+    "bytes": 6283
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/SourceIntegrityTest.java",
+    "gitBlob": "7150821a68e4122784e75f85dab6f5a874b58e9c",
+    "sha256": "0a0dd8feab2ee2f5111a1319e5b672d297d5faa8d08dda2f44f2f54f73aa8699",
+    "bytes": 1415
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/UserQuestionContractTest.java",
+    "gitBlob": "37c0cfd540ee78f03be95f53ddaba5438df2923d",
+    "sha256": "7453f668415a83bfb8e03d4a24553f5d29e570556dfe6f7cf41f8763ccc5259e",
+    "bytes": 4383
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/Utf8ResponseContractTest.java",
+    "gitBlob": "6010c960b874e4a2a1fbe200feb96dd2ae805f64",
+    "sha256": "9b5aff1494d51bd53358456a2667d16a5fab62314d8f968b3c78a8646230bb98",
+    "bytes": 4168
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/WebFetchPluginContractTest.java",
+    "gitBlob": "d2b051ed622ce4e0f3b969fd6162779189cad289",
+    "sha256": "f7900cfd5bf097eff897ba46da7f3fbf115020fb31f2f76345bf19bcd7c473cb",
+    "bytes": 12250
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/contract/WorkspaceToolContractTest.java",
+    "gitBlob": "533c66012328ac202b221e6344f28ed1aaa2d394",
+    "sha256": "6e9a37529cde63b400b2c56e4b6bd59587df2595ca5f842998b1505b9b56f37c",
+    "bytes": 2469
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/BusinessAdmissionIT.java",
+    "gitBlob": "89771e95f5f4177c0772ba2d11ef698b8d4b1a22",
+    "sha256": "17171e0fb06e8a8a070044b46cea4cc2ab538c41a690717e7986619e371e0a09",
+    "bytes": 2225
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/CancelOrderIT.java",
+    "gitBlob": "6e22608876e5c42d4ea49b429b3f15d79c621ea4",
+    "sha256": "bd3e65732bbfadab774bb71aa9e6f51ad1b4d8fdff9db4a1934dc9b3823eac88",
+    "bytes": 2330
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/ComposeReportIT.java",
+    "gitBlob": "315e2f74bf4468fc960e8901340137e3ffbba5e0",
+    "sha256": "5b029fb45d716020eaf6b1c1eeda24dcb291a9dc4811350ac8f6947c740926e4",
+    "bytes": 2259
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/DurableExecutionIT.java",
+    "gitBlob": "057893133c7c459748d0f91761179846ec3ab4fd",
+    "sha256": "fb88f38e711562181e097f3fe80d1e20282127a1cf78aa90ab74532ccf06e09c",
+    "bytes": 2512
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/EvaluationHistoryIT.java",
+    "gitBlob": "7e124f6a3af4b7b744df6e92d7a4d74193e20c4d",
+    "sha256": "20677e034dfbcb865a52e42d702d2f591870123cb06078d6c443ada759250c98",
+    "bytes": 2803
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/EvaluationMaterialIT.java",
+    "gitBlob": "b2733869d36b85d658df79285f5efb22cb7e2d09",
+    "sha256": "388f757ebdc7b25d3307b21a4b9063f0b9ab083d7a0646c7d1f66418b6aa04fa",
+    "bytes": 2806
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/EvaluationPlanIT.java",
+    "gitBlob": "46642718952f426a8984862c47adca3f72c19798",
+    "sha256": "ce2d0f5b1b8759e6afad43c7757adfd90127fdac814f8eed8895c614c07b2ebb",
+    "bytes": 2782
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/ExecutionScopeIT.java",
+    "gitBlob": "bf4553fe2bf23bd60cc965a6d84a543d53d7c35a",
+    "sha256": "6764ffc76dcd79a2450cd0cc5f5b5c693aaa3d7531975eacbb3ef24933122248",
+    "bytes": 2735
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/FullContextUsageIT.java",
+    "gitBlob": "87a39bc1ebf1ed8debae872e44a3061ef39dcfc2",
+    "sha256": "a2c220e26f7e79a92b824d8229b949cf4df66708407da371325333267f14309b",
+    "bytes": 2611
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/ImageIT.java",
+    "gitBlob": "564063a1e62fd1e635351d7fabb34a03cbcdfafe",
+    "sha256": "172452c4efc93f3e7b8c628ea440990413ca8ccc3d334c8b9520d6d4d02fa5c9",
+    "bytes": 2906
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/InputBoundIT.java",
+    "gitBlob": "0eb79ae520ee8429fc4be2cabe553964db938a2e",
+    "sha256": "8e9766e8c8f8b2ffc3bbe6c17aa4b8661d12bd1ccbc57779329d6f32ccb81de9",
+    "bytes": 2588
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/McpResourceIT.java",
+    "gitBlob": "17847a19f5bcee956458acac479d249db7d41333",
+    "sha256": "98d0ad3a6866e366813c27382661a15d5cce01e08d719fc0a89ba44e574518cf",
+    "bytes": 2708
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/ModelCoreIT.java",
+    "gitBlob": "3249115297a565e39aa4b871b5eb38a586ca4989",
+    "sha256": "3e47f22a14e6102d799588b62aab7aa2945ff9942eec1b1e6353b3594c60b7e0",
+    "bytes": 2552
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/P4WorkspaceWorkerIT.java",
+    "gitBlob": "570215306f2a89f3d3a26d013083856ee5c2a5a0",
+    "sha256": "fb829cc2920bb71419a5c0b48061361db7e4f6fbdf232ba4f7340ff4b816a500",
+    "bytes": 2295
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/PublicWorkerIT.java",
+    "gitBlob": "67d72ffa4720696ffaa1b3163d65c9878d6513b0",
+    "sha256": "1e72718edbda34426b09208abde664de51fd48350e0d8dd4f287496c67b8a2b5",
+    "bytes": 2528
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/ReportTimeIT.java",
+    "gitBlob": "b24b535f994eef0b4b63ef0ca54f087d80f06431",
+    "sha256": "e67b80230ecb57956d0a8648e3e78b1bba12d53ad4f68b404166a0f1be638fe8",
+    "bytes": 2224
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/ReportWorkerIT.java",
+    "gitBlob": "f5406724a26cda1b88f1d505f27e88304674a243",
+    "sha256": "eca82772baa6a2afe66405db0c116094762042b864a4456d134d902cedcbfcdf",
+    "bytes": 2795
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/RuntimeIT.java",
+    "gitBlob": "88a17825251f6c28270bba42848d73295b47e8c3",
+    "sha256": "f3c31ec711229df2e56278d1bc09ed2979b935268d096fb9b2c29ecf0e5093a7",
+    "bytes": 10435
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/SharedStopIT.java",
+    "gitBlob": "1f51b45408cbea282dac6e1820e5cd4289890b30",
+    "sha256": "778e06ec715bb95ad4e2a54611a61051fb51e8075c1673c796acd08d44c7997d",
+    "bytes": 2713
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/UserQuestionIT.java",
+    "gitBlob": "e939779b15bc361c9b04cd9865e470474bafef17",
+    "sha256": "3bdb80bcdb8a09bef041a5ebd894690d8a141e988bb808cd79a68dd053750a30",
+    "bytes": 2866
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/WebFetchCancellationIT.java",
+    "gitBlob": "ea47560d7a87d2a9c20405093b966bf3aa14aabd",
+    "sha256": "c1dd0898eda3c09c73a39d2ad6cd1bac58c1f9a8bed7542ccd07b0c0e4cab64c",
+    "bytes": 2231
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/WebFetchResultIT.java",
+    "gitBlob": "76beebf9ee43266826fcdc61310dba4bac7f956f",
+    "sha256": "86ed05155b4aea0089873823a31a59fe87e5a4602a811394a9e2ac01191eb982",
+    "bytes": 2206
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/WorkerSnapshotIT.java",
+    "gitBlob": "050f6b3b6c0534029ff5f49da222bd51a44b8363",
+    "sha256": "97ce7c71e1c50d7401f87051d2b48de75ea60a8c9effb70d5405416bed9d963e",
+    "bytes": 2314
+  },
+  {
+    "path": "src/test/java/io/github/lovexiaopeng/jimu/integration/WorkspaceIT.java",
+    "gitBlob": "39859063a15b43a36a5aef55ef747e3b982c6408",
+    "sha256": "1f2008ec3c41dc66ee4b5f438ce24530fca280aa5b551888a1a1e1be76187bd0",
+    "bytes": 2246
+  },
+  {
+    "path": "src/test/resources/images/README.md",
+    "gitBlob": "9b83450f73388c4ebb58b2fa6a67161df09cdfa4",
+    "sha256": "96302ac6e82b24ac87dbc14eb1a96850d7c97f530522d9bc78f5abe3b46fd3ad",
+    "bytes": 439
+  },
+  {
+    "path": "src/test/resources/images/red-3x2.jpg",
+    "gitBlob": "f3aa192898f0763a29ffe1549ab623b99648375c",
+    "sha256": "f3ac11880fc1dd7eec46ed27e37accc59af24e5c2b716346dce83ffc718bc34f",
+    "bytes": 633
+  },
+  {
+    "path": "tools/evaluation/application_grants.py",
+    "gitBlob": "ed695e6e90357369ffee444ffe926c7ae64d8e76",
+    "sha256": "b30f5707501ab79ddb40c88cad0822f383eddd0b6821479db667d13657169d70",
+    "bytes": 1811
+  },
+  {
+    "path": "tools/evaluation/frozen/HANDOFF.md",
+    "gitBlob": "04ce1fee845d1f27689e8596ee671ac4bc960215",
+    "sha256": "72cee4a3c4dfb424d57d64cc46349f1aee2a29623ec636cd29c562787b1bb7fe",
+    "bytes": 11678
+  },
+  {
+    "path": "tools/evaluation/frozen/MANIFEST.json",
+    "gitBlob": "d52e440a1ac97429514426d0dd05611794939635",
+    "sha256": "2cf38fb5cce4591bf8abc220eb6c0f5533d2db1823ca546d6db26397d89e2feb",
+    "bytes": 13990
+  },
+  {
+    "path": "tools/evaluation/frozen/RESOURCE-RECEIPT.json",
+    "gitBlob": "77082cfdb33f9783bb1c711cf97100a515b5801c",
+    "sha256": "137febadd5130e899e50c5c60fcf98ca382771dc3a6d94de982dac5b5bfd1092",
+    "bytes": 726
+  },
+  {
+    "path": "tools/evaluation/frozen/VALIDATION.json",
+    "gitBlob": "b2a5af5d307909ada945ae2185b4f526efcc723e",
+    "sha256": "514beafca9ee63fd7d4b85f2c26ffff197bbd2207354e142c9bbbd74a93b3c0d",
+    "bytes": 1107
+  },
+  {
+    "path": "tools/evaluation/frozen/budget-audit.json",
+    "gitBlob": "32303eff5eaba97508051742556ae3917e7f25a2",
+    "sha256": "bd0836c6f736da4e91d3dc873738ecec780bef53ccc94154a2af0865ee2930a7",
+    "bytes": 12422
+  },
+  {
+    "path": "tools/evaluation/frozen/build_plans.py",
+    "gitBlob": "62ec75b058b55cf800bbfa5954b2c74c26c1e3a6",
+    "sha256": "f3ab5a01320c554e5cf22ed9aeff100df738026312c431afae7dcedbd2393f41",
+    "bytes": 20963
+  },
+  {
+    "path": "tools/evaluation/frozen/closed-plan.schema.json",
+    "gitBlob": "cda579de5ed915502090356893ca8fc3f28d4750",
+    "sha256": "121503a48da30762419b5a47be8673f9594e5eaf6ed186eed8fcc4b7c7226bef",
+    "bytes": 19308
+  },
+  {
+    "path": "tools/evaluation/frozen/common-materials.json",
+    "gitBlob": "9bb4e744ba809d4e54407fca3c4775ebc60d63b2",
+    "sha256": "189997f9963aa4881257664c956e1159b812aab8c3c182734bd2434038c650a1",
+    "bytes": 3053
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository-manifest.json",
+    "gitBlob": "0bdfa50bef91cd8a21e65c18c7239c7689d08d94",
+    "sha256": "a836c5be36af4091adf32f0ffab13d7a450fd3dcd67ff48f6a01b5a8ac97401b",
+    "bytes": 7755
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/docs/baseline/XIAO-33-web-fetch-output-v0.2.0.schema.json",
+    "gitBlob": "15e74867e02dca0cbcc35386204bc19c11f70c14",
+    "sha256": "08a144489ed9ea37b5b33a5ffdc815237f31d4f229b76ba1d5e465b9e13f9ff8",
+    "bytes": 602
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+    "gitBlob": "b93d8b319c2a0e9f9f1d202625a3d11e2acd305f",
+    "sha256": "6db9c8a5a501c9456dedd24eb2dfc4f32cf9d01887d4ac79564f803a90ca2256",
+    "bytes": 24270
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/OpenAiProtocol.java",
+    "gitBlob": "f861a813397845a0eae3a7cc4adcbeb7b17aaebc",
+    "sha256": "8ca6f8983d7267515d7e5df7f1cdf3999e35425e9a0b2a5d69d574dfcbee6b1f",
+    "bytes": 13833
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/ToolDefinitionMapper.java",
+    "gitBlob": "68b3ef039c90cfed24758aecda07c74483cc5659",
+    "sha256": "1e84ea7d68a8e6ae7f2c67944fcf04f11406c0ea29a6c644424180d3b1369469",
+    "bytes": 574
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ModelCosts.java",
+    "gitBlob": "f21644449acc532bbb8cb3280fa1f62535c88e1f",
+    "sha256": "2ab0740004b7d24772b801cd5676c1bf40a4db9a28846cfc18d709dd281adc69",
+    "bytes": 779
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+    "gitBlob": "63a8f6c87afd02a38ca52b1a7ea90fd057f027aa",
+    "sha256": "b3b808ba8832b08e01811a45ce9d6afe674bfe272cbceaf033618fefca5dc77c",
+    "bytes": 1944
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportPolicy.java",
+    "gitBlob": "fbb47cadfbd245f74930cfcb4afbdfbfb598c533",
+    "sha256": "026d3bc8919ab453e6aaaad050bf615447b140f9baa1fb3b04584c0ff04335e0",
+    "bytes": 5261
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelProfiles.java",
+    "gitBlob": "84a87c4625899d8620deb58bee5314f568fd4a3d",
+    "sha256": "11542cc2e82229fc73e8f899ab888a490aaeb8e92a7a28da13f3408488f8e3d0",
+    "bytes": 10615
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicPageProjection.java",
+    "gitBlob": "17700bab1b4f11bde545cd5baab3ec5376c21855",
+    "sha256": "a831fdfe913f6cd6af96cfa426c643aa147791af41a0eaac1657713223569121",
+    "bytes": 2818
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/model/api/ModelSnapshot.java",
+    "gitBlob": "19a019015bcc8efcce21fe6748ee446e630dab1a",
+    "sha256": "98c665b179470db47ccb87a39b3206ee817e46aa93804df7ba013446f8af796a",
+    "bytes": 1792
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/FetchOutput.java",
+    "gitBlob": "29c416deb4cd537a1e009825bb2eba173487439e",
+    "sha256": "528d18c689440d47fa78c675e1646dcae5b24dff272e64680a65227ef0475de9",
+    "bytes": 161
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/db/migration/V4__model_snapshots_and_budgets.sql",
+    "gitBlob": "500036c8e0688ac977416b734fca4d42205c4230",
+    "sha256": "1a1d5fa336be3d55decfab17cd7acf62abdfcab520b35414d3f8fb0cca7ac981",
+    "bytes": 1942
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/present/input.schema.json",
+    "gitBlob": "aebf51f9c660c4b2f9acbf73100d50b6c2af5476",
+    "sha256": "5ee1eecd2798c0795be14c6430133251e56b48f36ea12ab12500a74739401190",
+    "bytes": 753
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/present/output.schema.json",
+    "gitBlob": "45588d120d396b2834b8a662f534544c9ee74108",
+    "sha256": "29533528d028fa1d254fcbe73b189c6500c21202e6b52055382a42ad17a0886a",
+    "bytes": 1106
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/present/plugin.yaml",
+    "gitBlob": "db1950abf0cc5c60169e013a73086c1cb1513a80",
+    "sha256": "6aa35e5900356d675d6e35934ed88f4f725452b2a0e54db0351bc7b93fc7b583",
+    "bytes": 631
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/read/input.schema.json",
+    "gitBlob": "ccdd2c829899b1480f473c2047ec19f5109aaf06",
+    "sha256": "dd957a70a488c9167ee4b1ff79e65790f073492b05c9933919e89adf0dd26cec",
+    "bytes": 503
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/read/output.schema.json",
+    "gitBlob": "5df8286cb1a1d28ff23f65615fe6348b3e7811eb",
+    "sha256": "3afdd8ce04586f381583d26eb91f3000745bf519a3571f702fd8da5b6cfaf4a9",
+    "bytes": 770
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/read/plugin.yaml",
+    "gitBlob": "a7b8295d0a8a3e7a1c3c8011cd4e43d0e6a498fb",
+    "sha256": "9857ab76822692529c5f3ad5fadd3198e161fd08951825f9cc1cdd2b6b0f8759",
+    "bytes": 622
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/webfetch-public/plugin.yaml",
+    "gitBlob": "cbe826994d62b9c7bc8b09fb2afcf9f785b10ba4",
+    "sha256": "3c9d26608f61deb39c86c931daeb5775d20886ce4884d5a4cf862d6121d11483",
+    "bytes": 677
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/webfetch/input.schema.json",
+    "gitBlob": "f611126494f437c9330be3669582f7842c225a59",
+    "sha256": "a08d14641ebb1101f0f95757c569035cf134a17d8faced55ccf11baee1e2163a",
+    "bytes": 218
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/webfetch/plugin.yaml",
+    "gitBlob": "2348d83ee196bc14fb2d491e0ad8e198c04c0b6a",
+    "sha256": "b728d072dee18aae4a9eeea46336c2163e70309fcbb1c15fbc23092575be3c45",
+    "bytes": 625
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/write/input.schema.json",
+    "gitBlob": "558fcbd337c63dc586531f37446e9c42a1cca612",
+    "sha256": "26fbf190900805f120cfdc5f112526fa8b4c683a8f76a629619dcd4a24eeb0b7",
+    "bytes": 442
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/write/output.schema.json",
+    "gitBlob": "869c0ed415c7e90636364841e2ebdaf20834aa00",
+    "sha256": "b80d38a29e6fe4f73bf070971bfdd49bfc06d3f7fbd0e07b41890aef853020af",
+    "bytes": 478
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/write/plugin.yaml",
+    "gitBlob": "b9a4a5e937d7a639fadd0f4de09669c41a0dc9da",
+    "sha256": "41cb80aa705f2588508601b4f2db718d0dca6d55291d28ac0351fe3d01999546",
+    "bytes": 626
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/tool-pins.json",
+    "gitBlob": "da95b194aaddb615bf0baa7207f8ecb128d3624a",
+    "sha256": "13eb730b6bebf3ed633c62010237238ccc0f1810d8ffe8abd15548844f047a55",
+    "bytes": 1419
+  },
+  {
+    "path": "tools/evaluation/frozen/contracts/tools.json",
+    "gitBlob": "99dd90ee7ed17a273c4b106f56665458f128f8e1",
+    "sha256": "f43788c87cc5d7525b63ae19f5785ca65c437f2435883f6dcc0ff13c5572f65e",
+    "bytes": 3198
+  },
+  {
+    "path": "tools/evaluation/frozen/drafts/W4.initial.md",
+    "gitBlob": "6c369ed202ea3deacf9f44b900b3e2d408150093",
+    "sha256": "5fad02804f7669a6f23d973b0876bfd73c838c62fa9e737e3711a95216448436",
+    "bytes": 241
+  },
+  {
+    "path": "tools/evaluation/frozen/drafts/seed-manifest.json",
+    "gitBlob": "bef9bb569e36c4fa7ace5bde9694308f4ee7c3c2",
+    "sha256": "c554b4283b64dcf0b69a5e6033afcc338d60b865a6730b6417a2c3f61a36eac4",
+    "bytes": 589
+  },
+  {
+    "path": "tools/evaluation/frozen/gates/B-unlock-policy.json",
+    "gitBlob": "676d8c21da679ab53491dc1805830c8be2a323b4",
+    "sha256": "e461fa08012a9ae32181c8a9b94104d42233ec19d8ec7ed08a9ae505df044133",
+    "bytes": 1740
+  },
+  {
+    "path": "tools/evaluation/frozen/official/base-url.md",
+    "gitBlob": "b578eb848bd34ba4692b74a1290a7a52a407c9c6",
+    "sha256": "f0357f2679da8c588e144d4c8dfa411b9f42522d22801198184b436bd7faa8d6",
+    "bytes": 8833
+  },
+  {
+    "path": "tools/evaluation/frozen/official/chat-api.md",
+    "gitBlob": "011e9736eff80ff1f41d12332b25601d0d4d68e3",
+    "sha256": "cea699a0250c0f7c9122f5effe0147dedb33f0e1b66d3b120b46ffb39c2aa80b",
+    "bytes": 131599
+  },
+  {
+    "path": "tools/evaluation/frozen/official/deep-thinking.md",
+    "gitBlob": "3d1eb092ab46673575c03d52da620e3776f05aa9",
+    "sha256": "0b4fb190ebabf5b50861a3efb94aa93e130daf0d8ed2f42d0fbbedf8ac6fa7fc",
+    "bytes": 122779
+  },
+  {
+    "path": "tools/evaluation/frozen/official/deepseek-api.md",
+    "gitBlob": "83310734323c55755892e42a080b1bc639b6e994",
+    "sha256": "fd3b5bf1af05de68764b69fba15d5a55f119be1b424ef6e65c835d80e743862d",
+    "bytes": 41043
+  },
+  {
+    "path": "tools/evaluation/frozen/official/flash37.md",
+    "gitBlob": "23268c10ae3424081fc3d288d6eab71a44c72202",
+    "sha256": "f3b84e646aeeb6eb76cc41fafc8dcfa851d2d805c9fd94797fc069b77960bd94",
+    "bytes": 39060
+  },
+  {
+    "path": "tools/evaluation/frozen/official/flash38.md",
+    "gitBlob": "ff7b9ef5c9e34e1860da157f4a61e25d9a5ed48d",
+    "sha256": "26f794be85b8d9ec7143d6bad79ef97e5f1a20c70c86b96efcd62a17443a2a4c",
+    "bytes": 13674
+  },
+  {
+    "path": "tools/evaluation/frozen/official/function-calling.md",
+    "gitBlob": "ef19d9608d05f25c1449e5dbce158ddda469e4be",
+    "sha256": "b9da42acf23cae57eeb89b1a5a02b45156205500a08e2121e8a840931bebc310",
+    "bytes": 197627
+  },
+  {
+    "path": "tools/evaluation/frozen/official/max37.md",
+    "gitBlob": "21d11697db4a296fa10a187b50f558607a080db9",
+    "sha256": "cff4c89b3aff81ac95db74b2919de15535ce47ccd352e886bac4c6083cdabaaf",
+    "bytes": 31381
+  },
+  {
+    "path": "tools/evaluation/frozen/official/max38.md",
+    "gitBlob": "764cef7de133de47b03e464d08a0d2785236ac05",
+    "sha256": "66fcd980cb9fc14b69aa2bb9ac8847a9f4cb25cef4d9d50bc80e49322fed9313",
+    "bytes": 33292
+  },
+  {
+    "path": "tools/evaluation/frozen/official/plus37.md",
+    "gitBlob": "938fbb23066fbca7516e30d61af44647e32d65ee",
+    "sha256": "2605e62bb1a410473666eae05d0ca15805eef65d0d6b943b02b14888c92aea20",
+    "bytes": 29042
+  },
+  {
+    "path": "tools/evaluation/frozen/official/pricing.md",
+    "gitBlob": "f3c4e855446133c2debf6b9a642aebec5c49f204",
+    "sha256": "d5c8c84475c958bc95bd56118458fa6b2f51323852bb112821c7fc97e9638ee5",
+    "bytes": 649803
+  },
+  {
+    "path": "tools/evaluation/frozen/official/pro.md",
+    "gitBlob": "5cab009e89007758399f018603aaa762da5b1154",
+    "sha256": "8db45dd845cd1358f26836069f3271723efe3070b2c62135f64b14d52a95fec8",
+    "bytes": 19285
+  },
+  {
+    "path": "tools/evaluation/frozen/official/sources.json",
+    "gitBlob": "81471c1da1276022c1b95b9c57cbcde095afbe7e",
+    "sha256": "e2ee8ee62ee325e07e851411564657a44e3445cbf9b2ad5db5425f2a0629e7b1",
+    "bytes": 6311
+  },
+  {
+    "path": "tools/evaluation/frozen/offline/FreezeProjection.java",
+    "gitBlob": "a7543f3c2305eeb0edf1403868467cfa438cfc3a",
+    "sha256": "10dfbd509f6d3adfb4dab5900a9f9e46d496df09141110c6aa321085cdd0f7bc",
+    "bytes": 533
+  },
+  {
+    "path": "tools/evaluation/frozen/plan-catalogue.json",
+    "gitBlob": "0862f6d19ccc888b2756e1fc1bf52cf643ae16d9",
+    "sha256": "b379eb65e33a37ea220b7c01e89cb6980703b3c0404f9da2a4ad9e40010a931d",
+    "bytes": 602
+  },
+  {
+    "path": "tools/evaluation/frozen/plans/qwen-main-v1.json",
+    "gitBlob": "b2c4d7b4db4b2552d5d570fac0ab384f45e8b113",
+    "sha256": "b58e55e317cb070e64b1949ea7be623beaa75ad83fc315ca63feaae217bbaab8",
+    "bytes": 7287
+  },
+  {
+    "path": "tools/evaluation/frozen/plans/qwen-pro-optional-v1.json",
+    "gitBlob": "3e19d3bee690cdd7408e7e6bdabb1daaf3ad1a0a",
+    "sha256": "7af19d6808e81c9d6c77904ff63ee9339fb14d6e5cf47fd2875736977fc024ef",
+    "bytes": 8457
+  },
+  {
+    "path": "tools/evaluation/frozen/prepare_materials.py",
+    "gitBlob": "27dba0f50abecb8ee1178236602b82c72a21432e",
+    "sha256": "964258b38dd365e131717d863bd75a8e0cc39e95d8a7daa4feec8f016960112b",
+    "bytes": 10280
+  },
+  {
+    "path": "tools/evaluation/frozen/profiles/candidates.json",
+    "gitBlob": "73aead5f4bf6775f247984ca92d2d87bcb59310d",
+    "sha256": "29141fbc261729c73a950860d7303554580a82496dd5330690e67cb7b4b12cac",
+    "bytes": 19102
+  },
+  {
+    "path": "tools/evaluation/frozen/profiles/qwen-main-v1.json",
+    "gitBlob": "2dd5a53bceb0a788f9513945e7a343c56fc3d206",
+    "sha256": "92aa178fd3b88b540e93babf9a9dc8a9152c4b8a2320f58ff87e2b44ce733d32",
+    "bytes": 14179
+  },
+  {
+    "path": "tools/evaluation/frozen/profiles/qwen-pro-optional-v1.json",
+    "gitBlob": "bfba4e1874f855957d7e3c32360c7042779004a6",
+    "sha256": "02693ca450cb90a784de51aa63b44e105ea87b264ad62c0ab8996555108574e1",
+    "bytes": 18803
+  },
+  {
+    "path": "tools/evaluation/frozen/prompts/W1.goal.txt",
+    "gitBlob": "02e02ec2eb46f1b6c2dcd09553cd65433a0b3754",
+    "sha256": "f46e1623106e5a6aa5602d787ec69015653920288bc6f1e6c0774389361bcfd0",
+    "bytes": 2060
+  },
+  {
+    "path": "tools/evaluation/frozen/prompts/W2.goal.txt",
+    "gitBlob": "6af06cee254e3e7f78adf7a25e897e5952dff585",
+    "sha256": "9e97594303251321fa94953e4543063c32582576a20f55abde1f2534637236fa",
+    "bytes": 1449
+  },
+  {
+    "path": "tools/evaluation/frozen/prompts/W3.goal.txt",
+    "gitBlob": "1887089e36f0b89252763df43b073ec6fdb167d7",
+    "sha256": "e036feb51d7c23fe794fb83e20807365cb88d0c37149614084053812dcf404d8",
+    "bytes": 1677
+  },
+  {
+    "path": "tools/evaluation/frozen/prompts/W4.goal.txt",
+    "gitBlob": "027ba1bbad0ff00ebb08b7265904cc76386619ae",
+    "sha256": "0bc5c7dd66a793273dfd52526f993ecbbee7d42c1e6dd070b5ac0aeaa5e0a63c",
+    "bytes": 1355
+  },
+  {
+    "path": "tools/evaluation/frozen/prompts/host-system-binding.json",
+    "gitBlob": "a25dcbe5fe230fedeb100dd5ed0afcce0d90f85c",
+    "sha256": "18f2568054149e7b98ab76454af7233fda4053792c5c6d043bb766201cd00999",
+    "bytes": 359
+  },
+  {
+    "path": "tools/evaluation/frozen/prompts/host-system.template.txt",
+    "gitBlob": "26a0f3676d4aee2d9c01677c5796e0812253e197",
+    "sha256": "098e9b223328912e9c0d0a7e510a9eb280ef2388aa1dbf5c833a8f3bfd5f3078",
+    "bytes": 524
+  },
+  {
+    "path": "tools/evaluation/frozen/requests/W1.submit.json",
+    "gitBlob": "26908b18cfcb51438c5395cb5ffc25af14f8cf49",
+    "sha256": "05e109243d3f6dc8e9ba2dbac72f9f339f57b12fa23590bb55ee63c213724ee1",
+    "bytes": 2289
+  },
+  {
+    "path": "tools/evaluation/frozen/requests/W2.submit.json",
+    "gitBlob": "b8dffa1133f1e5e1ddd2c9c6a6570dbf0bf59b3d",
+    "sha256": "c6cf6fb59f8b5fcb89863e0d499af2fba0cc090d3fa1f6eb833aa4f62f06bac3",
+    "bytes": 1678
+  },
+  {
+    "path": "tools/evaluation/frozen/requests/W3.submit.json",
+    "gitBlob": "ea4ed8874fcfe8db97314649aaa47e8d07865ea0",
+    "sha256": "972f47a14c7227f83db26ce772f596c71188a948697b3c036cad433013ed582c",
+    "bytes": 1906
+  },
+  {
+    "path": "tools/evaluation/frozen/requests/W4.submit.json",
+    "gitBlob": "9b69565212278395301af941b11a1b0d7b237e33",
+    "sha256": "9ad5e639c5d9083133919f5eab6ede89c8796523b2ebc94af96363066c859427",
+    "bytes": 1582
+  },
+  {
+    "path": "tools/evaluation/frozen/runtime-closed.properties",
+    "gitBlob": "66c3171bcf24f7bb76e4fefe78c9b060476bc501",
+    "sha256": "96963b648e307b0e6730c2333c4508979d7da9743ba3fc1dabedef1ef47769d8",
+    "bytes": 176
+  },
+  {
+    "path": "tools/evaluation/frozen/samples.json",
+    "gitBlob": "71fbad39f064e52fb5d795231b5b62f661530fe7",
+    "sha256": "26e4ee4cdc8dd288d46778119c3830aa07abf936eb6156ea6e0b4beb58a32f42",
+    "bytes": 4492
+  },
+  {
+    "path": "tools/evaluation/frozen/scoring/C1-answer.schema.json",
+    "gitBlob": "673c45672448782bbe2a66c1ad367818257aa1c8",
+    "sha256": "142ef9be0dcb9391114d537aa8765b70d21321f260cc0ca512b13c009b301289",
+    "bytes": 730
+  },
+  {
+    "path": "tools/evaluation/frozen/scoring/oracles.json",
+    "gitBlob": "70dc807eab4f515c56efd4fc7ddbdf7c39593e19",
+    "sha256": "f4663d4dc528213eae3cec8bc372249c655558cf1988403e42fad354ca9c20b6",
+    "bytes": 1800
+  },
+  {
+    "path": "tools/evaluation/frozen/scoring/rubric.json",
+    "gitBlob": "6884888fb7eea934aab8126994cc34fa5f963236",
+    "sha256": "d0716fa2e7585a9c8b39e936f21b65b3c0b6921f3f7ef6b00d3710e611c3926c",
+    "bytes": 8169
+  },
+  {
+    "path": "tools/evaluation/frozen/scoring/scorecard.template.json",
+    "gitBlob": "e8e863bbd2c4fbc26cd0f80101f8753038fc7fed",
+    "sha256": "924948672558d7846c971e7d87058753079952f66abbf09ae2c608a7129bdcb1",
+    "bytes": 2485
+  },
+  {
+    "path": "tools/evaluation/frozen/sources/colorsys.fetch.json",
+    "gitBlob": "6a8a383ebeb873fad5987ea15a861744e7bf9c35",
+    "sha256": "e9096fedc2cd2d40f794fcdbf9a5880a4789f7a0bad25f0177c5d97dfc8414bf",
+    "bytes": 2720
+  },
+  {
+    "path": "tools/evaluation/frozen/sources/colorsys.raw",
+    "gitBlob": "96dc0f26eb2aaa6b1de19397b1ee64cfc433a59a",
+    "sha256": "06cf848052167e898b062c466217fc196354aeefdfe5bfa50b890477d35b219d",
+    "bytes": 22124
+  },
+  {
+    "path": "tools/evaluation/frozen/sources/colorsys.visible.txt",
+    "gitBlob": "74333b3b0dceeefb01b3f39f8241051c2cbdd9f0",
+    "sha256": "ddd98870ba06608c0b567061264399d57e5b90f6ce7637fd9370697975e7da36",
+    "bytes": 2601
+  },
+  {
+    "path": "tools/evaluation/frozen/sources/projection-dependencies.json",
+    "gitBlob": "44024ea1bdfba00b1ed7d2319e550d53a0a5a0ed",
+    "sha256": "99b05e15c203a7040916c0cb2d0f7f6ff44cff25034199d8f10be5c3a3486970",
+    "bytes": 887
+  },
+  {
+    "path": "tools/evaluation/frozen/sources/raw-manifest.json",
+    "gitBlob": "b9620d4748f4c409c6754da6d71608aac64b435c",
+    "sha256": "faf54c0c88e577242aab9ec28c2ea65a4426236ddcb0ef93e6a062c1273d168b",
+    "bytes": 1287
+  },
+  {
+    "path": "tools/evaluation/frozen/sources/rfc768.fetch.json",
+    "gitBlob": "d422646786b4fad180aa61aba4992f4ed11ad859",
+    "sha256": "13237f4b39e345fa1a78bb5ea1e310d58bf62b7da93c0f0506b8d5d590a956d0",
+    "bytes": 6280
+  },
+  {
+    "path": "tools/evaluation/frozen/sources/rfc768.raw",
+    "gitBlob": "cbd850e0618f960b47594f3d960e1942c35054e8",
+    "sha256": "7dc8880e1ecef9c3f9da0db4b876a16e96bfa4f0953cc9d977d414f8f680c2f0",
+    "bytes": 5896
+  },
+  {
+    "path": "tools/evaluation/frozen/sources/rfc768.visible.txt",
+    "gitBlob": "41465ec0960f7a6495e28a50e1857ccd3b8e13a3",
+    "sha256": "af4045d8d8d5bf6082ab853790e3beb3c595a1882ae9004864811bb1f3b85dfa",
+    "bytes": 5986
+  },
+  {
+    "path": "tools/evaluation/frozen/sources/source-manifest.json",
+    "gitBlob": "3e81a62f4192a5f825444a0c6ac97047296b382c",
+    "sha256": "87c5b50abf630f43b943e33b93b4a446bd2bc4f53f2865f941011df03c73d1fd",
+    "bytes": 2636
+  },
+  {
+    "path": "tools/evaluation/frozen/verify_package.py",
+    "gitBlob": "35a839b4bfa7b2d2ec8731056b7eedc2e7aa420c",
+    "sha256": "dd964d74a6e3afc0c54fa47702d2676820ad151d35e85ebf27497003f421ef9c",
+    "bytes": 9112
+  },
+  {
+    "path": "tools/evaluation/full-context-CLOSED-quota-plan.json",
+    "gitBlob": "33cae6040bb70c5036a110cff08ded971ba22fcc",
+    "sha256": "34b2343872a4852af466654478aca0be79c1dd391ffde0f36ccae6e027265e6d",
+    "bytes": 2407
+  },
+  {
+    "path": "tools/evaluation/prepare_closed_plan.py",
+    "gitBlob": "5bbacb7db09ccd45033666eb5eae23c7e36ae411",
+    "sha256": "b5c3b574754fd248f25852412567aeee9a08313857675845182fc17b75a53367",
+    "bytes": 2765
+  },
+  {
+    "path": "tools/image_store_verify.py",
+    "gitBlob": "48f83373077ac4241bcc8d7d3b1694953513f746",
+    "sha256": "6df2cf2ac2586590f19e46f018b07369a293c19d2029799567cd7a8b684756d0",
+    "bytes": 2695
+  },
+  {
+    "path": "tools/mcp_fixture.py",
+    "gitBlob": "07afa7ac98c5a5ce65a12e2fffafbc13d6679333",
+    "sha256": "79e84d9c7ef4d05455d29e8784c1bae11550f352c83afbdb22832a7c7ae6b3fe",
+    "bytes": 6927
+  },
+  {
+    "path": "tools/mcp_verify.py",
+    "gitBlob": "a5ab5e0404c8949928b4fa5abd6e9cab14b7b936",
+    "sha256": "f8e77f10ee1b9ceb251091c37ed10abaa5cd510693dff3db1441cb3bb4813ee4",
+    "bytes": 39042
+  },
+  {
+    "path": "tools/native_bundle.py",
+    "gitBlob": "9e0d41e4d08c2552fdb268324715ff5b01434a0a",
+    "sha256": "f90d9360e27760789e2f5dbddabd6028732cc8893aeb672c723b410cb78ce68c",
+    "bytes": 3513
+  },
+  {
+    "path": "tools/native_bundle_verify.py",
+    "gitBlob": "c86b34fa2ba5b96ae83f984689302fa1555a0186",
+    "sha256": "6b98a4adc15fb946103d94842f34e2f0fd690dfa80aac4f5b9d6f3b93bb99c49",
+    "bytes": 2464
+  },
+  {
+    "path": "tools/native_notices.py",
+    "gitBlob": "ea110fc73847d9407dd3431e81e73262223ffb30",
+    "sha256": "9ac3e91e49de8ab7d4d0afdcaf171551336fedb434da9932a5e92155f803fb5b",
+    "bytes": 6902
+  },
+  {
+    "path": "tools/native_rebuild.py",
+    "gitBlob": "2a4f8ffe2ee52f5744701b9fc53a034e1cde5a36",
+    "sha256": "7cbefe392d4f6b2f779ca12b4e84642fb7a599665c23cf94586c1010e73def1a",
+    "bytes": 22586
+  },
+  {
+    "path": "tools/p2_verify.py",
+    "gitBlob": "0323a16d7007cb53acb58bf061797a5c1121cbab",
+    "sha256": "2228f9dbcf1251c2052e650421299f22929d6a04dc745840564376ab3304b8c5",
+    "bytes": 84331
+  },
+  {
+    "path": "tools/p3_business_verify.py",
+    "gitBlob": "95f677001e93c247b9267ed20fcc334a59ce10b9",
+    "sha256": "32a4b74535e15c45a53b20df368fcdd67c5d9fd4af8b31cc25f2637c10860bd4",
+    "bytes": 56623
+  },
+  {
+    "path": "tools/p3_cancel_order_verify.py",
+    "gitBlob": "de40325280e5191fe45f9408cbd5d9b1c44a8dd9",
+    "sha256": "38d377100730f5955dab20449dc65efd36cef7394e7cae55c1ade0945c306c22",
+    "bytes": 8637
+  },
+  {
+    "path": "tools/p3_evaluation_plan_verify.py",
+    "gitBlob": "419227ee52105e1f8472ccea17251fb88865f274",
+    "sha256": "f42cf92a957e44e0990c2c306759d7303350b469efb9afeb08333ec902bb0b89",
+    "bytes": 52084
+  },
+  {
+    "path": "tools/p3_execution_scope_verify.py",
+    "gitBlob": "c5d2d69cde3f8b5a0fe6e4e3eb0c4983426cbc3c",
+    "sha256": "e785c2d0bc1d9fa239abb6095498aaf29cdfba7219e719136cf390c37a5a8440",
+    "bytes": 41672
+  },
+  {
+    "path": "tools/p3_full_context_usage_verify.py",
+    "gitBlob": "534b14313b410f008d2d9c9aad7abed12bf5c8fe",
+    "sha256": "650187afcfddfee064173f91efd03115ffe0d7f26c6530ab3a58a634c2425c60",
+    "bytes": 15551
+  },
+  {
+    "path": "tools/p3_input_bound_verify.py",
+    "gitBlob": "b757ccbdb745e4e702e2de43ebf3aa85454878f9",
+    "sha256": "96a44d0c47279d4c64d3a00b418d2d4fac20932e125b0e8a471ec6dd89188050",
+    "bytes": 14709
+  },
+  {
+    "path": "tools/p3_lifecycle_verify.py",
+    "gitBlob": "458a7ab5835bb6f216ddccda1a31e900f3052ff3",
+    "sha256": "cb18a94de3a465c3e1c67ddafc6a3f97e0da811b73b85a9249f28239768567a1",
+    "bytes": 11076
+  },
+  {
+    "path": "tools/p3_model_verify.py",
+    "gitBlob": "61c2f5ea64184f39457d249837a1113b3082e0ac",
+    "sha256": "645df08ba735a371526f4ca800988b3bb3f8bea2615274a8ad34f554c35758f1",
+    "bytes": 20036
+  },
+  {
+    "path": "tools/p3_public_worker_verify.py",
+    "gitBlob": "b2797db98d13fac602893058f19bd631ad749d7b",
+    "sha256": "b070325712e44cb7fe0b02e8380707571c1e1fbd52b8005fb91fbb81a5da004c",
+    "bytes": 15526
+  },
+  {
+    "path": "tools/p3_rejection_verify.py",
+    "gitBlob": "0c9656a9816fedae614b9ab43648f811912f0e3d",
+    "sha256": "8c396c7106a3cde0f75693416dda989a048a4ac0ffd29750781b69f659abc808",
+    "bytes": 10215
+  },
+  {
+    "path": "tools/p3_report_time_verify.py",
+    "gitBlob": "a090caf2b189d5f58a7b40660100f622a31649a2",
+    "sha256": "0ddb86a4c4a4fb3e2b698d41ee2729894bc77bfa3b32c633179a99f6c625c1ef",
+    "bytes": 7596
+  },
+  {
+    "path": "tools/p3_report_verify.py",
+    "gitBlob": "9880db04c83b4b80c6f9f84afaf745d3f338cd4a",
+    "sha256": "bd73352fefb0ad3eb27ce2ac06934e36d230550d800fe49ab44f41595e70f916",
+    "bytes": 21009
+  },
+  {
+    "path": "tools/p3_shared_stop_verify.py",
+    "gitBlob": "2f345c23a11605c1136e82e0809cd89312ca2182",
+    "sha256": "098109320a5ea3a318614918cce29360a16f13dd76d016a85968acc82e885071",
+    "bytes": 12966
+  },
+  {
+    "path": "tools/p3_web_cancel_verify.py",
+    "gitBlob": "b909978de5ad9db54778925af6ec19894d6ba2fa",
+    "sha256": "704b45f9e4ac7e1b85baa691572dca8f820d9e1b497fb33827b0e2c24f12bf9d",
+    "bytes": 6097
+  },
+  {
+    "path": "tools/p3_web_result_verify.py",
+    "gitBlob": "553c6c6a05923f9abfc115b0efed6b4b20467b74",
+    "sha256": "60a3d1d20f4a78da1a05b9a3d6ace072b1ee64fe9088c5a8af92fd44802f22b4",
+    "bytes": 11120
+  },
+  {
+    "path": "tools/p4_image_verify.py",
+    "gitBlob": "7f96ae378a0bda20f937a9daccc84f9a9d5d273e",
+    "sha256": "a0efd0d112cda6c91eef42241f3cf3bff2407069c4db2bb74bdffd3b97db7e9e",
+    "bytes": 29835
+  },
+  {
+    "path": "tools/p4_legacy_verify.py",
+    "gitBlob": "4e4728b511cd5f8020a220311860953341e5cc32",
+    "sha256": "996914174518d663d807deb58edc99ed95152164b05540f709ac1fd2e5d15b3d",
+    "bytes": 4660
+  },
+  {
+    "path": "tools/p4_namespace_verify.py",
+    "gitBlob": "f2de5f27612f59102b8f3ca2d18b37a80050f4e2",
+    "sha256": "0870e986136bb1a1fe396fb8e00b845257c82b0ca369610cdc0aa307124a61df",
+    "bytes": 3671
+  },
+  {
+    "path": "tools/p4_proc_verify.py",
+    "gitBlob": "8e63d2804d8499f4e7707b478f04f56f5faa7f6c",
+    "sha256": "21c79af94762499791b637a75402c7344a7d6bc699342f4f5259e54d71c92696",
+    "bytes": 5954
+  },
+  {
+    "path": "tools/p4_workspace_verify.py",
+    "gitBlob": "2d5437e4ba94adf5e1b6ca8f910f8f19e51c08a9",
+    "sha256": "fb7fa98f54b51f7495e8b4e4827872bb715194d387130d101bafa3c0ccc83327",
+    "bytes": 33997
+  },
+  {
+    "path": "tools/user_question_migration_verify.py",
+    "gitBlob": "9b6fde62d3afcb2619d94981c729c8aa8328383a",
+    "sha256": "ef795a4c8377e951046770287368ad69253724ce9742c8bb85531ce2ad6b41be",
+    "bytes": 6442
+  },
+  {
+    "path": "tools/user_question_verify.py",
+    "gitBlob": "a97ddae28776be307763446c31ec4cfb9d7d2eeb",
+    "sha256": "ba0294a893dfbe42b8199a52c621a4c4b3461e4a8256a776fbc8d6c33b3a7dc5",
+    "bytes": 39777
+  },
+  {
+    "path": "tools/verify-negative-gates.mjs",
+    "gitBlob": "c5f5417453d868fc10ec19d1830431a1e9c589d5",
+    "sha256": "6352dff5f631d2eabb6c09e515c585effd229b611b86e7c95c04e1be04b07842",
+    "bytes": 5728
+  },
+  {
+    "path": "tools/verify-whitespace.mjs",
+    "gitBlob": "20a139cc5c61fcac349d058b263241d77f0eb966",
+    "sha256": "a685374e3d8ac0582ce63dc1e11dbe5e94cbc1334dc5ac8929fc55d5661874f6",
+    "bytes": 3732
+  },
+  {
+    "path": "tools/workspace_verify.py",
+    "gitBlob": "cc465d054904c92132bdbbe5eeb63c0d165f4a14",
+    "sha256": "6ea90e9d68d4727e20e22f8747367d136d8c99053f27195ee7c32fb4be21ed0d",
+    "bytes": 3289
+  },
+  {
+    "path": "workers/search/README.md",
+    "gitBlob": "63bfd08877cba930308a5bd306d39f2494db1a45",
+    "sha256": "0a0859f70135d7dce6f530e366e576223821e4b12b722278cc96c00aee11f9eb",
+    "bytes": 5763
+  },
+  {
+    "path": "workers/search/THIRD_PARTY_NOTICES.txt",
+    "gitBlob": "cc2874ad50ba1e168d8350bde9fab0d4dfed7710",
+    "sha256": "9e4c78c9d8b6f727dc212dcf34e461ec2233d006004f1e2ead071e78b1ec8813",
+    "bytes": 878074
+  },
+  {
+    "path": "workers/search/launcher.c",
+    "gitBlob": "95da887fb2b1586968ab3ac963c578a463b2f42d",
+    "sha256": "410d7cc86f9b5a6de4c46b2156fa28c8bcff226b49ac48cee321a8f74d499ef0",
+    "bytes": 14431
+  },
+  {
+    "path": "workers/search/sbom.cdx.json",
+    "gitBlob": "a022f678cf318a933c1a99e4b2ef7e52e65016c3",
+    "sha256": "2a9b2d6b31e1df610ad11254066e4aee1d659bdf228bcab3f5f7b05e17ab578e",
+    "bytes": 31811
+  },
+  {
+    "path": "workers/search/source-inputs.json",
+    "gitBlob": "af557191a8f54fdb1ca9d3b0d42cffd168843352",
+    "sha256": "6b0d0c0386287a02fef582166fc1aa3a05b0f609f24655745cf2f294d653c9e3",
+    "bytes": 14118
+  },
+  {
+    "path": "workers/search/v2/README.md",
+    "gitBlob": "830d843b330c0fc7c4db50fbb9765b981580302e",
+    "sha256": "6669a1f63c9d65967aa4ee5df7ea34a363ec814ab93bfc36edaf3491990c63df",
+    "bytes": 6675
+  },
+  {
+    "path": "workers/search/v2/pins.json",
+    "gitBlob": "273441b1ebdf244bf1e60b287d4078252bf6670f",
+    "sha256": "b38e8e58440da8e718af8ec2376c256d9361f80b69b6f99d598965d5bf252f11",
+    "bytes": 610
+  },
+  {
+    "path": "workers/search/v2/source-inputs.json",
+    "gitBlob": "467d34b70411309c58574824b29530ad96b657f5",
+    "sha256": "5676dcde7cfc2c21121eaaed1caf49536c52db3e64c6e90e586d3b3e0924100a",
+    "bytes": 25208
+  }
+]

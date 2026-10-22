@@ -1,0 +1,491 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:todo:view:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "taskId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "asOfSeq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "state": {
+      "enum": [
+        "ABSENT",
+        "UNWRITTEN",
+        "PRESENT",
+        "PURGED"
+      ]
+    },
+    "todos": {
+      "anyOf": [
+        {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              },
+              "status": {
+                "enum": [
+                  "pending",
+                  "in_progress",
+                  "completed"
+                ]
+              }
+            },
+            "required": [
+              "content",
+              "status"
+            ]
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "counts": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pending": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 32
+            },
+            "inProgress": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "completed": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 32
+            }
+          },
+          "required": [
+            "pending",
+            "inProgress",
+            "completed"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "invocationId": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "checkpointId": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "providerCallId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "createdAttemptId": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "committedAttemptId": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "fence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "eventId": {
+              "type": "string",
+              "pattern": "^[0-9a-f-]{36}:[1-9][0-9]{0,18}$"
+            },
+            "outputSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "invocationId",
+            "checkpointId",
+            "providerCallId",
+            "createdAttemptId",
+            "committedAttemptId",
+            "fence",
+            "eventId",
+            "outputSha256",
+            "updatedAt"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "retainUntil": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "version",
+    "taskId",
+    "asOfSeq",
+    "revision",
+    "state",
+    "todos",
+    "counts",
+    "source",
+    "retainUntil"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "ABSENT"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "revision": {
+            "const": 0
+          },
+          "todos": {
+            "type": "null"
+          },
+          "counts": {
+            "type": "null"
+          },
+          "source": {
+            "type": "null"
+          },
+          "retainUntil": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "UNWRITTEN"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "revision": {
+            "const": 0
+          },
+          "todos": {
+            "type": "null"
+          },
+          "counts": {
+            "type": "null"
+          },
+          "source": {
+            "type": "null"
+          },
+          "retainUntil": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "PRESENT"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "todos": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "content": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "status": {
+                  "enum": [
+                    "pending",
+                    "in_progress",
+                    "completed"
+                  ]
+                }
+              },
+              "required": [
+                "content",
+                "status"
+              ]
+            }
+          },
+          "counts": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "pending": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 32
+              },
+              "inProgress": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "completed": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 32
+              }
+            },
+            "required": [
+              "pending",
+              "inProgress",
+              "completed"
+            ]
+          },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "invocationId": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "checkpointId": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "providerCallId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "createdAttemptId": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "committedAttemptId": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "fence": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "eventId": {
+                "type": "string",
+                "pattern": "^[0-9a-f-]{36}:[1-9][0-9]{0,18}$"
+              },
+              "outputSha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "invocationId",
+              "checkpointId",
+              "providerCallId",
+              "createdAttemptId",
+              "committedAttemptId",
+              "fence",
+              "eventId",
+              "outputSha256",
+              "updatedAt"
+            ]
+          },
+          "retainUntil": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "PURGED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "todos": {
+            "type": "null"
+          },
+          "retainUntil": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "revision": {
+                  "const": 0
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "counts": {
+                  "type": "null"
+                },
+                "source": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "counts": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "pending": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 32
+                    },
+                    "inProgress": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "completed": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 32
+                    }
+                  },
+                  "required": [
+                    "pending",
+                    "inProgress",
+                    "completed"
+                  ]
+                },
+                "source": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "invocationId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    "checkpointId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    "providerCallId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "createdAttemptId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    "committedAttemptId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    "fence": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "eventId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f-]{36}:[1-9][0-9]{0,18}$"
+                    },
+                    "outputSha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "invocationId",
+                    "checkpointId",
+                    "providerCallId",
+                    "createdAttemptId",
+                    "committedAttemptId",
+                    "fence",
+                    "eventId",
+                    "outputSha256",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "id": "T66",
+  "package": "@deepseek-ai/dsh-tool-todo",
+  "name": "todo_write",
+  "description": "Record and update a task list to plan multi-step work and show progress; skip it for trivial single-step tasks. Add one todo per concrete step before you start. While work remains, keep the todos being worked on `in_progress`, several only when work runs in parallel. Mark each todo `completed` as soon as it is done.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "todos": {
+        "type": "array",
+        "description": "The COMPLETE task list, replacing any previous list.",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string",
+              "description": "What the task is — a short imperative line."
+            },
+            "status": {
+              "type": "string",
+              "description": "pending (not started) | in_progress (now) | completed (done).",
+              "enum": [
+                "pending",
+                "in_progress",
+                "completed"
+              ]
+            }
+          },
+          "required": [
+            "content",
+            "status"
+          ]
+        }
+      }
+    },
+    "required": [
+      "todos"
+    ]
+  },
+  "source": "packages/todo/tool-todo/src/index.ts",
+  "sourceUrl": "https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/todo/tool-todo/src/index.ts",
+  "group": "G27",
+  "migration": {
+    "id": "G27",
+    "route": "J/清单投影",
+    "phase": "P4",
+    "effort": "1–2",
+    "owner": "后端＋前端",
+    "dependency": "Session-owned todo/write；并行规则配置必选",
+    "boundary": "仅会话投影，不作为调度队列；事件幂等/最新revision；产品确定并行规则",
+    "acceptance": "完整替换、状态/并行规则；重连最新；跨Session隔离",
+    "upstreamResearchPhase": "S3",
+    "status": "planned-not-implemented"
+  },
+  "firstPartyLicense": "MIT, Copyright 2026 DeepSeek; third-party dependencies require separate review"
+}

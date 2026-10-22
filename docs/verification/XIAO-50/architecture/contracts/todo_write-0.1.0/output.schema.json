@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:todo:write:0.1.0:output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "todos": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "in_progress",
+              "completed"
+            ]
+          }
+        },
+        "required": [
+          "content",
+          "status"
+        ]
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pending": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32
+        },
+        "inProgress": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "completed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32
+        }
+      },
+      "required": [
+        "pending",
+        "inProgress",
+        "completed"
+      ]
+    }
+  },
+  "required": [
+    "todos",
+    "counts"
+  ]
+}

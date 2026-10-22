@@ -207,6 +207,7 @@ public final class OpenAiProtocol {
       var function = c.path("function");
       var arguments = function.path("arguments");
       boolean composition = "compose_report".equals(function.path("name").asText());
+      boolean todo = "todo_write".equals(function.path("name").asText());
       boolean workspaceV3 =
           java.util.List.of("edit", "glob", "grep").contains(function.path("name").asText());
       if (calls.size() >= 20
@@ -216,12 +217,14 @@ public final class OpenAiProtocol {
           || !authorizedTools.contains(function.path("name").asText())
           || !arguments.isTextual()
           || arguments.asText().getBytes(StandardCharsets.UTF_8).length
-              > (composition || workspaceV3 ? ReportComposer.INPUT_MAX_BYTES : 16384))
+              > (todo
+                  ? 65536
+                  : composition || workspaceV3 ? ReportComposer.INPUT_MAX_BYTES : 16384))
         throw new IOException("Invalid tool slot");
       // Bound raw bytes before a MySQL TEXT invocation snapshot can be planned. Strict draft
       // parsing remains at the gateway, before executable admission.
       // Retain raw argument bytes so duplicate keys are not erased by a JsonNode conversion.
-      if (!composition) {
+      if (!composition && !todo) {
         var parsed = json.readTree(arguments.asText());
         if (parsed == null || !parsed.isObject()) throw new IOException("Invalid tool arguments");
       }

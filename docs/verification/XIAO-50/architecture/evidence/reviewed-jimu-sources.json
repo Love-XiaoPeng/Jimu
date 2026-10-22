@@ -1,0 +1,152 @@
+[
+  {
+    "path": "AGENTS.md",
+    "gitBlob": "fce92cf098c725af77108a57c18a17f38aa62e47",
+    "sha256": "65d6c6106f55a04b209ce7198cbc6a630c173762a5d289575d7aeddead9c9226",
+    "bytes": 1568
+  },
+  {
+    "path": "README.md",
+    "gitBlob": "69448b6dce685029e41450f77bdbfb19742dd5d9",
+    "sha256": "6388273e9728cf29de360f671174efdc0392f272e0584c8eec9833c990a1dddb",
+    "bytes": 4037
+  },
+  {
+    "path": "CONTRIBUTING.md",
+    "gitBlob": "b4a89f313eb6cdc87ae06d2025cc3f102ca68e59",
+    "sha256": "9d8f0db6426a83a9244a071d510a21cfd32c410e241aed2ca184f0bea255dbe0",
+    "bytes": 3952
+  },
+  {
+    "path": "pom.xml",
+    "gitBlob": "f13344b920287f912bd2e38456f6464825b7c335",
+    "sha256": "97bcb08a228d3d8e12816094b48168e2d6bee6b00aadb80f0d79687e05be067b",
+    "bytes": 7246
+  },
+  {
+    "path": "docs/baseline/README.md",
+    "gitBlob": "c79fe3c6d5c2c8b6fbe50baebc63d13c4fd8ec2b",
+    "sha256": "15760921d7c1a6d805d306f6b179d7cbd280d2cba577daf11d07bca31ed1bf15",
+    "bytes": 1917
+  },
+  {
+    "path": "docs/baseline/XIAO-33-可行性与总体方案-v0.3.md",
+    "gitBlob": "2649667071d8013edd056ca89803cd7601ce3361",
+    "sha256": "2b8e53c700aab0d96a6f06351ee9f924a43c8d5af4b5f62837b20e6f92e6c014",
+    "bytes": 95190
+  },
+  {
+    "path": "docs/baseline/XIAO-33-工程规范-v0.2.md",
+    "gitBlob": "1d7a4d0627b96ccb65725e2b34dd774bc5cf42ba",
+    "sha256": "36553f58e0b129903f04389c852f75560cf4879bbe9fbdac0e2759cb3f8298b7",
+    "bytes": 27621
+  },
+  {
+    "path": "docs/baseline/XIAO-33-tool-migration-evidence-v1.1.md",
+    "gitBlob": "4b5aa6dfcab31ad139cd7d6e71a971dfcc316761",
+    "sha256": "2111bc4a0be86a3cc69420fb9b9d08adc0bc5b609686d859b38830edce17c0f7",
+    "bytes": 87122
+  },
+  {
+    "path": "docs/baseline/XIAO-33-harness-tool-inventory-v1.1.json",
+    "gitBlob": "b788c5703af0ee40a5df4d439b8209211ed132cf",
+    "sha256": "30b6904aad8d85dac3e789434e434c449575383cb23e254329a84930436f5b02",
+    "bytes": 196149
+  },
+  {
+    "path": "docs/adr/0004-p2-durable-execution.md",
+    "gitBlob": "4a5caab938812ac8ee0eb3d03314448f588e47bb",
+    "sha256": "09730bf54d87c44b0420579f71adbeb3588daab6eb6c2f4b508b3fc002f790c7",
+    "bytes": 23026
+  },
+  {
+    "path": "docs/adr/0008-durable-user-questions.md",
+    "gitBlob": "ef277c817cbbf3ec8cbe14c40fd77d9e0a3babb2",
+    "sha256": "f7845c1c34466de1e40591d910dc422c156c0f339d97be8271ee299502ab63e4",
+    "bytes": 6781
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+    "gitBlob": "00cf1b43d61b5e475b0e6b81ff1d69c8015e8f0e",
+    "sha256": "07a169daa8fae2460c8cf183efdc2a1e32daa4e6929508064fe068a47e67d081",
+    "bytes": 223696
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+    "gitBlob": "12fe5ec352abe8d40dfa405ad8074ad12e4e3af3",
+    "sha256": "cebef6fc345093030bdca81c7fe6405739bf67bfa013c96e1513ca4f69364fcc",
+    "bytes": 3326
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+    "gitBlob": "d86cbd406fd7b23af322616057914e6539dde826",
+    "sha256": "395b5429f8611a191768223f95e0ab1aecf62e9b91edca10b4d796a6502b355c",
+    "bytes": 39259
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/WorkerLoop.java",
+    "gitBlob": "345f797dedeb76fa30d8bdc70d8d4d75d8c4aad9",
+    "sha256": "e86cbe664a60e33dd209a63207d9c96ccf2249d8c778f376c7c62818f962dbcb",
+    "bytes": 3902
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/events/DatabaseEventFeed.java",
+    "gitBlob": "6f3c5e0feeb83d3b06acbf5ed312a956acbdf062",
+    "sha256": "f4ac0600de96ba7ca73427726c924d121d59d8d0f580f3b2d5e7e4e0f0860250",
+    "bytes": 3507
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/SchemaContract.java",
+    "gitBlob": "5bd7bed4a666c927d037cb2937080fa729a1ff88",
+    "sha256": "bfd42fccd264dd9b5b00cb69c0ccc771d89abfbf2fc083d73da66d912c92e5d9",
+    "bytes": 1977
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/interaction/QuestionContracts.java",
+    "gitBlob": "d6806f2257ed1e859e8476957d147c51a957523a",
+    "sha256": "5dbcd8ce848a412a29e62a9cdc36d1915cd9033c2b53606634885d8da4718ace",
+    "bytes": 9389
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskController.java",
+    "gitBlob": "195319c42d792f4d00730ffe7cd4fa12df9b6f18",
+    "sha256": "dc6d957f407ccbd56cdc4fe75d2ea35b1273694f1b2b5583f7ca20681f7aac0b",
+    "bytes": 10809
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskErrors.java",
+    "gitBlob": "b6da1fad338270a66131826acf071bacc5902842",
+    "sha256": "3a07fb7cbe2cc4d35070eaa53706575ab2f6f554567da95497a5102918188629",
+    "bytes": 1581
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/api/UserQuestionController.java",
+    "gitBlob": "e7b35dc5bb612fe3276e6ab7b60f077057c683a6",
+    "sha256": "2d0ad3660f32a459ebc39d42f9cc5e67de48e2ac3849fc0c07a4fa0de0d7deee",
+    "bytes": 4073
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/ExecutionLedger.java",
+    "gitBlob": "4c8140c87257b1b04fc24fac23e6251190858682",
+    "sha256": "76645a63d5756dbebdecfdd361229ee28ca305249fcee100332bce443f1ae60b",
+    "bytes": 3747
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/Tasks.java",
+    "gitBlob": "4ec8b317cbc2793de9fa8e2e51669151f72e945b",
+    "sha256": "458057b47bdbbc8f2b29cb5f8d77f368d1787d736b6d2a7975db0b414ae05902",
+    "bytes": 2413
+  },
+  {
+    "path": "src/main/java/io/github/lovexiaopeng/jimu/model/api/ModelSnapshot.java",
+    "gitBlob": "49ae327683ab17b3ca21cf95753ad7bc5beddabe",
+    "sha256": "007421dd53efabe2a0c960a86ac709092e7713e520100778c126a8d90b9d2175",
+    "bytes": 3402
+  },
+  {
+    "path": "src/main/resources/db/migration/V16__durable_user_questions.sql",
+    "gitBlob": "64ee58e9b29a653fdd4d8893290ecf6941a6999e",
+    "sha256": "8b24cad2e4cd2c8118274972e81623a832ead2b47f0899f33b51a6ae93258c28",
+    "bytes": 2694
+  }
+]

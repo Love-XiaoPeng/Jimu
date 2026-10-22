@@ -1,0 +1,22 @@
+2026-10-22 architecture-only source/probe attempts (UTC).
+
+1. multica repo checkout https://github.com/Love-XiaoPeng/Jimu.git
+   Exit 0, checkout 0e630f28e39c157788886694e2b16dc0831bb571 (older than issue baseline).
+2. Initial PowerShell git rev-parse HEAD HEAD^{tree} origin/master was not quoted.
+   PowerShell parsed braces as a script block; git reported ambiguous dAByAGUAZQA=.
+   Retried with quoted 'HEAD^{tree}'; exact checkout tree 8850a9d11f610257d87962585221b91a6bc19948.
+3. git ls-remote origin refs/heads/master
+   Exit 1: fatal: unable to access 'https://github.com/Love-XiaoPeng/Jimu.git/':
+   Failed to connect to github.com:443 after 21063 ms: Could not connect to server.
+   Read-only GitHub API succeeded; no shared/global network setting changed.
+4. fetch-evidence.ps1 first attempt exit 1: git hash-object could not open a long
+   archive path under docs/verification/XIAO-46: Filename too long.
+   Replaced the probe hashing operation with .NET SHA1 of standard Git blob header+bytes.
+5. Second attempt exit 1: codeload archive mvnw.cmd differed from canonical tree blob.
+   Archive blob 5761d948924c19571d27b465c519b2e2f9e30351,
+   canonical blob 92450f93273470af42eeee491874afb2039b700a.
+   Retrieved the fixed raw blob and verified it. Final fetch-evidence.ps1 exit 0:
+   672 Jimu blobs verified at master777a2e2ae47c3d5be7ac545648c0d90483124ff2.
+6. fetch-upstream.ps1 final exit 0: 24 source/test/license files Git-blob verified.
+7. Python schemas, extracted upstream body and JVM probe all passed on first run.
+   No product runtime, MySQL migration, concurrency or crash test attempted.
