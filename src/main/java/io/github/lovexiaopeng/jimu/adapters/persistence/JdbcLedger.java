@@ -33,6 +33,7 @@ public final class JdbcLedger
     implements Tasks,
         ExecutionLedger,
         NativeSearchLedger,
+        io.github.lovexiaopeng.jimu.kernel.task.api.TodoLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger {
@@ -47,9 +48,417 @@ public final class JdbcLedger
   private final io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts
       questions = new io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts();
   private boolean questionsEnabled;
+  private boolean todosEnabled;
+  private final io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts todos =
+      new io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts();
+
+  public void todosEnabled(boolean enabled) {
+    todosEnabled = enabled;
+  }
+
+  private boolean todoTask(Map<String, Object> task) {
+    return caps(task).contains("todo_write");
+  }
+
+  private Map<String, Object> todoProjection(Map<String, Object> task) {
+    var p =
+        one(
+            "SELECT * FROM task_todo_projection WHERE tenant_id=? AND task_id=?",
+            s(task, "tenant_id"),
+            s(task, "id"));
+    if (n(p, "record_version") != 1 || n(p, "todo_version") != 1)
+      throw new TaskFailure(409, "TODO_BINDING_UNSUPPORTED");
+    if (!Payloads.hash(s(p, "binding_snapshot")).equals(s(p, "binding_digest")))
+      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    var binding =
+        Payloads.read(s(p, "binding_snapshot"), com.fasterxml.jackson.databind.JsonNode.class);
+    if (binding.path("version").asInt() != 1 || binding.path("todoVersion").asInt() != 1)
+      throw new TaskFailure(409, "TODO_BINDING_UNSUPPORTED");
+    if (!todos.binding().equals(s(p, "binding_snapshot")))
+      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    return p;
+  }
+
+  private void todoAccess(Map<String, Object> task) {
+    if (!caps(task).equals(List.of("todo_write"))) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    var pin = tools(task).pins().get("todo_write");
+    var installed =
+        one(
+            "SELECT * FROM installation WHERE tenant_id=? AND plugin_id='todo_write' FOR SHARE",
+            s(task, "tenant_id"));
+    if (!pin.version().equals(todos.descriptor().version())
+        || !pin.digest().equals(todos.descriptor().outputSha256())
+        || !pin.version().equals(s(installed, "plugin_version"))
+        || !pin.digest().equals(s(installed, "plugin_digest"))
+        || pin.installationEpoch() != n(installed, "epoch"))
+      throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+    todoProjection(task);
+  }
+
+  private void todoStorage(Map<String, Object> task, long additional) {
+    if (!todoTask(task)) return;
+    long bytes =
+        db.queryForObject(
+            "SELECT COALESCE(OCTET_LENGTH(t.request_snapshot),0)+COALESCE(OCTET_LENGTH(t.goal),0)+COALESCE(OCTET_LENGTH(t.summary),0)+COALESCE(OCTET_LENGTH(t.model_snapshot),0)+COALESCE(OCTET_LENGTH(t.tools_snapshot),0)+(SELECT OCTET_LENGTH(binding_snapshot)+COALESCE(OCTET_LENGTH(retained_digests),0) FROM task_todo_projection WHERE tenant_id=t.tenant_id AND task_id=t.id)+(SELECT COALESCE(SUM(OCTET_LENGTH(request_snapshot)+COALESCE(OCTET_LENGTH(response_snapshot),0)),0) FROM step WHERE tenant_id=t.tenant_id AND task_id=t.id)+(SELECT COALESCE(SUM(OCTET_LENGTH(input_snapshot)+COALESCE(OCTET_LENGTH(output_snapshot),0)),0) FROM invocation WHERE tenant_id=t.tenant_id AND task_id=t.id)+(SELECT COALESCE(SUM(COALESCE(OCTET_LENGTH(usage_snapshot),0)),0) FROM model_dispatch WHERE tenant_id=t.tenant_id AND task_id=t.id) FROM task t WHERE tenant_id=? AND id=?",
+            Long.class,
+            s(task, "tenant_id"),
+            s(task, "id"));
+    if (bytes + additional + 65536 > 2097152) throw new TaskFailure(429, "TODO_STORAGE_LIMIT");
+  }
+
+  private void todoCommitFence(Lease lease) {
+    if (db.update(
+            "UPDATE task SET updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND current_attempt_id=? AND worker_id=? AND fence=? AND lease_until>CURRENT_TIMESTAMP(6) AND deadline>CURRENT_TIMESTAMP(6) AND cancel_requested_at IS NULL AND state='RUNNING'",
+            lease.tenant(),
+            lease.taskId(),
+            lease.attemptId(),
+            lease.worker(),
+            lease.fence())
+        != 1) throw new TaskFailure(409, "FENCE_REJECTED");
+  }
+
+  private void todoMetadata(Map<String, Object> task, boolean closing) {
+    // UTF-8 scalar values plus eight bytes per column and 32 per row conservatively
+    // bound fixed metadata. Body copies are counted separately by todoStorage.
+    long bytes = 0;
+    var body =
+        java.util.Set.of(
+            "request_snapshot",
+            "goal",
+            "summary",
+            "model_snapshot",
+            "tools_snapshot",
+            "binding_snapshot",
+            "response_snapshot",
+            "input_snapshot",
+            "output_snapshot",
+            "usage_snapshot",
+            "retained_digests");
+    for (String table :
+        List.of(
+            "task",
+            "task_todo_projection",
+            "task_attempt",
+            "step",
+            "invocation",
+            "model_dispatch",
+            "reservation",
+            "event")) {
+      String key = table.equals("task") ? "id" : "task_id";
+      for (var row :
+          rows(
+              "SELECT * FROM " + table + " WHERE tenant_id=? AND " + key + "=?",
+              s(task, "tenant_id"),
+              s(task, "id"))) {
+        bytes += 32;
+        for (var entry : row.entrySet())
+          if (!body.contains(entry.getKey()))
+            bytes +=
+                8
+                    + (entry.getValue() == null
+                        ? 1
+                        : io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(
+                            entry.getValue().toString()));
+      }
+    }
+    if (bytes > (closing ? 65536 : 61440)) throw new TaskFailure(429, "TODO_STORAGE_LIMIT");
+  }
+
+  @Override
+  public io.github.lovexiaopeng.jimu.plugin.api.TodoPort.Result replaceOrResult(
+      Lease lease, String stepId, Call call, String version, String digest) {
+    // Session settings belong to this transaction's dedicated DriverManager connection.
+    return leaseTx(
+        lease,
+        () ->
+            db.execute(
+                (org.springframework.jdbc.core.ConnectionCallback<
+                        io.github.lovexiaopeng.jimu.plugin.api.TodoPort.Result>)
+                    connection -> {
+                      int remaining =
+                          (int)
+                              java.time.Duration.between(Instant.now(), lease.deadline())
+                                  .toSeconds();
+                      if (remaining < 1) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
+                      int prior;
+                      try (var statement = connection.createStatement();
+                          var result =
+                              statement.executeQuery("SELECT @@SESSION.innodb_lock_wait_timeout")) {
+                        result.next();
+                        prior = result.getInt(1);
+                      }
+                      try (var statement = connection.createStatement()) {
+                        statement.execute(
+                            "SET SESSION innodb_lock_wait_timeout=" + Math.min(2, remaining));
+                      }
+                      try {
+                        var task = fenced(lease, true);
+                        if (!todoTask(task)) throw new TaskFailure(403, "TODO_NOT_AUTHORIZED");
+                        var p = todoProjection(task);
+                        var candidates =
+                            rows(
+                                "SELECT i.*,s.state AS step_state,s.record_version AS step_version,s.response_snapshot,s.response_digest,s.task_id AS step_task FROM invocation i JOIN step s ON s.tenant_id=i.tenant_id AND s.id=i.step_id WHERE i.tenant_id=? AND i.task_id=? AND i.step_id=? AND i.slot=? FOR UPDATE",
+                                lease.tenant(),
+                                lease.taskId(),
+                                stepId,
+                                call.slot());
+                        if (candidates.size() != 1)
+                          throw new TaskFailure(409, "INVOCATION_MISMATCH");
+                        var i = candidates.getFirst();
+                        if (!"todo_write".equals(call.tool())
+                            || !call.tool().equals(s(i, "tool"))
+                            || !call.providerId().equals(s(i, "provider_id"))
+                            || !call.input().equals(s(i, "input_snapshot"))
+                            || !Payloads.hash(s(i, "input_snapshot")).equals(s(i, "input_digest"))
+                            || !lease.taskId().equals(s(i, "step_task"))
+                            || !"RESPONDED".equals(s(i, "step_state"))
+                            || !Payloads.hash(s(i, "response_snapshot"))
+                                .equals(s(i, "response_digest")))
+                          throw new TaskFailure(409, "INVOCATION_MISMATCH");
+                        if (n(i, "record_version") != 1 || n(i, "step_version") != 1)
+                          throw new TaskFailure(409, "PAYLOAD_VERSION_UNSUPPORTED");
+                        var response =
+                            Payloads.read(
+                                s(i, "response_snapshot"),
+                                io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent
+                                    .Response.class);
+                        if (response.version() != 2)
+                          throw new TaskFailure(409, "PAYLOAD_VERSION_UNSUPPORTED");
+                        boolean originalSlot = false;
+                        for (int slot = 0; slot < response.calls().size(); slot++) {
+                          var wire = response.calls().get(slot);
+                          if (new Call(
+                                  slot + ":" + wire.id(), wire.id(), wire.name(), wire.arguments())
+                              .equals(call)) originalSlot = true;
+                        }
+                        if (!originalSlot) throw new TaskFailure(409, "INVOCATION_MISMATCH");
+                        var pin = tools(task).pins().get("todo_write");
+                        if (!version.equals(pin.version())
+                            || !digest.equals(pin.digest())
+                            || !version.equals(s(i, "plugin_version"))
+                            || !digest.equals(s(i, "plugin_digest"))
+                            || pin.installationEpoch() != n(i, "installation_epoch"))
+                          throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+                        if (i.get("todo_expected_revision") == null
+                            || n(i, "todo_expected_revision") < 0)
+                          throw new TaskFailure(409, "TODO_BINDING_UNSUPPORTED");
+                        var result = todos.input(s(i, "input_snapshot"));
+                        String output = Payloads.json(result), invocation = s(i, "id");
+                        if ("SUCCEEDED".equals(s(i, "state"))) {
+                          todoResultSource(task, i);
+                          if (!output.equals(s(i, "output_snapshot")))
+                            throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+                          todoCommitFence(lease);
+                          return todos.output(s(i, "output_snapshot"));
+                        }
+                        if (!"PENDING".equals(s(i, "state"))
+                            || i.get("todo_applied_revision") != null)
+                          throw new TaskFailure(409, "INVOCATION_MISMATCH");
+                        long expected = n(i, "todo_expected_revision");
+                        if (n(p, "revision") != expected)
+                          throw new TaskFailure(409, "TODO_REVISION_CONFLICT");
+                        var budget = bucket(lease.tenant());
+                        if (n(task, "tools_used") >= n(task, "max_tools")
+                            || n(budget, "tool_used") >= n(budget, "tool_limit"))
+                          throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
+                        todos.output(output);
+                        todoStorage(
+                            task,
+                            io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(
+                                output));
+                        db.update(
+                            "UPDATE task SET tools_used=tools_used+1 WHERE tenant_id=? AND id=?",
+                            lease.tenant(),
+                            lease.taskId());
+                        db.update(
+                            "UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=?",
+                            lease.tenant());
+                        reserve(
+                            lease.tenant(),
+                            lease.taskId(),
+                            invocation,
+                            invocation,
+                            "TOOL",
+                            1,
+                            "SETTLED",
+                            "KNOWN");
+                        db.update(
+                            "UPDATE reservation SET actual=1 WHERE tenant_id=? AND id=?",
+                            lease.tenant(),
+                            invocation);
+                        event(task, "intent:" + invocation, "tool.dispatched", null);
+                        event(task, "todo-write:" + invocation, "todo.updated", null);
+                        long seq =
+                            db.queryForObject(
+                                "SELECT seq FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
+                                Long.class,
+                                lease.tenant(),
+                                lease.taskId(),
+                                "todo-write:" + invocation);
+                        if (db.update(
+                                "UPDATE invocation SET state='SUCCEEDED',output_snapshot=?,output_digest=?,todo_applied_revision=?,todo_committed_attempt_id=?,todo_committed_fence=?,todo_event_seq=?,todo_committed_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND state='PENDING' AND todo_applied_revision IS NULL",
+                                output,
+                                Payloads.hash(output),
+                                expected + 1,
+                                lease.attemptId(),
+                                lease.fence(),
+                                seq,
+                                lease.tenant(),
+                                invocation)
+                            != 1) throw new TaskFailure(409, "INVOCATION_MISMATCH");
+                        if (db.update(
+                                "UPDATE task_todo_projection SET revision=revision+1,content_state='PRESENT',source_invocation_id=?,source_step_id=?,committed_attempt_id=?,committed_fence=?,updated_seq=?,pending_count=?,in_progress_count=?,completed_count=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND task_id=? AND revision=? AND content_state<>'PURGED'",
+                                invocation,
+                                stepId,
+                                lease.attemptId(),
+                                lease.fence(),
+                                seq,
+                                result.counts().pending(),
+                                result.counts().inProgress(),
+                                result.counts().completed(),
+                                Payloads.hash(output),
+                                lease.tenant(),
+                                lease.taskId(),
+                                expected)
+                            != 1) throw new TaskFailure(409, "TODO_REVISION_CONFLICT");
+                        event(task, "result:" + invocation, "tool.completed", null);
+                        todoCommitFence(lease);
+                        return result;
+                      } finally {
+                        try (var statement = connection.createStatement()) {
+                          statement.execute("SET SESSION innodb_lock_wait_timeout=" + prior);
+                        }
+                      }
+                    }));
+  }
+
+  private void todoResultSource(Map<String, Object> task, Map<String, Object> i) {
+    if (i.get("todo_applied_revision") == null
+        || n(i, "todo_applied_revision") != n(i, "todo_expected_revision") + 1
+        || !"SUCCEEDED".equals(s(i, "state"))
+        || !"todo_write".equals(s(i, "tool"))
+        || i.get("todo_committed_attempt_id") == null
+        || i.get("todo_committed_fence") == null
+        || i.get("todo_event_seq") == null
+        || i.get("todo_committed_at") == null) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    var attempt =
+        rows(
+            "SELECT id FROM task_attempt WHERE tenant_id=? AND task_id=? AND id=? AND fence=?",
+            s(task, "tenant_id"),
+            s(task, "id"),
+            s(i, "todo_committed_attempt_id"),
+            n(i, "todo_committed_fence"));
+    if (attempt.size() != 1) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    if (!"PURGED".equals(s(i, "content_state"))
+        && !Payloads.hash(s(i, "output_snapshot")).equals(s(i, "output_digest")))
+      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+  }
+
+  @Override
+  public Map<String, Object> getTodos(Identity identity, String taskId) {
+    try {
+      UUID.fromString(taskId);
+    } catch (IllegalArgumentException e) {
+      throw new TaskFailure(404, "NOT_FOUND");
+    }
+    return tx(
+        () -> {
+          var task = visible(identity, taskId);
+          access(task);
+          var r =
+              one(
+                  "SELECT t.next_event_seq,p.*,i.id AS invocation_id,i.task_id AS invocation_task,i.step_id AS invocation_step,i.attempt_id,i.provider_id,i.tool,i.state AS state,i.todo_expected_revision,i.todo_applied_revision,i.todo_committed_attempt_id,i.todo_committed_fence,i.todo_event_seq,i.todo_committed_at,i.output_snapshot,i.output_digest AS invocation_digest FROM task t LEFT JOIN task_todo_projection p ON p.tenant_id=t.tenant_id AND p.task_id=t.id LEFT JOIN invocation i ON i.tenant_id=p.tenant_id AND i.id=p.source_invocation_id WHERE t.tenant_id=? AND t.id=? AND t.owner_actor_id=?",
+                  identity.tenant(),
+                  taskId,
+                  identity.actor());
+          var view = new java.util.LinkedHashMap<String, Object>();
+          view.put("version", 1);
+          view.put("taskId", taskId);
+          view.put("asOfSeq", n(r, "next_event_seq"));
+          boolean absent = r.get("task_id") == null;
+          view.put("revision", absent ? 0 : n(r, "revision"));
+          view.put("state", absent ? "ABSENT" : s(r, "content_state"));
+          view.put("todos", null);
+          view.put("counts", null);
+          view.put("source", null);
+          view.put("retainUntil", absent ? null : time(r, "retain_until").toString());
+          if (!absent && n(r, "revision") > 0) {
+            if (!taskId.equals(s(r, "invocation_task"))
+                || !s(r, "source_step_id").equals(s(r, "invocation_step"))
+                || n(r, "revision") != n(r, "todo_applied_revision")
+                || !s(r, "committed_attempt_id").equals(s(r, "todo_committed_attempt_id"))
+                || n(r, "committed_fence") != n(r, "todo_committed_fence")
+                || n(r, "updated_seq") != n(r, "todo_event_seq")
+                || !s(r, "output_digest").equals(s(r, "invocation_digest")))
+              throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+            todoResultSource(task, r);
+            var counts =
+                new io.github.lovexiaopeng.jimu.plugin.api.TodoPort.Counts(
+                    (int) n(r, "pending_count"),
+                    (int) n(r, "in_progress_count"),
+                    (int) n(r, "completed_count"));
+            if ("PRESENT".equals(s(r, "content_state"))) {
+              var output = todos.output(s(r, "output_snapshot"));
+              if (!counts.equals(output.counts())) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+              view.put("todos", output.todos());
+            }
+            view.put("counts", counts);
+            view.put(
+                "source",
+                Map.of(
+                    "invocationId",
+                    s(r, "source_invocation_id"),
+                    "checkpointId",
+                    s(r, "source_step_id"),
+                    "providerCallId",
+                    s(r, "provider_id"),
+                    "createdAttemptId",
+                    s(r, "attempt_id"),
+                    "committedAttemptId",
+                    s(r, "committed_attempt_id"),
+                    "fence",
+                    n(r, "committed_fence"),
+                    "eventId",
+                    taskId + ":" + n(r, "updated_seq"),
+                    "outputSha256",
+                    s(r, "output_digest"),
+                    "updatedAt",
+                    time(r, "todo_committed_at").toString()));
+          }
+          todos.view(view);
+          return view;
+        });
+  }
 
   public void questionsEnabled(boolean enabled) {
     questionsEnabled = enabled;
+  }
+
+  private boolean todoAvailable(Identity identity) {
+    if (!todosEnabled) return false;
+    try {
+      models.requireTodo(models.selected(identity.tenant()));
+      var installed =
+          one(
+              "SELECT plugin_version,plugin_digest FROM installation WHERE tenant_id=? AND plugin_id='todo_write'",
+              identity.tenant());
+      return todos.descriptor().version().equals(s(installed, "plugin_version"))
+          && todos.descriptor().outputSha256().equals(s(installed, "plugin_digest"))
+          && models.businessPolicy() == null
+          && models.scopeRequirement() == null
+          && models.evaluationRunId() == null;
+    } catch (TaskFailure e) {
+      return false;
+    }
+  }
+
+  private void rejectTodoBypass(Lease lease, String invocation) {
+    if (!rows(
+            "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND tool='todo_write'",
+            lease.tenant(),
+            lease.taskId(),
+            invocation)
+        .isEmpty()) throw new TaskFailure(409, "TODO_COMMIT_REQUIRED");
   }
 
   private void releaseQuestionTask(Map<String, Object> task) {
@@ -63,6 +472,108 @@ public final class JdbcLedger
       db.update(
           "UPDATE tenant_budget SET question_tasks_held=question_tasks_held-1 WHERE tenant_id=?",
           s(task, "tenant_id"));
+  }
+
+  private void cleanupTodos() {
+    for (var candidate :
+        rows(
+            "SELECT tenant_id,task_id FROM task_todo_projection WHERE content_state<>'PURGED' AND retain_until<=CURRENT_TIMESTAMP(6) ORDER BY retain_until,tenant_id,task_id LIMIT 32")) {
+      tx(
+          () -> {
+            String tenant = s(candidate, "tenant_id"), taskId = s(candidate, "task_id");
+            bucket(tenant);
+            var task = locked(tenant, taskId);
+            var p = todoProjection(task);
+            if ("PURGED".equals(s(p, "content_state"))
+                || time(p, "retain_until").isAfter(questionNow())
+                || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(task, "state"))
+                || !writersQuiescent(task)) return null;
+            if (!rows(
+                        "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN' OR (state='RESERVED' AND category<>'TODO_STORAGE')) LIMIT 1",
+                        tenant,
+                        taskId)
+                    .isEmpty()
+                || !rows(
+                        "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN') LIMIT 1",
+                        tenant,
+                        taskId)
+                    .isEmpty()
+                || !rows(
+                        "SELECT id FROM model_dispatch WHERE tenant_id=? AND task_id=? AND state='DISPATCHED' LIMIT 1",
+                        tenant,
+                        taskId)
+                    .isEmpty()) return null;
+            var retained = new java.util.LinkedHashMap<String, Object>();
+            for (String field : List.of("request_snapshot", "goal", "summary"))
+              retainQuestionBody(retained, "task:" + field, s(task, field));
+            String tombstone = "{\"version\":1,\"state\":\"TODO_PURGED\"}";
+            for (var step :
+                rows("SELECT * FROM step WHERE tenant_id=? AND task_id=?", tenant, taskId)) {
+              for (String field : List.of("request_snapshot", "response_snapshot"))
+                retainQuestionBody(retained, "step:" + s(step, "id") + ":" + field, s(step, field));
+              db.update(
+                  "UPDATE step SET request_snapshot=?,response_snapshot=IF(response_snapshot IS NULL,NULL,?),request_cleanup_state='TODO_PURGED',retained_request_digest=request_digest WHERE tenant_id=? AND id=?",
+                  tombstone,
+                  tombstone,
+                  tenant,
+                  s(step, "id"));
+            }
+            for (var invocation :
+                rows("SELECT * FROM invocation WHERE tenant_id=? AND task_id=?", tenant, taskId)) {
+              for (String field : List.of("input_snapshot", "output_snapshot"))
+                retainQuestionBody(
+                    retained,
+                    "invocation:" + s(invocation, "id") + ":" + field,
+                    s(invocation, field));
+              db.update(
+                  "UPDATE invocation SET input_snapshot=?,output_snapshot=IF(output_snapshot IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
+                  tombstone,
+                  tombstone,
+                  tenant,
+                  s(invocation, "id"));
+            }
+            for (var dispatch :
+                rows(
+                    "SELECT * FROM model_dispatch WHERE tenant_id=? AND task_id=?",
+                    tenant,
+                    taskId)) {
+              retainQuestionBody(
+                  retained,
+                  "dispatch:" + s(dispatch, "id") + ":usage_snapshot",
+                  s(dispatch, "usage_snapshot"));
+              db.update(
+                  "UPDATE model_dispatch SET usage_snapshot=IF(usage_snapshot IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
+                  tombstone,
+                  tenant,
+                  s(dispatch, "id"));
+            }
+            String digests = Payloads.json(retained);
+            if (io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(digests)
+                > 65536) throw new TaskFailure(429, "TODO_STORAGE_LIMIT");
+            db.update(
+                "UPDATE task SET request_snapshot=?,goal=?,summary=IF(summary IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
+                tombstone,
+                tombstone,
+                tombstone,
+                tenant,
+                taskId);
+            db.update(
+                "UPDATE task_todo_projection SET content_state='PURGED',retained_digests=? WHERE tenant_id=? AND task_id=?",
+                digests,
+                tenant,
+                taskId);
+            event(task, "todo-purged", "todo.content_deleted", null);
+            if (db.update(
+                    "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'",
+                    tenant,
+                    taskId + ":todo-storage")
+                != 1) throw new TaskFailure(409, "RESERVATION_STATE");
+            db.update(
+                "UPDATE tenant_budget SET todo_storage_held=todo_storage_held-2097152 WHERE tenant_id=?",
+                tenant);
+            return null;
+          });
+    }
   }
 
   private void cleanupQuestions() {
@@ -1473,6 +1984,7 @@ public final class JdbcLedger
                           || !io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES.contains(
                               name))
               .filter(name -> questionsEnabled || !name.equals("ask_user_question"))
+              .filter(name -> !name.equals("todo_write") || todoAvailable(identity))
               .filter(
                   name -> searchAvailable.getAsBoolean() || !List.of("glob", "grep").contains(name))
               .filter(
@@ -1509,6 +2021,11 @@ public final class JdbcLedger
             original.resourceIds(),
             original.budget(),
             descriptors);
+    boolean todo = request.capabilityIds().contains("todo_write");
+    if (todo
+        && (!request.capabilityIds().equals(List.of("todo_write"))
+            || !request.resourceIds().isEmpty()
+            || original.images() != null)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
     boolean ask = request.capabilityIds().contains("ask_user_question");
     if (ask
         && (!request.capabilityIds().equals(List.of("ask_user_question"))
@@ -1555,6 +2072,11 @@ public final class JdbcLedger
                   identity.actor(),
                   key);
           if (!old.isEmpty()) {
+            if (todoTask(old.getFirst())) {
+              access(old.getFirst());
+              if ("PURGED".equals(s(todoProjection(old.getFirst()), "content_state")))
+                throw new TaskFailure(410, "TODO_CONTENT_EXPIRED");
+            }
             if (ask) access(old.getFirst());
             if (!Payloads.hash(s(old.getFirst(), "request_snapshot"))
                 .equals(s(old.getFirst(), "request_digest")))
@@ -1608,6 +2130,20 @@ public final class JdbcLedger
                   || evaluation != null
                   || !(models.fixture() || models.localEvaluation(model))))
             throw new TaskFailure(403, "QUESTION_NOT_AUTHORIZED");
+          if (todo) {
+            if (!todosEnabled) throw new TaskFailure(403, "TODO_NOT_AUTHORIZED");
+            models.requireTodo(model);
+            if (evaluation != null || businessPolicy != null || models.scopeRequirement() != null)
+              throw new TaskFailure(403, "TODO_NOT_AUTHORIZED");
+            if (!pins.get("todo_write").version().equals(todos.descriptor().version())
+                || !pins.get("todo_write").digest().equals(todos.descriptor().outputSha256()))
+              throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+            if (n(budget, "todo_storage_limit") - n(budget, "todo_storage_held") < 2097152)
+              throw new TaskFailure(429, "TODO_STORAGE_LIMIT");
+            if (request.budget().maxModelRequests() > 8
+                || request.budget().maxToolInvocations() > 20)
+              throw new TaskFailure(429, "TODO_EXECUTION_LIMIT");
+          }
           String questionBinding =
               ask ? questions.binding(pins.get("ask_user_question").version()) : null;
           if (ask
@@ -1725,6 +2261,27 @@ public final class JdbcLedger
               scopeDigest,
               identity.tenant(),
               task);
+          if (todo) {
+            db.update(
+                "INSERT INTO task_todo_projection(tenant_id,task_id,binding_snapshot,binding_digest,retain_until) SELECT tenant_id,id,?,?,TIMESTAMPADD(SECOND,604800,created_at) FROM task WHERE tenant_id=? AND id=?",
+                todos.binding(),
+                Payloads.hash(todos.binding()),
+                identity.tenant(),
+                task);
+            db.update(
+                "UPDATE tenant_budget SET todo_storage_held=todo_storage_held+2097152 WHERE tenant_id=?",
+                identity.tenant());
+            reserve(
+                identity.tenant(),
+                task,
+                task + ":todo-storage",
+                null,
+                "TODO_STORAGE",
+                2097152,
+                "RESERVED",
+                "KNOWN");
+            todoStorage(locked(identity.tenant(), task), 0);
+          }
           if (ask) {
             db.update(
                 "UPDATE task SET question_binding=?,question_binding_digest=?,question_cleanup_state='RETAINED' WHERE tenant_id=? AND id=?",
@@ -1871,6 +2428,7 @@ public final class JdbcLedger
   private void access(Map<String, Object> row) {
     long currentEpoch =
         epoch(new Identity(s(row, "tenant_id"), s(row, "owner_actor_id")), caps(row));
+    if (todoTask(row)) todoAccess(row);
     if (questionTask(row)) questionAccess(row);
     else if (currentEpoch != n(row, "installation_epoch"))
       throw new TaskFailure(403, "CAPABILITY_REVOKED");
@@ -2043,6 +2601,21 @@ public final class JdbcLedger
             taskId,
             fact)
         .isEmpty()) return;
+    if (todoTask(task)) {
+      long seq =
+          db.queryForObject(
+              "SELECT next_event_seq FROM task WHERE tenant_id=? AND id=?",
+              Long.class,
+              tenant,
+              taskId);
+      boolean reserved =
+          type.equals("todo.content_deleted")
+              || type.equals("task.completed")
+              || type.equals("task.failed")
+              || type.equals("task.cancelled")
+              || type.equals("task.needs_reconciliation");
+      if (seq >= (reserved ? 256 : 254)) throw new TaskFailure(429, "TODO_EXECUTION_LIMIT");
+    }
     db.update(
         "UPDATE task SET next_event_seq=next_event_seq+1, revision=revision+1, updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
         tenant,
@@ -2065,6 +2638,8 @@ public final class JdbcLedger
         db.queryForObject(
             "SELECT state FROM task WHERE tenant_id=? AND id=?", String.class, tenant, taskId),
         "artifact.created".equals(type) ? fact.substring("published:".length()) : null);
+    if (todoTask(task))
+      todoMetadata(task, type.equals("todo.content_deleted") || fact.equals("terminal"));
   }
 
   @Override
@@ -2159,11 +2734,24 @@ public final class JdbcLedger
                 }
                 try {
                   access(task);
+                  if (todoTask(task)) {
+                    if (!todosEnabled) throw new TaskFailure(403, "TODO_FEATURE_DISABLED");
+                    models.requireTodo(snapshot(task));
+                    if (n(todoProjection(task), "revision") < 0)
+                      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+                    if (db.queryForObject(
+                            "SELECT COUNT(*) FROM task_attempt WHERE tenant_id=? AND task_id=?",
+                            Long.class,
+                            tenant,
+                            taskId)
+                        >= 8) throw new TaskFailure(429, "TODO_EXECUTION_LIMIT");
+                  }
                   if (questionTask(task) && !questionsEnabled)
                     throw new TaskFailure(403, "QUESTION_FEATURE_DISABLED");
                   if (resume) {
                     snapshot(task);
                     questionStorage(task, 131072);
+                    todoStorage(task, 131072);
                   }
                 } catch (TaskFailure e) {
                   terminal(task, "FAILED", e.code());
@@ -2245,6 +2833,14 @@ public final class JdbcLedger
       requireScope(lease.tenant(), evaluation, task, null);
       checkMaterials(task);
       access(task);
+      if (todoTask(task)) {
+        if (!lease.actor().equals(s(task, "owner_actor_id")))
+          throw new TaskFailure(409, "INVOCATION_MISMATCH");
+        if (!todosEnabled) throw new TaskFailure(403, "TODO_FEATURE_DISABLED");
+        if ("PURGED".equals(s(todoProjection(task), "content_state")))
+          throw new TaskFailure(410, "TODO_CONTENT_EXPIRED");
+        models.requireTodo(snapshot(task));
+      }
       if (questionTask(task) && !questionsEnabled)
         throw new TaskFailure(403, "QUESTION_FEATURE_DISABLED");
       if (task.get("cancel_requested_at") != null) throw new TaskFailure(409, "CANCEL_REQUESTED");
@@ -2954,6 +3550,20 @@ public final class JdbcLedger
               throw new TaskFailure(429, "MODEL_INPUT_TOO_LARGE");
             questionStorage(task, request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
           }
+          if (todoTask(task)) {
+            var wire =
+                Payloads.read(
+                    request,
+                    io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Checkpoint.class);
+            if (io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(request)
+                    > 131072
+                || io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(
+                        wire.requestBody())
+                    > 65536) throw new TaskFailure(429, "MODEL_INPUT_TOO_LARGE");
+            todoStorage(
+                task,
+                io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(request));
+          }
           String stepId = id();
           if (n(task, "record_version") == 3) {
             var budget = bucket(lease.tenant());
@@ -3073,6 +3683,7 @@ public final class JdbcLedger
           if (task.get("evaluation_snapshot") != null)
             admitPlanDispatch(task, evaluation, model, cost);
           questionStorage(task, 131072);
+          todoStorage(task, 131072);
           String dispatch = id();
           if (model.paid()) {
             db.update(
@@ -3179,6 +3790,81 @@ public final class JdbcLedger
             event(task, "response:" + stepId, "model.rejected", rejection);
             return null;
           }
+          if (todoTask(task)) {
+            try {
+              access(task);
+              if (!todosEnabled) throw new TaskFailure(403, "TODO_FEATURE_DISABLED");
+              models.requireTodo(snapshot(task));
+              if (task.get("cancel_requested_at") != null)
+                throw new TaskFailure(409, "CANCEL_REQUESTED");
+              if (n(task, "within_deadline") != 1) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
+              io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.unicode(response);
+              long invocations =
+                  db.queryForObject(
+                      "SELECT COUNT(*) FROM invocation WHERE tenant_id=? AND task_id=?",
+                      Long.class,
+                      lease.tenant(),
+                      lease.taskId());
+              if (io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(response)
+                      > 65536
+                  || calls.size() > 4) throw new TaskFailure(409, "MODEL_RESPONSE_TOO_LARGE");
+              if (invocations + calls.size() > Math.min(20, n(task, "max_tools")))
+                throw new TaskFailure(429, "TODO_EXECUTION_LIMIT");
+              for (var call : calls) {
+                if (!"todo_write".equals(call.tool()))
+                  throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
+                todos.input(call.input());
+              }
+              todoStorage(
+                  task,
+                  io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(response)
+                      + calls.stream()
+                          .mapToLong(
+                              c ->
+                                  io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts
+                                      .bytes(c.input()))
+                          .sum());
+            } catch (TaskFailure rejected) {
+              // A rejected tool payload does not erase the real, known model usage.
+              long upper =
+                  db.queryForObject(
+                      "SELECT amount FROM reservation WHERE tenant_id=? AND id=?",
+                      Long.class,
+                      lease.tenant(),
+                      dispatch);
+              if (tokens != null && tokens >= 0 && tokens <= upper) {
+                db.update(
+                    "UPDATE tenant_budget SET token_held=token_held-? WHERE tenant_id=?",
+                    upper - tokens,
+                    lease.tenant());
+                db.update(
+                    "UPDATE task SET token_held=token_held-? WHERE tenant_id=? AND id=?",
+                    upper - tokens,
+                    lease.tenant(),
+                    lease.taskId());
+                db.update(
+                    "UPDATE reservation SET state='SETTLED',actual=?,usage_quality='KNOWN' WHERE tenant_id=? AND id=?",
+                    tokens,
+                    lease.tenant(),
+                    dispatch);
+              } else
+                db.update(
+                    "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND id=?",
+                    lease.tenant(),
+                    dispatch);
+              db.update(
+                  "UPDATE step SET state='REJECTED' WHERE tenant_id=? AND id=?",
+                  lease.tenant(),
+                  stepId);
+              db.update(
+                  "UPDATE model_dispatch SET code=? WHERE tenant_id=? AND id=?",
+                  rejected.code(),
+                  lease.tenant(),
+                  dispatch);
+              event(task, "response:" + stepId, "model.rejected", rejected.code());
+              return null;
+            }
+          }
           if (questionTask(task)
               && (response.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 32768
                   || calls.size() > 8)) {
@@ -3259,6 +3945,7 @@ public final class JdbcLedger
                   Integer.class,
                   lease.tenant(),
                   lease.attemptId());
+          long todoExpected = todoTask(task) ? n(todoProjection(task), "revision") : 0;
           for (Call call : calls) {
             if (!lease.capabilities().contains(call.tool()))
               throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
@@ -3280,6 +3967,14 @@ public final class JdbcLedger
                 plugin.installationEpoch(),
                 call.input(),
                 Payloads.hash(call.input()));
+            if (todoTask(task))
+              db.update(
+                  "UPDATE invocation SET todo_expected_revision=? WHERE tenant_id=? AND task_id=? AND step_id=? AND slot=?",
+                  todoExpected++,
+                  lease.tenant(),
+                  lease.taskId(),
+                  stepId,
+                  call.slot());
           }
           event(task, "response:" + stepId, "model.responded", null);
           return null;
@@ -3447,6 +4142,7 @@ public final class JdbcLedger
   @Override
   public Invocation admit(
       Lease lease, String stepId, Call call, String pluginVersion, String pluginDigest) {
+    if (call.tool().equals("todo_write")) throw new TaskFailure(409, "TODO_COMMIT_REQUIRED");
     return leaseTx(
         lease,
         () -> {
@@ -3663,6 +4359,7 @@ public final class JdbcLedger
 
   @Override
   public void toolSucceeded(Lease lease, String invocationId, String output) {
+    rejectTodoBypass(lease, invocationId);
     commitTool(lease, invocationId, output, false);
   }
 
@@ -3747,6 +4444,7 @@ public final class JdbcLedger
 
   @Override
   public void uncertain(Lease lease, String invocationId) {
+    rejectTodoBypass(lease, invocationId);
     tx(
         () -> {
           var task = fenced(lease, false);
@@ -4513,6 +5211,13 @@ public final class JdbcLedger
             lease,
             () -> {
               var task = fenced(lease, true);
+              if (todoTask(task)) {
+                io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.unicode(summary);
+                int bytes =
+                    io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(summary);
+                if (bytes > 8192) throw new TaskFailure(409, "SUMMARY_TOO_LARGE");
+                todoStorage(task, bytes);
+              }
               if (questionTask(task)) {
                 if (summary.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 8192)
                   throw new TaskFailure(409, "SUMMARY_TOO_LARGE");
@@ -4774,19 +5479,20 @@ public final class JdbcLedger
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17') AND success=TRUE",
             Integer.class)
-        != 16) throw new IllegalStateException("Required migration unavailable");
+        != 17) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 16) throw new IllegalStateException("Unsupported schema version");
+        != 17) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override
   public void cleanupArtifacts(ArtifactStore store) {
     maintainQuestions();
     cleanupQuestions();
+    cleanupTodos();
     cleanupMcp();
     cleanupImages();
     var candidates =

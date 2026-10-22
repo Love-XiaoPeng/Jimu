@@ -21,3 +21,4 @@ docs/verification/XIAO-49/architecture/evidence/dependency-classpath-log.txt -di
 
 docs/verification/XIAO-50/architecture/** -text
 src/main/resources/todo/** -text
+docs/verification/XIAO-50/architecture/evidence/dependency-classpath-log.txt -diff
