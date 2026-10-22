@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:mcp:task-binding:1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "servers"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "servers": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 4,
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "profile",
+          "digest"
+        ],
+        "properties": {
+          "profile": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "tenant",
+              "server",
+              "epoch",
+              "hostId",
+              "endpoint",
+              "credentialRef",
+              "credentialVersion",
+              "allowedActors",
+              "allowedUris",
+              "allowedUriPrefixes",
+              "allowedTemplates",
+              "protocolVersion",
+              "serverInfo",
+              "serverCapabilities",
+              "schemaDigest"
+            ],
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "tenant": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+              },
+              "server": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+              },
+              "epoch": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "hostId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "endpoint": {
+                "type": "string",
+                "pattern": "^http://127\\.0\\.0\\.1:[1-9][0-9]{0,4}/mcp$"
+              },
+              "credentialRef": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "credentialVersion": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "allowedActors": {
+                "type": "array",
+                "maxItems": 64,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+                }
+              },
+              "allowedUris": {
+                "type": "array",
+                "maxItems": 1000,
+                "items": {
+                  "type": "string",
+                  "format": "uri",
+                  "pattern": "^[A-Za-z][A-Za-z0-9+.-]*:[^\\s\\u0000-\\u001F\\u007F]+$",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              },
+              "allowedUriPrefixes": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9+.-]*://[A-Za-z0-9._-]+/([A-Za-z0-9_-]+/)*$"
+                }
+              },
+              "allowedTemplates": {
+                "type": "array",
+                "maxItems": 100,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              },
+              "protocolVersion": {
+                "const": "2025-06-18"
+              },
+              "serverInfo": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "version"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "version": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              },
+              "serverCapabilities": {
+                "type": "object",
+                "required": [
+                  "resources"
+                ],
+                "maxProperties": 16,
+                "properties": {
+                  "resources": {
+                    "type": "object"
+                  }
+                }
+              },
+              "schemaDigest": {
+                "const": "4ff8e6e0c9ef697c02517426a948479f5976806c9f4249c954a69fa579b826db"
+              }
+            }
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

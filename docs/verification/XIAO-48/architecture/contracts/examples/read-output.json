@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "server": "docs",
+  "serverVersion": "0.1.0",
+  "serverSnapshotDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "schemaDigest": "4ff8e6e0c9ef697c02517426a948479f5976806c9f4249c954a69fa579b826db",
+  "trust": "untrusted-mcp-content-v1",
+  "snapshotId": "12345678-1234-4234-8234-123456789abc",
+  "snapshotSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "resourceUri": "jimu-fixture://docs/a",
+  "contents": [
+    {
+      "uri": "jimu-fixture://docs/a",
+      "mimeType": "text/plain",
+      "kind": "text",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "bytes": 22,
+      "text": "controlled MCP content",
+      "textTruncated": false
+    }
+  ]
+}

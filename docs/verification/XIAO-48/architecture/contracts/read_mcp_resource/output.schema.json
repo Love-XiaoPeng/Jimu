@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:plugin:mcp.read-resource:0.1.0:output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "server",
+    "serverVersion",
+    "serverSnapshotDigest",
+    "schemaDigest",
+    "trust",
+    "snapshotId",
+    "snapshotSha256",
+    "resourceUri",
+    "contents"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+    },
+    "serverVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "serverSnapshotDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "schemaDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "trust": {
+      "const": "untrusted-mcp-content-v1"
+    },
+    "snapshotId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "snapshotSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "resourceUri": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^[A-Za-z][A-Za-z0-9+.-]*:[^\\s\\u0000-\\u001F\\u007F]+$",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "contents": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "uri",
+          "mimeType",
+          "kind",
+          "sha256",
+          "bytes",
+          "text",
+          "textTruncated"
+        ],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^[A-Za-z][A-Za-z0-9+.-]*:[^\\s\\u0000-\\u001F\\u007F]+$",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "mimeType": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "kind": {
+            "enum": [
+              "text",
+              "binary"
+            ]
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 262144
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32768
+          },
+          "textTruncated": {
+            "type": "boolean"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "binary"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "text": {
+                  "type": "null"
+                },
+                "textTruncated": {
+                  "const": false
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "list_mcp_resource_templates/input.schema.json",
+      "sha256": "3286b79a0d26f83175b185cbedaa3169b12ca4b7f42ea583ca4c6d4156793332"
+    },
+    {
+      "path": "list_mcp_resource_templates/output.schema.json",
+      "sha256": "757410a2b9e69a156dd294e30c6b67dc98e03d89c5aef2735c212ef6da06ebb0"
+    },
+    {
+      "path": "list_mcp_resource_templates/plugin.yaml",
+      "sha256": "415f4670e231a68ec062c2284163f60c1c514c849df2e196e86acb58ce49dcaf"
+    },
+    {
+      "path": "list_mcp_resources/input.schema.json",
+      "sha256": "29fd7302a672247a952d9abbe4fb35174e97c64e91a3a60b0612e97f8454ddb5"
+    },
+    {
+      "path": "list_mcp_resources/output.schema.json",
+      "sha256": "1d97dc3c26c23f3ff7576d2022e18d8ca87f78531a64284addbe1472b8ac3087"
+    },
+    {
+      "path": "list_mcp_resources/plugin.yaml",
+      "sha256": "12f874c8b47a8600cb50742c683c60bb1bbc01d43e5c69aa0b5350bd415dd472"
+    },
+    {
+      "path": "read_mcp_resource/input.schema.json",
+      "sha256": "99bb5fea5f44d507585a3ba512addda2050c9a54ac99647977f2fe0932563650"
+    },
+    {
+      "path": "read_mcp_resource/output.schema.json",
+      "sha256": "913b8a04ef378864565dfe764d0a84e8c4434557f998cb67bcc6a21f89c8f1c9"
+    },
+    {
+      "path": "read_mcp_resource/plugin.yaml",
+      "sha256": "3f3c6e3397da857f1d57c6ee4522d3ed71ae49c086da6a61149edf218e45f42b"
+    }
+  ]
+}

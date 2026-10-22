@@ -1,0 +1,349 @@
+{
+  "version": 1,
+  "issue": "XIAO-48",
+  "kind": "architecture-handoff",
+  "baseline": "a04bc49a047827b292c7929312ea8d1ae9e31afc",
+  "tree": "74f134b2dbaa0c984256129fab2c41a9fb70a15d",
+  "files": [
+    {
+      "path": "ADR-0007-mcp-readonly-same-host.md",
+      "bytes": 9544,
+      "sha256": "b2cb9cd5652e8a0d97cbeb43239cbe9dc081b997e2e83658932686916b529fa5"
+    },
+    {
+      "path": "ContractProbe.java",
+      "bytes": 2535,
+      "sha256": "6131126b116f96fa09c98655292a9b710f9c2b066e431f11c17778a489c42ae8"
+    },
+    {
+      "path": "contracts/catalog.json",
+      "bytes": 2126,
+      "sha256": "c5da8a217cd0c5fe2b2a4ef118187f3ed737f7e8ccb2f412218e875381ad82d9"
+    },
+    {
+      "path": "contracts/examples/list-input.json",
+      "bytes": 23,
+      "sha256": "a158decdb2a26324110b4e0488dbfa0d93329501bde3a7e2101f952e3ebeb838"
+    },
+    {
+      "path": "contracts/examples/read-input.json",
+      "bytes": 57,
+      "sha256": "60567f9cebf49e1b65fe4ebd9e15f8c822e904983c24cf8a54ba1a9bda866697"
+    },
+    {
+      "path": "contracts/examples/read-output.json",
+      "bytes": 769,
+      "sha256": "c1aa6e3f9b4360cda805461f3a1e1bed8ae9e70116d6de7ff811e148deb40c49"
+    },
+    {
+      "path": "contracts/examples/resources-output.json",
+      "bytes": 618,
+      "sha256": "ff521850353c6a48c64d964c09e359ba734252ad851987a4e2476ab6dcdcb9fa"
+    },
+    {
+      "path": "contracts/examples/server-profile.json",
+      "bytes": 656,
+      "sha256": "01fc79b51eb1357174a40c14df5efb5c751d5817116fcd3fd52c264be1be2494"
+    },
+    {
+      "path": "contracts/examples/templates-output.json",
+      "bytes": 610,
+      "sha256": "3cbfcd1598d0dcff359f1ed05e86871815db573d059a10d2709700f012b07d53"
+    },
+    {
+      "path": "contracts/list_mcp_resource_templates/input.schema.json",
+      "bytes": 472,
+      "sha256": "3286b79a0d26f83175b185cbedaa3169b12ca4b7f42ea583ca4c6d4156793332"
+    },
+    {
+      "path": "contracts/list_mcp_resource_templates/output.schema.json",
+      "bytes": 2363,
+      "sha256": "757410a2b9e69a156dd294e30c6b67dc98e03d89c5aef2735c212ef6da06ebb0"
+    },
+    {
+      "path": "contracts/list_mcp_resource_templates/plugin.yaml",
+      "bytes": 906,
+      "sha256": "415f4670e231a68ec062c2284163f60c1c514c849df2e196e86acb58ce49dcaf"
+    },
+    {
+      "path": "contracts/list_mcp_resources/input.schema.json",
+      "bytes": 463,
+      "sha256": "29fd7302a672247a952d9abbe4fb35174e97c64e91a3a60b0612e97f8454ddb5"
+    },
+    {
+      "path": "contracts/list_mcp_resources/output.schema.json",
+      "bytes": 2522,
+      "sha256": "1d97dc3c26c23f3ff7576d2022e18d8ca87f78531a64284addbe1472b8ac3087"
+    },
+    {
+      "path": "contracts/list_mcp_resources/plugin.yaml",
+      "bytes": 880,
+      "sha256": "12f874c8b47a8600cb50742c683c60bb1bbc01d43e5c69aa0b5350bd415dd472"
+    },
+    {
+      "path": "contracts/list-snapshot-v1.schema.json",
+      "bytes": 1886,
+      "sha256": "3305bee394e407a1cd376f07a159e2b01028141efca037a136189de99a0409af"
+    },
+    {
+      "path": "contracts/read_mcp_resource/input.schema.json",
+      "bytes": 576,
+      "sha256": "99bb5fea5f44d507585a3ba512addda2050c9a54ac99647977f2fe0932563650"
+    },
+    {
+      "path": "contracts/read_mcp_resource/output.schema.json",
+      "bytes": 3007,
+      "sha256": "913b8a04ef378864565dfe764d0a84e8c4434557f998cb67bcc6a21f89c8f1c9"
+    },
+    {
+      "path": "contracts/read_mcp_resource/plugin.yaml",
+      "bytes": 877,
+      "sha256": "3f3c6e3397da857f1d57c6ee4522d3ed71ae49c086da6a61149edf218e45f42b"
+    },
+    {
+      "path": "contracts/schema-index.json",
+      "bytes": 1395,
+      "sha256": "4ff8e6e0c9ef697c02517426a948479f5976806c9f4249c954a69fa579b826db"
+    },
+    {
+      "path": "contracts/server-profile-v1.schema.json",
+      "bytes": 2986,
+      "sha256": "906bffc7e23bfb3a7065d2059aff541a07061c8941318855462d0999a75c5b13"
+    },
+    {
+      "path": "contracts/task-binding-v1.schema.json",
+      "bytes": 5115,
+      "sha256": "eac67f85d9d731b12a51bb7bcd214776da07566ec0a25db7aba5bf2d158961cf"
+    },
+    {
+      "path": "evidence/attempt-history.txt",
+      "bytes": 1672,
+      "sha256": "26dff66ac0d1f68636fd1761be9a95e0e76446f335ab71c56115a4c53081b127"
+    },
+    {
+      "path": "evidence/contract-check.json",
+      "bytes": 1484,
+      "sha256": "9b16aa7e8b8d80a035792ff202b9ed701a4b64b0988535514aebcdb0d6828c2f"
+    },
+    {
+      "path": "evidence/G02-inventory-extract.json",
+      "bytes": 4418,
+      "sha256": "f09e34a353c6d18b127bf92c6f54e2cd1e0cbdc8cd04fdd8030ee332a9be8f75"
+    },
+    {
+      "path": "evidence/jimu-master__docs__implementation-p4-runtime.md",
+      "bytes": 11656,
+      "sha256": "9790d771813b3dbe44a095c9f64a0b599d0663564e8dcc701515891951dd2d94"
+    },
+    {
+      "path": "evidence/jimu-master__src__main__java__io__github__lovexiaopeng__jimu__adapters__runtime__search__NativeRunner.java",
+      "bytes": 13727,
+      "sha256": "97b1ce948d96b81a7419c923c05442b9db1ecc0ea873f9473fcde44e1e26f636"
+    },
+    {
+      "path": "evidence/jimu-master__tools__native_bundle_verify.py",
+      "bytes": 2464,
+      "sha256": "6b98a4adc15fb946103d94842f34e2f0fd690dfa80aac4f5b9d6f3b93bb99c49"
+    },
+    {
+      "path": "evidence/jimu-master__tools__native_rebuild.py",
+      "bytes": 22586,
+      "sha256": "7cbefe392d4f6b2f779ca12b4e84642fb7a599665c23cf94586c1010e73def1a"
+    },
+    {
+      "path": "evidence/jimu-master__workers__search__README.md",
+      "bytes": 5763,
+      "sha256": "0a0859f70135d7dce6f530e366e576223821e4b12b722278cc96c00aee11f9eb"
+    },
+    {
+      "path": "evidence/jimu-master__workers__search__v2__pins.json",
+      "bytes": 610,
+      "sha256": "b38e8e58440da8e718af8ec2376c256d9361f80b69b6f99d598965d5bf252f11"
+    },
+    {
+      "path": "evidence/jimu-master__workers__search__v2__README.md",
+      "bytes": 6675,
+      "sha256": "6669a1f63c9d65967aa4ee5df7ea34a363ec814ab93bfc36edaf3491990c63df"
+    },
+    {
+      "path": "evidence/jimu-master__workers__search__v2__source-inputs.json",
+      "bytes": 25208,
+      "sha256": "5676dcde7cfc2c21121eaaed1caf49536c52db3e64c6e90e586d3b3e0924100a"
+    },
+    {
+      "path": "evidence/jvm-contract-probe.txt",
+      "bytes": 289,
+      "sha256": "bbc35ffbee2142cb15e3e12d2aef44a8969016f545f369bc3f9f345bd68e75e6"
+    },
+    {
+      "path": "evidence/jvm-probe-dependencies.json",
+      "bytes": 2111,
+      "sha256": "317a0a6c6c60f144852f372bcf9cbea411c618186da0250b2c697f4d2f2ae79f"
+    },
+    {
+      "path": "evidence/LICENSE",
+      "bytes": 1065,
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+    },
+    {
+      "path": "evidence/master-baseline.json",
+      "bytes": 1975,
+      "sha256": "d3ca36e72e41cf150ee2dc5dffea438cfd75109fc6996fa67b885787be073901"
+    },
+    {
+      "path": "evidence/master-compare.json",
+      "bytes": 1314,
+      "sha256": "2ee16ebaa4428cddd20805578358897a4b72ed9c8aaac00040d4fff6621af9cb"
+    },
+    {
+      "path": "evidence/mcp-spec__docs__specification__2025-06-18__basic__lifecycle.mdx",
+      "bytes": 8196,
+      "sha256": "9800e66e16cb0b71c339f6007fd14f6d17cc48741d4a8d381cc38f916bb6d05e"
+    },
+    {
+      "path": "evidence/mcp-spec__docs__specification__2025-06-18__basic__transports.mdx",
+      "bytes": 13956,
+      "sha256": "df1217279334b6f3af8bb457191884ba831dce2c5389d7a0556ba920270ca902"
+    },
+    {
+      "path": "evidence/mcp-spec__docs__specification__2025-06-18__basic__utilities__cancellation.mdx",
+      "bytes": 2491,
+      "sha256": "a95b0cccf6842dafddd4d5a421d36232d469229770341283cc6cebd57026b4d7"
+    },
+    {
+      "path": "evidence/mcp-spec__docs__specification__2025-06-18__server__resources.mdx",
+      "bytes": 9519,
+      "sha256": "2e5b6dafc9f7a40196064e7ce3d1615c5820f78e663d0d064f1a1a3cfdcf935e"
+    },
+    {
+      "path": "evidence/mcp-spec__LICENSE",
+      "bytes": 12227,
+      "sha256": "0382b0057770ca05e9c350a50aa3b1c1fea84da0bc81d723bf00b9aa841be58a"
+    },
+    {
+      "path": "evidence/mcp-spec__schema__2025-06-18__schema.ts",
+      "bytes": 42430,
+      "sha256": "7d7f4cc6f3adb76e3fd5e1eee6bab8b1e183cfaf719da66d2aa5661737ca9539"
+    },
+    {
+      "path": "evidence/packages__mcp__mcp-client__package.json",
+      "bytes": 2309,
+      "sha256": "b6b39815c81557dfbfc643da56a12f14439361d88552728b434b4c79cdfc9578"
+    },
+    {
+      "path": "evidence/packages__mcp__mcp-client__src__connection.ts",
+      "bytes": 18741,
+      "sha256": "06dc1b3a1297b8b23f6ac5c44f3ba6740716c76db71c28cfb8f14d6c0340030e"
+    },
+    {
+      "path": "evidence/packages__mcp__mcp-client__src__server-context.ts",
+      "bytes": 1475,
+      "sha256": "02ca9fe759891788572385a00f0cc7b6e92d6e98e103c1d00dd99ccec0d6319a"
+    },
+    {
+      "path": "evidence/packages__mcp__mcp-client__src__transport.ts",
+      "bytes": 1594,
+      "sha256": "6f3fca685af3d5654c476e95db24e1245dc1fa021a0bd7f477ce4ad997e1c8f6"
+    },
+    {
+      "path": "evidence/packages__mcp__mcp-client__tests__fixtures__resources-server.ts",
+      "bytes": 1354,
+      "sha256": "09e869798f4ad88aa43845904b9ca933eb82b1b93b81bed3315bdd86742f4153"
+    },
+    {
+      "path": "evidence/packages__mcp__mcp-resources__package.json",
+      "bytes": 1563,
+      "sha256": "cba024e9f05b7538e204d584b99d6c69a726040a2eab9016142297d5ebca61fd"
+    },
+    {
+      "path": "evidence/packages__mcp__mcp-resources__src__index.ts",
+      "bytes": 5314,
+      "sha256": "6b19614393d187629b7d273d8e8bca3d30f45cf0eac75b51493d0678eb809b65"
+    },
+    {
+      "path": "evidence/packages__mcp__mcp-resources__src__render.ts",
+      "bytes": 913,
+      "sha256": "10a9d2bea66851c5cbf47c263bd673f20b72072d0dd514baf8a8bd2a0e68822c"
+    },
+    {
+      "path": "evidence/packages__mcp__mcp-resources__src__tools.ts",
+      "bytes": 2704,
+      "sha256": "a415aa6edea0ae5efdb71e02bb48d79a454ce97e0cc9f3b5f0c15631d5994090"
+    },
+    {
+      "path": "evidence/packages__mcp__mcp-resources__tests__resources.spec.ts",
+      "bytes": 18495,
+      "sha256": "5e351ff55611236c72e6c4dce458d2f43465927c92e91154a0d76dafa767773c"
+    },
+    {
+      "path": "evidence/protocol-probe-attempt-1.txt",
+      "bytes": 3530,
+      "sha256": "b43e8054dbf8547e75600579ffd5609c167ae071dafed4ac9dca34b4720e2a97"
+    },
+    {
+      "path": "evidence/protocol-probe.txt",
+      "bytes": 3745,
+      "sha256": "b8e55c89c2bcd6527f79ee50005e220db4a746d7c3058742dc3aaf026e5a1ce5"
+    },
+    {
+      "path": "evidence/reviewed-jimu-sources.json",
+      "bytes": 3271,
+      "sha256": "f6d1349472958f437d6681bfb5c08cfb1a1afe4e84249672f2dbc9578b7d3b94"
+    },
+    {
+      "path": "evidence/sources.json",
+      "bytes": 10145,
+      "sha256": "bc0b5cc66b14b3ad16ffac11803e381d4c604ebfa8115e62b17b9433e362a21e"
+    },
+    {
+      "path": "evidence/THIRD_PARTY_NOTICES.md",
+      "bytes": 24780,
+      "sha256": "260b8f9e14d68c083c8abe5d0c6b4cb5212d5f03025f327fdcd9656629222879"
+    },
+    {
+      "path": "fetch-evidence.ps1",
+      "bytes": 4518,
+      "sha256": "7180ed64af00fc228c62f9ecbe668d16483b1cf0de58807b76db286f387e32b7"
+    },
+    {
+      "path": "implementation-contract.md",
+      "bytes": 23524,
+      "sha256": "b1d5c37dd0792748e1a75f2045899b93e4afe015301299fe7ce87deae5c272ac"
+    },
+    {
+      "path": "make-contracts.cjs",
+      "bytes": 8190,
+      "sha256": "1665e3f365b5ce11d0b3f59c5581a538eb612a66690d1465c90efef885523315"
+    },
+    {
+      "path": "package.ps1",
+      "bytes": 2190,
+      "sha256": "8b794d966802a503653572cb37495166225a0d4ee1ccb925b5352a2d372d40a8"
+    },
+    {
+      "path": "ProtocolProbe.java",
+      "bytes": 10204,
+      "sha256": "e3a9331c9e4ddb37e6edc9d4fc55e60b09d93cc7f885945ee08c12b09f3f8ea4"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1679,
+      "sha256": "3086cf9a519eb4797f33dfb537b55c50930b6bfc048e96cb40afbebc8dd42c0a"
+    },
+    {
+      "path": "VERIFICATION.md",
+      "bytes": 5917,
+      "sha256": "f538208e4b04583f151b29ecba6dcd469159e398d200d11890bee2f4dbe6e576"
+    },
+    {
+      "path": "verify-contracts.py",
+      "bytes": 3132,
+      "sha256": "422ae56ed12920599f0374e933fefae5fe926576d4be1635de25c21532442a0c"
+    },
+    {
+      "path": "verify-jvm.ps1",
+      "bytes": 1936,
+      "sha256": "09290f13079d6687713a092c3181657807005a93c124a0dc2ac55cdb86678342"
+    }
+  ]
+}

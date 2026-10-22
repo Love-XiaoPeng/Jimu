@@ -1,0 +1,613 @@
+{
+  "version": "jimu-native-v2.0.0",
+  "ripgrepCommit": "3a612f88b8",
+  "rustVersion": "1.88.0",
+  "target": "x86_64-unknown-linux-musl",
+  "inputs": [
+    {
+      "file": "bwrap.debian.tar.xz",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/b/bubblewrap/bubblewrap_0.9.0-1ubuntu0.3.debian.tar.xz",
+      "sha256": "4d6c71db380bb69d19a09501bd5caec92e46bf54c7f505805e75687daf783939",
+      "size": 14316
+    },
+    {
+      "file": "bwrap.dsc",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/b/bubblewrap/bubblewrap_0.9.0-1ubuntu0.3.dsc",
+      "sha256": "c8e38ca3ed20c269fc7e79a069fb329c0928ad7efaca098b07b50f7283599f24",
+      "size": 2721
+    },
+    {
+      "file": "bwrap.orig.tar.xz",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/b/bubblewrap/bubblewrap_0.9.0.orig.tar.xz",
+      "sha256": "c6347eaced49ac0141996f46bba3b089e5e6ea4408bc1c43bab9f2d05dd094e1",
+      "size": 118984
+    },
+    {
+      "file": "cargo.tar.xz",
+      "url": "https://static.rust-lang.org/dist/2025-06-26/cargo-1.88.0-x86_64-unknown-linux-gnu.tar.xz",
+      "sha256": "856962610ee821648cee32e3d6abac667af7bb7ea6ec6f3d184cc31e66044f6b",
+      "size": 9955712
+    },
+    {
+      "file": "cpp-13-x86-64-linux-gnu_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/cpp-13-x86-64-linux-gnu_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+      "sha256": "2ca48bf0c2d6465bc39322899715a85d934b4d7442dd5586a7bebbe3ce0f806b",
+      "package": "cpp-13-x86-64-linux-gnu",
+      "version": "13.3.0-6ubuntu2~24.04.1",
+      "role": "build-input",
+      "size": 10714542
+    },
+    {
+      "file": "crates/aho-corasick-1.1.3.crate",
+      "url": "https://static.crates.io/crates/aho-corasick/aho-corasick-1.1.3.crate",
+      "sha256": "8e60d3430d3a69478ad0993f19238d2df97c507009a52b3c10addcd7f6bcb916",
+      "size": 183311
+    },
+    {
+      "file": "crates/anyhow-1.0.100.crate",
+      "url": "https://static.crates.io/crates/anyhow/anyhow-1.0.100.crate",
+      "sha256": "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61",
+      "size": 54059
+    },
+    {
+      "file": "crates/arbitrary-1.4.2.crate",
+      "url": "https://static.crates.io/crates/arbitrary/arbitrary-1.4.2.crate",
+      "sha256": "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1",
+      "size": 38307
+    },
+    {
+      "file": "crates/bstr-1.12.0.crate",
+      "url": "https://static.crates.io/crates/bstr/bstr-1.12.0.crate",
+      "sha256": "234113d19d0d7d613b40e86fb654acf958910802bcceab913a4f9e7cda03b1a4",
+      "size": 351557
+    },
+    {
+      "file": "crates/cc-1.2.41.crate",
+      "url": "https://static.crates.io/crates/cc/cc-1.2.41.crate",
+      "sha256": "ac9fe6cdbb24b6ade63616c0a0688e45bb56732262c158df3c0c4bea4ca47cb7",
+      "size": 91154
+    },
+    {
+      "file": "crates/cfg-if-1.0.4.crate",
+      "url": "https://static.crates.io/crates/cfg-if/cfg-if-1.0.4.crate",
+      "sha256": "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801",
+      "size": 9360
+    },
+    {
+      "file": "crates/crossbeam-channel-0.5.15.crate",
+      "url": "https://static.crates.io/crates/crossbeam-channel/crossbeam-channel-0.5.15.crate",
+      "sha256": "82b8f8f868b36967f9606790d1903570de9ceaf870a7bf9fbbd3016d636a2cb2",
+      "size": 92716
+    },
+    {
+      "file": "crates/crossbeam-deque-0.8.6.crate",
+      "url": "https://static.crates.io/crates/crossbeam-deque/crossbeam-deque-0.8.6.crate",
+      "sha256": "9dd111b7b7f7d55b72c0a6ae361660ee5853c9af73f70c3c2ef6858b950e2e51",
+      "size": 22471
+    },
+    {
+      "file": "crates/crossbeam-epoch-0.9.18.crate",
+      "url": "https://static.crates.io/crates/crossbeam-epoch/crossbeam-epoch-0.9.18.crate",
+      "sha256": "5b82ac4a3c2ca9c3460964f020e1402edd5753411d7737aa39c3714ad1b5420e",
+      "size": 46875
+    },
+    {
+      "file": "crates/crossbeam-utils-0.8.21.crate",
+      "url": "https://static.crates.io/crates/crossbeam-utils/crossbeam-utils-0.8.21.crate",
+      "sha256": "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28",
+      "size": 42691
+    },
+    {
+      "file": "crates/derive_arbitrary-1.4.2.crate",
+      "url": "https://static.crates.io/crates/derive_arbitrary/derive_arbitrary-1.4.2.crate",
+      "sha256": "1e567bd82dcff979e4b03460c307b3cdc9e96fde3d73bed1496d2bc75d9dd62a",
+      "size": 12290
+    },
+    {
+      "file": "crates/encoding_rs-0.8.35.crate",
+      "url": "https://static.crates.io/crates/encoding_rs/encoding_rs-0.8.35.crate",
+      "sha256": "75030f3c4f45dafd7586dd6780965a8c7e8e285a5ecb86713e63a79c5b2766f3",
+      "size": 1381050
+    },
+    {
+      "file": "crates/encoding_rs_io-0.1.7.crate",
+      "url": "https://static.crates.io/crates/encoding_rs_io/encoding_rs_io-0.1.7.crate",
+      "sha256": "1cc3c5651fb62ab8aa3103998dade57efdd028544bd300516baa31840c252a83",
+      "size": 16969
+    },
+    {
+      "file": "crates/find-msvc-tools-0.1.4.crate",
+      "url": "https://static.crates.io/crates/find-msvc-tools/find-msvc-tools-0.1.4.crate",
+      "sha256": "52051878f80a721bb68ebfbc930e07b65ba72f2da88968ea5c06fd6ca3d3a127",
+      "size": 30817
+    },
+    {
+      "file": "crates/getrandom-0.3.4.crate",
+      "url": "https://static.crates.io/crates/getrandom/getrandom-0.3.4.crate",
+      "sha256": "899def5c37c4fd7b2664648c28120ecec138e4d395b459e5ca34f9cce2dd77fd",
+      "size": 50932
+    },
+    {
+      "file": "crates/glob-0.3.3.crate",
+      "url": "https://static.crates.io/crates/glob/glob-0.3.3.crate",
+      "sha256": "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280",
+      "size": 22861
+    },
+    {
+      "file": "crates/itoa-1.0.15.crate",
+      "url": "https://static.crates.io/crates/itoa/itoa-1.0.15.crate",
+      "sha256": "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c",
+      "size": 11231
+    },
+    {
+      "file": "crates/jobserver-0.1.34.crate",
+      "url": "https://static.crates.io/crates/jobserver/jobserver-0.1.34.crate",
+      "sha256": "9afb3de4395d6b3e67a780b6de64b51c978ecf11cb9a462c66be7d4ca9039d33",
+      "size": 29013
+    },
+    {
+      "file": "crates/lexopt-0.3.1.crate",
+      "url": "https://static.crates.io/crates/lexopt/lexopt-0.3.1.crate",
+      "sha256": "9fa0e2a1fcbe2f6be6c42e342259976206b383122fc152e872795338b5a3f3a7",
+      "size": 26158
+    },
+    {
+      "file": "crates/libc-0.2.177.crate",
+      "url": "https://static.crates.io/crates/libc/libc-0.2.177.crate",
+      "sha256": "2874a2af47a2325c2001a6e6fad9b16a53b802102b528163885171cf92b15976",
+      "size": 792045
+    },
+    {
+      "file": "crates/log-0.4.28.crate",
+      "url": "https://static.crates.io/crates/log/log-0.4.28.crate",
+      "sha256": "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432",
+      "size": 51131
+    },
+    {
+      "file": "crates/memchr-2.7.6.crate",
+      "url": "https://static.crates.io/crates/memchr/memchr-2.7.6.crate",
+      "sha256": "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273",
+      "size": 97616
+    },
+    {
+      "file": "crates/memmap2-0.9.8.crate",
+      "url": "https://static.crates.io/crates/memmap2/memmap2-0.9.8.crate",
+      "sha256": "843a98750cd611cc2965a8213b53b43e715f13c37a9e096c6408e69990961db7",
+      "size": 34478
+    },
+    {
+      "file": "crates/pcre2-0.2.11.crate",
+      "url": "https://static.crates.io/crates/pcre2/pcre2-0.2.11.crate",
+      "sha256": "9e970b0fcce0c7ee6ef662744ff711f21ccd6f11b7cf03cd187a80e89797fc67",
+      "size": 32440
+    },
+    {
+      "file": "crates/pcre2-sys-0.2.10.crate",
+      "url": "https://static.crates.io/crates/pcre2-sys/pcre2-sys-0.2.10.crate",
+      "sha256": "18b9073c1a2549bd409bf4a32c94d903bb1a09bf845bc306ae148897fa0760a4",
+      "size": 771875
+    },
+    {
+      "file": "crates/pkg-config-0.3.32.crate",
+      "url": "https://static.crates.io/crates/pkg-config/pkg-config-0.3.32.crate",
+      "sha256": "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c",
+      "size": 21370
+    },
+    {
+      "file": "crates/proc-macro2-1.0.101.crate",
+      "url": "https://static.crates.io/crates/proc-macro2/proc-macro2-1.0.101.crate",
+      "sha256": "89ae43fd86e4158d6db51ad8e2b80f313af9cc74f5c0e03ccb87de09998732de",
+      "size": 53886
+    },
+    {
+      "file": "crates/quote-1.0.41.crate",
+      "url": "https://static.crates.io/crates/quote/quote-1.0.41.crate",
+      "sha256": "ce25767e7b499d1b604768e7cde645d14cc8584231ea6b295e9c9eb22c02e1d1",
+      "size": 31408
+    },
+    {
+      "file": "crates/r-efi-5.3.0.crate",
+      "url": "https://static.crates.io/crates/r-efi/r-efi-5.3.0.crate",
+      "sha256": "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f",
+      "size": 64532
+    },
+    {
+      "file": "crates/regex-1.12.2.crate",
+      "url": "https://static.crates.io/crates/regex/regex-1.12.2.crate",
+      "sha256": "843bc0191f75f3e22651ae5f1e72939ab2f72a4bc30fa80a066bd66edefc24d4",
+      "size": 163843
+    },
+    {
+      "file": "crates/regex-automata-0.4.13.crate",
+      "url": "https://static.crates.io/crates/regex-automata/regex-automata-0.4.13.crate",
+      "sha256": "5276caf25ac86c8d810222b3dbb938e512c55c6831a10f3e6ed1c93b84041f1c",
+      "size": 625250
+    },
+    {
+      "file": "crates/regex-syntax-0.8.8.crate",
+      "url": "https://static.crates.io/crates/regex-syntax/regex-syntax-0.8.8.crate",
+      "sha256": "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58",
+      "size": 359141
+    },
+    {
+      "file": "crates/ryu-1.0.20.crate",
+      "url": "https://static.crates.io/crates/ryu/ryu-1.0.20.crate",
+      "sha256": "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f",
+      "size": 48738
+    },
+    {
+      "file": "crates/same-file-1.0.6.crate",
+      "url": "https://static.crates.io/crates/same-file/same-file-1.0.6.crate",
+      "sha256": "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502",
+      "size": 10183
+    },
+    {
+      "file": "crates/serde-1.0.228.crate",
+      "url": "https://static.crates.io/crates/serde/serde-1.0.228.crate",
+      "sha256": "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e",
+      "size": 83652
+    },
+    {
+      "file": "crates/serde_core-1.0.228.crate",
+      "url": "https://static.crates.io/crates/serde_core/serde_core-1.0.228.crate",
+      "sha256": "41d385c7d4ca58e59fc732af25c3983b67ac852c1a25000afe1175de458b67ad",
+      "size": 63111
+    },
+    {
+      "file": "crates/serde_derive-1.0.228.crate",
+      "url": "https://static.crates.io/crates/serde_derive/serde_derive-1.0.228.crate",
+      "sha256": "d540f220d3187173da220f885ab66608367b6574e925011a9353e4badda91d79",
+      "size": 59605
+    },
+    {
+      "file": "crates/serde_json-1.0.145.crate",
+      "url": "https://static.crates.io/crates/serde_json/serde_json-1.0.145.crate",
+      "sha256": "402a6f66d8c709116cf22f558eab210f5a50187f702eb4d7e5ef38d9a7f1c79c",
+      "size": 155748
+    },
+    {
+      "file": "crates/shlex-1.3.0.crate",
+      "url": "https://static.crates.io/crates/shlex/shlex-1.3.0.crate",
+      "sha256": "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64",
+      "size": 18713
+    },
+    {
+      "file": "crates/syn-2.0.106.crate",
+      "url": "https://static.crates.io/crates/syn/syn-2.0.106.crate",
+      "sha256": "ede7c438028d4436d71104916910f5bb611972c5cfd7f89b8300a8186e6fada6",
+      "size": 301514
+    },
+    {
+      "file": "crates/termcolor-1.4.1.crate",
+      "url": "https://static.crates.io/crates/termcolor/termcolor-1.4.1.crate",
+      "sha256": "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755",
+      "size": 18773
+    },
+    {
+      "file": "crates/textwrap-0.16.2.crate",
+      "url": "https://static.crates.io/crates/textwrap/textwrap-0.16.2.crate",
+      "sha256": "c13547615a44dc9c452a8a534638acdf07120d4b6847c8178705da06306a3057",
+      "size": 57077
+    },
+    {
+      "file": "crates/tikv-jemalloc-sys-0.6.0+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7.crate",
+      "url": "https://static.crates.io/crates/tikv-jemalloc-sys/tikv-jemalloc-sys-0.6.0+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7.crate",
+      "sha256": "cd3c60906412afa9c2b5b5a48ca6a5abe5736aec9eb48ad05037a677e52e4e2d",
+      "size": 897133
+    },
+    {
+      "file": "crates/tikv-jemallocator-0.6.0.crate",
+      "url": "https://static.crates.io/crates/tikv-jemallocator/tikv-jemallocator-0.6.0.crate",
+      "sha256": "4cec5ff18518d81584f477e9bfdf957f5bb0979b0bac3af4ca30b5b3ae2d2865",
+      "size": 13700
+    },
+    {
+      "file": "crates/unicode-ident-1.0.19.crate",
+      "url": "https://static.crates.io/crates/unicode-ident/unicode-ident-1.0.19.crate",
+      "sha256": "f63a545481291138910575129486daeaf8ac54aee4387fe7906919f7830c7d9d",
+      "size": 47480
+    },
+    {
+      "file": "crates/walkdir-2.5.0.crate",
+      "url": "https://static.crates.io/crates/walkdir/walkdir-2.5.0.crate",
+      "sha256": "29790946404f91d9c5d06f9874efddea1dc06c5efe94541a7d6863108e3a5e4b",
+      "size": 23951
+    },
+    {
+      "file": "crates/wasip2-1.0.1+wasi-0.2.4.crate",
+      "url": "https://static.crates.io/crates/wasip2/wasip2-1.0.1+wasi-0.2.4.crate",
+      "sha256": "0562428422c63773dad2c345a1882263bbf4d65cf3f42e90921f787ef5ad58e7",
+      "size": 132087
+    },
+    {
+      "file": "crates/winapi-util-0.1.11.crate",
+      "url": "https://static.crates.io/crates/winapi-util/winapi-util-0.1.11.crate",
+      "sha256": "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22",
+      "size": 13368
+    },
+    {
+      "file": "crates/windows-link-0.2.1.crate",
+      "url": "https://static.crates.io/crates/windows-link/windows-link-0.2.1.crate",
+      "sha256": "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5",
+      "size": 6133
+    },
+    {
+      "file": "crates/windows-sys-0.61.2.crate",
+      "url": "https://static.crates.io/crates/windows-sys/windows-sys-0.61.2.crate",
+      "sha256": "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc",
+      "size": 2517186
+    },
+    {
+      "file": "crates/wit-bindgen-0.46.0.crate",
+      "url": "https://static.crates.io/crates/wit-bindgen/wit-bindgen-0.46.0.crate",
+      "sha256": "f17a85883d4e6d00e8a97c586de764dabcc06133f7f1d55dce5cdc070ad7fe59",
+      "size": 60508
+    },
+    {
+      "file": "gcc-13-base.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/gcc-13-base_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+      "sha256": "e859aca26585bb91113a451f1e66bc0e5283cb08797d679aacc1d936ae6dff8e",
+      "package": "gcc-13-base",
+      "version": "13.3.0-6ubuntu2~24.04.1",
+      "role": "build-input",
+      "size": 51616
+    },
+    {
+      "file": "gcc-13-x86-64-linux-gnu_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/gcc-13-x86-64-linux-gnu_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+      "sha256": "a134b0319a82d14581b3a14820d2832af4ec9778ed8b9b4ddaeecfb0555ec325",
+      "package": "gcc-13-x86-64-linux-gnu",
+      "version": "13.3.0-6ubuntu2~24.04.1",
+      "role": "build-input",
+      "size": 21084546
+    },
+    {
+      "file": "libc6-dev_2.39-0ubuntu8.9_amd64.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/g/glibc/libc6-dev_2.39-0ubuntu8.9_amd64.deb",
+      "sha256": "e13d5fcc1b2a86f75bca8e0026a8e39f24fe97ca86e92be79991f8697eb1306f",
+      "package": "libc6-dev",
+      "version": "2.39-0ubuntu8.9",
+      "role": "build-input",
+      "size": 2125612
+    },
+    {
+      "file": "libc6.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/g/glibc/libc6_2.39-0ubuntu8.9_amd64.deb",
+      "sha256": "ff5557d99b51f761c4b7c92368b9cc45565eda17df9bf9eb4b134d09825008be",
+      "package": "libc6",
+      "version": "2.39-0ubuntu8.9",
+      "role": "build-input",
+      "size": 3264314
+    },
+    {
+      "file": "libcap-dev.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/libc/libcap2/libcap-dev_2.66-5ubuntu2.4_amd64.deb",
+      "sha256": "07f2462867569a2119a2ad0f1593232663f2d1612b791c230d22a8d73a15abee",
+      "package": "libcap-dev",
+      "version": "1:2.66-5ubuntu2.4",
+      "role": "build-input",
+      "size": 595634
+    },
+    {
+      "file": "libcap2.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/libc/libcap2/libcap2_2.66-5ubuntu2.4_amd64.deb",
+      "sha256": "23c627c77c66552a658e62852f244f4946dc543898e0ec5428d5dc6bffde2d6a",
+      "package": "libcap2",
+      "version": "1:2.66-5ubuntu2.4",
+      "role": "build-input",
+      "size": 30500
+    },
+    {
+      "file": "libgcc-13-dev_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/libgcc-13-dev_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+      "sha256": "cd689db2691edaa10f37329307292796bb599e722e0505c79e14caaa1fe9a93a",
+      "package": "libgcc-13-dev",
+      "version": "13.3.0-6ubuntu2~24.04.1",
+      "role": "build-input",
+      "size": 2680642
+    },
+    {
+      "file": "libgcc-s1.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libgcc-s1_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+      "sha256": "aa7fadbe33b78bcf99885318040601c550c208929565b179891d9a3cc2aa68cd",
+      "package": "libgcc-s1",
+      "version": "14.2.0-4ubuntu2~24.04.1",
+      "role": "build-input",
+      "size": 78392
+    },
+    {
+      "file": "libisl23_0.26-3build1.1_amd64.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/i/isl/libisl23_0.26-3build1.1_amd64.deb",
+      "sha256": "4e040926e50fb961fae9bf95660189d468336a4a17bc321872c434fc8f777e7f",
+      "package": "libisl23",
+      "version": "0.26-3build1.1",
+      "role": "build-input",
+      "size": 679812
+    },
+    {
+      "file": "libmpc3_1.3.1-1build1.1_amd64.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/m/mpclib3/libmpc3_1.3.1-1build1.1_amd64.deb",
+      "sha256": "cebe6098bb3d66fdacac9dc6fe406a651216d9c00f27c3f9c159d15d96cdf864",
+      "package": "libmpc3",
+      "version": "1.3.1-1build1.1",
+      "role": "build-input",
+      "size": 54636
+    },
+    {
+      "file": "libpcre2.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/p/pcre2/libpcre2-8-0_10.42-4ubuntu2.1_amd64.deb",
+      "sha256": "110a797a57673d3ee497a141cf988199258058c57525799c63194d81822529a0",
+      "package": "libpcre2-8-0",
+      "version": "10.42-4ubuntu2.1",
+      "role": "build-input",
+      "size": 226662
+    },
+    {
+      "file": "libselinux-dev.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/libs/libselinux/libselinux1-dev_3.5-2ubuntu2.1_amd64.deb",
+      "sha256": "2cc37cb9251f49a11f9c34bc8605c2aace8ded76f50b951ad28ded42d6ab3f68",
+      "package": "libselinux1-dev",
+      "version": "3.5-2ubuntu2.1",
+      "role": "build-input",
+      "size": 163720
+    },
+    {
+      "file": "libselinux1.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/libs/libselinux/libselinux1_3.5-2ubuntu2.1_amd64.deb",
+      "sha256": "6abaa6c26f46ef17764c4a753e0e84de1cdadde5634fd2987621fdc617988d19",
+      "package": "libselinux1",
+      "version": "3.5-2ubuntu2.1",
+      "role": "build-input",
+      "size": 79660
+    },
+    {
+      "file": "linux-libc-dev_6.8.0-147.147_amd64.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/linux/linux-libc-dev_6.8.0-147.147_amd64.deb",
+      "sha256": "fec8e4a308c03cd98dace67370a8d5a8031c36741796065c9f6e3f9548ab0cd2",
+      "package": "linux-libc-dev",
+      "version": "6.8.0-147.147",
+      "role": "build-input",
+      "size": 1595188
+    },
+    {
+      "file": "make.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/m/make-dfsg/make_4.3-4.1build2_amd64.deb",
+      "sha256": "1fe6a815b56c7b6e9ce4086a363f09444bbd0a0d30e230c453d0b78e44b57a99",
+      "package": "make",
+      "version": "4.3-4.1build2",
+      "role": "build-input",
+      "size": 179752
+    },
+    {
+      "file": "musl-source.tar.gz",
+      "url": "https://musl.libc.org/releases/musl-1.2.3.tar.gz",
+      "sha256": "7d5b0b6062521e4627e099e4c9dc8248d32a30285e959b7eecaa780cf8cfd4a4",
+      "size": 1058642
+    },
+    {
+      "file": "pcre2-source.tar.gz",
+      "url": "https://codeload.github.com/PCRE2Project/pcre2/tar.gz/refs/tags/pcre2-10.45",
+      "sha256": "35ce7d21f511c4a81d7079164077d25fbc41af00f19e1b547801df905c5f0fab",
+      "size": 3267927
+    },
+    {
+      "file": "ripgrep-Cargo.lock",
+      "url": "https://raw.githubusercontent.com/BurntSushi/ripgrep/3a612f88b8/Cargo.lock",
+      "sha256": "257bfa1eeacfa4d8222e2c50f9d2f8d15ef07e96adee46eaa87839f3b6cfa3b4",
+      "size": 13178
+    },
+    {
+      "file": "ripgrep-source.tar.gz",
+      "url": "https://codeload.github.com/BurntSushi/ripgrep/tar.gz/3a612f88b8",
+      "sha256": "2dc61a1af68df7ee4b013eb44c9ae415c8994593e731a3329f458cc61ed1ec2c",
+      "size": 600750
+    },
+    {
+      "file": "rust-channel.toml",
+      "url": "https://static.rust-lang.org/dist/channel-rust-1.88.0.toml",
+      "sha256": "431b7c5c0b9a511d8e31d29b378bbc74124e8521f14beb92d3a5a5f7e7e55449",
+      "size": 875562
+    },
+    {
+      "file": "rust-src.tar.xz",
+      "url": "https://static.rust-lang.org/dist/rust-src-1.88.0.tar.xz",
+      "sha256": "d6e7462e5b5e53bde515d8846ffdd4da246b79ba2d7b2872a33b46cc12cf76c7",
+      "size": 3155272
+    },
+    {
+      "file": "rust-std-crates/addr2line-0.24.2.crate",
+      "url": "https://static.crates.io/crates/addr2line/addr2line-0.24.2.crate",
+      "sha256": "dfbe277e56a376000877090da837660b4427aad530e3028d44e0bffe4f89a1c1",
+      "role": "linked-in-official-rust-std",
+      "size": 39015
+    },
+    {
+      "file": "rust-std-crates/adler2-2.0.0.crate",
+      "url": "https://static.crates.io/crates/adler2/adler2-2.0.0.crate",
+      "sha256": "512761e0bb2578dd7380c6baaa0f4ce03e84f95e960231d1dec8bf4d7d6e2627",
+      "role": "linked-in-official-rust-std",
+      "size": 13529
+    },
+    {
+      "file": "rust-std-crates/cfg-if-1.0.0.crate",
+      "url": "https://static.crates.io/crates/cfg-if/cfg-if-1.0.0.crate",
+      "sha256": "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd",
+      "role": "linked-in-official-rust-std",
+      "size": 7934
+    },
+    {
+      "file": "rust-std-crates/compiler_builtins-0.1.158.crate",
+      "url": "https://static.crates.io/crates/compiler_builtins/compiler_builtins-0.1.158.crate",
+      "sha256": "164cdc689e4c6d69417f77a5f48be240c291e84fbef0b1281755dc754b19c809",
+      "role": "linked-in-official-rust-std",
+      "size": 245300
+    },
+    {
+      "file": "rust-std-crates/gimli-0.31.1.crate",
+      "url": "https://static.crates.io/crates/gimli/gimli-0.31.1.crate",
+      "sha256": "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f",
+      "role": "linked-in-official-rust-std",
+      "size": 279515
+    },
+    {
+      "file": "rust-std-crates/hashbrown-0.15.3.crate",
+      "url": "https://static.crates.io/crates/hashbrown/hashbrown-0.15.3.crate",
+      "sha256": "84b26c544d002229e640969970a2e74021aadf6e2f96372b9c58eff97de08eb3",
+      "role": "linked-in-official-rust-std",
+      "size": 140413
+    },
+    {
+      "file": "rust-std-crates/libc-0.2.172.crate",
+      "url": "https://static.crates.io/crates/libc/libc-0.2.172.crate",
+      "sha256": "d750af042f7ef4f724306de029d18836c26c1765a54a6a3f094cbd23a7267ffa",
+      "role": "linked-in-official-rust-std",
+      "size": 791646
+    },
+    {
+      "file": "rust-std-crates/memchr-2.7.4.crate",
+      "url": "https://static.crates.io/crates/memchr/memchr-2.7.4.crate",
+      "sha256": "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3",
+      "role": "linked-in-official-rust-std",
+      "size": 96670
+    },
+    {
+      "file": "rust-std-crates/miniz_oxide-0.8.8.crate",
+      "url": "https://static.crates.io/crates/miniz_oxide/miniz_oxide-0.8.8.crate",
+      "sha256": "3be647b768db090acb35d5ec5db2b0e1f1de11133ca123b9eacf5137868f892a",
+      "role": "linked-in-official-rust-std",
+      "size": 67065
+    },
+    {
+      "file": "rust-std-crates/object-0.36.7.crate",
+      "url": "https://static.crates.io/crates/object/object-0.36.7.crate",
+      "sha256": "62948e14d923ea95ea2c7c86c71013138b66525b86bdc08d2dcc262bdb497b87",
+      "role": "linked-in-official-rust-std",
+      "size": 329938
+    },
+    {
+      "file": "rust-std-crates/rustc-demangle-0.1.24.crate",
+      "url": "https://static.crates.io/crates/rustc-demangle/rustc-demangle-0.1.24.crate",
+      "sha256": "719b953e2095829ee67db738b3bfa9fa368c94900df327b3f07fe6e794d2fe1f",
+      "role": "linked-in-official-rust-std",
+      "size": 29047
+    },
+    {
+      "file": "rust-std-gnu.tar.xz",
+      "url": "https://static.rust-lang.org/dist/2025-06-26/rust-std-1.88.0-x86_64-unknown-linux-gnu.tar.xz",
+      "sha256": "36d7eacf46bd5199cb433e49a9ed9c9b380d82f8a0ebc05e89b43b51c070c955",
+      "size": 30914344
+    },
+    {
+      "file": "rust-std.tar.xz",
+      "url": "https://static.rust-lang.org/dist/rust-std-1.88.0-x86_64-unknown-linux-musl.tar.xz",
+      "sha256": "0c42b63c18a6343851e0f27aeb5cff73146c86fc95bc4e2bf51b726c4311249e",
+      "size": 37408080
+    },
+    {
+      "file": "rustc.tar.xz",
+      "url": "https://static.rust-lang.org/dist/2025-06-26/rustc-1.88.0-x86_64-unknown-linux-gnu.tar.xz",
+      "sha256": "b049fd57fce274d10013e2cf0e05f215f68f6580865abc52178f66ae9bf43fd8",
+      "size": 80014172
+    }
+  ]
+}

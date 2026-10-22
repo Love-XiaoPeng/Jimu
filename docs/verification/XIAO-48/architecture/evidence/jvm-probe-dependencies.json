@@ -1,0 +1,46 @@
+{
+  "schemaContractSha256": "bfd42fccd264dd9b5b00cb69c0ccc771d89abfbf2fc083d73da66d912c92e5d9",
+  "jars": [
+    {
+      "artifact": "com/networknt/json-schema-validator/3.0.1/json-schema-validator-3.0.1.jar",
+      "sha256": "271e37c705eea7d0fd9b95d3a601ab9531a0ca49a86beba2e2b792583670494b"
+    },
+    {
+      "artifact": "tools/jackson/core/jackson-core/3.1.7/jackson-core-3.1.7.jar",
+      "sha256": "7608c367fd8a92666d28711519599543c180298259963184ce04d2947a8f71e7"
+    },
+    {
+      "artifact": "tools/jackson/core/jackson-databind/3.1.7/jackson-databind-3.1.7.jar",
+      "sha256": "48c781de87e2016e1f0d973748a27130f11643e7ac080173f40e2d9669d84be3"
+    },
+    {
+      "artifact": "tools/jackson/dataformat/jackson-dataformat-yaml/3.1.7/jackson-dataformat-yaml-3.1.7.jar",
+      "sha256": "a97e0ecd080030e4b5b55ee3b10dd330b4736951a49df4d91657f2d8678786f5"
+    },
+    {
+      "artifact": "com/fasterxml/jackson/core/jackson-core/2.21.7/jackson-core-2.21.7.jar",
+      "sha256": "8c5623b98f32d5f7e1287ff61ed50e08ab7b11381e991fff89327faabba42261"
+    },
+    {
+      "artifact": "com/fasterxml/jackson/core/jackson-databind/2.21.7/jackson-databind-2.21.7.jar",
+      "sha256": "1290c2795e93e8a6861a6c4d9ff0d844d32f5ea178362cb2721edf5561e828b1"
+    },
+    {
+      "artifact": "com/fasterxml/jackson/core/jackson-annotations/2.21/jackson-annotations-2.21.jar",
+      "sha256": "53ca085f4a150f703f49e1aabd935bd03b43e1ea3d55d135438292af22cef56b"
+    },
+    {
+      "artifact": "org/slf4j/slf4j-api/2.0.18/slf4j-api-2.0.18.jar",
+      "sha256": "44508fd1576500688c790b190acdd16fec4f8c79a3e0b900afd70503cf055f55"
+    },
+    {
+      "artifact": "com/ethlo/time/itu/1.14.0/itu-1.14.0.jar",
+      "sha256": "5cf40ab0cc77828ab2b875b1f3ecd71c8295d7721933476abc2e08fddcea164a"
+    },
+    {
+      "artifact": "org/yaml/snakeyaml/2.6/snakeyaml-2.6.jar",
+      "sha256": "c8f7a98e7394adda02f6317249710e4d1b4c7a25aa8c7eace0c2eea52eb8bf85"
+    }
+  ],
+  "scope": "Only source compilation and contract probe; not Maven dependency convergence, product build or runtime acceptance"
+}

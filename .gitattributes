@@ -2,6 +2,7 @@
 docs/baseline/** -text
 docs/adr/** -text
 docs/verification/XIAO-46/architecture/** -text
+docs/verification/XIAO-48/architecture/** -text
 # Immutable upstream captures have byte-significant original whitespace.
 docs/verification/XIAO-46/architecture/evidence/deepseek-*.txt -diff
 tools/evaluation/frozen/** -text

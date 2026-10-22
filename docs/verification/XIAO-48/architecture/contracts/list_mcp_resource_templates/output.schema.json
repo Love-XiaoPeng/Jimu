@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:plugin:mcp.list-resource-templates:0.1.0:output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "server",
+    "serverVersion",
+    "serverSnapshotDigest",
+    "schemaDigest",
+    "trust",
+    "snapshotId",
+    "snapshotSha256",
+    "resourceTemplates",
+    "page",
+    "returned",
+    "total",
+    "nextCursor"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+    },
+    "serverVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "serverSnapshotDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "schemaDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "trust": {
+      "const": "untrusted-mcp-content-v1"
+    },
+    "snapshotId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "snapshotSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "resourceTemplates": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "uriTemplate",
+          "name"
+        ],
+        "properties": {
+          "uriTemplate": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "mimeType": {
+            "type": "string",
+            "maxLength": 128
+          }
+        }
+      }
+    },
+    "page": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 999
+    },
+    "returned": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000
+    },
+    "nextCursor": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[A-Za-z0-9_-]{22}$"
+    }
+  }
+}

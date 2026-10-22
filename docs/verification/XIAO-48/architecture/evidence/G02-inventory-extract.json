@@ -1,0 +1,117 @@
+[
+  {
+    "id": "T02",
+    "package": "@deepseek-ai/dsh-mcp-resources",
+    "name": "list_mcp_resource_templates",
+    "description": "List parameterized resource URI templates from an MCP server.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "server": {
+          "type": "string",
+          "description": "Configured MCP server name."
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Continuation cursor returned by this server."
+        }
+      },
+      "required": [
+        "server"
+      ]
+    },
+    "source": "packages/mcp/mcp-resources/src/tools.ts",
+    "sourceUrl": "https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/mcp/mcp-resources/src/tools.ts",
+    "group": "G02",
+    "migration": {
+      "id": "G02",
+      "route": "P/MCP",
+      "phase": "P4",
+      "effort": "3–5",
+      "owner": "后端",
+      "dependency": "MCP resources/list、resources/templates/list、resources/read",
+      "boundary": "每租户服务器白名单和秘密引用；URI/分页/内容预算；响应为非可信外部内容",
+      "acceptance": "非法URI、分页、服务器故障/取消；跨租户资源读取拒绝",
+      "upstreamResearchPhase": "S3",
+      "status": "planned-not-implemented"
+    },
+    "firstPartyLicense": "MIT, Copyright 2026 DeepSeek; third-party dependencies require separate review"
+  },
+  {
+    "id": "T03",
+    "package": "@deepseek-ai/dsh-mcp-resources",
+    "name": "list_mcp_resources",
+    "description": "List resources available from an MCP server.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "server": {
+          "type": "string",
+          "description": "Configured MCP server name."
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Continuation cursor returned by this server."
+        }
+      },
+      "required": [
+        "server"
+      ]
+    },
+    "source": "packages/mcp/mcp-resources/src/tools.ts",
+    "sourceUrl": "https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/mcp/mcp-resources/src/tools.ts",
+    "group": "G02",
+    "migration": {
+      "id": "G02",
+      "route": "P/MCP",
+      "phase": "P4",
+      "effort": "3–5",
+      "owner": "后端",
+      "dependency": "MCP resources/list、resources/templates/list、resources/read",
+      "boundary": "每租户服务器白名单和秘密引用；URI/分页/内容预算；响应为非可信外部内容",
+      "acceptance": "非法URI、分页、服务器故障/取消；跨租户资源读取拒绝",
+      "upstreamResearchPhase": "S3",
+      "status": "planned-not-implemented"
+    },
+    "firstPartyLicense": "MIT, Copyright 2026 DeepSeek; third-party dependencies require separate review"
+  },
+  {
+    "id": "T04",
+    "package": "@deepseek-ai/dsh-mcp-resources",
+    "name": "read_mcp_resource",
+    "description": "Read an MCP resource by URI from the named server. Use a listed URI or an expanded resource template.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "server": {
+          "type": "string",
+          "description": "Configured MCP server name."
+        },
+        "uri": {
+          "type": "string",
+          "description": "Resource URI to read."
+        }
+      },
+      "required": [
+        "server",
+        "uri"
+      ]
+    },
+    "source": "packages/mcp/mcp-resources/src/tools.ts",
+    "sourceUrl": "https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/mcp/mcp-resources/src/tools.ts",
+    "group": "G02",
+    "migration": {
+      "id": "G02",
+      "route": "P/MCP",
+      "phase": "P4",
+      "effort": "3–5",
+      "owner": "后端",
+      "dependency": "MCP resources/list、resources/templates/list、resources/read",
+      "boundary": "每租户服务器白名单和秘密引用；URI/分页/内容预算；响应为非可信外部内容",
+      "acceptance": "非法URI、分页、服务器故障/取消；跨租户资源读取拒绝",
+      "upstreamResearchPhase": "S3",
+      "status": "planned-not-implemented"
+    },
+    "firstPartyLicense": "MIT, Copyright 2026 DeepSeek; third-party dependencies require separate review"
+  }
+]
