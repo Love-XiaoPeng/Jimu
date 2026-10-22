@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "profile": "local-session-event-read-v1",
+  "historyVersion": 1,
+  "contentPolicy": "public-v1",
+  "tools": [
+    {
+      "name": "session_event_read",
+      "pluginId": "jimu.session.event_read",
+      "version": "0.1.0",
+      "inputSha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0",
+      "outputSha256": "266801da14857cee3bb79a7ffcd2fadcda33e8bb5480c451917302171ed4c9b7",
+      "manifestSha256": "bb28507cfd9486a96ab2996e577342733816dd3d72923c2ae0e07f6dcdef2294",
+      "descriptionSha256": "353537c1d241ce90d0a707d60ac25fa615516ad3a28c37e41f64b9465549f563"
+    }
+  ],
+  "upstream": {
+    "revision": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "entryBlob": "61e18cc8f57826d672ba95b6e1fc2dd6d93e8274",
+    "license": "MIT"
+  },
+  "schemas": {
+    "event-v1.schema.json": "7626dd1e7b1f599e3b5bcc90ca0190c44e48f4142b462ddf48634286fc2a8471",
+    "context-v1.schema.json": "94a3ab013b2decf90cdf2ab54e3554ad6fa10d63037d0fdef36988697a3cb6f1",
+    "owner-history-v1.schema.json": "dd4291e10d0d60abc930826fa5f88c233281ea66c79868d93fa9b8e6118d6ee6"
+  },
+  "compatibility": "implementation-contract.md section 2"
+}

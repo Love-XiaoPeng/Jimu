@@ -160,6 +160,9 @@ public final class DurableAgent implements AutoCloseable {
       // WorkerLoop drains operations and stops renewing this attempt. A new fence resolves
       // the same persisted slot after expiry; no ordinary tool reply or terminal guess.
       probe.hit("TODO_UNCONFIRMED", lease.taskId());
+    } catch (
+        io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionCommitUnconfirmed unconfirmed) {
+      probe.hit("SESSION_UNCONFIRMED", lease.taskId());
     } catch (FileFailure failure) {
       if (lease.capabilities().contains("working_directory"))
         throw new TaskFailure(409, failure.code());
@@ -175,7 +178,8 @@ public final class DurableAgent implements AutoCloseable {
             .anyMatch(io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES::contains);
     boolean askOnly = lease.capabilities().equals(List.of("ask_user_question"));
     boolean todoOnly = lease.capabilities().equals(List.of("todo_write"));
-    if (workspace != null && !mcpOnly && !askOnly && !todoOnly)
+    boolean sessionOnly = lease.capabilities().equals(List.of("session_event_read"));
+    if (workspace != null && !mcpOnly && !askOnly && !todoOnly && !sessionOnly)
       workspace.prepareEvaluation(lease, ledger);
     Session session = new Session(lease, modelSnapshot, definitions);
     var previous = ledger.checkpoint(lease);
@@ -269,7 +273,7 @@ public final class DurableAgent implements AutoCloseable {
     if (response == null) throw new TaskFailure(502, "MODEL_STREAM_INCOMPLETE");
     if (response.hasToolCalls()) throw new TaskFailure(409, "MODEL_LOOP_INCOMPLETE");
     String summary = response.getResult().getOutput().getText();
-    if (fetch.publicMode() || mcpOnly || askOnly || todoOnly) {
+    if (fetch.publicMode() || mcpOnly || askOnly || todoOnly || sessionOnly) {
       probe.hit("M3", lease.taskId());
       ledger.finish(lease, summary); // Completion follows the pinned task profile.
       probe.hit("DONE", lease.taskId());
@@ -325,6 +329,20 @@ public final class DurableAgent implements AutoCloseable {
       if (name.equals("working_directory")) {
         var contracts =
             new io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryContracts();
+        var pin = pins.get(name);
+        if (!pin.version().equals(contracts.descriptor().version())
+            || !pin.digest().equals(contracts.descriptor().outputSha256()))
+          throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+        result.add(
+            ToolDefinition.builder()
+                .name(name)
+                .description(contracts.description())
+                .inputSchema(contracts.inputSchema())
+                .build());
+        continue;
+      }
+      if (name.equals("session_event_read")) {
+        var contracts = new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts();
         var pin = pins.get(name);
         if (!pin.version().equals(contracts.descriptor().version())
             || !pin.digest().equals(contracts.descriptor().outputSha256()))
@@ -500,7 +518,8 @@ public final class DurableAgent implements AutoCloseable {
     private ChatResponse call(Prompt prompt) {
       var history = prompt.getInstructions().stream().map(DurableAgent.this::wire).toList();
       if (lease.capabilities().equals(List.of("ask_user_question"))
-          || lease.capabilities().contains("working_directory")) {
+          || lease.capabilities().contains("working_directory")
+          || lease.capabilities().contains("session_event_read")) {
         var incoming = history;
         if (lastIncoming != null
             && history.size() >= lastIncoming.size()
@@ -545,6 +564,24 @@ public final class DurableAgent implements AutoCloseable {
                   "user",
                   new io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryContracts()
                       .context(snapshot.cwd(), snapshot.revision()),
+                  List.of(),
+                  List.of()));
+        }
+      }
+      if (lease.capabilities().equals(List.of("session_event_read"))) {
+        var latest = ledger.checkpoint(lease);
+        boolean replay =
+            latest.isPresent()
+                && Payloads.read(latest.get().request(), Checkpoint.class)
+                    .messages()
+                    .equals(history);
+        if (!replay) {
+          history = new ArrayList<>(history);
+          history.add(
+              new WireMessage(
+                  "user",
+                  ((io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger) ledger)
+                      .sessionContext(lease),
                   List.of(),
                   List.of()));
         }
@@ -744,6 +781,7 @@ public final class DurableAgent implements AutoCloseable {
     private String invokeSlot(Call call, String input) {
       if (call.tool().equals("working_directory"))
         return workspace.directories().invoke(ledger, lease, step.id(), call, input, probe);
+      if (call.tool().equals("session_event_read")) return invokeSession(call, input);
       if (call.tool().equals("todo_write")) return invokeTodo(call, input);
       if (call.tool().equals("ask_user_question")) return invokeQuestion(call, input);
       if (io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES.contains(call.tool()))
@@ -869,6 +907,31 @@ public final class DurableAgent implements AutoCloseable {
       probe.hit("T1", lease.taskId());
       if (call.tool().equals("write")) probe.hit("W1", lease.taskId());
       return output;
+    }
+
+    private String invokeSession(Call call, String input) {
+      if (!call.input().equals(input)) throw new TaskFailure(409, "INVOCATION_MISMATCH");
+      var contracts = new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts();
+      var canonical = contracts.input(input);
+      var pin = ledger.toolSnapshot(lease).pins().get(call.tool());
+      io.github.lovexiaopeng.jimu.plugin.api.SessionEventPort port =
+          value -> {
+            if (!canonical.equals(value)) throw new TaskFailure(409, "INVOCATION_MISMATCH");
+            probe.hit("SESSION_COMMIT_BEFORE", lease.taskId());
+            String output =
+                ((io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger) ledger)
+                    .readOrResult(lease, step.id(), call, pin.version(), pin.digest());
+            probe.hit("SESSION_COMMIT_AFTER", lease.taskId());
+            contracts.output(output);
+            return output;
+          };
+      return new io.github.lovexiaopeng.jimu.plugins.builtin.session.SessionEventReadPlugin(
+              port, contracts.descriptor())
+          .execute(
+              canonical,
+              new ExecutionContext(
+                  call.providerId(), lease.deadline(), () -> ledger.checkpoint(lease)))
+          .output();
     }
 
     private String invokeTodo(Call call, String input) {

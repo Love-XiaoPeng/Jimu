@@ -1,0 +1,369 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session-event-read:0.1.0:event-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 127
+    },
+    "type": {
+      "enum": [
+        "user.message",
+        "step.started",
+        "model.response",
+        "session.read",
+        "turn.ended"
+      ]
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "request",
+            "step",
+            "model",
+            "invocation",
+            "task"
+          ]
+        },
+        "step_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "invocation_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "step_id",
+        "invocation_id"
+      ]
+    },
+    "content_policy": {
+      "const": "public-v1"
+    },
+    "redacted": {
+      "type": "boolean"
+    },
+    "data": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "version",
+    "session_id",
+    "seq",
+    "type",
+    "time",
+    "source",
+    "content_policy",
+    "redacted",
+    "data"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "user.message"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "type": "string",
+                "maxLength": 8192
+              }
+            },
+            "required": [
+              "content"
+            ]
+          },
+          "source": {
+            "properties": {
+              "kind": {
+                "const": "request"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "step.started"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "ordinal": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8
+              }
+            },
+            "required": [
+              "ordinal"
+            ]
+          },
+          "source": {
+            "properties": {
+              "kind": {
+                "const": "step"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "model.response"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "type": "string",
+                "maxLength": 16384
+              },
+              "calls": {
+                "type": "array",
+                "maxItems": 4,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "pattern": "^[A-Za-z0-9_-]+$"
+                    },
+                    "type": {
+                      "const": "function"
+                    },
+                    "name": {
+                      "const": "session_event_read"
+                    },
+                    "arguments": {
+                      "type": "string",
+                      "maxLength": 1024
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "name",
+                    "arguments"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "content",
+              "calls"
+            ]
+          },
+          "source": {
+            "properties": {
+              "kind": {
+                "const": "model"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "session.read"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "seq": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "before": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4
+              },
+              "after": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4
+              },
+              "upper_seq": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 127
+              },
+              "outcome": {
+                "enum": [
+                  "SUCCEEDED",
+                  "FAILED"
+                ]
+              },
+              "code": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "output_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "output_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 32768
+              }
+            },
+            "required": [
+              "seq",
+              "before",
+              "after",
+              "upper_seq",
+              "outcome",
+              "code",
+              "output_sha256",
+              "output_bytes"
+            ]
+          },
+          "source": {
+            "properties": {
+              "kind": {
+                "const": "invocation"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "turn.ended"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "state": {
+                "enum": [
+                  "SUCCEEDED",
+                  "FAILED",
+                  "CANCELLED",
+                  "NEEDS_RECONCILIATION"
+                ]
+              },
+              "code": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "state",
+              "code"
+            ]
+          },
+          "source": {
+            "properties": {
+              "kind": {
+                "const": "task"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

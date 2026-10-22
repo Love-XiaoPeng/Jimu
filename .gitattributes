@@ -24,6 +24,7 @@ src/main/resources/todo/** -text
 
 # XIAO-52 evidence and byte-pinned contracts retain their original bytes.
 docs/verification/XIAO-52/architecture/** -text
+src/main/resources/session/** -text
 # Original Maven output retains its byte-significant whitespace.
 docs/verification/XIAO-52/architecture/evidence/dependency-classpath.txt -diff
 docs/verification/XIAO-50/architecture/evidence/dependency-classpath-log.txt -diff

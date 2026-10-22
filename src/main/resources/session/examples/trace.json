@@ -1,0 +1,193 @@
+{
+  "scope": "Illustrative new-profile facts, not a product test result",
+  "step1": {
+    "upper_seq": 0,
+    "events": [
+      {
+        "version": 1,
+        "session_id": "00000000-0000-4000-8000-000000000052",
+        "seq": 0,
+        "type": "user.message",
+        "time": "2026-10-23T00:00:00.000000Z",
+        "source": {
+          "kind": "request",
+          "step_id": null,
+          "invocation_id": null
+        },
+        "content_policy": "public-v1",
+        "redacted": false,
+        "data": {
+          "content": "核查早先消息：积木支持中文与 Unicode 🧱。"
+        }
+      },
+      {
+        "version": 1,
+        "session_id": "00000000-0000-4000-8000-000000000052",
+        "seq": 1,
+        "type": "step.started",
+        "time": "2026-10-23T00:00:00.000000Z",
+        "source": {
+          "kind": "step",
+          "step_id": "00000000-0000-4000-8000-000000000053",
+          "invocation_id": null
+        },
+        "content_policy": "public-v1",
+        "redacted": false,
+        "data": {
+          "ordinal": 1
+        }
+      },
+      {
+        "version": 1,
+        "session_id": "00000000-0000-4000-8000-000000000052",
+        "seq": 2,
+        "type": "model.response",
+        "time": "2026-10-23T00:00:00.000000Z",
+        "source": {
+          "kind": "model",
+          "step_id": "00000000-0000-4000-8000-000000000053",
+          "invocation_id": null
+        },
+        "content_policy": "public-v1",
+        "redacted": false,
+        "data": {
+          "content": "先确认用户提出的核查内容。",
+          "calls": [
+            {
+              "id": "read-1",
+              "type": "function",
+              "name": "session_event_read",
+              "arguments": "{\"seq\":0}"
+            }
+          ]
+        }
+      },
+      {
+        "version": 1,
+        "session_id": "00000000-0000-4000-8000-000000000052",
+        "seq": 3,
+        "type": "session.read",
+        "time": "2026-10-23T00:00:00.000000Z",
+        "source": {
+          "kind": "invocation",
+          "step_id": "00000000-0000-4000-8000-000000000053",
+          "invocation_id": "00000000-0000-4000-8000-000000000054"
+        },
+        "content_policy": "public-v1",
+        "redacted": false,
+        "data": {
+          "seq": 0,
+          "before": 0,
+          "after": 0,
+          "upper_seq": 0,
+          "outcome": "SUCCEEDED",
+          "code": null,
+          "output_sha256": "7bed00eb1df7fa697d67d82c8e7bbe5e97101bec7df8d8c5cf7bc64f522509bb",
+          "output_bytes": 581
+        }
+      }
+    ],
+    "result": {
+      "version": 1,
+      "session_id": "00000000-0000-4000-8000-000000000052",
+      "history_version": 1,
+      "content_policy": "public-v1",
+      "boundary": "pre-step",
+      "upper_seq": 0,
+      "window": {
+        "from_seq": 0,
+        "to_seq": 0,
+        "before_requested": 0,
+        "after_requested": 0
+      },
+      "target": {
+        "version": 1,
+        "session_id": "00000000-0000-4000-8000-000000000052",
+        "seq": 0,
+        "type": "user.message",
+        "time": "2026-10-23T00:00:00.000000Z",
+        "source": {
+          "kind": "request",
+          "step_id": null,
+          "invocation_id": null
+        },
+        "content_policy": "public-v1",
+        "redacted": false,
+        "data": {
+          "content": "核查早先消息：积木支持中文与 Unicode 🧱。"
+        }
+      },
+      "before": [],
+      "after": []
+    }
+  },
+  "step2": {
+    "context_upper_seq": 3,
+    "input": {
+      "seq": 1,
+      "before": 1,
+      "after": 1
+    },
+    "result": {
+      "version": 1,
+      "session_id": "00000000-0000-4000-8000-000000000052",
+      "history_version": 1,
+      "content_policy": "public-v1",
+      "boundary": "pre-step",
+      "upper_seq": 3,
+      "window": {
+        "from_seq": 0,
+        "to_seq": 2,
+        "before_requested": 1,
+        "after_requested": 1
+      },
+      "target": {
+        "version": 1,
+        "session_id": "00000000-0000-4000-8000-000000000052",
+        "seq": 1,
+        "type": "step.started",
+        "time": "2026-10-23T00:00:00.000000Z",
+        "source": {
+          "kind": "step",
+          "step_id": "00000000-0000-4000-8000-000000000053",
+          "invocation_id": null
+        },
+        "content_policy": "public-v1",
+        "redacted": false,
+        "data": {
+          "ordinal": 1
+        }
+      },
+      "before": [
+        {
+          "seq": 0,
+          "type": "user.message",
+          "time": "2026-10-23T00:00:00.000000Z",
+          "source": {
+            "kind": "request",
+            "step_id": null,
+            "invocation_id": null
+          },
+          "redacted": false,
+          "text": "核查早先消息：积木支持中文与 Unicode 🧱。",
+          "summary_truncated": false
+        }
+      ],
+      "after": [
+        {
+          "seq": 2,
+          "type": "model.response",
+          "time": "2026-10-23T00:00:00.000000Z",
+          "source": {
+            "kind": "model",
+            "step_id": "00000000-0000-4000-8000-000000000053",
+            "invocation_id": null
+          },
+          "redacted": false,
+          "text": "先确认用户提出的核查内容。",
+          "summary_truncated": false
+        }
+      ]
+    }
+  }
+}

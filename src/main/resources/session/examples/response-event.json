@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "session_id": "00000000-0000-4000-8000-000000000052",
+  "seq": 2,
+  "type": "model.response",
+  "time": "2026-10-23T00:00:00.000000Z",
+  "source": {
+    "kind": "model",
+    "step_id": "00000000-0000-4000-8000-000000000053",
+    "invocation_id": null
+  },
+  "content_policy": "public-v1",
+  "redacted": false,
+  "data": {
+    "content": "先确认用户提出的核查内容。",
+    "calls": [
+      {
+        "id": "read-1",
+        "type": "function",
+        "name": "session_event_read",
+        "arguments": "{\"seq\":0}"
+      }
+    ]
+  }
+}

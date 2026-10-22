@@ -188,6 +188,33 @@ public final class ModelProfiles {
       throw new TaskFailure(403, "DIRECTORY_NOT_AUTHORIZED");
   }
 
+  public void requireSessionRead(ModelSnapshot model) {
+    if (fixture
+        || model.paid()
+        || !"false".equals(env.getProperty("jimu.model.profiles." + model.profile() + ".paid"))
+        || !localEvaluation(model)
+        || businessPolicy() != null
+        || evaluationRunId() != null
+        || scopeRequirement() != null
+        || model.responseBytes() > 16384
+        || model.maxOutputTokens() > 4096
+        || model.inputLimit() == null
+        || model.inputLimit().maxTokens() > 65536
+        || !"test-whole-request-utf8-v1".equals(model.inputLimit().proof()))
+      throw new TaskFailure(403, "SESSION_READ_DISABLED");
+  }
+
+  public List<String> sessionPrivateValues() {
+    if (fixture) return List.of();
+    var values = new java.util.ArrayList<String>();
+    for (var profile : settings.profiles().values())
+      if (localEvaluation(profile)) {
+        String value = credential(profile);
+        if (value != null) values.add(value);
+      }
+    return List.copyOf(values);
+  }
+
   public void requireTodo(ModelSnapshot model) {
     if (fixture
         || model.paid()

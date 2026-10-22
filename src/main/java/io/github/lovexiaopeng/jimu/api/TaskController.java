@@ -113,7 +113,8 @@ public final class TaskController {
                 "read_mcp_resource",
                 "ask_user_question",
                 "todo_write",
-                "working_directory")
+                "working_directory",
+                "session_event_read")
             .containsAll(capabilities)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
     // Resources remain operator-bound; no user-supplied connection or credential handles.
     if (request.resourceIds() != null && !request.resourceIds().isEmpty())

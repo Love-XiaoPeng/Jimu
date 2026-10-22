@@ -89,6 +89,24 @@ public class DurableConfiguration {
               .logicalDirectory());
     else if (env.getProperty("jimu.working-directory.enabled", Boolean.class, false))
       throw new IllegalStateException("Directory workspace root required");
+    var sensitive = new java.util.ArrayList<String>();
+    sensitive.add(env.getRequiredProperty("jimu.identity.key"));
+    sensitive.add(env.getRequiredProperty("jimu.db.password"));
+    sensitive.add(env.getRequiredProperty("jimu.db.migration-password"));
+    if (env instanceof org.springframework.core.env.ConfigurableEnvironment configured)
+      for (var propertySource : configured.getPropertySources())
+        if (propertySource
+            instanceof org.springframework.core.env.EnumerablePropertySource<?> enumerable)
+          for (String name : enumerable.getPropertyNames())
+            if (name.toLowerCase(java.util.Locale.ROOT)
+                .matches(".*(password|secret|api[-_]?key|private).*")) {
+              String value = env.getProperty(name);
+              if (value != null && !value.isEmpty()) sensitive.add(value);
+            }
+    if (env.getProperty("jimu.session-event-read.enabled", Boolean.class, false))
+      sensitive.addAll(models.sessionPrivateValues());
+    ledger.sessionReadEnabled(
+        env.getProperty("jimu.session-event-read.enabled", Boolean.class, false), sensitive);
     ledger.check();
     return ledger;
   }
