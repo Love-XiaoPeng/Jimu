@@ -498,12 +498,12 @@ if __name__ == '__main__':
     experiment = McpExperiment(args.jar, args.evidence)
     try:
         experiment.prepare()
-        experiment.readiness_cases()
         if not args.readiness_only:
             experiment.main_cases()
             experiment.authorization_cases()
             experiment.recovery_cases()
             experiment.limit_and_cleanup_cases()
+        experiment.readiness_cases()
     except BaseException:
         (experiment.evidence / 'failure.txt').write_text(traceback.format_exc())
         raise

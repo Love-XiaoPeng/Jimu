@@ -107,7 +107,7 @@ It uses refused connections for the other tenant, stops the real MCP service
 during read/list checkpoint recovery, restarts both control and worker while
 offline, checks local pagination and revocation of all servers, and observes idle
 polling without additional wire sends. The default integration includes this
-regression before the remaining resource, authorization and recovery cases.
+regression after the existing resource, authorization and recovery cases.
 
 On Linux set the same environment variable and use `./mvnw`. The integration entry
 runs `tools/mcp_verify.py` in the foreground. Evidence includes raw redacted MCP
