@@ -1,6 +1,6 @@
 # ADR-0014：显式历史 scope 与跨会话副本保留
 
-2026-10-23；XIAO-55 / G22 / T47。状态：proposed，等待产品经理裁定以下业务差异；不是实施或验收通过。
+2026-10-23；XIAO-55 / G22 / T47。状态：accepted（最小实施范围），产品经理于 2026-10-23 裁定通过，评论 `01a16770-4cd9-75bd-90dc-06da4aafa18b`；允许实施，尚未产品验收。
 
 基线 actual master `d6d2d28a8f4fb3c2f05ed2bd410b1d5f65a16fe1`，tree `af0e11992efdc00d3e8bc6d656d9aeda30159a90`。固定参考上游 `571902028a75c64c1d767f4ae5fd099485f0ddf0`。来源和逐行定位见 `../verification/XIAO-55/architecture/evidence/`。
 

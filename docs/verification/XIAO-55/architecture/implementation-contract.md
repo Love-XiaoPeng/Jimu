@@ -1,6 +1,6 @@
-# XIAO-55：session_search 最小实施契约候选
+# XIAO-55：session_search 最小实施契约
 
-2026-10-23；架构交付，等待产品经理接受 ADR-0014 的范围后实施。基于 master `d6d2d28a8f4fb3c2f05ed2bd410b1d5f65a16fe1` / tree `af0e11992efdc00d3e8bc6d656d9aeda30159a90`。本目录契约、manifest、catalog 为规范候选，不是已运行产品；全部历史文档/基线/Schema/V1–V21保持原字节。
+2026-10-23；最小范围已由产品经理于 2026-10-23 接受（评论 `01a16770-4cd9-75bd-90dc-06da4aafa18b`），后端进入实现；尚未产品验收。基于 master `d6d2d28a8f4fb3c2f05ed2bd410b1d5f65a16fe1` / tree `af0e11992efdc00d3e8bc6d656d9aeda30159a90`。本目录契约、manifest、catalog 为规范候选，不是已运行产品；全部历史文档/基线/Schema/V1–V21保持原字节。
 
 ## 1. 固定上游与业务差异
 

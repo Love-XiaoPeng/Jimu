@@ -30,6 +30,7 @@ public final class SessionContracts {
   private final SchemaContract input, output, event, context, owner;
   private final String schema, description, binding;
   private final ToolDescriptor descriptor;
+  private final int version;
 
   private static JsonMapper mapper(int depth) {
     return JsonMapper.builder(
@@ -47,6 +48,7 @@ public final class SessionContracts {
   }
 
   public SessionContracts(int version) {
+    this.version = version;
     try {
       byte[] catalogBytes =
           resource(
@@ -57,7 +59,7 @@ public final class SessionContracts {
       String root =
           prefix
               + "session_event_read-"
-              + (version == 1 ? "0.1.0" : version == 2 ? "0.2.0" : "0.3.0")
+              + (version == 1 ? "0.1.0" : version == 2 ? "0.2.0" : version == 3 ? "0.3.0" : "0.4.0")
               + "/";
       byte[] in = checked(root + "input.schema.json", entry.path("inputSha256").asText());
       byte[] out = checked(root + "output.schema.json", entry.path("outputSha256").asText());
@@ -96,7 +98,7 @@ public final class SessionContracts {
       descriptor =
           new ToolDescriptor(
               "jimu.session.event_read",
-              version == 1 ? "0.1.0" : version == 2 ? "0.2.0" : "0.3.0",
+              version == 1 ? "0.1.0" : version == 2 ? "0.2.0" : version == 3 ? "0.3.0" : "0.4.0",
               NAME,
               "session/" + root + "input.schema.json",
               "session/" + root + "output.schema.json",
@@ -204,6 +206,7 @@ public final class SessionContracts {
         if (node.has(key) && !node.path(key).isIntegralNumber())
           throw new IllegalArgumentException("Integer token");
       input.validate(node);
+      if (version == 4) PriorSessionContracts.decimals(raw);
       return new SessionEventPort.Input(
           node.path("seq").longValue(),
           node.has("session_id") ? node.path("session_id").textValue() : null,

@@ -1,0 +1,42 @@
+{
+  "version": 4,
+  "profile": "local-session-search-v4",
+  "historyVersion": 4,
+  "eventVersion": 4,
+  "contentPolicy": "public-v1",
+  "tools": [
+    {
+      "name": "session_event_read",
+      "version": "0.4.0",
+      "pluginId": "jimu.session.event_read",
+      "inputSha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0",
+      "outputSha256": "361a97e7da6592d44989759f0256c05c6bd1ec6041c5b11c30ad4e0b162208e4",
+      "manifestSha256": "d31a4fefdd020bf8c598cc10d4c35afc2b4a72482c4e4938e58b3c979d7ea4c7",
+      "descriptionSha256": "695b9ea5f0fac218aa5abfbb207c803995502eb8de516c5b5404ba32a1095412"
+    },
+    {
+      "name": "session_search",
+      "version": "0.1.0",
+      "pluginId": "jimu.session.search",
+      "inputSha256": "a3055ae0da20e6815ad712163f66461db483728bdee928aa599c442a1ab055b8",
+      "outputSha256": "8ad3904e0d7d6d946fb84efd34935e5b35c0ee240b17034f8b2a0c9fbe0b4778",
+      "manifestSha256": "97b81f0b7c07b869f810592dc8e335c0b7957d4ea7e96650ff12390344ce26d4",
+      "descriptionSha256": "77cc9f0ab2b2534f0277aa5469822a7212802f89836b538f058ec79dc112b756"
+    }
+  ],
+  "upstream": {
+    "revision": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "entryBlob": "61e18cc8f57826d672ba95b6e1fc2dd6d93e8274",
+    "license": "MIT"
+  },
+  "schemas": {
+    "event-v4.schema.json": "105f63550e64f5cf893d3c6b2df4e3f7fe14c015fcd65a3deca9aee09a87b5f0",
+    "context-v4.schema.json": "240fe19ecc91ebd7bc55e4604f4038d1d9890ca3301551c43aa62bee8f5bb5c0",
+    "owner-history-v4.schema.json": "a735462f235e43fbf6c1e83f0ff55d36a2014a0a730b173cfae99b176c0e207a",
+    "authority-scope.schema.json": "77ced585e1815c23b3d00251ca88f00de1c8eec5f5245fe3c8ff658f2bd0f8bc",
+    "read-refs.schema.json": "3f907834c55f81e783e1a48d822aeb0fc7646d9bacf603c729dd99cb20c94dd7",
+    "admission-input.schema.json": "014b4d6b78a574967b81882b1e1b2fc541e9bb299095b127db771f435947575f",
+    "admission-output.schema.json": "a404b3c299c60f0b0698915e0d28bbf59b1aebe85f9b74f1f75fb02cd88ca222"
+  },
+  "compatibility": "implementation-contract.md sections 1-6; ADR-0014 proposed"
+}

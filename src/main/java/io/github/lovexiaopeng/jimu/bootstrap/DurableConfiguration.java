@@ -50,7 +50,7 @@ public class DurableConfiguration {
         new org.springframework.boot.web.servlet.FilterRegistrationBean<>(
             new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchBodyFilter());
     registration.setAsyncSupported(true);
-    registration.addUrlPatterns("/api/tasks/*");
+    registration.addUrlPatterns("/api/tasks/*", "/api/session-search/tasks");
     return registration;
   }
 
@@ -119,6 +119,8 @@ public class DurableConfiguration {
       sensitive.addAll(models.sessionPrivateValues());
     ledger.sessionReadEnabled(
         env.getProperty("jimu.session-event-read.enabled", Boolean.class, false), sensitive);
+    ledger.priorSessionSearchEnabled(
+        env.getProperty("jimu.session-search.enabled", Boolean.class, false));
     ledger.sessionTraceEnabled(
         env.getProperty("jimu.session-event-trace.enabled", Boolean.class, false));
     ledger.sessionSearchEnabled(

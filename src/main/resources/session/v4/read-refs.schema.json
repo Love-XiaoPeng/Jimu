@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session-search:1:read-refs",
+  "type": "array",
+  "minItems": 0,
+  "maxItems": 9,
+  "uniqueItems": true,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "session_id": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      },
+      "seq": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 127
+      },
+      "event_sha256": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
+    "required": [
+      "session_id",
+      "seq",
+      "event_sha256"
+    ]
+  }
+}

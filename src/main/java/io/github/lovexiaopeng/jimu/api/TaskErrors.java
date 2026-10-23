@@ -14,7 +14,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
       UserQuestionController.class,
       TodoController.class,
       WorkingDirectoryController.class,
-      SessionHistoryController.class
+      SessionHistoryController.class,
+      SessionSearchController.class
     })
 public final class TaskErrors {
   public record Error(String code, String message, String traceId) {}
