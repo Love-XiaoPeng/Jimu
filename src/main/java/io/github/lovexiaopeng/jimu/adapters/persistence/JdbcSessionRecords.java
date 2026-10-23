@@ -712,7 +712,6 @@ final class JdbcSessionRecords {
     // Include the changed decimal widths of actual/held/metadata in the final receipt charge.
     for (int pass = 0; pass < 5; pass++) {
       long bytes = metadata(task, true);
-      var h = history(task, false);
       db.update(
           "UPDATE task_session_history SET metadata_bytes=?,held_bytes=? WHERE tenant_id=? AND task_id=?",
           bytes,
@@ -724,7 +723,9 @@ final class JdbcSessionRecords {
           bytes,
           tenant,
           id + ":session-history");
-      if (n(h, "metadata_bytes") == bytes && n(h, "held_bytes") == bytes) {
+      // Settling the reservation changes state/actual scalar widths too. Verify the
+      // complete post-update rows before accepting a fixed point and releasing quota.
+      if (metadata(task, true) == bytes) {
         db.update(
             "UPDATE tenant_budget SET history_storage_held=history_storage_held-? WHERE tenant_id=?",
             8388608 - bytes,

@@ -17,6 +17,8 @@ python3 tools/session_event_verify.py --jar <jar> --evidence <directory> --case 
 python3 tools/session_event_migration_verify.py --jar <jar> --v18-jar <exact-v18-jar> --evidence <directory>
 python3 tools/session_event_regression_verify.py --jar <jar> --evidence <directory>
 python3 tools/session_connection_verify.py --jar <jar> --evidence <directory>
+python3 tools/session_cleanup_verify.py --jar <jar> --evidence <directory> --controls 1
+python3 tools/session_cleanup_verify.py --jar <jar> --evidence <directory> --controls 2
 ```
 
 `JIMU_IT_JAVA` 可指向 Linux Java21。迁移入口要求从 `270a5d15611f5d7e59bbbd1d96c94d07567fc858` 源码构建的真实 V18 制品，不能用新制品伪造旧 schema。所有实验按 JAR hash 固定；失败尝试保留，不覆盖为成功。
@@ -46,3 +48,7 @@ python3 tools/session_connection_verify.py --jar <jar> --evidence <directory>
 `SessionDeadlineTest` 在真实 loopback TCP 上验证：已接受连接但无 greeting，以及先延迟900ms再发送 greeting、随后停顿认证。调用须在整体预算到期返回504，测试对端观察客户端主动关闭物理连接，测试线程在前台 join。与契约/包边界一并运行时将 `SessionDeadlineTest` 加入上述 `-Dtest`。
 
 `session_connection_verify.py` 在私有 MySQL 的原 RESPONDED/PENDING 槽上注入无 greeting、认证停顿、消耗800ms握手预算后停顿事务 SQL、事务 UPDATE 已执行但未提交时停顿回复；逐次验证整体截止、安全错误、socket/对端线程回收、调用后原 task/工具用量/read binding/收据/reservation 不变，无迟到写入，随后释放原 worker 验证同槽恰好一次完成。另以原 diagnostics 验证真实行锁超时，以 recovery 验证接管及 commit-unconfirmed 两侧。系统 DNS 停顿及所有 TLS 时序仍未实测，不记作通过；平台解析延迟不能转成迟到 JDBC 写者。
+
+## QA-52-01 清理计账差异复验
+
+存储 reservation 从 RESERVED/NULL 转成 SETTLED/实际字节数时，其自身元数据宽度也会变化。清理释放须在更新 history 与 reservation 后重算全部实际元数据，达到固定点才释放租户额度；不能只比较更新前的 history 计数。`session_cleanup_verify.py` 分别以无工具任务/单 control 和三次真实读取/双 control 竞争复验，停止维护后独立重算全部正文副本和元数据，要求实际元数据＝metadata＝held＝reservation actual、正文归零、租户释放差额精确、单次删除事件/原收据及重复维护稳定。失败的修复前复现与最终制品结果分别保留。

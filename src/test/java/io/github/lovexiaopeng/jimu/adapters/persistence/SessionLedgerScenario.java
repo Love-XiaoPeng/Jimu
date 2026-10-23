@@ -132,9 +132,25 @@ public final class SessionLedgerScenario {
             + body
             + " recorded="
             + n(h, "body_bytes"));
+    long actualMetadata = records.metadata(task, true);
     require(
-        records.metadata(task, true) == n(h, "metadata_bytes"),
-        "All stored metadata must be charged exactly");
+        actualMetadata == n(h, "metadata_bytes"),
+        "All stored metadata must be charged exactly: actual="
+            + actualMetadata
+            + " recorded="
+            + n(h, "metadata_bytes"));
+    if (s(h, "content_state").equals("PURGED")) {
+      var storage =
+          db.queryForMap(
+              "SELECT state,actual FROM reservation WHERE tenant_id='tenant-a' AND task_id=? AND category='SESSION_HISTORY_STORAGE'",
+              taskId);
+      require(
+          body == 0
+              && n(h, "held_bytes") == actualMetadata
+              && s(storage, "state").equals("SETTLED")
+              && n(storage, "actual") == actualMetadata,
+          "Purged body/held/reservation must equal the actual stored metadata");
+    }
     if (args[2].equals("accounting")) {
       System.out.println("PASS exact body and metadata accounting");
       return;

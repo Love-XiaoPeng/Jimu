@@ -320,6 +320,7 @@ class SessionExperiment(Experiment):
             and self.sql("SELECT COUNT(*) FROM invocation WHERE task_id='"+task+"' AND (input_snapshot<>'' OR output_snapshot IS NOT NULL);") == '0'
             and self.sql("SELECT COUNT(*) FROM step WHERE task_id='"+task+"' AND (request_snapshot<>'' OR response_snapshot IS NOT NULL OR request_cleanup_state<>'SESSION_PURGED');") == '0', 'all authoritative and recovery body copies purged')
         self.assert_that(not self.metadata(task)['readable'] and self.metadata(task)['recent'] == [], 'purged metadata is a readable tombstone without content')
+        self.ledger_scenario(self.control, task, 'accounting')
         self.assert_that(self.sql("SELECT COUNT(*) FROM task_session_history WHERE task_id IN ("+ids+") AND content_state='PRESENT';") == '17', 'unsafe prefix does not starve safe candidate or release UNKNOWN/unconfirmed writers')
         held = self.sql("SELECT history_storage_held FROM tenant_budget WHERE tenant_id='tenant-a';")
         time.sleep(2)
