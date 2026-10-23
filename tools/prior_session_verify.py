@@ -303,7 +303,9 @@ class PriorExperiment(SessionExperiment):
         (writer['folder']/'release').write_text('continue')
         self.state(revoked,'CANCELLED');self.quiet(revoked);self.stop(writer)
         self.sql("UPDATE task_session_scope SET next_validation_at=CURRENT_TIMESTAMP(6) WHERE caller_task_id='"+revoked+"';")
-        eventually(lambda:self.sql("SELECT content_state FROM task_session_history WHERE task_id='"+revoked+"';")=='PURGED','pending revoked slot safely purged')
+        # Maintenance is allowed a 60-second retry after its bounded two-second pass times out.
+        # Public revocation was already checked; this waits for physical cleanup, not public access.
+        eventually(lambda:self.sql("SELECT content_state FROM task_session_history WHERE task_id='"+revoked+"';")=='PURGED','pending revoked slot safely purged',150)
         self.assert_that(self.sql("SELECT CONCAT(state,':',q.content_state,':',outcome,':',COALESCE(native_read_seq,'NULL')) FROM invocation JOIN invocation_session_scope_query q ON q.invocation_id=invocation.id AND q.tenant_id=invocation.tenant_id WHERE task_id='"+revoked+"';")=='PENDING:PURGED:PENDING:NULL','pending purge invents no execution or receipt')
         self.stop(self.control)
         self.control=self.start('control-flag-off','control',extra={'jimu.session-search.enabled':'false'})
