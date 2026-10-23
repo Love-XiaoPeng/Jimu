@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "session_id": "00000000-0000-4000-8000-000000000052",
+  "history_version": 2,
+  "content_policy": "public-v1",
+  "boundary": "pre-step",
+  "upper_seq": 0,
+  "match_policy": "public-content-literal-v1",
+  "ordering": "occurrences-desc,length-asc,time-desc,seq-desc",
+  "returned_count": 0,
+  "capped": false,
+  "items": []
+}

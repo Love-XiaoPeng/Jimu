@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session-event-search:0.1.0:output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "history_version": {
+      "const": 2
+    },
+    "content_policy": {
+      "const": "public-v1"
+    },
+    "boundary": {
+      "enum": [
+        "pre-step",
+        "owner-snapshot"
+      ]
+    },
+    "upper_seq": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 127
+    },
+    "match_policy": {
+      "const": "public-content-literal-v1"
+    },
+    "ordering": {
+      "const": "occurrences-desc,length-asc,time-desc,seq-desc"
+    },
+    "returned_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 16
+    },
+    "capped": {
+      "type": "boolean"
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 127
+          },
+          "type": {
+            "enum": [
+              "user.message",
+              "model.response"
+            ]
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "request",
+                  "step",
+                  "model",
+                  "invocation",
+                  "task"
+                ]
+              },
+              "step_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "invocation_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "step_id",
+              "invocation_id"
+            ]
+          },
+          "redacted": {
+            "type": "boolean"
+          },
+          "event_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "snippet": {
+            "type": "string",
+            "maxLength": 240
+          },
+          "left_truncated": {
+            "type": "boolean"
+          },
+          "right_truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "seq",
+          "type",
+          "time",
+          "source",
+          "redacted",
+          "event_sha256",
+          "snippet",
+          "left_truncated",
+          "right_truncated"
+        ]
+      }
+    }
+  },
+  "required": [
+    "version",
+    "session_id",
+    "history_version",
+    "content_policy",
+    "boundary",
+    "upper_seq",
+    "match_policy",
+    "ordering",
+    "returned_count",
+    "capped",
+    "items"
+  ]
+}

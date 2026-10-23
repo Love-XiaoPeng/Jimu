@@ -1,0 +1,11 @@
+{
+  "query": "积木",
+  "session_id": "00000000-0000-4000-8000-000000000052",
+  "seq_from": 0,
+  "seq_to": 9007199254740991,
+  "time_from": null,
+  "time_to": null,
+  "event_types": [
+    "user.message"
+  ]
+}
