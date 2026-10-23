@@ -19,7 +19,7 @@ ALTER TABLE invocation_session_read
   (relation_version=0 AND read_sources_snapshot IS NULL
    AND read_sources_digest IS NULL AND read_sources_bytes IS NULL)
   OR (relation_version=1 AND
-   ((outcome='PENDING' AND content_state='PRESENT' AND read_sources_snapshot IS NULL
+   ((outcome='PENDING' AND content_state IN ('PRESENT','PURGED') AND read_sources_snapshot IS NULL
      AND read_sources_digest IS NULL AND read_sources_bytes IS NULL)
     OR (outcome IN ('SUCCEEDED','FAILED') AND read_sources_digest IS NOT NULL
       AND read_sources_bytes IS NOT NULL AND read_sources_bytes BETWEEN 2 AND 1024
@@ -74,6 +74,8 @@ CREATE TABLE invocation_session_trace (
 
 -- Application invariants, not provable by cross-table CHECK/FK:
 -- * v3 M2 read bindings explicitly relation_version=1; old bindings remain0/NULL.
+-- * an unexecuted read stays PENDING at safe purge: NULL sources/digest/bytes,
+--   no fabricated outcome/receipt; PRESENT and PURGED are both valid tombstones.
 -- * source snapshot is BODY, <=1024 bytes, canonical [{seq,event_sha256}] in seq order.
 -- * successful read snapshots exactly actual returned target/neighbor rows, <=9;
 --   failed reads snapshot=[], no source edges. Same tenant/task, seq<receipt seq,

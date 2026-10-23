@@ -312,12 +312,69 @@ class TraceExperiment(SessionExperiment):
         value=self.trace(task,{'seq':0},status=409)
         self.assert_that(value['code']=='SESSION_TRACE_UNAVAILABLE','T09 v2 trace unavailable without invented sources')
 
+    def pending_cleanup(self):
+        tasks=[]
+        for mode in ('cancel','deadline','earlier-slot-failure','unknown'):
+            plan=[[(TRACE,{'seq':9007199254740991}),(READ,{'seq':0})]] if mode=='earlier-slot-failure' else [(READ,{'seq':0})]
+            task=self.task('REVIEW-54-01 '+mode,plan)
+            worker=self.start('pending-'+mode,'worker','M2'); self.barrier(worker)
+            pending=self.sql("SELECT outcome,relation_version,content_state,read_sources_snapshot,read_sources_digest,read_sources_bytes,receipt_seq FROM invocation_session_read WHERE task_id='"+task+"';")
+            self.assert_that(pending=='PENDING\t1\tPRESENT\tNULL\tNULL\tNULL\tNULL','REVIEW-54-01 real M2 pending read '+mode)
+            if mode in ('cancel','unknown'):
+                self.assert_that(self.http('POST','/api/tasks/'+task+'/cancel')[0]==202,'REVIEW-54-01 owner cancel '+mode)
+            elif mode=='deadline':
+                self.sql("UPDATE task SET deadline=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE id='"+task+"';")
+            if mode=='cancel':
+                self.sql("UPDATE task_session_history SET retain_until=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE task_id='"+task+"';")
+                before=self.sql("SELECT content_state,held_bytes,body_bytes,cleanup_receipt FROM task_session_history WHERE task_id='"+task+"';")
+                time.sleep(3)
+                self.assert_that(worker['process'].poll() is None and before==self.sql("SELECT content_state,held_bytes,body_bytes,cleanup_receipt FROM task_session_history WHERE task_id='"+task+"';"),'REVIEW-54-01 live writer not purged or released')
+                self.sql("UPDATE task_session_history SET retain_until=CURRENT_TIMESTAMP(6)+INTERVAL 7 DAY WHERE task_id='"+task+"';")
+            (worker['folder']/'release').write_text('continue')
+            terminal=self.state(task,'CANCELLED' if mode in ('cancel','unknown') else 'FAILED'); self.stop(worker)
+            if mode=='deadline': self.assert_that(terminal['code']=='DEADLINE_EXCEEDED','REVIEW-54-01 real deadline terminal')
+            if mode=='earlier-slot-failure': self.assert_that(terminal['code']=='SESSION_EVENT_NOT_FOUND','REVIEW-54-01 preceding trace fails before read')
+            self.assert_that(self.sql("SELECT outcome,read_sources_snapshot,receipt_seq FROM invocation_session_read WHERE task_id='"+task+"';")=='PENDING\tNULL\tNULL','REVIEW-54-01 no invented read execution '+mode)
+            self.ledger_scenario(worker,task,'accounting')
+            tasks.append((mode,task,worker))
+        blocked=tasks[-1][1]
+        self.sql("INSERT INTO reservation(tenant_id,id,task_id,category,amount,state,usage_quality) VALUES('tenant-a','"+blocked+":review-unknown','"+blocked+"','MODEL',1,'HELD_UNKNOWN','UNKNOWN');")
+        healthy=self.task('REVIEW-54-01 later eligible history',[(READ,{'seq':0})])
+        worker=self.start('pending-healthy','worker'); self.state(healthy,'SUCCEEDED'); self.stop(worker)
+        tasks.append(('healthy',healthy,worker))
+        self.stop(self.control)
+        before=int(self.sql("SELECT history_storage_held FROM tenant_budget WHERE tenant_id='tenant-a';"))
+        for index,(_,task,_) in enumerate(tasks):
+            self.sql("UPDATE task_session_history SET retain_until=CURRENT_TIMESTAMP(6)-INTERVAL "+str(20-index)+" SECOND WHERE task_id='"+task+"';")
+        self.control=self.start('pending-cleanup-one','control',extra={'jimu.session-event-trace.enabled':'false'})
+        second=self.start('pending-cleanup-two','control',extra={'jimu.session-event-trace.enabled':'false'})
+        retained=0
+        for mode,task,worker in tasks:
+            if mode=='unknown': continue
+            eventually(lambda:self.sql("SELECT content_state FROM task_session_history WHERE task_id='"+task+"';")=='PURGED','REVIEW-54-01 scheduled purge '+mode)
+            self.trace(task,{'seq':0},status=410)
+            self.ledger_scenario(worker,task,'accounting')
+            retained+=int(self.sql("SELECT metadata_bytes FROM task_session_history WHERE task_id='"+task+"';"))
+            self.assert_that(self.sql("SELECT COUNT(*) FROM event WHERE task_id='"+task+"' AND type='session_history.content_deleted';")=='1','REVIEW-54-01 one deletion '+mode)
+            if mode!='healthy':
+                self.assert_that(self.sql("SELECT outcome,content_state,read_sources_snapshot,read_sources_digest,read_sources_bytes,receipt_seq FROM invocation_session_read WHERE task_id='"+task+"';")=='PENDING\tPURGED\tNULL\tNULL\tNULL\tNULL','REVIEW-54-01 unexecuted tombstone has no invented sources or receipt '+mode)
+                self.assert_that(self.sql("SELECT COUNT(*) FROM session_public_event WHERE task_id='"+task+"' AND type='session.read';")=='0','REVIEW-54-01 no native read receipt '+mode)
+        after=int(self.sql("SELECT history_storage_held FROM tenant_budget WHERE tenant_id='tenant-a';"))
+        self.assert_that(before-after==4*8388608-retained,'REVIEW-54-01 exact tenant release for all four candidates')
+        self.assert_that(self.sql("SELECT content_state,held_bytes,cleanup_receipt FROM task_session_history WHERE task_id='"+blocked+"';")=='PRESENT\t8388608\tNULL','REVIEW-54-01 UNKNOWN pending read stays retained')
+        snapshot=self.sql('SELECT task_id,content_state,body_bytes,metadata_bytes,held_bytes,cleanup_receipt FROM task_session_history ORDER BY task_id;')
+        time.sleep(3)
+        self.assert_that(after==int(self.sql("SELECT history_storage_held FROM tenant_budget WHERE tenant_id='tenant-a';")) and snapshot==self.sql('SELECT task_id,content_state,body_bytes,metadata_bytes,held_bytes,cleanup_receipt FROM task_session_history ORDER BY task_id;'),'REVIEW-54-01 dual repeated cleanup makes no second release')
+        (self.evidence/'pending-cleanup-results.json').write_text(json.dumps({'tasks':[(mode,task) for mode,task,_ in tasks],'tenantBefore':before,'tenantAfter':after,'retainedMetadata':retained,'purgedTaskCount':4},indent=2))
+        (self.evidence/'pending-cleanup-state.tsv').write_text(snapshot)
+        self.stop(second)
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--jar', required=True)
     parser.add_argument('--evidence', required=True)
-    parser.add_argument('--case',choices=['all','observations','legacy-v2'],default='all')
+    parser.add_argument('--case',choices=['all','observations','legacy-v2','pending-cleanup'],default='all')
     args = parser.parse_args()
     evidence = Path(args.evidence).resolve(); evidence.mkdir(parents=True, exist_ok=True)
     experiment = TraceExperiment(Path(args.jar), evidence)
@@ -325,6 +382,7 @@ def main():
         experiment.prepare()
         if args.case=='observations': experiment.observations()
         elif args.case=='legacy-v2': experiment.legacy_v2()
+        elif args.case=='pending-cleanup': experiment.pending_cleanup()
         else:
             experiment.normal(); experiment.inputs(); experiment.integrity(); experiment.boundaries(); experiment.recovery(); experiment.retention()
     except Exception:
