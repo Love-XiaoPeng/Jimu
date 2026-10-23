@@ -1,0 +1,8 @@
+{
+  "query": "积木",
+  "seq_from": 0,
+  "seq_to": 9007199254740991,
+  "event_types": [
+    "user.message"
+  ]
+}

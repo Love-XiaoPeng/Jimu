@@ -58,6 +58,12 @@ public final class JdbcLedger
 
   private boolean directoryEnabled;
   private boolean sessionReadEnabled;
+  private boolean sessionSearchEnabled;
+
+  public void sessionSearchEnabled(boolean enabled) {
+    sessionSearchEnabled = enabled;
+  }
+
   private final JdbcSessionRecords sessions;
 
   public void sessionReadEnabled(boolean enabled, java.util.List<String> sensitive) {
@@ -68,46 +74,70 @@ public final class JdbcLedger
   private void sessionAccess(Map<String, Object> task) {
     if (!JdbcSessionRecords.task(task)) throw new TaskFailure(409, "SESSION_HISTORY_UNAVAILABLE");
     sessions.history(task, false);
-    var pin = tools(task).pins().get("session_event_read");
-    var installed =
-        one(
-            "SELECT * FROM installation WHERE tenant_id=? AND plugin_id='session_event_read' FOR SHARE",
-            s(task, "tenant_id"));
-    if (!pin.version().equals(s(installed, "plugin_version"))
-        || !pin.digest().equals(s(installed, "plugin_digest"))
-        || pin.installationEpoch() != n(installed, "epoch")
-        || !pin.version().equals(sessions.contracts.descriptor().version())
-        || !pin.digest().equals(sessions.contracts.descriptor().outputSha256()))
-      throw new TaskFailure(403, "CAPABILITY_REVOKED");
+    for (String name : caps(task)) {
+      var descriptor =
+          name.equals("session_event_read")
+              ? sessions.contract(task).descriptor()
+              : sessions.search.descriptor();
+      var pin = tools(task).pins().get(name);
+      var installed =
+          one(
+              "SELECT * FROM installation WHERE tenant_id=? AND plugin_id=? FOR SHARE",
+              s(task, "tenant_id"),
+              name);
+      if (!pin.version().equals(s(installed, "plugin_version"))
+          || !pin.digest().equals(s(installed, "plugin_digest"))
+          || pin.installationEpoch() != n(installed, "epoch")
+          || !pin.version().equals(descriptor.version())
+          || !pin.digest().equals(descriptor.outputSha256()))
+        throw new TaskFailure(403, "CAPABILITY_REVOKED");
+    }
   }
 
   private void sessionAdmission(Map<String, Object> task) {
     if (!sessionReadEnabled) throw new TaskFailure(403, "SESSION_READ_DISABLED");
+    if (JdbcSessionRecords.searchTask(task) && !sessionSearchEnabled)
+      throw new TaskFailure(403, "SESSION_SEARCH_DISABLED");
     sessions.history(task, true);
-    models.requireSessionRead(snapshot(task));
+    if (JdbcSessionRecords.searchTask(task)) models.requireSessionSearch(snapshot(task));
+    else models.requireSessionRead(snapshot(task));
   }
 
-  private boolean sessionAvailable(Identity identity) {
-    if (!sessionReadEnabled) return false;
+  private boolean sessionAvailable(Identity identity, boolean search) {
+    if (!sessionReadEnabled || search && !sessionSearchEnabled) return false;
     try {
-      models.requireSessionRead(models.selected(identity.tenant()));
+      if (search) models.requireSessionSearch(models.selected(identity.tenant()));
+      else models.requireSessionRead(models.selected(identity.tenant()));
+      var read =
+          one(
+              "SELECT plugin_version,plugin_digest FROM installation WHERE tenant_id=? AND plugin_id='session_event_read' AND enabled=TRUE",
+              identity.tenant());
+      var descriptor = (search ? sessions.v2 : sessions.contracts).descriptor();
+      if (!descriptor.version().equals(s(read, "plugin_version"))
+          || !descriptor.outputSha256().equals(s(read, "plugin_digest")))
+        return !search && sessionAvailable(identity, true);
+      if (!search) return true;
       var installed =
           one(
-              "SELECT plugin_version,plugin_digest FROM installation WHERE tenant_id=? AND plugin_id='session_event_read'",
+              "SELECT plugin_version,plugin_digest FROM installation WHERE tenant_id=? AND plugin_id='session_event_search' AND enabled=TRUE",
               identity.tenant());
-      return sessions.contracts.descriptor().version().equals(s(installed, "plugin_version"))
-          && sessions.contracts.descriptor().outputSha256().equals(s(installed, "plugin_digest"));
+      return sessions.search.descriptor().version().equals(s(installed, "plugin_version"))
+          && sessions.search.descriptor().outputSha256().equals(s(installed, "plugin_digest"));
     } catch (TaskFailure rejected) {
       return false;
     }
   }
 
   private <T> T sessionTransaction(java.util.function.Supplier<T> work) {
+    return sessionTransaction(work, System.nanoTime() + 2_000_000_000L);
+  }
+
+  private <T> T sessionTransaction(java.util.function.Supplier<T> work, long end) {
     var transaction = new TransactionTemplate(transactions.getTransactionManager());
     transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     transaction.setTimeout(2);
     long started = System.nanoTime();
-    sessionQueryDeadline.set(started + 2_000_000_000L);
+    sessionQueryDeadline.set(end);
     try (var deadline = new SessionQueryDeadline(sessionQueryDeadline.get())) {
       return transaction.execute(
           status ->
@@ -159,7 +189,7 @@ public final class JdbcLedger
                         }
                         try {
                           T result = work.get();
-                          if (System.nanoTime() - started >= 2_000_000_000L)
+                          if (System.nanoTime() >= end)
                             throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
                           return result;
                         } finally {
@@ -170,7 +200,7 @@ public final class JdbcLedger
                         }
                       }));
     } catch (RuntimeException failure) {
-      if (System.nanoTime() - started >= 2_000_000_000L
+      if (System.nanoTime() >= end
           && (failure instanceof org.springframework.dao.DataAccessException
               || failure
                   instanceof org.springframework.transaction.CannotCreateTransactionException))
@@ -213,7 +243,6 @@ public final class JdbcLedger
     var task = found.getFirst();
     identity(identity);
     access(task);
-    sessionAccess(task);
     return task;
   }
 
@@ -248,6 +277,57 @@ public final class JdbcLedger
           long upper = n(sessions.history(task, true), "next_seq") - 1;
           return sessions.read(task, input, upper, "owner-snapshot").output();
         });
+  }
+
+  @Override
+  public void authorizeSessionSearch(Identity identity, String taskId, long deadlineNanos) {
+    sessionSearchOwnerRead(
+        () -> {
+          sessionSearchOwner(identity, taskId);
+          return null;
+        },
+        deadlineNanos);
+  }
+
+  private Map<String, Object> sessionSearchOwner(Identity identity, String taskId) {
+    var task = sessionOwner(identity, taskId);
+    if (!JdbcSessionRecords.searchTask(task))
+      throw new TaskFailure(409, "SESSION_SEARCH_UNAVAILABLE");
+    sessions.history(task, true);
+    return task;
+  }
+
+  @Override
+  public String sessionSearch(
+      Identity identity, String taskId, SearchBody body, long deadlineNanos) {
+    return sessionSearchOwnerRead(
+        () -> {
+          var task = sessionSearchOwner(identity, taskId);
+          long upper = n(sessions.history(task, true), "next_seq") - 1;
+          byte[] raw = body.read(deadlineNanos);
+          sessionRemainingMillis();
+          var input = sessions.search.input(raw);
+          return sessions
+              .search(task, input, upper, "owner-snapshot", this::sessionRemainingMillis)
+              .output();
+        },
+        deadlineNanos);
+  }
+
+  private <T> T sessionSearchOwnerRead(Supplier<T> work, long deadlineNanos) {
+    try {
+      return sessionTransaction(work, deadlineNanos);
+    } catch (org.springframework.dao.QueryTimeoutException
+        | org.springframework.dao.CannotAcquireLockException e) {
+      throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
+    } catch (org.springframework.dao.DataAccessException
+        | org.springframework.transaction.TransactionException e) {
+      throw new TaskFailure(
+          System.nanoTime() >= deadlineNanos ? 504 : 503,
+          System.nanoTime() >= deadlineNanos
+              ? "SESSION_QUERY_TIMEOUT"
+              : "SESSION_QUERY_UNAVAILABLE");
+    }
   }
 
   private long sessionAppend(
@@ -323,8 +403,9 @@ public final class JdbcLedger
                 s(st, "response_snapshot"),
                 io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Response.class);
         var text = sessions.contracts.publicText(response.content(), sessions.sensitive());
-        redacted = text.redacted();
-        data = Map.of("content", text.content(), "calls", response.calls());
+        var projected = sessions.projectedCalls(task, response.calls());
+        redacted = text.redacted() || projected.redacted();
+        data = Map.of("content", text.content(), "calls", projected.calls());
       } else data = Map.of("ordinal", n(st, "ordinal"));
       sessionAppend(
           task,
@@ -410,7 +491,7 @@ public final class JdbcLedger
                         new TaskFailure(
                             sessionFailureStatus(s(b, "failure_code")), s(b, "failure_code")));
                   if (!"SUCCEEDED".equals(s(b, "outcome"))) throw JdbcSessionRecords.corrupt();
-                  sessions.contracts.output(s(i, "output_snapshot"));
+                  sessions.contract(task).output(s(i, "output_snapshot"));
                   return new AdmissionResult<String>(s(i, "output_snapshot"), null);
                 }
                 if (!"PENDING".equals(s(b, "outcome"))) throw JdbcSessionRecords.corrupt();
@@ -507,6 +588,203 @@ public final class JdbcLedger
                     s(i, "input_digest"),
                     lease);
                 todoCommitFence(lease);
+                sessions.account(task, false);
+                return new AdmissionResult<String>(output, failure);
+              });
+    } catch (org.springframework.dao.DataAccessException
+        | org.springframework.transaction.TransactionException unconfirmed) {
+      throw new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionCommitUnconfirmed();
+    }
+    if (result.rejection() != null) throw result.rejection();
+    return result.value();
+  }
+
+  @Override
+  public String searchOrResult(
+      Lease lease, String stepId, Call call, String version, String digest) {
+    AdmissionResult<String> result;
+    try {
+      result =
+          sessionTransaction(
+              () -> {
+                var task = fenced(lease, true);
+                if (!JdbcSessionRecords.searchTask(task))
+                  throw new TaskFailure(403, "SESSION_SEARCH_DISABLED");
+                var i = originalDirectorySlot(lease, stepId, call, version, digest);
+                if (!call.tool().equals("session_event_search"))
+                  throw new TaskFailure(409, "INVOCATION_MISMATCH");
+                var input = sessions.search.input(call.input());
+                var h = sessions.history(task, true);
+                var st =
+                    one(
+                        "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=?",
+                        lease.tenant(),
+                        stepId,
+                        lease.taskId());
+                sessions.validateStep(task, st);
+                var b =
+                    one(
+                        "SELECT * FROM invocation_session_search WHERE tenant_id=? AND invocation_id=? FOR UPDATE",
+                        lease.tenant(),
+                        s(i, "id"));
+                String normalized =
+                    sessions.search.normalized(input, lease.taskId(), n(st, "session_upper_seq"));
+                if (n(b, "record_version") != 1
+                    || !lease.taskId().equals(s(b, "task_id"))
+                    || !stepId.equals(s(b, "step_id"))
+                    || !s(h, "binding_digest").equals(s(b, "binding_digest"))
+                    || !s(h, "binding_digest").equals(s(st, "session_binding_digest"))
+                    || n(b, "upper_seq") != n(st, "session_upper_seq")
+                    || !Payloads.hash(call.input()).equals(s(b, "input_digest"))
+                    || !"PRESENT".equals(s(b, "content_state"))
+                    || !normalized.equals(s(b, "normalized_query_snapshot"))
+                    || !Payloads.hash(normalized).equals(s(b, "normalized_query_digest"))
+                    || io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(
+                            normalized)
+                        != n(b, "normalized_query_bytes")) throw JdbcSessionRecords.corrupt();
+                if (!"PENDING".equals(s(i, "state"))) {
+                  if (!s(i, "state").equals(s(b, "outcome"))) throw JdbcSessionRecords.corrupt();
+                  var receipt =
+                      one(
+                          "SELECT * FROM event WHERE tenant_id=? AND task_id=? AND seq=?",
+                          lease.tenant(),
+                          lease.taskId(),
+                          n(b, "receipt_event_seq"));
+                  boolean success = "SUCCEEDED".equals(s(b, "outcome"));
+                  if (!success
+                      && !List.of(
+                              "SESSION_HISTORY_CORRUPT",
+                              "SESSION_HISTORY_VERSION_UNSUPPORTED",
+                              "SESSION_HISTORY_LIMIT")
+                          .contains(s(b, "failure_code"))) throw JdbcSessionRecords.corrupt();
+                  if ((!success && !"FAILED".equals(s(b, "outcome")))
+                      || !s(receipt, "fact_id").equals("result:" + s(i, "id"))
+                      || !s(receipt, "type").equals(success ? "tool.completed" : "tool.failed")
+                      || !java.util.Objects.equals(receipt.get("code"), b.get("failure_code")))
+                    throw JdbcSessionRecords.corrupt();
+                  var reservation =
+                      one(
+                          "SELECT * FROM reservation WHERE tenant_id=? AND task_id=? AND id=?",
+                          lease.tenant(),
+                          lease.taskId(),
+                          s(i, "id"));
+                  if (!"TOOL".equals(s(reservation, "category"))
+                      || !"SETTLED".equals(s(reservation, "state"))
+                      || n(reservation, "actual") != 1) throw JdbcSessionRecords.corrupt();
+                  one(
+                      "SELECT id FROM task_attempt WHERE tenant_id=? AND task_id=? AND id=? AND fence=?",
+                      lease.tenant(),
+                      lease.taskId(),
+                      s(b, "committed_attempt_id"),
+                      n(b, "committed_fence"));
+                  if (success) {
+                    String output = s(i, "output_snapshot");
+                    if (!Payloads.hash(output).equals(s(i, "output_digest"))
+                        || !s(i, "output_digest").equals(s(b, "output_digest"))
+                        || io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts
+                                .bytes(output)
+                            != n(b, "output_bytes")) throw JdbcSessionRecords.corrupt();
+                    sessions.search.output(output);
+                  } else if (i.get("output_snapshot") != null
+                      || i.get("output_digest") != null
+                      || n(b, "output_bytes") != 0) throw JdbcSessionRecords.corrupt();
+                  todoCommitFence(lease);
+                  sessions.account(task, false);
+                  return new AdmissionResult<String>(
+                      success ? s(i, "output_snapshot") : null,
+                      success
+                          ? null
+                          : new TaskFailure(
+                              sessionFailureStatus(s(b, "failure_code")), s(b, "failure_code")));
+                }
+                if (!"PENDING".equals(s(b, "outcome"))) throw JdbcSessionRecords.corrupt();
+                var budget = bucket(lease.tenant());
+                if (n(task, "tools_used") >= n(task, "max_tools")
+                    || n(task, "tools_used") >= 20
+                    || n(budget, "tool_used") >= n(budget, "tool_limit"))
+                  throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
+                JdbcSessionRecords.Search found = null;
+                TaskFailure failure = null;
+                try {
+                  found =
+                      sessions.search(
+                          task, input, n(b, "upper_seq"), "pre-step", this::sessionRemainingMillis);
+                } catch (TaskFailure rejected) {
+                  if (!List.of(
+                          "SESSION_HISTORY_CORRUPT",
+                          "SESSION_HISTORY_VERSION_UNSUPPORTED",
+                          "SESSION_HISTORY_LIMIT")
+                      .contains(rejected.code())) throw rejected;
+                  failure = rejected;
+                }
+                String invocation = s(i, "id"), output = found == null ? null : found.output();
+                String code = failure == null ? null : failure.code(),
+                    outcome = failure == null ? "SUCCEEDED" : "FAILED";
+                if (output != null)
+                  sessions.body(
+                      task,
+                      io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(
+                          output));
+                db.update(
+                    "UPDATE task SET tools_used=tools_used+1 WHERE tenant_id=? AND id=?",
+                    lease.tenant(),
+                    lease.taskId());
+                db.update(
+                    "UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=?",
+                    lease.tenant());
+                reserve(
+                    lease.tenant(),
+                    lease.taskId(),
+                    invocation,
+                    invocation,
+                    "TOOL",
+                    1,
+                    "SETTLED",
+                    "KNOWN");
+                db.update(
+                    "UPDATE reservation SET actual=1 WHERE tenant_id=? AND id=?",
+                    lease.tenant(),
+                    invocation);
+                db.update(
+                    "UPDATE invocation SET state=?,output_snapshot=?,output_digest=? WHERE tenant_id=? AND id=? AND state='PENDING'",
+                    outcome,
+                    output,
+                    output == null ? null : Payloads.hash(output),
+                    lease.tenant(),
+                    invocation);
+                event(task, "intent:" + invocation, "tool.dispatched", null);
+                event(
+                    task,
+                    "result:" + invocation,
+                    failure == null ? "tool.completed" : "tool.failed",
+                    code);
+                long receipt =
+                    n(
+                        one(
+                            "SELECT seq FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
+                            lease.tenant(),
+                            lease.taskId(),
+                            "result:" + invocation),
+                        "seq");
+                db.update(
+                    "UPDATE invocation_session_search SET outcome=?,failure_code=?,scan_digest=?,scan_rows=?,scan_event_bytes=?,output_digest=?,output_bytes=?,receipt_event_seq=?,committed_attempt_id=?,committed_fence=?,committed_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND invocation_id=? AND outcome='PENDING'",
+                    outcome,
+                    code,
+                    found == null ? null : found.scanDigest(),
+                    found == null ? null : found.rows(),
+                    found == null ? null : found.eventBytes(),
+                    output == null ? null : Payloads.hash(output),
+                    output == null
+                        ? 0
+                        : io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts
+                            .bytes(output),
+                    receipt,
+                    lease.attemptId(),
+                    lease.fence(),
+                    lease.tenant(),
+                    invocation);
+                todoCommitFence(lease);
+                sessionRemainingMillis();
                 sessions.account(task, false);
                 return new AdmissionResult<String>(output, failure);
               });
@@ -1850,6 +2128,12 @@ public final class JdbcLedger
   }
 
   private void rejectTodoBypass(Lease lease, String invocation) {
+    if (!rows(
+            "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND tool='session_event_search'",
+            lease.tenant(),
+            lease.taskId(),
+            invocation)
+        .isEmpty()) throw new TaskFailure(409, "SESSION_SEARCH_COMMIT_REQUIRED");
     if (!rows(
             "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND tool='session_event_read'",
             lease.tenant(),
@@ -3462,7 +3746,10 @@ public final class JdbcLedger
               .filter(name -> questionsEnabled || !name.equals("ask_user_question"))
               .filter(name -> !name.equals("working_directory") || directoryAvailable(identity))
               .filter(name -> !name.equals("todo_write") || todoAvailable(identity))
-              .filter(name -> !name.equals("session_event_read") || sessionAvailable(identity))
+              .filter(
+                  name -> !name.equals("session_event_read") || sessionAvailable(identity, false))
+              .filter(
+                  name -> !name.equals("session_event_search") || sessionAvailable(identity, true))
               .filter(
                   name -> searchAvailable.getAsBoolean() || !List.of("glob", "grep").contains(name))
               .filter(
@@ -3499,9 +3786,14 @@ public final class JdbcLedger
             original.resourceIds(),
             original.budget(),
             descriptors);
-    boolean sessionRead = request.capabilityIds().contains("session_event_read");
+    boolean sessionSearch = request.capabilityIds().contains("session_event_search");
+    boolean sessionRead = request.capabilityIds().contains("session_event_read") || sessionSearch;
     if (sessionRead
-        && (!request.capabilityIds().equals(List.of("session_event_read"))
+        && (!(sessionSearch
+                ? request
+                    .capabilityIds()
+                    .equals(List.of("session_event_read", "session_event_search"))
+                : request.capabilityIds().equals(List.of("session_event_read")))
             || !request.resourceIds().isEmpty()
             || original.images() != null)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
     boolean directory = request.capabilityIds().contains("working_directory");
@@ -3631,13 +3923,22 @@ public final class JdbcLedger
             throw new TaskFailure(403, "QUESTION_NOT_AUTHORIZED");
           if (sessionRead) {
             if (!sessionReadEnabled) throw new TaskFailure(403, "SESSION_READ_DISABLED");
-            models.requireSessionRead(model);
+            if (sessionSearch) {
+              if (!sessionSearchEnabled) throw new TaskFailure(403, "SESSION_SEARCH_DISABLED");
+              models.requireSessionSearch(model);
+            } else models.requireSessionRead(model);
             if (evaluation != null || businessPolicy != null || models.scopeRequirement() != null)
               throw new TaskFailure(403, "SESSION_READ_DISABLED");
-            var pin = pins.get("session_event_read");
-            if (!pin.version().equals(sessions.contracts.descriptor().version())
-                || !pin.digest().equals(sessions.contracts.descriptor().outputSha256()))
-              throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+            for (String name : request.capabilityIds()) {
+              var descriptor =
+                  name.equals("session_event_read")
+                      ? (sessionSearch ? sessions.v2 : sessions.contracts).descriptor()
+                      : sessions.search.descriptor();
+              var pin = pins.get(name);
+              if (!pin.version().equals(descriptor.version())
+                  || !pin.digest().equals(descriptor.outputSha256()))
+                throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+            }
             if (n(budget, "history_storage_limit") - n(budget, "history_storage_held") < 8388608)
               throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
             if (request.budget().maxModelRequests() > 8
@@ -5484,7 +5785,7 @@ public final class JdbcLedger
                 throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
               for (var call : calls) {
                 if (JdbcSessionRecords.task(task)) {
-                  sessions.contracts.input(call.input());
+                  sessions.validateInput(task, call);
                 } else if (directoryTask(task)) {
                   io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryPaths.unicode(
                       call.providerId());
@@ -5899,6 +6200,8 @@ public final class JdbcLedger
   @Override
   public Invocation admit(
       Lease lease, String stepId, Call call, String pluginVersion, String pluginDigest) {
+    if (call.tool().equals("session_event_search"))
+      throw new TaskFailure(409, "SESSION_SEARCH_COMMIT_REQUIRED");
     if (call.tool().equals("session_event_read"))
       throw new TaskFailure(409, "SESSION_READ_COMMIT_REQUIRED");
     if (call.tool().equals("working_directory"))
@@ -6873,8 +7176,10 @@ public final class JdbcLedger
     tx(
         () -> {
           var task = fenced(lease, false);
-          if (JdbcSessionRecords.task(task))
+          if (JdbcSessionRecords.task(task)) {
+            rejectTodoBypass(lease, invocationId);
             throw new TaskFailure(409, "SESSION_READ_COMMIT_REQUIRED");
+          }
           if (db.update(
                   "UPDATE invocation SET state='FAILED',updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND task_id=? AND state='RUNNING'",
                   lease.tenant(),
@@ -7286,13 +7591,13 @@ public final class JdbcLedger
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20') AND success=TRUE",
             Integer.class)
-        != 19) throw new IllegalStateException("Required migration unavailable");
+        != 20) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 19) throw new IllegalStateException("Unsupported schema version");
+        != 20) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override

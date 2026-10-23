@@ -28,3 +28,5 @@ src/main/resources/session/** -text
 # Original Maven output retains its byte-significant whitespace.
 docs/verification/XIAO-52/architecture/evidence/dependency-classpath.txt -diff
 docs/verification/XIAO-50/architecture/evidence/dependency-classpath-log.txt -diff
+# XIAO-53 fixed blobs and normative byte-pinned architecture contracts.
+docs/verification/XIAO-53/architecture/** -text

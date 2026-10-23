@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "session_id": "00000000-0000-4000-8000-000000000052",
+  "content_state": "PRESENT",
+  "upper_seq": 3,
+  "user_message_seq": 0,
+  "recent": [
+    {
+      "seq": 0,
+      "type": "user.message"
+    },
+    {
+      "seq": 1,
+      "type": "step.started"
+    },
+    {
+      "seq": 2,
+      "type": "model.response"
+    },
+    {
+      "seq": 3,
+      "type": "session.read"
+    }
+  ],
+  "as_of_sse_seq": 8,
+  "retain_until": "2026-10-30T00:00:00.000000Z",
+  "readable": true
+}

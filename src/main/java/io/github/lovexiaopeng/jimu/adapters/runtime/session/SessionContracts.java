@@ -43,11 +43,16 @@ public final class SessionContracts {
   }
 
   public SessionContracts() {
+    this(1);
+  }
+
+  public SessionContracts(int version) {
     try {
-      byte[] catalogBytes = resource("catalog.json");
+      byte[] catalogBytes = resource(version == 1 ? "catalog.json" : "v2/catalog-v2.json");
       var catalog = JSON.readTree(catalogBytes);
       var entry = catalog.path("tools").get(0);
-      String root = "session_event_read-0.1.0/";
+      String prefix = version == 1 ? "" : "v2/";
+      String root = prefix + "session_event_read-" + (version == 1 ? "0.1.0" : "0.2.0") + "/";
       byte[] in = checked(root + "input.schema.json", entry.path("inputSha256").asText());
       byte[] out = checked(root + "output.schema.json", entry.path("outputSha256").asText());
       checked(root + "plugin.yaml", entry.path("manifestSha256").asText());
@@ -60,20 +65,24 @@ public final class SessionContracts {
       event =
           new SchemaContract(
               checked(
-                  "event-v1.schema.json",
-                  catalog.path("schemas").path("event-v1.schema.json").asText()));
+                  prefix + "event-v" + version + ".schema.json",
+                  catalog.path("schemas").path("event-v" + version + ".schema.json").asText()));
       context =
           new SchemaContract(
               checked(
-                  "context-v1.schema.json",
-                  catalog.path("schemas").path("context-v1.schema.json").asText()));
+                  prefix + "context-v" + version + ".schema.json",
+                  catalog.path("schemas").path("context-v" + version + ".schema.json").asText()));
       owner =
           new SchemaContract(
               checked(
-                  "owner-history-v1.schema.json",
-                  catalog.path("schemas").path("owner-history-v1.schema.json").asText()));
-      var template = JSON.readTree(resource("examples/binding.json"));
-      new SchemaContract(resource("task-binding-v1.schema.json")).validate(template);
+                  prefix + "owner-history-v" + version + ".schema.json",
+                  catalog
+                      .path("schemas")
+                      .path("owner-history-v" + version + ".schema.json")
+                      .asText()));
+      var template = JSON.readTree(resource(prefix + "examples/binding.json"));
+      new SchemaContract(resource(prefix + "task-binding-v" + version + ".schema.json"))
+          .validate(template);
       if (!Payloads.hash(catalogBytes).equals(template.path("catalogDigest").asText()))
         throw new IllegalArgumentException("Session catalog pin");
       binding = Payloads.json(template);
@@ -81,7 +90,7 @@ public final class SessionContracts {
       descriptor =
           new ToolDescriptor(
               "jimu.session.event_read",
-              "0.1.0",
+              version == 1 ? "0.1.0" : "0.2.0",
               NAME,
               "session/" + root + "input.schema.json",
               "session/" + root + "output.schema.json",
@@ -92,7 +101,7 @@ public final class SessionContracts {
     }
   }
 
-  private static byte[] resource(String path) throws IOException {
+  static byte[] resource(String path) throws IOException {
     try (var stream =
         SessionContracts.class.getClassLoader().getResourceAsStream("session/" + path)) {
       if (stream == null) throw new IOException("Missing session contract");
@@ -100,7 +109,7 @@ public final class SessionContracts {
     }
   }
 
-  private static byte[] checked(String path, String digest) throws IOException {
+  static byte[] checked(String path, String digest) throws IOException {
     byte[] value = resource(path);
     if (!Payloads.hash(value).equals(digest))
       throw new IllegalArgumentException("Session pin mismatch");
@@ -143,6 +152,19 @@ public final class SessionContracts {
       unicode(raw);
       if (bytes(raw) > max) throw new IllegalArgumentException("Bytes");
       var node = JSON.readTree(raw);
+      if (node == null) throw new IllegalArgumentException("Missing JSON");
+      unicode(node);
+      return node;
+    } catch (IOException | IllegalArgumentException e) {
+      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+    }
+  }
+
+  public JsonNode strictJson(String raw, int max) {
+    try {
+      unicode(raw);
+      if (bytes(raw) > max) throw new IllegalArgumentException("Bytes");
+      var node = INPUT.readTree(raw);
       if (node == null) throw new IllegalArgumentException("Missing JSON");
       unicode(node);
       return node;

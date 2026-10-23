@@ -1,0 +1,38 @@
+{
+  "version": 2,
+  "profile": "local-session-event-search-v2",
+  "historyVersion": 2,
+  "eventVersion": 2,
+  "contentPolicy": "public-v1",
+  "tools": [
+    {
+      "name": "session_event_read",
+      "version": "0.2.0",
+      "pluginId": "jimu.session.event_read",
+      "inputSha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0",
+      "outputSha256": "7823e04505d76cb80e7d6a644d10504ece4260be0e01e7026206df833a7ea6d9",
+      "manifestSha256": "968cf2ab9e3557b995151bce2bac40ea32a41b8d489550a38938e2e61d768ffa",
+      "descriptionSha256": "14b708a833e18d2e887ce72b00de2d1ef8715ee90322fdf20cbf5b9f4a9d64f9"
+    },
+    {
+      "name": "session_event_search",
+      "version": "0.1.0",
+      "pluginId": "jimu.session.event_search",
+      "inputSha256": "52fdd4305f6791d80469a4f2537d1b544790e8dec59e24960f731cf5f9295584",
+      "outputSha256": "51356d3c17c2bf298c653f21160bbe052e5638f189dc932b40cce75f12e53076",
+      "manifestSha256": "cec185661a7afac5cbf4ceb558c949cf166779e018c409ac5098f6568c195d9b",
+      "descriptionSha256": "b91db9e0ccd349b8d0d23185f642f6350b04c472d5ec406455238659a0290209"
+    }
+  ],
+  "upstream": {
+    "revision": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "entryBlob": "61e18cc8f57826d672ba95b6e1fc2dd6d93e8274",
+    "license": "MIT"
+  },
+  "schemas": {
+    "event-v2.schema.json": "05046a2212bd106d7026e94db1d124ba50365182da7963a443bd965e5f4e7075",
+    "context-v2.schema.json": "3116de9c3a95c4e5eac7f870915b1fb5fbc7d48a8771768ce713dc29884521b0",
+    "owner-history-v2.schema.json": "a76d748919da9650e87179fede4d1a469fdfd1d0f4d3b8e882167ecc514e690c"
+  },
+  "compatibility": "implementation-contract.md sections 1-4"
+}

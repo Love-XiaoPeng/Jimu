@@ -14,4 +14,25 @@ public interface SessionEventLedger {
   String sessionHistory(Tasks.Identity identity, String taskId);
 
   String sessionEvent(Tasks.Identity identity, String taskId, long seq, int before, int after);
+
+  /** A bounded HTTP body reader invoked only after the path's current authority is checked. */
+  interface SearchBody {
+    byte[] read(long deadlineNanos);
+  }
+
+  record SearchRequest(
+      long deadlineNanos,
+      java.util.function.Consumer<byte[]> completed,
+      java.util.function.Consumer<RuntimeException> failed) {}
+
+  void authorizeSessionSearch(Tasks.Identity identity, String taskId, long deadlineNanos);
+
+  String sessionSearch(Tasks.Identity identity, String taskId, SearchBody body, long deadlineNanos);
+
+  String searchOrResult(
+      ExecutionLedger.Lease lease,
+      String stepId,
+      ExecutionLedger.Call call,
+      String version,
+      String digest);
 }

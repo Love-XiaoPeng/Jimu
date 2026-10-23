@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "session_id": "00000000-0000-4000-8000-000000000052",
+  "history_version": 2,
+  "content_policy": "public-v1",
+  "boundary": "pre-step",
+  "upper_seq": 0,
+  "match_policy": "public-content-literal-v1",
+  "ordering": "occurrences-desc,length-asc,time-desc,seq-desc",
+  "returned_count": 1,
+  "capped": false,
+  "items": [
+    {
+      "seq": 0,
+      "type": "user.message",
+      "time": "2026-10-23T00:00:00.000000Z",
+      "source": {
+        "kind": "request",
+        "step_id": null,
+        "invocation_id": null
+      },
+      "redacted": false,
+      "event_sha256": "ea05b5ad81c4da94dba7740b03c0432f5b1d58f12ada9750cd0930e265d42a04",
+      "snippet": "积木验证 Unicode 🧱，核查历史内容。",
+      "left_truncated": false,
+      "right_truncated": false
+    }
+  ]
+}

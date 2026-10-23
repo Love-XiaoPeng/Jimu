@@ -1,0 +1,10 @@
+{
+  "scope": "Architecture artifacts only; no product build/DB/worker/HTTP/semantic search tests",
+  "upstreamBlobs": 43,
+  "unchangedBaselineFiles": 53,
+  "pinnedTools": 2,
+  "searchOutputExampleBytes": 638,
+  "readInputByteIdentical": true,
+  "catalogAndBindingPins": true,
+  "exampleDigest": true
+}
