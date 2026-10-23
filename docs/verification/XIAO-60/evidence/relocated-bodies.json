@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Payloads",
+    "target": "src/main/java/io/github/lovexiaopeng/jimu/adapters/codec/Payloads.java",
+    "bodySha256": "5696c8e9ceaa7b796ea281f70cbd8d1bf1cbaf2387e674f9391ef63bfd42bcef",
+    "bodyUnchanged": true
+  },
+  {
+    "name": "ModelCosts",
+    "target": "src/main/java/io/github/lovexiaopeng/jimu/kernel/budget/domain/ModelCosts.java",
+    "bodySha256": "70b7b73a4eed9d88cb982db3dcd5dd20552e61f7167e469febb35c8fffdf9430",
+    "bodyUnchanged": true
+  }
+]

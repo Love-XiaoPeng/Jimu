@@ -1,0 +1,289 @@
+[
+  {
+    "table": "native_search_run",
+    "migration": "src/main/resources/db/migration/V11__native_search.sql",
+    "line": 2,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "native_search_stop",
+    "migration": "src/main/resources/db/migration/V11__native_search.sql",
+    "line": 20,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "task_image_input",
+    "migration": "src/main/resources/db/migration/V13__task_images.sql",
+    "line": 6,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "task_image_object",
+    "migration": "src/main/resources/db/migration/V13__task_images.sql",
+    "line": 15,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "mcp_server",
+    "migration": "src/main/resources/db/migration/V15__mcp_resources.sql",
+    "line": 5,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "mcp_io",
+    "migration": "src/main/resources/db/migration/V15__mcp_resources.sql",
+    "line": 12,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "mcp_result",
+    "migration": "src/main/resources/db/migration/V15__mcp_resources.sql",
+    "line": 22,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "mcp_cursor",
+    "migration": "src/main/resources/db/migration/V15__mcp_resources.sql",
+    "line": 33,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "user_question",
+    "migration": "src/main/resources/db/migration/V16__durable_user_questions.sql",
+    "line": 14,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "task_todo_projection",
+    "migration": "src/main/resources/db/migration/V17__task_todo_projection.sql",
+    "line": 29,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "task_directory",
+    "migration": "src/main/resources/db/migration/V18__task_logical_directory.sql",
+    "line": 21,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "invocation_path_binding",
+    "migration": "src/main/resources/db/migration/V18__task_logical_directory.sql",
+    "line": 49,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "task_session_history",
+    "migration": "src/main/resources/db/migration/V19__authorized_session_history.sql",
+    "line": 19,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "session_public_event",
+    "migration": "src/main/resources/db/migration/V19__authorized_session_history.sql",
+    "line": 41,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "invocation_session_read",
+    "migration": "src/main/resources/db/migration/V19__authorized_session_history.sql",
+    "line": 66,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "tenant_budget",
+    "migration": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "line": 1,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "actor_access",
+    "migration": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "line": 12,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "installation",
+    "migration": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "line": 17,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "task",
+    "migration": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "line": 23,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "task_attempt",
+    "migration": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "line": 41,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "step",
+    "migration": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "line": 49,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "invocation",
+    "migration": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "line": 59,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "event",
+    "migration": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "line": 71,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "reservation",
+    "migration": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "line": 78,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "artifact",
+    "migration": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "line": 85,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "invocation_session_search",
+    "migration": "src/main/resources/db/migration/V20__bounded_session_event_search.sql",
+    "line": 14,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "invocation_session_trace",
+    "migration": "src/main/resources/db/migration/V21__captured_session_event_read_provenance.sql",
+    "line": 30,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "task_session_scope",
+    "migration": "src/main/resources/db/migration/V22__explicit_prior_session_search_scope.sql",
+    "line": 13,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "task_session_scope_target",
+    "migration": "src/main/resources/db/migration/V22__explicit_prior_session_search_scope.sql",
+    "line": 37,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "step_session_scope",
+    "migration": "src/main/resources/db/migration/V22__explicit_prior_session_search_scope.sql",
+    "line": 53,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "invocation_session_scope_query",
+    "migration": "src/main/resources/db/migration/V22__explicit_prior_session_search_scope.sql",
+    "line": 68,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "worker_process",
+    "migration": "src/main/resources/db/migration/V2__local_worker_receipts.sql",
+    "line": 1,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "evaluation_budget",
+    "migration": "src/main/resources/db/migration/V4__model_snapshots_and_budgets.sql",
+    "line": 12,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "model_dispatch",
+    "migration": "src/main/resources/db/migration/V4__model_snapshots_and_budgets.sql",
+    "line": 23,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "evaluation_execution_scope",
+    "migration": "src/main/resources/db/migration/V9__evaluation_execution_scope.sql",
+    "line": 2,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  },
+  {
+    "table": "jimu_provisioning_receipt",
+    "managedByFlyway": false,
+    "state": "OPEN",
+    "mapper": null,
+    "verification": null
+  }
+]

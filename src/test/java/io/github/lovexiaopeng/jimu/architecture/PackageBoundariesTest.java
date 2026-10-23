@@ -6,10 +6,28 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.sli
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.lang.ArchRule;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class PackageBoundariesTest {
+  static final ArchRule CONTROLLER_STORAGE =
+      noClasses()
+          .that()
+          .resideInAPackage("..api..")
+          .and()
+          .haveSimpleNameEndingWith("Controller")
+          .should()
+          .dependOnClassesThat()
+          .haveFullyQualifiedName("io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore");
+  static final ArchRule KERNEL_MAPPER =
+      noClasses()
+          .that()
+          .resideInAnyPackage("..kernel..", "..execution..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAnyPackage("org.apache.ibatis..", "com.baomidou..", "..adapters.persistence..");
+
   @Test
   void realProductionClassesRespectModuleAndCapabilityBoundaries() {
     var classes = new ClassFileImporter().importPath(Path.of("target/classes"));
@@ -61,15 +79,8 @@ class PackageBoundariesTest {
             "com.baomidou..",
             "..service.impl..")
         .check(classes);
-    noClasses()
-        .that()
-        .resideInAPackage("..api..")
-        .and()
-        .haveSimpleNameEndingWith("Controller")
-        .should()
-        .dependOnClassesThat()
-        .haveFullyQualifiedName("io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore")
-        .check(classes);
+    CONTROLLER_STORAGE.check(classes);
+    KERNEL_MAPPER.check(classes);
     // B1 唯一过渡例外：operator bindOnce 将在 B2 迁 Mapper，不是最终 JDBC 豁免。
     noClasses()
         .that()
@@ -77,7 +88,8 @@ class PackageBoundariesTest {
         .and()
         .doNotHaveFullyQualifiedName(
             "io.github.lovexiaopeng.jimu.adapters.runtime.model.ExecutionScopeOperator")
-        .and().doNotHaveFullyQualifiedName(
+        .and()
+        .doNotHaveFullyQualifiedName(
             "io.github.lovexiaopeng.jimu.adapters.runtime.model.ExecutionScopeOperator$Command")
         .should()
         .dependOnClassesThat()

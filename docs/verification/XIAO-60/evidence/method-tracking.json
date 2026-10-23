@@ -1,0 +1,3146 @@
+{
+  "note": "Lexical declaration index inherited from XIAO-59; range owner is a planning aid, not a checked call graph. Each operation/SQL needs a verified unique final target in B2-B5.",
+  "methods": [
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ExecutionScopeBinding.java",
+      "sourceLine": 15,
+      "declaration": "public record Input(",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ExecutionScopeBinding.java",
+      "sourceLine": 25,
+      "declaration": "public ExecutionScopeBinding(DataSource operator, ModelProfiles models) {",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ExecutionScopeBinding.java",
+      "sourceLine": 33,
+      "declaration": "public ExecutionScopeBinding(DataSource operator, ExecutionScopes.Requirement requirement) {",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ExecutionScopeBinding.java",
+      "sourceLine": 41,
+      "declaration": "public Map<String, Object> bindOnce(Input input) {",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ExecutionScopeBinding.java",
+      "sourceLine": 129,
+      "declaration": "private Map<String, Object> readback(Map<String, Object> row) {",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "sourceLine": 19,
+      "declaration": "JdbcExecutionScopes(JdbcTemplate db, ModelProfiles models) {",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "sourceLine": 25,
+      "declaration": "JdbcExecutionScopes(JdbcTemplate db, ExecutionScopes.Requirement requirement) {",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "sourceLine": 31,
+      "declaration": "private Map<String, Object> receipt(String tenant) {",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "sourceLine": 41,
+      "declaration": "private List<String> boundRuns(String tenant) {",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "sourceLine": 46,
+      "declaration": "String targetRun(String tenant, String fallback) {",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "sourceLine": 66,
+      "declaration": "boolean needed(String tenant, Map<String, Object> task) {",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "sourceLine": 75,
+      "declaration": "private void fail(String code) {",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "sourceLine": 79,
+      "declaration": "ExecutionScopes.Requirement requirement(String tenant) {",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "sourceLine": 110,
+      "declaration": "void businessAnchor(",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "sourceLine": 127,
+      "declaration": "String require(",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "sourceLine": 188,
+      "declaration": "static boolean matches(ExecutionScopes.Requirement r, ExecutionScopes.Scope s) {",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "sourceLine": 198,
+      "declaration": "void verifyBinding(",
+      "proposedOwner": "ExecutionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "sourceLine": 19,
+      "declaration": "JdbcImageRecords(JdbcTemplate db) {",
+      "proposedOwner": "ImageService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "sourceLine": 23,
+      "declaration": "private static String s(Map<String, Object> row, String key) {",
+      "proposedOwner": "ImageService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "sourceLine": 27,
+      "declaration": "private static long n(Map<String, Object> row, String key) {",
+      "proposedOwner": "ImageService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "sourceLine": 31,
+      "declaration": "private static TaskFailure corrupt() {",
+      "proposedOwner": "ImageService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "sourceLine": 35,
+      "declaration": "void insert(",
+      "proposedOwner": "ImageService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "sourceLine": 66,
+      "declaration": "TaskImages.Snapshot snapshot(Map<String, Object> task) {",
+      "proposedOwner": "ImageService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "sourceLine": 97,
+      "declaration": "ImageLedger.Raw raw(Map<String, Object> task, String path) {",
+      "proposedOwner": "ImageService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "sourceLine": 113,
+      "declaration": "private Map<String, Object> input(Map<String, Object> task, String inputId) {",
+      "proposedOwner": "ImageService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "sourceLine": 128,
+      "declaration": "void reserve(Map<String, Object> task, String invocation, String image, String inputId) {",
+      "proposedOwner": "ImageService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "sourceLine": 159,
+      "declaration": "void succeeded(Map<String, Object> task, String invocation, String key, ImagePort.Result result) {",
+      "proposedOwner": "ImageService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "sourceLine": 186,
+      "declaration": "ImageLedger.ObjectValue object(Map<String, Object> task, ImagePort.Result ref) {",
+      "proposedOwner": "ImageService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "sourceLine": 251,
+      "declaration": "List<ImageLedger.ObjectValue> step(Map<String, Object> task, String step) {",
+      "proposedOwner": "ImageService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 65,
+      "declaration": "public void sessionTraceEnabled(boolean enabled) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 69,
+      "declaration": "public void sessionSearchEnabled(boolean enabled) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 77,
+      "declaration": "public void priorSessionSearchEnabled(boolean enabled) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 81,
+      "declaration": "public void sessionReadEnabled(boolean enabled, java.util.List<String> sensitive) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 86,
+      "declaration": "private void sessionAccess(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 106,
+      "declaration": "private void sessionAdmission(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 120,
+      "declaration": "private boolean traceAvailable(Identity identity) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 145,
+      "declaration": "private boolean priorAvailable(Identity identity) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 167,
+      "declaration": "private boolean sessionAvailable(Identity identity, boolean search) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 193,
+      "declaration": "private <T> T sessionTransaction(java.util.function.Supplier<T> work) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 197,
+      "declaration": "private <T> T sessionTransaction(java.util.function.Supplier<T> work, long end) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 277,
+      "declaration": "public View submitSessionSearch(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 292,
+      "declaration": "public View submitSessionSearch(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 323,
+      "declaration": "private Map<String, Object> priorSearchOwner(Identity identity, String caller) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 335,
+      "declaration": "public QueryResources authorizePriorSessionSearch(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 351,
+      "declaration": "public String priorSessionSearch(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 375,
+      "declaration": "public void revokeSessionSearchScope(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 410,
+      "declaration": "public String scopedOrResult(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 419,
+      "declaration": "private String scopedQueryOrResult(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 678,
+      "declaration": "private int sessionRemainingMillis() {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 685,
+      "declaration": "public String sessionContext(Lease lease) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 696,
+      "declaration": "private Map<String, Object> sessionOwner(Identity identity, String taskId) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 715,
+      "declaration": "private <T> T sessionOwnerRead(java.util.function.Supplier<T> work) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 731,
+      "declaration": "public String sessionHistory(Identity identity, String taskId) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 736,
+      "declaration": "public String sessionEvent(Identity identity, String taskId, long seq, int before, int after) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 751,
+      "declaration": "public void authorizeSessionSearch(Identity identity, String taskId, long deadlineNanos) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 760,
+      "declaration": "private Map<String, Object> sessionSearchOwner(Identity identity, String taskId) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 769,
+      "declaration": "public String sessionSearch(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 786,
+      "declaration": "public void authorizeSessionTrace(Identity identity, String taskId, long deadlineNanos) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 795,
+      "declaration": "private Map<String, Object> sessionTraceOwner(Identity identity, String taskId) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 804,
+      "declaration": "public String sessionTrace(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 819,
+      "declaration": "private <T> T sessionSearchOwnerRead(Supplier<T> work, long deadlineNanos) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 835,
+      "declaration": "private long sessionAppend(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 859,
+      "declaration": "private void sessionFact(Map<String, Object> task, String fact) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 943,
+      "declaration": "public String readOrResult(Lease lease, String stepId, Call call, String version, String digest) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1124,
+      "declaration": "public String searchOrResult(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1323,
+      "declaration": "public String traceOrResult(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1519,
+      "declaration": "private static int sessionFailureStatus(String code) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1528,
+      "declaration": "private boolean sessionCleanupSafe(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1548,
+      "declaration": "private void validateSessionScopes() {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1627,
+      "declaration": "private void cleanupSessionHistory() {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1660,
+      "declaration": "public void directoryWorkspace(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1665,
+      "declaration": "private boolean directoryCleanupSafe(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1686,
+      "declaration": "private void cleanupDirectories() {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1858,
+      "declaration": "public void directoryEnabled(boolean enabled) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1862,
+      "declaration": "private boolean directoryTask(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1866,
+      "declaration": "private Map<String, Object> directoryProjection(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1888,
+      "declaration": "private void directoryAccess(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1923,
+      "declaration": "private void directoryAdmission(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1930,
+      "declaration": "private void directoryStorage(Map<String, Object> task, long additional) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1968,
+      "declaration": "public void directoryReady(Lease lease) {",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 1985,
+      "declaration": "private Map<String, Object> originalDirectorySlot(",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2046,
+      "declaration": "private Map<String, Object> freezeDirectorySlot(Map<String, Object> task, Map<String, Object> i) {",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2129,
+      "declaration": "public io.github.lovexiaopeng.jimu.kernel.task.api.WorkingDirectoryLedger.Frozen freezeDirectory(",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2158,
+      "declaration": "private void directoryResultSource(",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2192,
+      "declaration": "public io.github.lovexiaopeng.jimu.plugin.api.WorkingDirectoryPort.Result commitDirectory(",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2313,
+      "declaration": "public String directoryFilePath(Lease lease, String invocationId) {",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2342,
+      "declaration": "public Map<String, Object> getWorkingDirectory(Identity identity, String taskId) {",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2440,
+      "declaration": "public void todosEnabled(boolean enabled) {",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2444,
+      "declaration": "private void directoryContext(Map<String, Object> task, String request) {",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2465,
+      "declaration": "private boolean todoTask(Map<String, Object> task) {",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2469,
+      "declaration": "private Map<String, Object> todoProjection(Map<String, Object> task) {",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2488,
+      "declaration": "private void todoAccess(Map<String, Object> task) {",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2504,
+      "declaration": "private void todoStorage(Map<String, Object> task, long additional) {",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2515,
+      "declaration": "private void todoCommitFence(Lease lease) {",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2526,
+      "declaration": "private void directoryMetadata(Map<String, Object> task, boolean closing) {",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2581,
+      "declaration": "private void todoMetadata(Map<String, Object> task, boolean closing) {",
+      "proposedOwner": "WorkingDirectoryService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2629,
+      "declaration": "public io.github.lovexiaopeng.jimu.plugin.api.TodoPort.Result replaceOrResult(",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2796,
+      "declaration": "private void todoResultSource(Map<String, Object> task, Map<String, Object> i) {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2819,
+      "declaration": "public Map<String, Object> getTodos(Identity identity, String taskId) {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2894,
+      "declaration": "public void questionsEnabled(boolean enabled) {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2898,
+      "declaration": "private boolean directoryAvailable(Identity identity) {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2913,
+      "declaration": "private boolean todoAvailable(Identity identity) {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2931,
+      "declaration": "private void rejectTodoBypass(Lease lease, String invocation) {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2967,
+      "declaration": "private void releaseQuestionTask(Map<String, Object> task) {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 2980,
+      "declaration": "private void cleanupTodos() {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3104,
+      "declaration": "private void cleanupQuestions() {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3195,
+      "declaration": "private void retainQuestionBody(Map<String, Object> metadata, String key, String body) {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3206,
+      "declaration": "private boolean questionTask(Map<String, Object> task) {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3210,
+      "declaration": "private void questionAccess(Map<String, Object> task) {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3231,
+      "declaration": "private Instant questionNow() {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3236,
+      "declaration": "private Map<String, Object> questionVisible(Identity identity, String taskId) {",
+      "proposedOwner": "TodoService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3251,
+      "declaration": "public Map<String, Object> listQuestions(Identity identity, String taskId) {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3318,
+      "declaration": "public void authorizeAnswer(Identity identity, String taskId, String requestId) {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3334,
+      "declaration": "public Submission answer(",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3480,
+      "declaration": "private String questionAnswerDigest(",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3490,
+      "declaration": "private record QuestionAnswerRequest(",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3496,
+      "declaration": "private record LateQuestionReply(",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3506,
+      "declaration": "private Map<String, Object> receipt(Map<String, Object> q) {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3511,
+      "declaration": "public OpenResult openOrResult(",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3616,
+      "declaration": "private void questionPause(",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3634,
+      "declaration": "private void questionToolResult(Map<String, Object> task, Map<String, Object> q, String output) {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3653,
+      "declaration": "private void questionResume(Map<String, Object> task, String requestId) {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3663,
+      "declaration": "private void continueQuestion(Map<String, Object> task, Map<String, Object> q) {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3684,
+      "declaration": "private void closeQuestions(Map<String, Object> task, String code) {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3720,
+      "declaration": "public List<String> pendingQuestionMessages(Lease lease) {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3724,
+      "declaration": "private Map<String, String> questionMessages(Map<String, Object> task) {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3751,
+      "declaration": "public boolean questionContinuation(Lease lease) {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3755,
+      "declaration": "private void questionStorage(Map<String, Object> task, long additional) {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3766,
+      "declaration": "private void maintainQuestions() {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3802,
+      "declaration": "public void imageStorage(ArtifactStore store) {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3806,
+      "declaration": "public void mcpSettings(io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings settings) {",
+      "proposedOwner": "UserQuestionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3811,
+      "declaration": "public Binding mcpBinding(Lease lease) {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3816,
+      "declaration": "public Server mcpServer(Lease lease, String server) {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3823,
+      "declaration": "public int mcpDispatch(",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3882,
+      "declaration": "public void mcpResponded(Lease lease, String invocation, int ordinal, String error) {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3900,
+      "declaration": "public void reserveMcpList(Lease lease, String invocation) {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3941,
+      "declaration": "public String mcpPage(Lease lease, String query, String cursor) {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 3970,
+      "declaration": "private void validateMcpList(Map<String, Object> task, ListSnapshot snapshot) {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4045,
+      "declaration": "public void mcpSucceeded(Lease lease, String invocation, String output, ListSnapshot snapshot) {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4119,
+      "declaration": "private void cleanupMcp() {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4171,
+      "declaration": "private boolean imagesAvailable() {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4182,
+      "declaration": "public void nativeSearchAvailability(java.util.function.BooleanSupplier availability) {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4186,
+      "declaration": "public JdbcLedger(DataSource source, ModelProfiles models) {",
+      "proposedOwner": "ImageService/shared transaction",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4236,
+      "declaration": "private <T> T tx(Supplier<T> work) {",
+      "proposedOwner": "ImageService/shared transaction",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4258,
+      "declaration": "public io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages.Snapshot mediaSnapshot(",
+      "proposedOwner": "ImageService/shared transaction",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4264,
+      "declaration": "public io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.Raw imageInput(",
+      "proposedOwner": "ImageService/shared transaction",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4276,
+      "declaration": "public String reserveImage(Lease lease, String invocation, String inputId) {",
+      "proposedOwner": "ImageService/shared transaction",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4303,
+      "declaration": "public void imageSucceeded(",
+      "proposedOwner": "ImageService/shared transaction",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4329,
+      "declaration": "public io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ObjectValue imageObject(",
+      "proposedOwner": "ImageService/shared transaction",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4335,
+      "declaration": "public List<io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ObjectValue> stepImages(",
+      "proposedOwner": "ImageService/shared transaction",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4341,
+      "declaration": "public void imageDecodeTimedOut(Lease lease) {",
+      "proposedOwner": "ImageService/shared transaction",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4355,
+      "declaration": "private String requireScope(",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4405,
+      "declaration": "private boolean businessTask(Map<String, Object> task) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4411,
+      "declaration": "private void requireBusiness(",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4454,
+      "declaration": "private <T> T leaseTx(Lease lease, Supplier<T> work) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4473,
+      "declaration": "private <T> T directoryTransaction(Lease lease, Supplier<T> work) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4501,
+      "declaration": "private List<Map<String, Object>> rows(String sql, Object... args) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4505,
+      "declaration": "private Map<String, Object> one(String sql, Object... args) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4511,
+      "declaration": "private static String s(Map<String, Object> row, String key) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4515,
+      "declaration": "private static long n(Map<String, Object> row, String key) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4519,
+      "declaration": "private static Instant time(Map<String, Object> row, String key) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4525,
+      "declaration": "private static String id() {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4529,
+      "declaration": "private Map<String, Object> bucket(String tenant) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4533,
+      "declaration": "private void identity(Identity identity) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4543,
+      "declaration": "private long epoch(Identity identity, List<String> capabilities) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4562,
+      "declaration": "public List<String> capabilities(Identity identity) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4599,
+      "declaration": "public View submit(Identity identity, String key, Request request) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4604,
+      "declaration": "public View submit(",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 4618,
+      "declaration": "private View submitBound(",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5200,
+      "declaration": "private Map<String, Object> locked(String tenant, String task) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5208,
+      "declaration": "private Map<String, Object> visible(Identity identity, String task) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5230,
+      "declaration": "private List<String> caps(Map<String, Object> row) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5275,
+      "declaration": "private void invalidateScopeAfterTransaction(Map<String, Object> task) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5298,
+      "declaration": "private void access(Map<String, Object> row) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5311,
+      "declaration": "private void baseAccess(Map<String, Object> row) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5330,
+      "declaration": "public View get(Identity identity, String task) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5366,
+      "declaration": "private View view(Map<String, Object> row) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5402,
+      "declaration": "private Artifact artifact(Map<String, Object> row) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5412,
+      "declaration": "public View cancel(Identity identity, String task) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5444,
+      "declaration": "public List<Event> events(Identity identity, String task, long after, int limit) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5483,
+      "declaration": "public Download download(Identity identity, String artifactId) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5500,
+      "declaration": "private long storageHeld(Map<String, Object> budget) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5504,
+      "declaration": "private void reserve(",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5525,
+      "declaration": "private void event(Map<String, Object> task, String fact, String type, String code) {",
+      "proposedOwner": "TaskService/ArtifactService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5589,
+      "declaration": "public Optional<Lease> claim(String worker) {",
+      "proposedOwner": "WorkerService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5784,
+      "declaration": "private Map<String, Object> fenced(Lease lease, boolean admission) {",
+      "proposedOwner": "WorkerService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5840,
+      "declaration": "private EvaluationMaterials.Material material(Map<String, Object> task) {",
+      "proposedOwner": "WorkerService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5860,
+      "declaration": "private void checkMaterials(Map<String, Object> task) {",
+      "proposedOwner": "WorkerService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5913,
+      "declaration": "public Optional<String> evaluationFile(Lease lease) {",
+      "proposedOwner": "WorkerService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5936,
+      "declaration": "private ReportFile initialFile(Map<String, Object> task) {",
+      "proposedOwner": "WorkerService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5944,
+      "declaration": "public void bindEvaluationFile(Lease lease, ReportFile file) {",
+      "proposedOwner": "WorkerService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 5980,
+      "declaration": "private void materialBody(Map<String, Object> task, String request, int ordinal) {",
+      "proposedOwner": "WorkerService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6184,
+      "declaration": "private String runRejection(Map<String, Object> evaluation) {",
+      "proposedOwner": "WorkerService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6192,
+      "declaration": "private String modelRejection(Map<String, Object> task) {",
+      "proposedOwner": "WorkerService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6202,
+      "declaration": "public boolean renew(Lease lease) {",
+      "proposedOwner": "WorkerService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6214,
+      "declaration": "public Optional<Step> checkpoint(Lease lease) {",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6233,
+      "declaration": "private Step step(Map<String, Object> row) {",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6250,
+      "declaration": "private ModelSnapshot snapshot(Map<String, Object> task) {",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6256,
+      "declaration": "private ModelSnapshot historicalSnapshot(Map<String, Object> task) {",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6266,
+      "declaration": "public ModelSnapshot modelSnapshot(Lease lease) {",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6278,
+      "declaration": "private ToolSnapshot tools(Map<String, Object> task) {",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6292,
+      "declaration": "public ToolSnapshot toolSnapshot(Lease lease) {",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6297,
+      "declaration": "private Map<String, Object> evaluation(Lease lease) {",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6301,
+      "declaration": "private Map<String, Object> evaluation(Lease lease, boolean admission) {",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6313,
+      "declaration": "private Map<String, Object> evaluation(String tenant, String run) {",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6321,
+      "declaration": "private EvaluationPlans.Plan plan(Map<String, Object> evaluation) {",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6343,
+      "declaration": "private EvaluationPlans.Binding bindEvaluation(",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6434,
+      "declaration": "private void checkEvaluation(",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6456,
+      "declaration": "private void admitPlanDispatch(",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6505,
+      "declaration": "public Step prepare(Lease lease, String request) {",
+      "proposedOwner": "ExecutionService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6622,
+      "declaration": "public String dispatchModel(Lease lease, String stepId) {",
+      "proposedOwner": "ModelDispatchService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 6767,
+      "declaration": "public void modelResponded(",
+      "proposedOwner": "ModelDispatchService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7054,
+      "declaration": "private ModelSnapshot settlementModel(Lease lease, Map<String, Object> task, String dispatch) {",
+      "proposedOwner": "ModelDispatchService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7089,
+      "declaration": "private boolean settleCost(",
+      "proposedOwner": "ModelDispatchService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7192,
+      "declaration": "public void modelFailed(Lease lease, String dispatch, String code, ModelUsage usage) {",
+      "proposedOwner": "ModelDispatchService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7247,
+      "declaration": "public Invocation admit(",
+      "proposedOwner": "InvocationService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7362,
+      "declaration": "public void observeWebFetch(Lease lease, String invocationId, WebFetchObservation observation) {",
+      "proposedOwner": "InvocationService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7391,
+      "declaration": "private void observeWebCancellation(",
+      "proposedOwner": "InvocationService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7435,
+      "declaration": "public void preserveWebFetchResult(Lease lease, String invocationId, String output) {",
+      "proposedOwner": "InvocationService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7482,
+      "declaration": "public void toolSucceeded(Lease lease, String invocationId, String output) {",
+      "proposedOwner": "InvocationService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7487,
+      "declaration": "private void commitTool(Lease lease, String invocationId, String output, boolean mcpCommit) {",
+      "proposedOwner": "InvocationService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7583,
+      "declaration": "public void uncertain(Lease lease, String invocationId) {",
+      "proposedOwner": "InvocationService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7603,
+      "declaration": "public boolean searchQuiescent(Lease lease, String invocation) {",
+      "proposedOwner": "InvocationService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7613,
+      "declaration": "public void prepareSearch(",
+      "proposedOwner": "NativeSearchService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7682,
+      "declaration": "public void searchStarted(Lease lease, String invocation, NativeIdentity identity) {",
+      "proposedOwner": "NativeSearchService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7700,
+      "declaration": "public void searchStopped(Run run, NativeIdentity identity) {",
+      "proposedOwner": "NativeSearchService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7734,
+      "declaration": "public void searchCompleted(",
+      "proposedOwner": "NativeSearchService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7772,
+      "declaration": "public Result searchPage(Lease lease, String query, String pin, String cursor) {",
+      "proposedOwner": "NativeSearchService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7800,
+      "declaration": "public List<Run> nativeSearches(String host) {",
+      "proposedOwner": "NativeSearchService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7825,
+      "declaration": "public List<Run> expiredSearches(String host) {",
+      "proposedOwner": "NativeSearchService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7848,
+      "declaration": "public void searchStorageRemoved(Run run) {",
+      "proposedOwner": "NativeSearchService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7889,
+      "declaration": "private boolean publicReport(Map<String, Object> task) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7899,
+      "declaration": "public ReportContext reportContext(Lease lease) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7910,
+      "declaration": "private ReportContext reportContext(Map<String, Object> task) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7937,
+      "declaration": "public io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ReportEvidence imageReportContext(",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 7942,
+      "declaration": "private io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ReportEvidence imageReportContext(",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8016,
+      "declaration": "private void requirePresent(Lease lease, Map<String, Object> task, String invocationId) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8029,
+      "declaration": "public List<Upload> stageReports(Lease lease, String invocationId, List<ReportFile> files) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8133,
+      "declaration": "private void requireComposition(Map<String, Object> task, ReportFile file) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8159,
+      "declaration": "public void presentSucceeded(",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8227,
+      "declaration": "public void toolFailed(Lease lease, String invocationId, String code) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8251,
+      "declaration": "public Upload stage(Lease lease, String hash, long size) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8302,
+      "declaration": "public void verified(Lease lease, String artifactId, String key) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8320,
+      "declaration": "public void publish(Lease lease, String artifactId) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8350,
+      "declaration": "public void finish(Lease lease, String summary) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8427,
+      "declaration": "public void stop(Lease lease, String code) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8451,
+      "declaration": "private void terminal(Map<String, Object> task, String state, String code) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8498,
+      "declaration": "public void registerWorker(",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8516,
+      "declaration": "public List<WorkerProcess> processes(String host) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8533,
+      "declaration": "private void releaseRun(Map<String, Object> task) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8544,
+      "declaration": "private boolean writersQuiescent(Map<String, Object> task) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8560,
+      "declaration": "public void quiescent(Lease lease) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8582,
+      "declaration": "public void processStopped(String worker) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8614,
+      "declaration": "private void settleStoppedWriters(Map<String, Object> task) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8644,
+      "declaration": "public void check() {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8656,
+      "declaration": "public void cleanupArtifacts(ArtifactStore store) {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sourceLine": 8723,
+      "declaration": "private void cleanupImages() {",
+      "proposedOwner": "ArtifactService/ExecutionService/maintenance (operation owner to verify)",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcMcpRecords.java",
+      "sourceLine": 20,
+      "declaration": "JdbcMcpRecords(JdbcTemplate db) {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcMcpRecords.java",
+      "sourceLine": 29,
+      "declaration": "void configure(McpSettings settings) {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcMcpRecords.java",
+      "sourceLine": 33,
+      "declaration": "boolean enabled() {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcMcpRecords.java",
+      "sourceLine": 37,
+      "declaration": "private McpLedger.Server server(Map<String, Object> row) {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcMcpRecords.java",
+      "sourceLine": 56,
+      "declaration": "McpLedger.Binding bind(String tenant, String actor) {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcMcpRecords.java",
+      "sourceLine": 78,
+      "declaration": "McpLedger.Binding binding(Map<String, Object> task) {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcMcpRecords.java",
+      "sourceLine": 115,
+      "declaration": "static TaskFailure unauthorized() {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcMcpRecords.java",
+      "sourceLine": 119,
+      "declaration": "static TaskFailure corrupt() {",
+      "proposedOwner": "McpService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 31,
+      "declaration": "static boolean traceTask(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 36,
+      "declaration": "io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts searchContract(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 41,
+      "declaration": "io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor descriptor(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 108,
+      "declaration": "static boolean searchTask(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 113,
+      "declaration": "int version(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 117,
+      "declaration": "SessionContracts contract(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 165,
+      "declaration": "JdbcSessionRecords(JdbcTemplate db) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 169,
+      "declaration": "void sensitive(List<String> values) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 173,
+      "declaration": "List<String> sensitive() {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 178,
+      "declaration": "static String s(Map<String, Object> row, String name) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 182,
+      "declaration": "static long n(Map<String, Object> row, String name) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 186,
+      "declaration": "static boolean task(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 192,
+      "declaration": "private List<Map<String, Object>> rows(String sql, Object... args) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 206,
+      "declaration": "private Map<String, Object> one(String sql, Object... args) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 212,
+      "declaration": "static TaskFailure corrupt() {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 216,
+      "declaration": "Map<String, Object> history(Map<String, Object> task, boolean readable) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 234,
+      "declaration": "void create(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 250,
+      "declaration": "void body(Map<String, Object> task, long additional) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 261,
+      "declaration": "private List<String> columns(String table) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 275,
+      "declaration": "long metadata(Map<String, Object> task, boolean closing) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 279,
+      "declaration": "long metadata(Map<String, Object> task, boolean closing, long planned) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 315,
+      "declaration": "private static int scalarBytes(Object value) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 321,
+      "declaration": "void account(Map<String, Object> task, boolean closing) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 343,
+      "declaration": "Map<String, Object> source(String kind, String step, String invocation) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 351,
+      "declaration": "long append(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 425,
+      "declaration": "List<Map<String, Object>> recent(Map<String, Object> task, long upper) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 438,
+      "declaration": "String context(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 472,
+      "declaration": "void prepare(Map<String, Object> task, String request, String step) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 506,
+      "declaration": "void bindCalls(Map<String, Object> task, String step) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 579,
+      "declaration": "void validateStep(Map<String, Object> task, Map<String, Object> st) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 599,
+      "declaration": "void response(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 643,
+      "declaration": "String metadataView(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 667,
+      "declaration": "record Read(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 670,
+      "declaration": "Read read(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 689,
+      "declaration": "private Read readRows(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 757,
+      "declaration": "private static Map<String, Object> readSummary(JsonNode value) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 770,
+      "declaration": "JsonNode verify(Map<String, Object> task, Map<String, Object> r) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 779,
+      "declaration": "private JsonNode verifyEvent(Map<String, Object> task, Map<String, Object> r) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 919,
+      "declaration": "List<JsonNode> readSources(Map<String, Object> task, String invocation) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 951,
+      "declaration": "private void verifyReadRelation(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1040,
+      "declaration": "record Trace(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1049,
+      "declaration": "Trace trace(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1161,
+      "declaration": "Map<String, Object> receipt(Map<String, Object> b) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1174,
+      "declaration": "void validateInput(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1207,
+      "declaration": "record PublicCalls(List<DurableAgent.ToolCall> calls, boolean redacted) {}",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1209,
+      "declaration": "PublicCalls projectedCalls(Map<String, Object> task, List<DurableAgent.ToolCall> calls) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1231,
+      "declaration": "private static Map<String, Object> scopeRef(String id, long seq, String digest) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1239,
+      "declaration": "String normalizedScope(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1277,
+      "declaration": "private void bindScopeCall(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1307,
+      "declaration": "List<JsonNode> scopeReadRefs(Map<String, Object> task, String invocation) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1325,
+      "declaration": "Map<String, Object> scopeReceipt(Map<String, Object> b) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1337,
+      "declaration": "void validateNormalizedScope(String expected, Map<String, Object> binding) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1345,
+      "declaration": "private String verifyScopeRead(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1463,
+      "declaration": "Search priorSearch(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1510,
+      "declaration": "Read scopeRead(Map<String, Object> caller, String normalized, Runnable deadline) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1537,
+      "declaration": "record Search(String output, String scanDigest, int rows, int eventBytes) {}",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1539,
+      "declaration": "Search search(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1588,
+      "declaration": "void purge(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "sourceLine": 1702,
+      "declaration": "void release(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sourceLine": 29,
+      "declaration": "JdbcSessionScopes(",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sourceLine": 36,
+      "declaration": "static boolean task(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sourceLine": 40,
+      "declaration": "static TaskFailure unavailable() {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sourceLine": 44,
+      "declaration": "void lock(String tenant, String caller) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sourceLine": 61,
+      "declaration": "void lock(String tenant, List<String> ids) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sourceLine": 66,
+      "declaration": "private Map<String, Object> row(String sql, Object... args) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sourceLine": 72,
+      "declaration": "Map<String, Object> scope(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sourceLine": 79,
+      "declaration": "JsonNode snapshot(Map<String, Object> task, Map<String, Object> scope) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sourceLine": 111,
+      "declaration": "record Scope(Map<String, Object> row, JsonNode authority, List<Map<String, Object>> sources) {}",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sourceLine": 113,
+      "declaration": "Scope require(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sourceLine": 122,
+      "declaration": "private Scope requireCurrent(Map<String, Object> task) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sourceLine": 173,
+      "declaration": "private Map<String, Object> source(Map<String, Object> caller, String id, boolean admission) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sourceLine": 208,
+      "declaration": "void create(Map<String, Object> caller, List<String> ids) {",
+      "proposedOwner": "SessionHistoryService/SessionScopeService",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ModelCosts.java",
+      "sourceLine": 8,
+      "declaration": "private ModelCosts() {}",
+      "proposedOwner": "operation owner to verify",
+      "state": "RELOCATED_BODY_UNCHANGED",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ModelCosts.java",
+      "sourceLine": 10,
+      "declaration": "public static long amount(ModelSnapshot.Price price, long input, long output) {",
+      "proposedOwner": "operation owner to verify",
+      "state": "RELOCATED_BODY_UNCHANGED",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+      "sourceLine": 58,
+      "declaration": "private Payloads() {}",
+      "proposedOwner": "operation owner to verify",
+      "state": "RELOCATED_BODY_UNCHANGED",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+      "sourceLine": 63,
+      "declaration": "public static String json(Object value) {",
+      "proposedOwner": "operation owner to verify",
+      "state": "RELOCATED_BODY_UNCHANGED",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+      "sourceLine": 71,
+      "declaration": "public static <T> T read(String value, Class<T> type) {",
+      "proposedOwner": "operation owner to verify",
+      "state": "RELOCATED_BODY_UNCHANGED",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+      "sourceLine": 79,
+      "declaration": "public static String hash(String value) {",
+      "proposedOwner": "operation owner to verify",
+      "state": "RELOCATED_BODY_UNCHANGED",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+      "sourceLine": 83,
+      "declaration": "public static String hash(byte[] value) {",
+      "proposedOwner": "operation owner to verify",
+      "state": "RELOCATED_BODY_UNCHANGED",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReceipts.java",
+      "sourceLine": 21,
+      "declaration": "private WebFetchReceipts() {}",
+      "proposedOwner": "operation owner to verify",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReceipts.java",
+      "sourceLine": 23,
+      "declaration": "static String digest(",
+      "proposedOwner": "operation owner to verify",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReceipts.java",
+      "sourceLine": 108,
+      "declaration": "private static void requireHash(Map<String, Object> row, String body, String digest) {",
+      "proposedOwner": "operation owner to verify",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReconciliation.java",
+      "sourceLine": 16,
+      "declaration": "public WebFetchReconciliation(DataSource source) {",
+      "proposedOwner": "operation owner to verify",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    },
+    {
+      "sourceFile": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReconciliation.java",
+      "sourceLine": 25,
+      "declaration": "public Map<String, Object> assess(String tenant, String taskId, String invocationId) {",
+      "proposedOwner": "operation owner to verify",
+      "state": "OPEN",
+      "targetSql": null,
+      "verification": null
+    }
+  ]
+}
