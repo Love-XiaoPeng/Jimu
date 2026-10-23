@@ -86,7 +86,8 @@ class SearchExperiment(SessionExperiment):
         connection = http.client.HTTPConnection('127.0.0.1', self.control['port'], timeout=5)
         try:
             connection.request('POST', '/api/tasks/'+task+'/session-history/search'+path_suffix, raw,
-                {'Authorization':'Bearer '+self.token(subject), 'Content-Type':content_type})
+                {'Authorization':'Bearer '+self.token(subject), 'Content-Type':content_type},
+                encode_chunked=not isinstance(raw,(bytes,str)))
             response = connection.getresponse()
             data = response.read()
             return response.status, json.loads(data), dict(response.getheaders())
@@ -136,7 +137,7 @@ class SearchExperiment(SessionExperiment):
         self.assert_that(status == 200 and cursor not in [json.loads(line[5:])['eventId'] for line in resumed.splitlines() if line.startswith('data:')],
             'v2 Last-Event-ID reconnect has no duplicate')
         self.assert_that(models == self.fixture.models,'v2 SSE reconnect does not execute model or tool')
-        (self.evidence/'search-pk-explain.tsv').write_text(self.sql("EXPLAIN SELECT * FROM session_public_event WHERE tenant_id='tenant-a' AND task_id='"+task+"' AND seq BETWEEN 0 AND 127 ORDER BY seq LIMIT 128;"))
+        (self.evidence/'search-pk-explain.tsv').write_text(self.sql("EXPLAIN SELECT * FROM session_public_event FORCE INDEX (PRIMARY) WHERE tenant_id='tenant-a' AND task_id='"+task+"' AND seq BETWEEN 0 AND 127 ORDER BY seq LIMIT 128;"))
 
     def inputs(self):
         task = self.primary_task
@@ -275,6 +276,35 @@ class SearchExperiment(SessionExperiment):
         private=self.sql("SELECT input_snapshot FROM invocation WHERE task_id='"+task+"' ORDER BY ordinal LIMIT 1;")
         self.assert_that('SYNTHETIC_TOKEN' in private, 'original recovery arguments preserved separately')
 
+    def provider_failure(self):
+        task=self.primary_task
+        upper=self.metadata(task)['upper_seq']
+        plan=self.sql("EXPLAIN ANALYZE SELECT * FROM session_public_event FORCE INDEX (PRIMARY) WHERE tenant_id='tenant-a' AND task_id='"+task+"' AND seq BETWEEN 0 AND "+str(upper)+" ORDER BY seq LIMIT 128;")
+        (self.evidence/'search-pk-actual-plan.tsv').write_text(plan)
+        self.assert_that('using PRIMARY' in plan and 'rows='+str(upper+1)+' loops=1' in plan,
+            'actual bounded primary key range rows examined',rows=upper+1)
+        raw=b'{"query":"needle53"}'
+        self.assert_that(self.raw(task,iter((raw,b' '*(2048-len(raw)))))[0] == 200,
+            'streamed chunked body exactly2048 accepted')
+        status,value,headers=self.raw(task,iter((raw,b' '*(2049-len(raw)))))
+        self.assert_that(status == 400 and value['code'] == 'TOOL_INPUT_INVALID'
+            and headers.get('Cache-Control') == 'no-store','streamed chunked2049 rejected before full buffering')
+        before=self.sql("SELECT revision,models_used,tools_used,next_event_seq FROM task WHERE id='"+task+"';")
+        self.sql('RENAME TABLE session_public_event TO search_test_unavailable;')
+        try:
+            value=self.search(task,{'query':'needle53'},status=503)
+            self.assert_that(value['code'] == 'SESSION_QUERY_UNAVAILABLE' and 'items' not in value,
+                'actual unavailable provider fails safely without empty-result fallback')
+        finally: self.sql('RENAME TABLE search_test_unavailable TO session_public_event;')
+        self.assert_that(before == self.sql("SELECT revision,models_used,tools_used,next_event_seq FROM task WHERE id='"+task+"';"),
+            'provider fault cannot mutate task or budget')
+        self.search(task,{'query':'needle53'})
+        self.sql("UPDATE session_public_event SET seq=127 WHERE task_id='"+task+"' AND seq=0;")
+        try:
+            self.assert_that(self.search(task,{'query':'absent','event_types':['step.started']},status=409)['code'] == 'SESSION_HISTORY_CORRUPT',
+                'sparse forged prefix cannot be hidden by filters or no match')
+        finally: self.sql("UPDATE session_public_event SET seq=0 WHERE task_id='"+task+"' AND seq=127;")
+
     def failed_replay(self):
         task=self.task('S05 failed original search needle53',[(SEARCH,{'query':'needle53'})])
         worker=self.start('failed-search-before','worker','M2'); self.barrier(worker)
@@ -317,7 +347,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt('foreground supervisor terminated')))
     parser=argparse.ArgumentParser()
     parser.add_argument('--jar',type=Path,required=True); parser.add_argument('--evidence',type=Path,required=True)
-    parser.add_argument('--case',choices=['normal','lifecycle','failure','core','recovery','boundaries','integrity','retention','all'],default='core')
+    parser.add_argument('--case',choices=['normal','lifecycle','provider','failure','core','recovery','boundaries','integrity','retention','all'],default='core')
     args=parser.parse_args(); experiment=SearchExperiment(args.jar,args.evidence)
     experiment.takeover=args.case == 'lifecycle'
     try:
@@ -326,6 +356,7 @@ if __name__ == '__main__':
         if args.case in ('recovery','all'): experiment.recovery()
         if args.case in ('boundaries','all'): experiment.boundaries()
         if args.case in ('integrity','all'): experiment.integrity()
+        if args.case in ('provider','all'): experiment.provider_failure()
         if args.case in ('failure','lifecycle','all'): experiment.failed_replay()
         if args.case in ('retention','all'): experiment.retention()
     except BaseException:

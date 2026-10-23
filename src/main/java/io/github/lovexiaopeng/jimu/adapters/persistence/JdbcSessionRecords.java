@@ -774,7 +774,7 @@ final class JdbcSessionRecords {
         if (upper < 0 || upper >= 128 || upper >= n(h, "next_seq")) throw corrupt();
         var records =
             rows(
-                "SELECT * FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq BETWEEN 0 AND ? ORDER BY seq LIMIT 128",
+                "SELECT * FROM session_public_event FORCE INDEX (PRIMARY) WHERE tenant_id=? AND task_id=? AND seq BETWEEN 0 AND ? ORDER BY seq LIMIT 128",
                 s(task, "tenant_id"),
                 s(task, "id"),
                 upper);
