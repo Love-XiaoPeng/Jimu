@@ -4324,8 +4324,9 @@ public final class JdbcLedger
     return leaseTx(
         lease,
         () -> {
-          var budget = bucket(lease.tenant());
           var task = fenced(lease, true);
+          // fenced holds evaluation -> budget -> task; only re-read our already locked budget.
+          var budget = bucket(lease.tenant());
           if (1048576 > n(budget, "storage_limit") - storageHeld(budget))
             throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
           String image = id();
@@ -4355,7 +4356,6 @@ public final class JdbcLedger
     leaseTx(
         lease,
         () -> {
-          bucket(lease.tenant());
           var task = fenced(lease, true);
           images.succeeded(task, invocation, key, result);
           db.update(

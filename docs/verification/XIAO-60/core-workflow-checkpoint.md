@@ -1,5 +1,7 @@
 # B0/B1 核心工作流与路径复核
 
+本文件保留 ff52841 批次记录。后续媒体锁序的架构结论、两处最小修改、当前定向验证及剩余边界见 `media-lock-checkpoint.md`；下文“媒体仍 OPEN”是该历史检查点的状态，不代表当前方法仍保留反向前缀。当前 SQL/符号捕获已随媒体修复刷新，35 表＋receipt 迁移仍全部 OPEN。
+
 接续源码 `363214ae30b5bde6f08c5d4c4bff153f3a1a3abd`，唯一分支 `agent/agent/7aeccb14d7a9`，草稿 PR #22，base master。接续前已回读分支及 PR head 为该 SHA，master 为 `620d5e0e5bfe7b5da530f10997936466159ba34f`。最终源码/tree/同版 JAR/远端回读/原始报告见本批附件 manifest；开发自测不代表独立验收。
 
 ## 实际业务实现与存储边界

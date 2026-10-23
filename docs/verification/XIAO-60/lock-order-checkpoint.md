@@ -2,7 +2,7 @@
 
 基线为 `620d5e0e5bfe7b5da530f10997936466159ba34f`。以下行号仅相对旧 `adapters/persistence/JdbcLedger.java`，保留原检查点记录。后续代码已提取 Service/records 和 query adapter，旧行号、词法命中及本表的阶段预测不适用于当前关闭判断。当前按符号的分支策略、参数谓词及回调节点见 `core-workflow-checkpoint.md` 与 `evidence/reviewed-paths.json.gz`；实际 Mapper 切换全部 OPEN。
 
-特别更正：不存在全仓统一的 evaluation→budget→task 锁序。当前 `reserveImage`、`imageSucceeded` 继承 budget→fenced(evaluation→budget→task) 分支，付费 run 下与 evaluation-first 路径交错的并发风险未在本批验证关闭。owner、cleanup、scope/query、worker 收据各自有不同顺序，必须使用具体方法/分支的有序 call plan。
+特别更正：不存在全仓统一的 evaluation→budget→task 锁序。ff52841 检查点的 `reserveImage`、`imageSucceeded` 曾继承 budget→fenced(evaluation→budget→task)，当时风险未关闭；后续按架构结论修复这两个前缀，当前依据见 `media-lock-checkpoint.md`。owner、cleanup、scope/query、worker 收据仍各有顺序，必须按具体方法/分支的有序 call plan 核查。
 
 | 路径 | 已核实顺序/行为 | 后续迁移验证 |
 | --- | --- | --- |
