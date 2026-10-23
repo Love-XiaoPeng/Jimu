@@ -4585,6 +4585,7 @@ public final class JdbcLedger
               .filter(
                   name -> !name.equals("session_event_search") || sessionAvailable(identity, true))
               .filter(name -> !name.equals("session_event_trace") || traceAvailable(identity))
+              .filter(name -> !name.equals("session_search") || priorAvailable(identity))
               .filter(
                   name -> searchAvailable.getAsBoolean() || !List.of("glob", "grep").contains(name))
               .filter(
