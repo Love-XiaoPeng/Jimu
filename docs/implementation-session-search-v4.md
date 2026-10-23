@@ -25,6 +25,8 @@ REVIEW-55-01 修复保持 read refs 的完整事件 SHA256：收据公开读取�
 
 同轮实测发现 `Map.of` 的 JSON 字段顺序可跨 JVM 改变。原槽 normalized snapshot 继续按已存原字节核验 digest/bytes，再按 JSON 字段值与重新核定的输入/cut 比较；不重写旧快照或输出，不将进程内字段顺序误作契约。
 
+REVIEW-55-02：模型上下文读取复用 owner read 的安全错误映射，锁等待/查询超时返回 `SESSION_QUERY_TIMEOUT`，其余数据库/事务资源故障返回 `SESSION_QUERY_UNAVAILABLE`，不把 JDBC SQL/原因链传给 worker 日志或误记 `EXECUTION_FAILED`。仍采用同一事务、1秒锁等待和2秒绝对截止；不增加重试、不保证资源争用下所有查询成功，不改变任务既有失败收尾或已提交结果。私有锁等待采样与受控持锁探针用于区分正常锁竞争、资源拒绝及错误映射；受控复现不能证明独审已销毁实例中原持锁者的身份。
+
 ## 保留与配额
 
 caller 保留期不晚于任一来源。任一来源失权/到期、显式撤销或已经记录的失效，立即阻断全部衍生正文入口，包括模型请求/恢复/成功重放、owner 历史和 SSE。观察到的失权在原事务完成后单独记录 invalidated_at，避免因原查询回滚而恢复授权；所有操作仍受原绝对截止约束。安全静止前保留正文并继续计费，不释放 UNKNOWN 或活写者。
@@ -40,6 +42,7 @@ caller 保留期不晚于任一来源。任一来源失权/到期、显式撤销
 - `PriorSessionContractsTest`：v4资源逐字节绑定、严格输入、代表排序和累计预算交接。
 - `tools/prior_session_verify.py --jar … --v21-jar … --evidence …`：真实私有MySQL V21→22、双worker、本地HTTP模型、原槽故障、撤销及配额等实现验证。
 - `tools/prior_session_read_verify.py --jar … --evidence …`：REVIEW-55-01 定向实测；零/单边/双边及边缘裁剪邻接、Unicode摘要、收据公开读取、嵌套收据不展开、篡改拒绝，精确READ invocation/step的丢确认、成功重放及新fence接管和单次消费。`--expect-bug` 仅在旧JAR上确认409缺陷，exit0不表示产品通过。
+- `tools/prior_session_lock_verify.py --jar … --original-jar … --evidence …`：保持六 caller 同时排队及真实双 worker，采集私有 MySQL 的等待者/持锁者/事务/历史 SQL；随后同一真实 lease 在受控预算锁下比较原制品 JDBC 异常与新制品安全504，核验截止、零消费、释放后恢复读取及任务完成。原制品复现成功不算产品通过。
 - `tools/prior_session_legacy_verify.py --jar … --evidence … --case read --case search --case trace --case todo --case questions --case directory --case workspace-mcp`：复用已有受监督夹具的必要旧能力切片；不重跑旧完整矩阵。
 
 WSL 夹具须显式设置 `JIMU_IT_JAVA` 为已核本地 Linux Java21。只使用私有 MySQL、paid=false HTTP 服务与合成数据，前台收集并清理全部子进程。不运行、启用或等待 GitHub CI；原取消/失败/未完成记录保持原样。

@@ -683,7 +683,8 @@ public final class JdbcLedger
 
   @Override
   public String sessionContext(Lease lease) {
-    return sessionTransaction(
+    // Context acquisition has the same bounded/sanitized failure contract as public reads.
+    return sessionOwnerRead(
         () -> {
           var task = fenced(lease, true);
           String context = sessions.context(task);
