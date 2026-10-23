@@ -63,7 +63,7 @@ class TraceExperiment(SessionExperiment):
         self.common.update({'jimu.session-event-search.enabled': 'true', 'jimu.session-event-trace.enabled': 'true',
                             'jimu.model.profiles.a.input-limit.max-tokens': '65536'})
         self.control = self.start('control-trace-v3', 'control')
-        self.assert_that(self.sql('SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history;') == '21', 'V21 installed')
+        self.assert_that(self.sql('SELECT COUNT(*) FROM flyway_schema_history WHERE version=21 AND success=TRUE;') == '1', 'V21 installed')
         self.assert_that(self.http('GET', '/api/capabilities')[1] == [READ, SEARCH, TRACE, 'web_fetch'], 'three pinned tools discovered')
         (self.evidence/'show-create-read.tsv').write_text(self.sql('SHOW CREATE TABLE invocation_session_read;'))
         (self.evidence/'show-create-trace.tsv').write_text(self.sql('SHOW CREATE TABLE invocation_session_trace;'))
