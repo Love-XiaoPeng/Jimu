@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "session_id": "00000000-0000-4000-8000-000000000052",
+  "history_version": 3,
+  "content_policy": "public-v1",
+  "boundary": "pre-step",
+  "upper_seq": 5,
+  "relation_policy": "read-receipt-sources-v1",
+  "replacement_policy": "unsupported",
+  "target": {
+    "seq": 0,
+    "type": "user.message",
+    "time": "2026-10-23T00:00:00.000000Z",
+    "source": {
+      "kind": "request",
+      "step_id": null,
+      "invocation_id": null
+    },
+    "redacted": false,
+    "text": "积木验证 Unicode 🧱，核查历史内容。",
+    "summary_truncated": false,
+    "event_sha256": "668a52385859dda4c8a09154b7280530646a562b2e1caba766216c36417d661c"
+  },
+  "source_event_seqs": [],
+  "derived_event_seqs": [
+    4
+  ]
+}

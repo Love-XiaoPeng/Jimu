@@ -20,6 +20,31 @@ import org.springframework.jdbc.core.JdbcTemplate;
 final class JdbcSessionRecords {
   final SessionContracts contracts = new SessionContracts();
   final SessionContracts v2 = new SessionContracts(2);
+  final SessionContracts v3 = new SessionContracts(3);
+  final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts searchV3 =
+      new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts(3);
+  final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTraceContracts trace =
+      new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTraceContracts();
+
+  static boolean traceTask(Map<String, Object> task) {
+    return "session_event_read,session_event_search,session_event_trace"
+        .equals(s(task, "capabilities"));
+  }
+
+  io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts searchContract(
+      Map<String, Object> task) {
+    return traceTask(task) ? searchV3 : search;
+  }
+
+  io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor descriptor(
+      Map<String, Object> task, String name) {
+    return name.equals("session_event_read")
+        ? contract(task).descriptor()
+        : name.equals("session_event_search")
+            ? searchContract(task).descriptor()
+            : trace.descriptor();
+  }
+
   final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts search =
       new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts();
   private final JdbcTemplate db;
@@ -27,35 +52,57 @@ final class JdbcSessionRecords {
 
   private static final class SearchBudget {
     int reads;
-    long bytes;
+    long bytes, operations;
     final Runnable deadline;
+    final boolean trace;
+    final long scratchLimit;
 
     SearchBudget(Runnable deadline) {
+      this(deadline, false);
+    }
+
+    SearchBudget(Runnable deadline, boolean trace) {
+      this(deadline, trace, 8388608);
+    }
+
+    SearchBudget(Runnable deadline, boolean trace, long scratchLimit) {
       this.deadline = deadline;
+      this.trace = trace;
+      this.scratchLimit = scratchLimit;
     }
 
     void charge(List<Map<String, Object>> rows) {
       deadline.run();
       if (++reads > 1024) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
       for (var row : rows)
-        for (var entry : row.entrySet())
-          bytes += 8L + SessionContracts.bytes(entry.getKey()) + scalarBytes(entry.getValue());
+        for (var entry : row.entrySet()) {
+          long size = 8L + SessionContracts.bytes(entry.getKey()) + scalarBytes(entry.getValue());
+          bytes += size;
+          if (trace) operation(size);
+        }
       // Conservatively charge UTF-16 strings/row fields plus the active code point arrays.
-      if (bytes > 8388608 || bytes * 2 + 524288 > 8388608)
+      if (bytes > 8388608 || bytes * (trace ? 3 : 2) + 524288 > scratchLimit)
         throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    }
+
+    void operation(long count) {
+      operations += count;
+      if (trace && operations > 1048576) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+      deadline.run();
     }
   }
 
   static boolean searchTask(Map<String, Object> task) {
-    return "session_event_read,session_event_search".equals(s(task, "capabilities"));
+    return traceTask(task)
+        || "session_event_read,session_event_search".equals(s(task, "capabilities"));
   }
 
   int version(Map<String, Object> task) {
-    return searchTask(task) ? 2 : 1;
+    return traceTask(task) ? 3 : searchTask(task) ? 2 : 1;
   }
 
   SessionContracts contract(Map<String, Object> task) {
-    return searchTask(task) ? v2 : contracts;
+    return traceTask(task) ? v3 : searchTask(task) ? v2 : contracts;
   }
 
   private List<String> sensitive;
@@ -73,7 +120,8 @@ final class JdbcSessionRecords {
           "output_snapshot",
           "usage_snapshot",
           "event_snapshot",
-          "normalized_query_snapshot");
+          "normalized_query_snapshot",
+          "read_sources_snapshot");
   private static final List<String> TABLES =
       List.of(
           "task",
@@ -81,6 +129,7 @@ final class JdbcSessionRecords {
           "session_public_event",
           "invocation_session_read",
           "invocation_session_search",
+          "invocation_session_trace",
           "task_attempt",
           "step",
           "invocation",
@@ -295,6 +344,14 @@ final class JdbcSessionRecords {
     value.put("content_policy", "public-v1");
     value.put("redacted", redacted);
     value.put("data", data);
+    if (traceTask(task))
+      value.put(
+          "source_event_seqs",
+          type.equals("session.read")
+              ? readSources(task, source.get("invocation_id").toString()).stream()
+                  .map(v -> v.path("seq").asLong())
+                  .toList()
+              : List.of());
     String raw = Payloads.json(value);
     contract(task).event(raw);
     body(task, SessionContracts.bytes(raw));
@@ -393,10 +450,27 @@ final class JdbcSessionRecords {
             s(task, "tenant_id"),
             s(task, "id"),
             step)) {
+      if (s(i, "tool").equals("session_event_trace")) {
+        if (!traceTask(task)) throw corrupt();
+        var input = trace.input(s(i, "input_snapshot"));
+        db.update(
+            "INSERT INTO invocation_session_trace(tenant_id,invocation_id,task_id,step_id,binding_digest,input_digest,upper_seq,target_seq,relation_policy) VALUES(?,?,?,?,?,?,?,?,?)",
+            s(task, "tenant_id"),
+            s(i, "id"),
+            s(task, "id"),
+            step,
+            s(h, "binding_digest"),
+            s(i, "input_digest"),
+            n(st, "session_upper_seq"),
+            input.seq(),
+            io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTraceContracts.POLICY);
+        continue;
+      }
       if (s(i, "tool").equals("session_event_search")) {
         if (!searchTask(task)) throw corrupt();
-        var input = search.input(s(i, "input_snapshot"));
-        String normalized = search.normalized(input, s(task, "id"), n(st, "session_upper_seq"));
+        var input = searchContract(task).input(s(i, "input_snapshot"));
+        String normalized =
+            searchContract(task).normalized(input, s(task, "id"), n(st, "session_upper_seq"));
         body(task, SessionContracts.bytes(normalized));
         db.update(
             "INSERT INTO invocation_session_search(tenant_id,invocation_id,task_id,step_id,binding_digest,input_digest,upper_seq,normalized_query_snapshot,normalized_query_digest,normalized_query_bytes) VALUES(?,?,?,?,?,?,?,?,?,?)",
@@ -414,7 +488,7 @@ final class JdbcSessionRecords {
       }
       var input = contracts.input(s(i, "input_snapshot"));
       db.update(
-          "INSERT INTO invocation_session_read(tenant_id,invocation_id,task_id,step_id,binding_digest,input_digest,upper_seq,target_seq,before_count,after_count) VALUES(?,?,?,?,?,?,?,?,?,?)",
+          "INSERT INTO invocation_session_read(tenant_id,invocation_id,task_id,step_id,binding_digest,input_digest,upper_seq,target_seq,before_count,after_count,relation_version) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
           s(task, "tenant_id"),
           s(i, "id"),
           s(task, "id"),
@@ -424,7 +498,8 @@ final class JdbcSessionRecords {
           n(st, "session_upper_seq"),
           input.seq(),
           input.before(),
-          input.after());
+          input.after(),
+          traceTask(task) ? 1 : 0);
     }
   }
 
@@ -467,7 +542,8 @@ final class JdbcSessionRecords {
               .equals(call)
           || !"function".equals(wire.type())
           || !(SessionContracts.NAME.equals(call.tool())
-              || searchTask(task) && call.tool().equals("session_event_search")))
+              || searchTask(task) && call.tool().equals("session_event_search")
+              || traceTask(task) && call.tool().equals("session_event_trace")))
         throw new TaskFailure(400, "TOOL_INPUT_INVALID");
       contracts.callId(call.providerId(), sensitive());
       validateInput(task, call);
@@ -485,6 +561,7 @@ final class JdbcSessionRecords {
     var projected = projectedCalls(task, parsed.calls());
     preview.put("redacted", text.redacted() || projected.redacted());
     preview.put("data", Map.of("content", text.content(), "calls", projected.calls()));
+    if (traceTask(task)) preview.put("source_event_seqs", List.of());
     contract(task).event(Payloads.json(preview));
   }
 
@@ -507,9 +584,25 @@ final class JdbcSessionRecords {
     return raw;
   }
 
-  record Read(String output, long from, long to, String targetDigest) {}
+  record Read(String output, long from, long to, String targetDigest, String sources) {}
 
-  Read read(Map<String, Object> task, SessionEventPort.Input input, long upper, String boundary) {
+  Read read(
+      Map<String, Object> task,
+      SessionEventPort.Input input,
+      long upper,
+      String boundary,
+      Runnable deadline) {
+    if (!traceTask(task)) return readRows(task, input, upper, boundary);
+    searchBudget.set(new SearchBudget(deadline, true, 1048576));
+    try {
+      return readRows(task, input, upper, boundary);
+    } finally {
+      searchBudget.remove();
+    }
+  }
+
+  private Read readRows(
+      Map<String, Object> task, SessionEventPort.Input input, long upper, String boundary) {
     history(task, true);
     if (input.sessionId() != null && !input.sessionId().equals(s(task, "id"))
         || input.seq() > upper) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
@@ -527,10 +620,12 @@ final class JdbcSessionRecords {
     var after = new ArrayList<Map<String, Object>>();
     JsonNode target = null;
     String targetDigest = null;
+    var sources = new ArrayList<Map<String, Object>>();
     for (int index = 0; index < records.size(); index++) {
       var r = records.get(index);
       if (n(r, "seq") != from + index) throw corrupt();
       var value = verify(task, r);
+      sources.add(Map.of("seq", n(r, "seq"), "event_sha256", s(r, "event_digest")));
       if (n(r, "seq") == input.seq()) {
         target = value;
         targetDigest = s(r, "event_digest");
@@ -571,10 +666,19 @@ final class JdbcSessionRecords {
     value.put("after", after);
     String raw = Payloads.json(value);
     contract(task).output(raw);
-    return new Read(raw, from, to, targetDigest);
+    return new Read(raw, from, to, targetDigest, Payloads.json(sources));
   }
 
   JsonNode verify(Map<String, Object> task, Map<String, Object> r) {
+    try {
+      return verifyEvent(task, r);
+    } catch (TaskFailure failure) {
+      if (traceTask(task) && failure.status() == 400) throw corrupt();
+      throw failure;
+    }
+  }
+
+  private JsonNode verifyEvent(Map<String, Object> task, Map<String, Object> r) {
     if (!s(task, "tenant_id").equals(s(r, "tenant_id")) || !s(task, "id").equals(s(r, "task_id")))
       throw corrupt();
     if (n(r, "record_version") != 1 || n(r, "event_version") != version(task))
@@ -662,6 +766,7 @@ final class JdbcSessionRecords {
                 || !s(b, "output_digest").equals(s(i, "output_digest"))
                 || SessionContracts.bytes(s(i, "output_snapshot")) != n(b, "output_bytes")))
           throw corrupt();
+        if (traceTask(task)) verifyReadRelation(task, r, value, i, b);
         digest = s(i, "input_digest");
       }
       case "turn.ended" -> {
@@ -684,6 +789,9 @@ final class JdbcSessionRecords {
       default -> throw new TaskFailure(409, "SESSION_HISTORY_VERSION_UNSUPPORTED");
     }
     if (!digest.equals(s(r, "source_digest"))) throw corrupt();
+    if (traceTask(task)
+        && !"session.read".equals(s(r, "type"))
+        && !value.path("source_event_seqs").isEmpty()) throw corrupt();
     var reliable =
         one(
             "SELECT type FROM event WHERE tenant_id=? AND task_id=? AND seq=?",
@@ -699,6 +807,248 @@ final class JdbcSessionRecords {
           s(r, "committed_attempt_id"),
           n(r, "committed_fence"));
     return value;
+  }
+
+  List<JsonNode> readSources(Map<String, Object> task, String invocation) {
+    var binding =
+        one(
+            "SELECT * FROM invocation_session_read WHERE tenant_id=? AND task_id=? AND invocation_id=?",
+            s(task, "tenant_id"),
+            s(task, "id"),
+            invocation);
+    String raw = s(binding, "read_sources_snapshot");
+    if (n(binding, "relation_version") != 1
+        || !"PRESENT".equals(s(binding, "content_state"))
+        || raw == null
+        || SessionContracts.bytes(raw) > 1024
+        || SessionContracts.bytes(raw) != n(binding, "read_sources_bytes")
+        || !Payloads.hash(raw).equals(s(binding, "read_sources_digest"))) throw corrupt();
+    var sources = contracts.json(raw, 1024);
+    if (!sources.isArray() || sources.size() > 9) throw corrupt();
+    var result = new ArrayList<JsonNode>();
+    long previous = -1;
+    for (var source : sources) {
+      if (!source.isObject()
+          || source.size() != 2
+          || !source.path("seq").isIntegralNumber()
+          || source.path("seq").asLong() <= previous
+          || source.path("seq").asLong() > 127
+          || !source.path("event_sha256").asText().matches("[0-9a-f]{64}")) throw corrupt();
+      previous = source.path("seq").asLong();
+      result.add(source);
+    }
+    return List.copyOf(result);
+  }
+
+  // Flat proof: check the original slot and immediate endpoints, never verify nested read outputs.
+  private void verifyReadRelation(
+      Map<String, Object> task,
+      Map<String, Object> r,
+      JsonNode event,
+      Map<String, Object> i,
+      Map<String, Object> b) {
+    var sources = readSources(task, s(i, "id"));
+    if (!Payloads.json(sources.stream().map(v -> v.path("seq").asLong()).toList())
+        .equals(Payloads.json(event.path("source_event_seqs")))) throw corrupt();
+    var st =
+        one(
+            "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=?",
+            s(task, "tenant_id"),
+            s(task, "id"),
+            s(i, "step_id"));
+    validateStep(task, st);
+    if (!s(history(task, true), "binding_digest").equals(s(b, "binding_digest"))
+        || n(st, "session_upper_seq") != n(b, "upper_seq")
+        || !Payloads.hash(s(i, "input_snapshot")).equals(s(i, "input_digest"))
+        || !s(i, "input_digest").equals(s(b, "input_digest"))
+        || !"session_event_read".equals(s(i, "tool"))) throw corrupt();
+    var input = contract(task).input(s(i, "input_snapshot"));
+    if (input.seq() != n(b, "target_seq")
+        || input.before() != n(b, "before_count")
+        || input.after() != n(b, "after_count")
+        || input.sessionId() != null && !input.sessionId().equals(s(task, "id"))) throw corrupt();
+    if (!Payloads.hash(s(st, "response_snapshot")).equals(s(st, "response_digest")))
+      throw corrupt();
+    var response = Payloads.read(s(st, "response_snapshot"), DurableAgent.Response.class);
+    boolean matched = false;
+    for (int index = 0; index < response.calls().size(); index++) {
+      var call = response.calls().get(index);
+      if ((index + ":" + call.id()).equals(s(i, "slot"))
+          && call.id().equals(s(i, "provider_id"))
+          && call.name().equals(s(i, "tool"))
+          && call.arguments().equals(s(i, "input_snapshot"))) matched = true;
+    }
+    var pins =
+        Payloads.read(
+            s(task, "tools_snapshot"),
+            io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ToolSnapshot.class);
+    var pin = pins.pins().get("session_event_read");
+    if (!matched
+        || response.version() != 2
+        || pin == null
+        || !pin.version().equals(s(i, "plugin_version"))
+        || !pin.digest().equals(s(i, "plugin_digest"))
+        || pin.installationEpoch() != n(i, "installation_epoch")) throw corrupt();
+    if ("FAILED".equals(s(b, "outcome"))) {
+      if (!sources.isEmpty() || i.get("output_snapshot") != null || n(b, "output_bytes") != 0)
+        throw corrupt();
+      return;
+    }
+    if (!"SUCCEEDED".equals(s(b, "outcome")) || sources.isEmpty()) throw corrupt();
+    String raw = s(i, "output_snapshot");
+    contract(task).output(raw);
+    var output = contracts.json(raw, 32768);
+    long from = Math.max(0, input.seq() - input.before()),
+        to = Math.min(n(b, "upper_seq"), input.seq() + input.after());
+    if (sources.size() != to - from + 1
+        || n(b, "window_start") != from
+        || n(b, "window_end") != to
+        || output.path("upper_seq").asLong() != n(b, "upper_seq")
+        || !"pre-step".equals(output.path("boundary").asText())
+        || !s(task, "id").equals(output.path("session_id").asText())
+        || output.path("target").path("seq").asLong() != input.seq()
+        || output.path("window").path("from_seq").asLong() != from
+        || output.path("window").path("to_seq").asLong() != to
+        || output.path("before").size() != input.seq() - from
+        || output.path("after").size() != to - input.seq()) throw corrupt();
+    int index = 0;
+    for (var source : sources) {
+      long seq = source.path("seq").asLong();
+      if (seq != from + index++ || seq > n(b, "upper_seq") || seq >= n(r, "seq")) throw corrupt();
+      var endpoint =
+          one(
+              "SELECT event_digest FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq=? AND content_state='PRESENT'",
+              s(task, "tenant_id"),
+              s(task, "id"),
+              seq);
+      if (!s(endpoint, "event_digest").equals(source.path("event_sha256").asText()))
+        throw corrupt();
+      if (seq == input.seq()
+          && (!s(endpoint, "event_digest").equals(s(b, "target_digest"))
+              || !Payloads.hash(Payloads.json(output.path("target")))
+                  .equals(s(b, "target_digest")))) throw corrupt();
+    }
+  }
+
+  record Trace(
+      String output,
+      String scanDigest,
+      String relationsDigest,
+      String targetDigest,
+      int rows,
+      int eventBytes,
+      int edges) {}
+
+  Trace trace(
+      Map<String, Object> task,
+      io.github.lovexiaopeng.jimu.plugin.api.SessionEventTracePort.Input input,
+      long upper,
+      String boundary,
+      Runnable deadline) {
+    var h = history(task, true);
+    if (!traceTask(task)) throw new TaskFailure(409, "SESSION_TRACE_UNAVAILABLE");
+    if (input.sessionId() != null && !input.sessionId().equals(s(task, "id"))
+        || input.seq() > upper) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
+    if (upper < 0 || upper >= 128 || n(h, "next_seq") > 128 || upper >= n(h, "next_seq"))
+      throw corrupt();
+    if (rows(
+            "SELECT seq FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq=?",
+            s(task, "tenant_id"),
+            s(task, "id"),
+            input.seq())
+        .isEmpty()) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
+    var budget = new SearchBudget(deadline, true);
+    searchBudget.set(budget);
+    try {
+      var records =
+          rows(
+              "SELECT * FROM session_public_event FORCE INDEX (PRIMARY) WHERE tenant_id=? AND task_id=? AND seq BETWEEN 0 AND ? ORDER BY seq LIMIT 128",
+              s(task, "tenant_id"),
+              s(task, "id"),
+              upper);
+      if (records.size() != upper + 1) throw corrupt();
+      var scanned = new ArrayList<Map<String, Object>>();
+      var relations = new ArrayList<Map<String, Object>>();
+      var derived = new ArrayList<Long>();
+      JsonNode target = null;
+      String targetDigest = null;
+      int eventBytes = 0, edges = 0, receipts = 0;
+      long operations = 0;
+      for (int index = 0; index < records.size(); index++) {
+        deadline.run();
+        var r = records.get(index);
+        if (n(r, "seq") != index) throw corrupt();
+        eventBytes += SessionContracts.bytes(s(r, "event_snapshot"));
+        if (eventBytes > 2097152) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+        var value = verify(task, r);
+        scanned.add(Map.of("seq", index, "event_sha256", s(r, "event_digest")));
+        if (index == input.seq()) {
+          target = value;
+          targetDigest = s(r, "event_digest");
+        }
+        if ("session.read".equals(s(r, "type"))) {
+          var b =
+              one(
+                  "SELECT read_sources_digest,outcome FROM invocation_session_read WHERE tenant_id=? AND task_id=? AND invocation_id=?",
+                  s(task, "tenant_id"),
+                  s(task, "id"),
+                  s(r, "source_invocation_id"));
+          relations.add(Map.of("seq", index, "read_sources_sha256", s(b, "read_sources_digest")));
+          if ("SUCCEEDED".equals(s(b, "outcome")) && ++receipts > 20)
+            throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+          for (var source : value.path("source_event_seqs")) {
+            operations++;
+            if (++edges > 180) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+            long seq = source.asLong();
+            if (seq < 0 || seq >= index || seq >= records.size()) throw corrupt();
+            if (seq == input.seq()) derived.add((long) index);
+          }
+        }
+        operations += 32L + s(r, "event_snapshot").length();
+        budget.operation(
+            32L + s(r, "event_snapshot").length() + value.path("source_event_seqs").size());
+        if (operations > 1048576) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+      }
+      if (target == null) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
+      if (derived.size() > 20) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+      var summary = new LinkedHashMap<String, Object>();
+      for (String key : List.of("seq", "type", "time", "source", "redacted"))
+        summary.put(key, target.get(key));
+      String text = target.path("data").path("content").asText(""),
+          prefix = SessionContracts.prefix(text);
+      summary.put("text", prefix);
+      summary.put("summary_truncated", !text.equals(prefix));
+      summary.put("event_sha256", targetDigest);
+      if (SessionContracts.bytes(Payloads.json(summary)) > 2048)
+        throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+      var output = new LinkedHashMap<String, Object>();
+      output.put("version", 1);
+      output.put("session_id", s(task, "id"));
+      output.put("history_version", 3);
+      output.put("content_policy", "public-v1");
+      output.put("boundary", boundary);
+      output.put("upper_seq", upper);
+      output.put(
+          "relation_policy",
+          io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTraceContracts.POLICY);
+      output.put("replacement_policy", "unsupported");
+      output.put("target", summary);
+      output.put("source_event_seqs", target.path("source_event_seqs"));
+      output.put("derived_event_seqs", derived);
+      String raw = Payloads.json(output);
+      trace.output(raw);
+      deadline.run();
+      return new Trace(
+          raw,
+          Payloads.hash(Payloads.json(scanned)),
+          Payloads.hash(Payloads.json(relations)),
+          targetDigest,
+          records.size(),
+          eventBytes,
+          edges);
+    } finally {
+      searchBudget.remove();
+    }
   }
 
   Map<String, Object> receipt(Map<String, Object> b) {
@@ -717,8 +1067,12 @@ final class JdbcSessionRecords {
   void validateInput(
       Map<String, Object> task,
       io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call call) {
-    if (call.tool().equals("session_event_search") && searchTask(task)) {
-      var input = search.input(call.input());
+    if (call.tool().equals("session_event_trace") && traceTask(task)) {
+      var input = trace.input(call.input());
+      if (input.sessionId() != null && !input.sessionId().equals(s(task, "id")))
+        throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
+    } else if (call.tool().equals("session_event_search") && searchTask(task)) {
+      var input = searchContract(task).input(call.input());
       if (searchTask(task) && input.sessionId() != null && !input.sessionId().equals(s(task, "id")))
         throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
     } else if (call.tool().equals(SessionContracts.NAME)) {
@@ -760,7 +1114,7 @@ final class JdbcSessionRecords {
       Runnable deadline) {
     var h = history(task, true);
     if (!searchTask(task)) throw new TaskFailure(409, "SESSION_SEARCH_UNAVAILABLE");
-    search.normalized(input, s(task, "id"), upper);
+    searchContract(task).normalized(input, s(task, "id"), upper);
     var matcher =
         new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchMatcher(
             input, deadline);
@@ -793,8 +1147,8 @@ final class JdbcSessionRecords {
           matcher.accept(value, s(record, "event_digest"), upper);
         }
       }
-      String output = matcher.output(s(task, "id"), upper, boundary);
-      search.output(output);
+      String output = matcher.output(s(task, "id"), upper, boundary, version(task));
+      searchContract(task).output(output);
       return new Search(output, Payloads.hash(Payloads.json(scanned)), scanned.size(), eventBytes);
     } finally {
       searchBudget.remove();
@@ -812,7 +1166,9 @@ final class JdbcSessionRecords {
             "invocation",
             "model_dispatch",
             "session_public_event",
-            "invocation_session_search")) {
+            "invocation_session_search",
+            "invocation_session_read",
+            "invocation_session_trace")) {
       String key = table.equals("task") ? "id" : "task_id";
       var entries = new ArrayList<Map<String, Object>>();
       for (var row :
@@ -823,7 +1179,13 @@ final class JdbcSessionRecords {
             row.get(
                 table.equals("session_public_event")
                     ? "seq"
-                    : table.equals("invocation_session_search") ? "invocation_id" : "id"));
+                    : List.of(
+                                "invocation_session_search",
+                                "invocation_session_trace",
+                                "invocation_session_read")
+                            .contains(table)
+                        ? "invocation_id"
+                        : "id"));
         for (String field : BODIES)
           if (row.get(field) != null) {
             String raw = s(row, field);
@@ -848,7 +1210,11 @@ final class JdbcSessionRecords {
           tenant,
           id);
     db.update(
-        "UPDATE invocation_session_read SET content_state='PURGED' WHERE tenant_id=? AND task_id=?",
+        "UPDATE invocation_session_trace SET content_state='PURGED' WHERE tenant_id=? AND task_id=?",
+        tenant,
+        id);
+    db.update(
+        "UPDATE invocation_session_read SET read_sources_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND task_id=?",
         tenant,
         id);
     db.update(

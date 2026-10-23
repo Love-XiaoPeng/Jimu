@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session-event-search:0.1.0:input",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "query": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[^\\u0000]*$",
+      "description": "Required nonblank literal query; <=1024 UTF-8 bytes before and after ECMAScript whitespace normalization. Case-sensitive public-content-literal-v1; no regex, FTS syntax or Unicode folding."
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "seq_from": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "seq_to": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "time_from": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 32,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|[+-][0-9]{2}:[0-9]{2})$",
+      "description": "Strict Gregorian/offset/UTC-microsecond semantics are additionally validated by the host."
+    },
+    "time_to": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 32,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|[+-][0-9]{2}:[0-9]{2})$",
+      "description": "Strict Gregorian/offset/UTC-microsecond semantics are additionally validated by the host."
+    },
+    "event_types": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "user.message",
+          "step.started",
+          "model.response",
+          "session.read",
+          "turn.ended"
+        ]
+      }
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "current",
+          "shadowed",
+          "log-only"
+        ]
+      },
+      "description": "Upstream parameter retained for explicit compatibility: every valid supplied value is rejected with SESSION_SEARCH_FILTER_UNSUPPORTED. Jimu stores no surface projection. Omit this field."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}

@@ -1,0 +1,1 @@
+Read one full stored public-v3 event and optional neighboring summaries in the frozen authorized prefix. Successful model reads capture their actual event sources; earlier output bodies are never expanded.

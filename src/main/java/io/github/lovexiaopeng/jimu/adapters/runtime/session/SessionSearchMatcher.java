@@ -84,6 +84,10 @@ public final class SessionSearchMatcher {
   }
 
   public String output(String task, long upper, String boundary) {
+    return output(task, upper, boundary, 2);
+  }
+
+  public String output(String task, long upper, String boundary, int historyVersion) {
     deadline.run();
     matches.sort(
         Comparator.comparingInt(Hit::occurrences)
@@ -94,7 +98,7 @@ public final class SessionSearchMatcher {
     var value = new LinkedHashMap<String, Object>();
     value.put("version", 1);
     value.put("session_id", task);
-    value.put("history_version", 2);
+    value.put("history_version", historyVersion);
     value.put("content_policy", "public-v1");
     value.put("boundary", boundary);
     value.put("upper_seq", upper);

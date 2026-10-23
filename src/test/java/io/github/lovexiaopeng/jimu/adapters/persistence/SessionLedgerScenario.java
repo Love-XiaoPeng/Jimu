@@ -47,9 +47,11 @@ public final class SessionLedgerScenario {
       ExecutionLedger.Call call,
       String version,
       String digest) {
-    return call.tool().equals("session_event_search")
-        ? ledger.searchOrResult(lease, step, call, version, digest)
-        : ledger.readOrResult(lease, step, call, version, digest);
+    return call.tool().equals("session_event_trace")
+        ? ledger.traceOrResult(lease, step, call, version, digest)
+        : call.tool().equals("session_event_search")
+            ? ledger.searchOrResult(lease, step, call, version, digest)
+            : ledger.readOrResult(lease, step, call, version, digest);
   }
 
   public static void main(String[] args) throws Exception {
@@ -108,6 +110,7 @@ public final class SessionLedgerScenario {
             env.getRequiredProperty("jimu.identity.key"),
             env.getRequiredProperty("jimu.db.password")));
     ledger.sessionSearchEnabled(true);
+    ledger.sessionTraceEnabled(true);
     String taskId = java.util.UUID.fromString(args[1]).toString();
     var task = db.queryForMap("SELECT * FROM task WHERE tenant_id='tenant-a' AND id=?", taskId);
     var records = new JdbcSessionRecords(db);
@@ -119,7 +122,8 @@ public final class SessionLedgerScenario {
             "invocation",
             "model_dispatch",
             "session_public_event",
-            "invocation_session_search")) {
+            "invocation_session_search",
+            "invocation_session_read")) {
       for (var row :
           db.queryForList(
               "SELECT * FROM "
@@ -138,7 +142,8 @@ public final class SessionLedgerScenario {
                 "output_snapshot",
                 "usage_snapshot",
                 "event_snapshot",
-                "normalized_query_snapshot"))
+                "normalized_query_snapshot",
+                "read_sources_snapshot"))
           if (row.get(field) != null)
             body += s(row, field).getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
       }
@@ -175,6 +180,39 @@ public final class SessionLedgerScenario {
       System.out.println("PASS exact body and metadata accounting");
       return;
     }
+    if (args[2].equals("purge-rollback")) {
+      String before =
+          Payloads.json(
+              db.queryForList(
+                  "SELECT read_sources_snapshot,read_sources_digest,content_state FROM invocation_session_read WHERE task_id=? ORDER BY invocation_id",
+                  taskId));
+      var transaction =
+          new org.springframework.transaction.support.TransactionTemplate(
+              new org.springframework.jdbc.datasource.DataSourceTransactionManager(source));
+      transaction.execute(
+          status -> {
+            records.purge(task);
+            records.release(task);
+            status.setRollbackOnly();
+            return null;
+          });
+      require(
+          before.equals(
+              Payloads.json(
+                  db.queryForList(
+                      "SELECT read_sources_snapshot,read_sources_digest,content_state FROM invocation_session_read WHERE task_id=? ORDER BY invocation_id",
+                      taskId))),
+          "Rollback restores all source bodies and tombstones");
+      require(
+          body
+              == db.queryForObject(
+                  "SELECT body_bytes FROM task_session_history WHERE task_id=?",
+                  Long.class,
+                  taskId),
+          "Rollback restores quota/body accounting");
+      System.out.println("PASS purge/release transaction rollback restores sources and accounting");
+      return;
+    }
     var i =
         db.queryForMap(
             "SELECT * FROM invocation WHERE tenant_id='tenant-a' AND task_id=? ORDER BY ordinal LIMIT 1",
@@ -199,7 +237,7 @@ public final class SessionLedgerScenario {
         step = s(i, "step_id"),
         output = s(i, "output_snapshot");
     long used = n(task, "tools_used");
-    if (args[2].equals("search-failed-replay")) {
+    if (args[2].equals("search-failed-replay") || args[2].equals("trace-failed-replay")) {
       String original =
           db.queryForObject(
               "SELECT event_digest FROM session_public_event WHERE task_id=? AND seq=0",
@@ -225,7 +263,11 @@ public final class SessionLedgerScenario {
           "Failed original slot consumes once even after source repaired");
       require(
           db.queryForObject(
-                  "SELECT COUNT(*) FROM invocation_session_search WHERE task_id=? AND outcome='FAILED' AND failure_code='SESSION_HISTORY_CORRUPT' AND output_bytes=0",
+                  "SELECT COUNT(*) FROM "
+                      + (call.tool().equals("session_event_trace")
+                          ? "invocation_session_trace"
+                          : "invocation_session_search")
+                      + " WHERE task_id=? AND outcome='FAILED' AND failure_code='SESSION_HISTORY_CORRUPT' AND output_bytes=0",
                   Long.class,
                   taskId)
               == 1,
@@ -237,8 +279,14 @@ public final class SessionLedgerScenario {
                   taskId)
               == 1,
           "Failure has one canonical reliable receipt");
-      ledger.sessionSearchEnabled(false);
-      rejects("SESSION_SEARCH_DISABLED", () -> invoke(ledger, lease, step, call, version, digest));
+      if (call.tool().equals("session_event_trace")) {
+        ledger.sessionTraceEnabled(false);
+        rejects("SESSION_TRACE_DISABLED", () -> invoke(ledger, lease, step, call, version, digest));
+      } else {
+        ledger.sessionSearchEnabled(false);
+        rejects(
+            "SESSION_SEARCH_DISABLED", () -> invoke(ledger, lease, step, call, version, digest));
+      }
       System.out.println(
           "PASS failed search replay, no rescan after repair, one charge/receipt, current flag rechecked");
       return;
@@ -283,7 +331,7 @@ public final class SessionLedgerScenario {
           "Uncertain recovery returns identical output bytes");
       require(
           db.queryForObject(
-                  call.tool().equals("session_event_search")
+                  !call.tool().equals("session_event_read")
                       ? "SELECT COUNT(*) FROM event WHERE task_id=? AND type='tool.completed'"
                       : "SELECT COUNT(*) FROM session_public_event WHERE task_id=? AND type='session.read'",
                   Long.class,
@@ -408,24 +456,32 @@ public final class SessionLedgerScenario {
             taskId);
       }
       rejects(
-          call.tool().equals("session_event_search")
-              ? "SESSION_SEARCH_COMMIT_REQUIRED"
-              : "SESSION_READ_COMMIT_REQUIRED",
+          call.tool().equals("session_event_trace")
+              ? "SESSION_TRACE_COMMIT_REQUIRED"
+              : call.tool().equals("session_event_search")
+                  ? "SESSION_SEARCH_COMMIT_REQUIRED"
+                  : "SESSION_READ_COMMIT_REQUIRED",
           () -> ledger.admit(lease, step, call, version, digest));
       rejects(
-          call.tool().equals("session_event_search")
-              ? "SESSION_SEARCH_COMMIT_REQUIRED"
-              : "SESSION_READ_COMMIT_REQUIRED",
+          call.tool().equals("session_event_trace")
+              ? "SESSION_TRACE_COMMIT_REQUIRED"
+              : call.tool().equals("session_event_search")
+                  ? "SESSION_SEARCH_COMMIT_REQUIRED"
+                  : "SESSION_READ_COMMIT_REQUIRED",
           () -> ledger.toolSucceeded(lease, s(i, "id"), output));
       rejects(
-          call.tool().equals("session_event_search")
-              ? "SESSION_SEARCH_COMMIT_REQUIRED"
-              : "SESSION_READ_COMMIT_REQUIRED",
+          call.tool().equals("session_event_trace")
+              ? "SESSION_TRACE_COMMIT_REQUIRED"
+              : call.tool().equals("session_event_search")
+                  ? "SESSION_SEARCH_COMMIT_REQUIRED"
+                  : "SESSION_READ_COMMIT_REQUIRED",
           () -> ledger.uncertain(lease, s(i, "id")));
       rejects(
-          call.tool().equals("session_event_search")
-              ? "SESSION_SEARCH_COMMIT_REQUIRED"
-              : "SESSION_READ_COMMIT_REQUIRED",
+          call.tool().equals("session_event_trace")
+              ? "SESSION_TRACE_COMMIT_REQUIRED"
+              : call.tool().equals("session_event_search")
+                  ? "SESSION_SEARCH_COMMIT_REQUIRED"
+                  : "SESSION_READ_COMMIT_REQUIRED",
           () -> ledger.toolFailed(lease, s(i, "id"), "SYNTHETIC"));
       db.update(
           "UPDATE actor_access SET enabled=FALSE WHERE tenant_id='tenant-a' AND actor_id='alice'");

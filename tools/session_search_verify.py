@@ -65,7 +65,7 @@ class SearchExperiment(SessionExperiment):
         self.common['jimu.model.profiles.a.input-limit.max-tokens'] = '65536'
         self.control = self.start('control-search-v2', 'control')
         self.assert_that(self.http('GET', '/api/capabilities')[1] == [READ, SEARCH, 'web_fetch'], 'two version-pinned session capabilities discovered')
-        self.assert_that(self.sql('SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history;') == '20', 'V20 installed')
+        self.assert_that(self.sql('SELECT COUNT(*) FROM flyway_schema_history WHERE version=20 AND success=TRUE;') == '1', 'V20 installed')
         (self.evidence/'show-create-history.tsv').write_text(self.sql('SHOW CREATE TABLE task_session_history;'))
         (self.evidence/'show-create-events.tsv').write_text(self.sql('SHOW CREATE TABLE session_public_event;'))
 

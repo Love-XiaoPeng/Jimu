@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session-history:3:context",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "session_event_context"
+    },
+    "version": {
+      "const": 3
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "upper_seq": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 127
+    },
+    "user_message_seq": {
+      "const": 0
+    },
+    "recent": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 127
+          },
+          "type": {
+            "enum": [
+              "user.message",
+              "step.started",
+              "model.response",
+              "session.read",
+              "turn.ended"
+            ]
+          }
+        },
+        "required": [
+          "seq",
+          "type"
+        ]
+      }
+    }
+  },
+  "required": [
+    "kind",
+    "version",
+    "session_id",
+    "upper_seq",
+    "user_message_seq",
+    "recent"
+  ]
+}

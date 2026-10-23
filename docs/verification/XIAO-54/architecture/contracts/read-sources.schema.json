@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session-history:3:read-sources",
+  "type": "array",
+  "maxItems": 9,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "seq": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 127
+      },
+      "event_sha256": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
+    "required": [
+      "seq",
+      "event_sha256"
+    ]
+  }
+}

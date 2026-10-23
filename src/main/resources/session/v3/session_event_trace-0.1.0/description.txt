@@ -1,0 +1,1 @@
+Trace direct sources and reverse references captured by successful model read receipts in this task. This is read provenance, not model causation or surface replacement. Lists are complete only for this policy and frozen prefix; use read to inspect an actual seq.
