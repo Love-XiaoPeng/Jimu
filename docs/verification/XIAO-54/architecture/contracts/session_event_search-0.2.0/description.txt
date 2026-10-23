@@ -1,0 +1,1 @@
+Search stored public user/model content in the frozen current-task prefix with the unchanged public-content-literal-v1 policy. Follow actual seq hits with read or trace.

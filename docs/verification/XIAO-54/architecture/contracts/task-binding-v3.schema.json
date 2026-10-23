@@ -1,0 +1,290 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session-event-trace:0.1.0:task-binding-v3",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 3
+    },
+    "profile": {
+      "const": "local-session-event-trace-v3"
+    },
+    "historyVersion": {
+      "const": 3
+    },
+    "contentPolicy": {
+      "const": "public-v1"
+    },
+    "allowedSessions": {
+      "const": "current-task"
+    },
+    "boundary": {
+      "const": "pre-step"
+    },
+    "capabilities": {
+      "const": [
+        "session_event_read",
+        "session_event_search",
+        "session_event_trace"
+      ]
+    },
+    "maxInputBytes": {
+      "const": 2048
+    },
+    "maxJsonDepth": {
+      "const": 4
+    },
+    "maxWindowSide": {
+      "const": 4
+    },
+    "maxNeighbors": {
+      "const": 8
+    },
+    "maxEventBytes": {
+      "const": 16384
+    },
+    "maxEvents": {
+      "const": 128
+    },
+    "maxSummaryCodePoints": {
+      "const": 256
+    },
+    "maxSummaryTextBytes": {
+      "const": 1024
+    },
+    "maxSummaryJsonBytes": {
+      "const": 1536
+    },
+    "maxOutputBytes": {
+      "const": 32768
+    },
+    "maxReadRows": {
+      "const": 9
+    },
+    "maxReadScratchBytes": {
+      "const": 1048576
+    },
+    "maxContextBytes": {
+      "const": 4096
+    },
+    "maxRecent": {
+      "const": 8
+    },
+    "timeoutMs": {
+      "const": 2000
+    },
+    "lockWaitSeconds": {
+      "const": 1
+    },
+    "maxModelRequestBytes": {
+      "const": 65536
+    },
+    "maxCheckpointBytes": {
+      "const": 131072
+    },
+    "maxModelResponseBytes": {
+      "const": 16384
+    },
+    "maxCallsPerResponse": {
+      "const": 4
+    },
+    "maxModelRequests": {
+      "const": 8
+    },
+    "maxToolInvocations": {
+      "const": 20
+    },
+    "maxAttempts": {
+      "const": 8
+    },
+    "maxReliableEvents": {
+      "const": 256
+    },
+    "maxSummaryBytes": {
+      "const": 8192
+    },
+    "maxDatabaseBodyBytes": {
+      "const": 7340032
+    },
+    "maxMetadataBytes": {
+      "const": 65536
+    },
+    "reservedTaskBytes": {
+      "const": 8388608
+    },
+    "retentionSeconds": {
+      "const": 604800
+    },
+    "catalogDigest": {
+      "const": "064089523d52fe0161d53530c1d8b088ee5e8e20c1d7f57f75badeec15b0d0c7"
+    },
+    "eventVersion": {
+      "const": 3
+    },
+    "maxReadInputBytes": {
+      "const": 1024
+    },
+    "maxNormalizedQueryBytes": {
+      "const": 2048
+    },
+    "maxQueryCodePoints": {
+      "const": 256
+    },
+    "maxQueryBytes": {
+      "const": 1024
+    },
+    "matchPolicy": {
+      "const": "public-content-literal-v1"
+    },
+    "ordering": {
+      "const": "occurrences-desc,length-asc,time-desc,seq-desc"
+    },
+    "maxSearchRows": {
+      "const": 128
+    },
+    "maxSearchEventBytes": {
+      "const": 2097152
+    },
+    "maxSearchReadBytes": {
+      "const": 8388608
+    },
+    "maxSearchScratchBytes": {
+      "const": 8388608
+    },
+    "maxSearchSourceReads": {
+      "const": 1024
+    },
+    "maxSearchComparisons": {
+      "const": 8388608
+    },
+    "maxSearchResults": {
+      "const": 16
+    },
+    "maxSnippetCodePoints": {
+      "const": 240
+    },
+    "maxSnippetTextBytes": {
+      "const": 960
+    },
+    "maxSnippetJsonBytes": {
+      "const": 1536
+    },
+    "maxSearchHitBytes": {
+      "const": 2048
+    },
+    "relationPolicy": {
+      "const": "read-receipt-sources-v1"
+    },
+    "maxTraceInputBytes": {
+      "const": 1024
+    },
+    "maxTraceRows": {
+      "const": 128
+    },
+    "maxTraceEventBytes": {
+      "const": 2097152
+    },
+    "maxTraceReadBytes": {
+      "const": 8388608
+    },
+    "maxTraceScratchBytes": {
+      "const": 8388608
+    },
+    "maxTraceSourceReads": {
+      "const": 1024
+    },
+    "maxTraceEdges": {
+      "const": 180
+    },
+    "maxTraceDirectSources": {
+      "const": 9
+    },
+    "maxTraceDirectDerived": {
+      "const": 20
+    },
+    "maxTraceResultNodes": {
+      "const": 30
+    },
+    "maxTraceDepth": {
+      "const": 1
+    },
+    "maxTraceOperations": {
+      "const": 1048576
+    },
+    "maxReadSourceSnapshotBytes": {
+      "const": 1024
+    }
+  },
+  "required": [
+    "version",
+    "profile",
+    "historyVersion",
+    "contentPolicy",
+    "allowedSessions",
+    "boundary",
+    "capabilities",
+    "maxInputBytes",
+    "maxJsonDepth",
+    "maxWindowSide",
+    "maxNeighbors",
+    "maxEventBytes",
+    "maxEvents",
+    "maxSummaryCodePoints",
+    "maxSummaryTextBytes",
+    "maxSummaryJsonBytes",
+    "maxOutputBytes",
+    "maxReadRows",
+    "maxReadScratchBytes",
+    "maxContextBytes",
+    "maxRecent",
+    "timeoutMs",
+    "lockWaitSeconds",
+    "maxModelRequestBytes",
+    "maxCheckpointBytes",
+    "maxModelResponseBytes",
+    "maxCallsPerResponse",
+    "maxModelRequests",
+    "maxToolInvocations",
+    "maxAttempts",
+    "maxReliableEvents",
+    "maxSummaryBytes",
+    "maxDatabaseBodyBytes",
+    "maxMetadataBytes",
+    "reservedTaskBytes",
+    "retentionSeconds",
+    "catalogDigest",
+    "eventVersion",
+    "maxReadInputBytes",
+    "maxNormalizedQueryBytes",
+    "maxQueryCodePoints",
+    "maxQueryBytes",
+    "matchPolicy",
+    "ordering",
+    "maxSearchRows",
+    "maxSearchEventBytes",
+    "maxSearchReadBytes",
+    "maxSearchScratchBytes",
+    "maxSearchSourceReads",
+    "maxSearchComparisons",
+    "maxSearchResults",
+    "maxSnippetCodePoints",
+    "maxSnippetTextBytes",
+    "maxSnippetJsonBytes",
+    "maxSearchHitBytes",
+    "relationPolicy",
+    "maxTraceInputBytes",
+    "maxTraceRows",
+    "maxTraceEventBytes",
+    "maxTraceReadBytes",
+    "maxTraceScratchBytes",
+    "maxTraceSourceReads",
+    "maxTraceEdges",
+    "maxTraceDirectSources",
+    "maxTraceDirectDerived",
+    "maxTraceResultNodes",
+    "maxTraceDepth",
+    "maxTraceOperations",
+    "maxReadSourceSnapshotBytes"
+  ]
+}
