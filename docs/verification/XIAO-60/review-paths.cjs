@@ -112,7 +112,7 @@ const entries=capture.baseline.entries.map((e,index)=>{
  return {baselineIndex:index,baselineEntry:e.entry,currentEntry:source??null,targetService:service,policy:p,
    disposition:p==='VALUE'?'NOT_AN_INDEPENDENT_SQL_PATH':/Service$/.test(service)&&/Worker|ExecutionService|ModelDispatch|InvocationService/.test(service)?'CORE_SERVICE_IMPLEMENTED_SQL_CUTOVER_OPEN':'SOURCE_PATH_REVIEWED_MODULE_IMPLEMENTATION_DEFERRED',
    mappingNote:removedWrapper?'Old queryForObject/queryForList wrapper removed. Both now inherit Spring JDBC overload dispatch to SessionJdbcTemplate.query, then QueryResults.meter on the actual ResultSet; no SELECT-prefix rewrite.':source?'Current symbol matched; use current calls/parameters, never baseline line numbers.':'UNRESOLVED: not closure evidence.',
-   currentFile:current?.file??null,sql:live?.sql??[],transactionNodes:live?.transactionNodes??[],
+   currentFile:current?.file??null,sql:live?.sql??[],mapperStatements:live?.mapperStatements??[],transactionNodes:live?.transactionNodes??[],
    callPlan:current?.calls.map(c=>({target:c.target,select:c.select,arguments:c.arguments,conditions:c.conditions,callbackOwners:c.callbackOwners,sql:c.sql_id??null}))??[],
    validation:p==='VALUE'?[]:['EXECUTION','MODEL_DISPATCH','MODEL_RESPONSE','INVOCATION','TOOL_SUCCESS'].includes(p)?['CORE_WORKFLOW_DIFFERENTIAL_22']:
      ['CLAIM','MODEL_FAILED','SETTLEMENT','WORKER_RECEIPT'].includes(p)?['CORE_SETTLEMENT_DIFFERENTIAL_8','FOUNDATION_WORKER_TRANSACTION_SLICES']:
@@ -122,6 +122,7 @@ const entries=capture.baseline.entries.map((e,index)=>{
 });
 if(entries.some(e=>!e.currentEntry))throw Error('Unmapped baseline entry');
 const dynamic=capture.current.dynamicSql.map(s=>({...s,review:
+ s.method==='io.github.lovexiaopeng.jimu.adapters.persistence.MapperWorkerRecords#markWorkerStopped(java.lang.String)'&&s.arguments[0]==='null'&&s.arguments[1]?.includes('WorkerProcessEntity::getId, worker')?'BASE_MAPPER_LAMBDA; fixed worker_process stopped=TRUE by sole primary key id; cross-tenant host metadata, no external SQL':
  !s.arguments.length?'NON_SQL_VALUE_ACCESSOR_OR_RECORD_COUNTER':
  s.arguments[0]==='sql'?'INTERNAL_PARAMETERIZED_FORWARDER; inspect concrete callers in this same inventory':
  /SET SESSION/.test(s.arguments[0])?'FIXED_SESSION_SETTING_PLUS_BOUNDED_INTEGER_OR_PRIOR_DRIVER_VALUE; no external SQL fragment':
@@ -129,11 +130,11 @@ const dynamic=capture.current.dynamicSql.map(s=>({...s,review:
  /reportContext/.test(s.method)?'TWO_FIXED_SELECT_VARIANTS; optional fixed plugin_version literal; tenant/task remain bound':
  /cleanupImages/.test(s.method)?'TWO_FIXED_BUDGET_UPDATE_VARIANTS; bytes and tenant remain bound':'REVIEW_REQUIRED'}));
 if(dynamic.some(s=>s.review==='REVIEW_REQUIRED'))throw Error('Unreviewed dynamic SQL');
-const result={baseline:capture.baselineSource,sourceHashes:capture.sourceHashes,scope:'B0 source-path/predicate/lock-boundary review; NOT Mapper migration or independent runtime acceptance',
+const result={baseline:capture.baselineSource,sourceHashes:capture.sourceHashes,scope:'B0 source-path/predicate/lock-boundary review with actual B2 partial Mapper links; NOT whole-table closure or independent runtime acceptance',
   policies:family,entries,statements:capture.current.sql.map(sqlReview),dynamic,
-  remaining:['35 tables plus read-only receipt business Mapper cutover OPEN','MEDIA repaired prefix must be retained at actual Mapper cutover; synthetic paid seeds do not enable paid vision','Runtime evidence covers selected core/media/query races, not every interleaving or unknown historical lock holder','B2-B5 business module extraction/magic values/config/error cleanup not activated','Independent review/QA not activated']};
+  remaining:['35 tables plus read-only receipt business Mapper cutover OPEN','MEDIA repaired prefix must be retained at actual Mapper cutover; synthetic paid seeds do not enable paid vision','Runtime evidence covers selected core/media/query races, not every interleaving or unknown historical lock holder','B2 activated and partially implemented; remaining B2 call chains continue; B3-B5 not activated','Independent review/QA not activated']};
 const json=JSON.stringify(result);fs.writeFileSync(path.join(__dirname,'evidence/reviewed-paths.json.gz'),zlib.gzipSync(json));
-const csv=['baseline_index,baseline_entry,current_entry,target_service,policy,disposition,sql_count',...entries.map(e=>[e.baselineIndex,e.baselineEntry,e.currentEntry??'',e.targetService,e.policy,e.disposition,e.sql.length].map(v=>'"'+String(v).replaceAll('"','""')+'"').join(','))].join('\n')+'\n';
+const csv=['baseline_index,baseline_entry,current_entry,target_service,policy,disposition,sql_count,actual_mapper_statements',...entries.map(e=>[e.baselineIndex,e.baselineEntry,e.currentEntry??'',e.targetService,e.policy,e.disposition,e.sql.length,e.mapperStatements.join(' | ')].map(v=>'"'+String(v).replaceAll('"','""')+'"').join(','))].join('\n')+'\n';
 fs.writeFileSync(path.join(__dirname,'evidence/reviewed-entries.csv'),csv);
 fs.writeFileSync(path.join(root,'target/xiao60/reviewed-paths.json'),JSON.stringify(result,null,2)+'\n');
 console.log(JSON.stringify({entries:entries.length,statements:result.statements.length,dynamic:dynamic.length,binds:result.statements.reduce((n,s)=>n+s.binds.length,0),unmatched:entries.filter(e=>!e.currentEntry).map(e=>({index:e.baselineIndex,entry:e.baselineEntry}))}));

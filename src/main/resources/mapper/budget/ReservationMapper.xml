@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.budget.mapper.ReservationMapper">
+  <select id="selectReservedSlot" resultType="map">
+    <![CDATA[SELECT id FROM reservation WHERE tenant_id=#{tenant} AND id=#{reservationId} AND state='RESERVED']]>
+  </select>
+  <update id="releaseQueueSlot">
+    <![CDATA[UPDATE reservation SET state='RELEASED' WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
+  </update>
+  <update id="reserveReleasedRun">
+    <![CDATA[UPDATE reservation SET state='RESERVED' WHERE tenant_id=#{tenant} AND id=#{reservationId} AND state='RELEASED']]>
+  </update>
+  <insert id="insertReservation">
+    <![CDATA[INSERT INTO reservation(tenant_id,id,task_id,dispatch_id,category,amount,state,usage_quality) VALUES(#{tenant},#{reservationId},#{taskId},#{dispatchId},#{category},#{amount},#{state},#{quality})]]>
+  </insert>
+  <update id="settleReservedAmount">
+    <![CDATA[UPDATE reservation SET actual=amount WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
+  </update>
+</mapper>

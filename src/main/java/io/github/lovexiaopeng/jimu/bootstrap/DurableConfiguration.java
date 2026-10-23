@@ -69,6 +69,7 @@ public class DurableConfiguration {
   JdbcLedger ledger(
       DataSource source,
       DataSourceTransactionManager transactions,
+      org.mybatis.spring.SqlSessionTemplate sqlSessions,
       LedgerUnitOfWork unitOfWork,
       LedgerSchema schema,
       Environment env,
@@ -88,7 +89,8 @@ public class DurableConfiguration {
           .migrate();
     }
     Flyway.configure().dataSource(source).cleanDisabled(true).load().validate();
-    var ledger = new JdbcLedger(source, models, transactions, unitOfWork, schema::check);
+    var ledger =
+        new JdbcLedger(source, models, transactions, unitOfWork, schema::check, sqlSessions);
     ledger.nativeSearchAvailability(searches::available);
     ledger.imageStorage(images.orElse(null));
     ledger.mcpSettings(mcpSettings);

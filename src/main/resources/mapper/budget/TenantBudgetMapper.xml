@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.budget.mapper.TenantBudgetMapper">
+  <select id="selectClaimTenants" resultType="map">
+    <![CDATA[SELECT tenant_id FROM tenant_budget ORDER BY tenant_id]]>
+  </select>
+  <select id="selectBudgetForUpdate" resultType="map">
+    <![CDATA[SELECT tenant_id,queue_limit,running_limit,model_limit,tool_limit,token_limit,storage_limit,queued,running,model_used,tool_used,token_held,storage_held,cost_held,cost_limit,media_checkpoint_held,question_tasks_held,question_tasks_limit,todo_storage_held,todo_storage_limit,directory_storage_held,directory_storage_limit,history_storage_held,history_storage_limit FROM tenant_budget WHERE tenant_id=#{tenant} FOR UPDATE]]>
+  </select>
+  <update id="moveQueuedToRunning">
+    <![CDATA[UPDATE tenant_budget SET queued=queued-1,running=running+1 WHERE tenant_id=#{tenant}]]>
+  </update>
+  <update id="incrementRunning">
+    <![CDATA[UPDATE tenant_budget SET running=running+1 WHERE tenant_id=#{tenant}]]>
+  </update>
+  <update id="holdMediaCheckpoint">
+    <![CDATA[UPDATE tenant_budget SET media_checkpoint_held=media_checkpoint_held+#{bytes} WHERE tenant_id=#{tenant}]]>
+  </update>
+</mapper>

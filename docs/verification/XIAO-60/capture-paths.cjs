@@ -72,10 +72,25 @@ function capture(graph,label) {
  return {label,entries,sql,dynamicSql,bindings,graph:graphSubset};
 }
 const snapshots={baseline:capture(old,'accepted source'),current:capture(current,'working implementation')};
+// Fixed XML statements are actual Mapper calls, separate from the remaining JDBC literals.
+const mapperSql=[];
+function mapperFiles(folder){return fs.readdirSync(folder,{withFileTypes:true}).flatMap(e=>e.isDirectory()?mapperFiles(path.join(folder,e.name)):[path.join(folder,e.name)]);}
+for(const file of mapperFiles(path.join(root,'src/main/resources/mapper')).filter(f=>f.endsWith('.xml'))) {
+ const xml=fs.readFileSync(file,'utf8'),namespace=xml.match(/<mapper namespace="([^"]+)"/)[1];
+ for(const item of xml.matchAll(/<(select|insert|update|delete)\s+id="([^"]+)"[^>]*>([\s\S]*?)<\/\1>/g)) {
+  const sql=item[3].replace(/<!\[CDATA\[|\]\]>/g,'').trim();
+  mapperSql.push({id:namespace+'.'+item[2],namespace,method:item[2],file:path.relative(root,file).replaceAll('\\','/'),sql,tables:tables.filter(t=>new RegExp('\\b'+t.table+'\\b','i').test(sql)).map(t=>t.table),parameters:[...sql.matchAll(/#\{(\w+)\}/g)].map(m=>m[1])});
+ }
+}
+for(const entry of snapshots.current.entries) {
+ const calls=entry.reachable.flatMap(id=>current[id]?.calls??[]);
+ entry.mapperStatements=mapperSql.filter(statement=>calls.some(call=>call.target?.startsWith(statement.namespace+'#'+statement.method+'('))).map(s=>s.id);
+}
 const liveFiles=[...new Set(Object.values(current).map(m=>m.file))];
 const sourceHashes=Object.fromEntries(liveFiles.sort().map(file=>[file,sha(fs.readFileSync(path.join(root,file)))]));
-const tableStates=tables.map(table=>({...table,state:'OPEN',actualBusinessMapper:null,sql:snapshots.current.sql.filter(s=>s.tables.includes(table.table)).map(s=>s.id),note:table.table==='jimu_provisioning_receipt'?'EXTERNAL_READ_ONLY; no repository DDL or ownership inferred':'A Mapper probe/record port is not a migrated business table.'}));
-const result={baselineSource:base,sourceHashes,boundaries:['javac resolves overloaded symbols and declared overrides; lambda bodies are attributed to their factory node','Dynamic JDK callbacks, reflection, framework binding and external execution remain explicit; this is not a runtime trace or exhaustive interleaving proof','Per-source conditions/parameters are exact; proposed Mapper statement IDs are not product Mapper coverage','Inherited lock scope, full composite keys, global maintenance scans and tenant exceptions still need statement-by-statement cutover review'],tables:tableStates,...snapshots};
+for(const file of [...new Set(mapperSql.map(s=>s.file))])sourceHashes[file]=sha(fs.readFileSync(path.join(root,file)));
+const tableStates=tables.map(table=>({...table,state:'OPEN',actualBusinessMapper:mapperSql.filter(s=>s.tables.includes(table.table)).map(s=>s.id),sql:snapshots.current.sql.filter(s=>s.tables.includes(table.table)).map(s=>s.id),note:table.table==='jimu_provisioning_receipt'?'EXTERNAL_READ_ONLY; no repository DDL or ownership inferred':'B2 partial call-chain cutover; remaining literal/dynamic/module readers keep the table OPEN. XML presence alone does not close a table.'}));
+const result={baselineSource:base,sourceHashes,mapperSql,boundaries:['javac resolves overloaded symbols and declared overrides; lambda bodies are attributed to their factory node','Dynamic JDK callbacks, reflection, framework binding and external execution remain explicit; this is not a runtime trace or exhaustive interleaving proof','Per-source conditions/parameters are exact; proposed Mapper statement IDs are not product Mapper coverage','Inherited lock scope, full composite keys, global maintenance scans and tenant exceptions still need statement-by-statement cutover review','Mapper XML is separately inventoried and linked to statically reachable typed method calls; BaseMapper-generated metadata operations require their runtime evidence'],tables:tableStates,...snapshots};
 // Normalized symbol dictionary keeps the complete graph reviewable without repeating long Java signatures.
 const symbols=[...new Set(JSON.stringify(result).match(/(?:io\.github\.lovexiaopeng\.jimu\.[^"\\]*#[^"\\]*)/g)??[])].sort();
 const ids=new Map(symbols.map((s,i)=>[s,'m'+i]));
@@ -86,4 +101,6 @@ const file=path.join(__dirname,'evidence/path-tracking.json.gz');fs.writeFileSyn
 fs.writeFileSync(path.join(out,'path-tracking.json'),JSON.stringify(result,null,2)+'\n');
 const csv=['baseline_entry,target_service,sql_literals,lock_sites,transaction_nodes',...snapshots.baseline.entries.map(e=>[e.entry,e.targetService,e.sql.length,e.locks.length,e.transactionNodes.join(' | ')].map(v=>'"'+String(v).replaceAll('"','""')+'"').join(','))].join('\n')+'\n';
 fs.writeFileSync(path.join(__dirname,'evidence/entry-to-service.csv'),csv);
+const tableCsv=['table,state,actual_mapper_statements,remaining_jdbc_literal_sites,migration',...tableStates.map(t=>[t.table,t.state,t.actualBusinessMapper.join(' | '),t.sql.length,t.migration??'EXTERNAL_READ_ONLY'].map(v=>'"'+String(v).replaceAll('"','""')+'"').join(','))].join('\n')+'\n';
+fs.writeFileSync(path.join(__dirname,'evidence/b2-table-status.csv'),tableCsv);
 console.log(JSON.stringify({baselineEntries:snapshots.baseline.entries.length,currentEntries:snapshots.current.entries.length,baselineSql:snapshots.baseline.sql.length,currentSql:snapshots.current.sql.length,tables:tableStates.length,rawBytes:raw.length,compressedBytes:fs.statSync(file).size}));

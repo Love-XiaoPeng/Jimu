@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.worker.mapper.WorkerProcessMapper">
+  <select id="selectObservedProcesses" resultType="map">
+    <![CDATA[SELECT w.id,w.host_id,w.pid,w.start_ticks,w.stopped,w.registered_at,w.boot_id,w.observer_pid_namespace,EXISTS(SELECT 1 FROM task_attempt a JOIN task t ON t.tenant_id=a.tenant_id AND t.id=a.task_id WHERE a.worker_id=w.id AND a.quiescent=FALSE AND (t.cancel_requested_at<CURRENT_TIMESTAMP(6)-INTERVAL 3 SECOND OR (t.state='NEEDS_RECONCILIATION' AND t.updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 3 SECOND AND EXISTS(SELECT 1 FROM native_search_run n WHERE n.tenant_id=t.tenant_id AND n.task_id=t.id AND n.worker_id=w.id AND n.phase<>'STOPPED')))) AS overdue FROM worker_process w WHERE host_id=#{host} AND stopped=FALSE ORDER BY id LIMIT 64]]>
+  </select>
+  <select id="selectActiveNativeWorker" resultType="map">
+    <![CDATA[SELECT root_invocation FROM native_search_run WHERE worker_id=#{worker} AND phase<>'STOPPED' LIMIT 1]]>
+  </select>
+</mapper>

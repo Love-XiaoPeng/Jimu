@@ -64,6 +64,8 @@ class PersistenceAssemblyTest {
       assertSame(source, context.getBean(DataSourceTransactionManager.class).getDataSource());
       assertSame(factory, context.getBean(SqlSessionTemplate.class).getSqlSessionFactory());
       assertFalse(factory.getConfiguration().isCacheEnabled());
+      assertTrue(factory.getConfiguration().isCallSettersOnNulls());
+      assertTrue(factory.getConfiguration().isReturnInstanceForEmptyRow());
       assertEquals(LocalCacheScope.STATEMENT, factory.getConfiguration().getLocalCacheScope());
       assertTrue(
           factory

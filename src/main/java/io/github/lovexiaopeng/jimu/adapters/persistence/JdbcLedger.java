@@ -50,6 +50,7 @@ public final class JdbcLedger
   private final io.github.lovexiaopeng.jimu.kernel.invocation.service.InvocationService
       invocationService;
   private final JdbcTemplate db;
+  final CoreMappers mappers;
   private final DataSource source;
   private final io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query;
   private final io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
@@ -546,11 +547,11 @@ public final class JdbcLedger
                     code);
                 long receipt =
                     n(
-                        one(
-                            "SELECT seq FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
-                            lease.tenant(),
-                            lease.taskId(),
-                            "result:" + invocation),
+                        first(
+                            mappers
+                                .events()
+                                .selectFactSequence(
+                                    query, lease.tenant(), lease.taskId(), "result:" + invocation)),
                         "seq");
                 Long nativeSeq = read ? n(sessions.history(task, true), "next_seq") : null;
                 var refValues = read && found != null ? sessions.contracts.json(refs, 2048) : null;
@@ -809,12 +810,9 @@ public final class JdbcLedger
     String changed = "history:" + fact;
     event(task, changed, "session_history.changed", null);
     long reliable =
-        db.queryForObject(
-            "SELECT seq FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
-            Long.class,
-            s(task, "tenant_id"),
-            s(task, "id"),
-            changed);
+        mappers
+            .events()
+            .selectFactSequenceValue(query, s(task, "tenant_id"), s(task, "id"), changed);
     long seq =
         sessions.append(task, fact, type, source, data, redacted, sourceDigest, lease, reliable);
     sessions.account(task, type.equals("turn.ended"));
@@ -1252,11 +1250,11 @@ public final class JdbcLedger
                     code);
                 long receipt =
                     n(
-                        one(
-                            "SELECT seq FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
-                            lease.tenant(),
-                            lease.taskId(),
-                            "result:" + invocation),
+                        first(
+                            mappers
+                                .events()
+                                .selectFactSequence(
+                                    query, lease.tenant(), lease.taskId(), "result:" + invocation)),
                         "seq");
                 db.update(
                     "UPDATE invocation_session_search SET outcome=?,failure_code=?,scan_digest=?,scan_rows=?,scan_event_bytes=?,output_digest=?,output_bytes=?,receipt_event_seq=?,committed_attempt_id=?,committed_fence=?,committed_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND invocation_id=? AND outcome='PENDING'",
@@ -1448,11 +1446,11 @@ public final class JdbcLedger
                     code);
                 long receipt =
                     n(
-                        one(
-                            "SELECT seq FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
-                            lease.tenant(),
-                            lease.taskId(),
-                            "result:" + invocation),
+                        first(
+                            mappers
+                                .events()
+                                .selectFactSequence(
+                                    query, lease.tenant(), lease.taskId(), "result:" + invocation)),
                         "seq");
                 db.update(
                     "UPDATE invocation_session_trace SET outcome=?,failure_code=?,scan_digest=?,relations_digest=?,target_digest=?,scan_rows=?,scan_event_bytes=?,relation_edges=?,output_digest=?,output_bytes=?,receipt_event_seq=?,committed_attempt_id=?,committed_fence=?,committed_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND invocation_id=? AND outcome='PENDING'",
@@ -2243,12 +2241,10 @@ public final class JdbcLedger
           if (changed) {
             event(task, "directory-change:" + invocationId, "working_directory.changed", null);
             seq =
-                db.queryForObject(
-                    "SELECT seq FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
-                    Long.class,
-                    lease.tenant(),
-                    lease.taskId(),
-                    "directory-change:" + invocationId);
+                mappers
+                    .events()
+                    .selectFactSequenceValue(
+                        query, lease.tenant(), lease.taskId(), "directory-change:" + invocationId);
           }
           if (db.update(
                   "UPDATE invocation SET state='SUCCEEDED',output_snapshot=?,output_digest=? WHERE tenant_id=? AND id=? AND state='PENDING'",
@@ -2725,12 +2721,13 @@ public final class JdbcLedger
                         event(task, "intent:" + invocation, "tool.dispatched", null);
                         event(task, "todo-write:" + invocation, "todo.updated", null);
                         long seq =
-                            db.queryForObject(
-                                "SELECT seq FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
-                                Long.class,
-                                lease.tenant(),
-                                lease.taskId(),
-                                "todo-write:" + invocation);
+                            mappers
+                                .events()
+                                .selectFactSequenceValue(
+                                    query,
+                                    lease.tenant(),
+                                    lease.taskId(),
+                                    "todo-write:" + invocation);
                         if (db.update(
                                 "UPDATE invocation SET state='SUCCEEDED',output_snapshot=?,output_digest=?,todo_applied_revision=?,todo_committed_attempt_id=?,todo_committed_fence=?,todo_event_seq=?,todo_committed_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND state='PENDING' AND todo_applied_revision IS NULL",
                                 output,
@@ -4172,7 +4169,24 @@ public final class JdbcLedger
       DataSourceTransactionManager manager,
       io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork unitOfWork,
       Runnable schemaCheck) {
-    this(source, models, manager, unitOfWork, schemaCheck, null);
+    this(
+        source,
+        models,
+        manager,
+        unitOfWork,
+        schemaCheck,
+        io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure.LedgerMapperSessions.create(
+            source));
+  }
+
+  public JdbcLedger(
+      DataSource source,
+      ModelProfiles models,
+      DataSourceTransactionManager manager,
+      io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork unitOfWork,
+      Runnable schemaCheck,
+      org.mybatis.spring.SqlSessionTemplate sessions) {
+    this(source, models, manager, unitOfWork, schemaCheck, CoreMappers.from(sessions), null);
   }
 
   private JdbcLedger(
@@ -4181,8 +4195,10 @@ public final class JdbcLedger
       DataSourceTransactionManager manager,
       io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork unitOfWork,
       Runnable schemaCheck,
+      CoreMappers mappers,
       io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
     this.source = source;
+    this.mappers = mappers;
     this.query = query;
     this.models = models;
     db =
@@ -4231,7 +4247,7 @@ public final class JdbcLedger
         };
     workerService =
         new io.github.lovexiaopeng.jimu.kernel.worker.service.impl.WorkerServiceImpl(
-            records.worker(), coreWork);
+            new MapperWorkerRecords(this), coreWork);
     executionService =
         new io.github.lovexiaopeng.jimu.kernel.execution.service.impl.ExecutionServiceImpl(
             records.execution(), coreWork, leaseWork, Payloads::hash);
@@ -4255,6 +4271,7 @@ public final class JdbcLedger
             (DataSourceTransactionManager) transactions.getTransactionManager(),
             unitOfWork,
             schemaCheck,
+            mappers,
             new io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext(end, resources));
     scoped.searchAvailable = searchAvailable;
     scoped.imageStore = imageStore;
@@ -4545,6 +4562,15 @@ public final class JdbcLedger
             });
   }
 
+  static Map<String, Object> first(List<Map<String, Object>> rows) {
+    if (rows.isEmpty()) throw new TaskFailure(404, "NOT_FOUND");
+    return rows.getFirst();
+  }
+
+  io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext queryContext() {
+    return query;
+  }
+
   List<Map<String, Object>> rows(String sql, Object... args) {
     return db.queryForList(sql, args);
   }
@@ -4574,7 +4600,7 @@ public final class JdbcLedger
   }
 
   Map<String, Object> bucket(String tenant) {
-    return one("SELECT * FROM tenant_budget WHERE tenant_id=? FOR UPDATE", tenant);
+    return first(mappers.budgets().selectBudgetForUpdate(query, tenant));
   }
 
   private void identity(Identity identity) {
@@ -5246,10 +5272,7 @@ public final class JdbcLedger
 
   Map<String, Object> locked(String tenant, String task) {
     sessionScopes.lock(tenant, task);
-    return one(
-        "SELECT *,lease_until>CURRENT_TIMESTAMP(6) AS live,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND id=? FOR UPDATE",
-        tenant,
-        task);
+    return first(mappers.tasks().selectTaskForUpdate(query, tenant, task));
   }
 
   private Map<String, Object> visible(Identity identity, String task) {
@@ -5553,33 +5576,17 @@ public final class JdbcLedger
       long amount,
       String state,
       String quality) {
-    db.update(
-        "INSERT INTO reservation(tenant_id,id,task_id,dispatch_id,category,amount,state,usage_quality) VALUES(?,?,?,?,?,?,?,?)",
-        tenant,
-        reservation,
-        task,
-        dispatch,
-        category,
-        amount,
-        state,
-        quality);
+    mappers
+        .reservations()
+        .insertReservation(
+            query, tenant, reservation, task, dispatch, category, amount, state, quality);
   }
 
   void event(Map<String, Object> task, String fact, String type, String code) {
     String tenant = s(task, "tenant_id"), taskId = s(task, "id");
-    if (!rows(
-            "SELECT seq FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
-            tenant,
-            taskId,
-            fact)
-        .isEmpty()) return;
+    if (!mappers.events().selectFactSequence(query, tenant, taskId, fact).isEmpty()) return;
     if (todoTask(task) || directoryTask(task) || JdbcSessionRecords.task(task)) {
-      long seq =
-          db.queryForObject(
-              "SELECT next_event_seq FROM task WHERE tenant_id=? AND id=?",
-              Long.class,
-              tenant,
-              taskId);
+      long seq = mappers.tasks().selectNextEventSequence(query, tenant, taskId);
       boolean reserved =
           type.equals("session_history.content_deleted")
               || type.equals("working_directory.content_deleted")
@@ -5595,28 +5602,21 @@ public final class JdbcLedger
                 ? "SESSION_HISTORY_LIMIT"
                 : directoryTask(task) ? "DIRECTORY_EXECUTION_LIMIT" : "TODO_EXECUTION_LIMIT");
     }
-    db.update(
-        "UPDATE task SET next_event_seq=next_event_seq+1, revision=revision+1, updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
-        tenant,
-        taskId);
-    long seq =
-        db.queryForObject(
-            "SELECT next_event_seq FROM task WHERE tenant_id=? AND id=?",
-            Long.class,
+    mappers.tasks().advanceEventSequence(query, tenant, taskId);
+    long seq = mappers.tasks().selectNextEventSequence(query, tenant, taskId);
+    mappers
+        .events()
+        .insertFact(
+            query,
             tenant,
-            taskId);
-    db.update(
-        "INSERT INTO event(tenant_id,task_id,seq,event_id,fact_id,type,code,status,artifact_id) VALUES(?,?,?,?,?,?,?,?,?)",
-        tenant,
-        taskId,
-        seq,
-        taskId + ":" + seq,
-        fact,
-        type,
-        code,
-        db.queryForObject(
-            "SELECT state FROM task WHERE tenant_id=? AND id=?", String.class, tenant, taskId),
-        "artifact.created".equals(type) ? fact.substring("published:".length()) : null);
+            taskId,
+            seq,
+            taskId + ":" + seq,
+            fact,
+            type,
+            code,
+            mappers.tasks().selectState(query, tenant, taskId),
+            "artifact.created".equals(type) ? fact.substring("published:".length()) : null);
     sessionFact(task, fact);
     if (JdbcSessionRecords.task(task))
       sessions.account(
@@ -5635,10 +5635,7 @@ public final class JdbcLedger
 
   Optional<io.github.lovexiaopeng.jimu.kernel.worker.port.WorkerRecords.Candidate> claimCandidate(
       String tenant) {
-    var ready =
-        rows(
-            "SELECT id,evaluation_run_id FROM task t WHERE tenant_id=? AND record_version IN (1,2,3) AND (state='QUEUED' OR (state='RESUME_READY' AND NOT EXISTS(SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.tenant_id=t.tenant_id AND a.task_id=t.id AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE)) AND NOT EXISTS(SELECT 1 FROM reservation r WHERE r.tenant_id=t.tenant_id AND r.id=CONCAT(t.id,':run') AND r.state='RESERVED')) OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6) AND (FIND_IN_SET('working_directory',t.capabilities)=0 OR (NOT EXISTS(SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.tenant_id=t.tenant_id AND a.task_id=t.id AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE)) AND NOT EXISTS(SELECT 1 FROM native_search_run n WHERE n.tenant_id=t.tenant_id AND n.task_id=t.id AND n.phase<>'STOPPED'))))) ORDER BY ready_at,id LIMIT 1",
-            tenant);
+    var ready = mappers.tasks().selectReadyCandidate(query, tenant);
 
     if (ready.isEmpty()) return Optional.empty();
     var row = ready.getFirst();
@@ -5657,11 +5654,7 @@ public final class JdbcLedger
         evaluation(tenant, executionScopes.targetRun(tenant, s(candidate, "evaluation_run_id")));
     var budget = bucket(tenant);
     sessionScopes.lock(tenant, s(candidate, "id"));
-    var candidates =
-        rows(
-            "SELECT *,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND id=? AND record_version IN (1,2,3) AND (state IN ('QUEUED','RESUME_READY') OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) FOR UPDATE SKIP LOCKED",
-            tenant,
-            s(candidate, "id"));
+    var candidates = mappers.tasks().claimExactCandidate(query, tenant, s(candidate, "id"));
     if (candidates.isEmpty()) return Optional.empty();
     var task = candidates.getFirst();
 
@@ -5691,10 +5684,9 @@ public final class JdbcLedger
 
           @Override
           public boolean runReserved() {
-            return !rows(
-                    "SELECT id FROM reservation WHERE tenant_id=? AND id=? AND state='RESERVED'",
-                    tenant,
-                    taskId + ":run")
+            return !mappers
+                .reservations()
+                .selectReservedSlot(query, tenant, taskId + ":run")
                 .isEmpty();
           }
 
@@ -5705,11 +5697,7 @@ public final class JdbcLedger
 
           @Override
           public boolean pendingEffect() {
-            return !rows(
-                    "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN')",
-                    tenant,
-                    taskId)
-                .isEmpty();
+            return !mappers.invocations().selectPendingEffects(query, tenant, taskId).isEmpty();
           }
 
           @Override
@@ -5729,10 +5717,7 @@ public final class JdbcLedger
 
           @Override
           public void markRunningInvocationsUnknown() {
-            db.update(
-                "UPDATE invocation SET state='OUTCOME_UNKNOWN' WHERE tenant_id=? AND task_id=? AND state='RUNNING'",
-                tenant,
-                taskId);
+            mappers.invocations().markRunningEffectsUnknown(query, tenant, taskId);
           }
 
           @Override
@@ -5742,10 +5727,7 @@ public final class JdbcLedger
 
           @Override
           public void expireCurrentAttempt() {
-            db.update(
-                "UPDATE task_attempt SET state='EXPIRED',ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND state='ACTIVE'",
-                tenant,
-                s(task, "current_attempt_id"));
+            mappers.attempts().expireActiveAttempt(query, tenant, s(task, "current_attempt_id"));
           }
 
           @Override
@@ -5758,33 +5740,21 @@ public final class JdbcLedger
             access(task);
             if (JdbcSessionRecords.task(task)) {
               sessionAdmission(task);
-              if (db.queryForObject(
-                      "SELECT COUNT(*) FROM task_attempt WHERE tenant_id=? AND task_id=?",
-                      Long.class,
-                      tenant,
-                      taskId)
-                  >= 8) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+              if (mappers.attempts().countTaskAttempts(query, tenant, taskId) >= 8)
+                throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
             }
             if (directoryTask(task)) {
               directoryAdmission(task);
-              if (db.queryForObject(
-                      "SELECT COUNT(*) FROM task_attempt WHERE tenant_id=? AND task_id=?",
-                      Long.class,
-                      tenant,
-                      taskId)
-                  >= 8) throw new TaskFailure(429, "DIRECTORY_EXECUTION_LIMIT");
+              if (mappers.attempts().countTaskAttempts(query, tenant, taskId) >= 8)
+                throw new TaskFailure(429, "DIRECTORY_EXECUTION_LIMIT");
             }
             if (todoTask(task)) {
               if (!todosEnabled) throw new TaskFailure(403, "TODO_FEATURE_DISABLED");
               models.requireTodo(snapshot(task));
               if (n(todoProjection(task), "revision") < 0)
                 throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-              if (db.queryForObject(
-                      "SELECT COUNT(*) FROM task_attempt WHERE tenant_id=? AND task_id=?",
-                      Long.class,
-                      tenant,
-                      taskId)
-                  >= 8) throw new TaskFailure(429, "TODO_EXECUTION_LIMIT");
+              if (mappers.attempts().countTaskAttempts(query, tenant, taskId) >= 8)
+                throw new TaskFailure(429, "TODO_EXECUTION_LIMIT");
             }
             if (questionTask(task) && !questionsEnabled)
               throw new TaskFailure(403, "QUESTION_FEATURE_DISABLED");
@@ -5807,46 +5777,26 @@ public final class JdbcLedger
 
           @Override
           public void moveQueueToRunning() {
-            db.update(
-                "UPDATE tenant_budget SET queued=queued-1,running=running+1 WHERE tenant_id=?",
-                tenant);
-            db.update(
-                "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=?",
-                tenant,
-                taskId + ":queue");
+            mappers.budgets().moveQueuedToRunning(query, tenant);
+            mappers.reservations().releaseQueueSlot(query, tenant, taskId + ":queue");
             reserve(tenant, taskId, taskId + ":run", null, "RUNNING", 1, "RESERVED", "KNOWN");
           }
 
           @Override
           public void resumeRunning() {
-            if (db.update(
-                    "UPDATE reservation SET state='RESERVED' WHERE tenant_id=? AND id=? AND state='RELEASED'",
-                    tenant,
-                    taskId + ":run")
-                != 1) throw new TaskFailure(409, "RESERVATION_STATE");
-            db.update("UPDATE tenant_budget SET running=running+1 WHERE tenant_id=?", tenant);
+            if (mappers.reservations().reserveReleasedRun(query, tenant, taskId + ":run") != 1)
+              throw new TaskFailure(409, "RESERVATION_STATE");
+            mappers.budgets().incrementRunning(query, tenant);
           }
 
           @Override
           public void insertAttempt(String worker, String attempt, long fence) {
-            db.update(
-                "INSERT INTO task_attempt(tenant_id,id,task_id,worker_id,fence,state) VALUES(?,?,?,?,?,'ACTIVE')",
-                tenant,
-                attempt,
-                taskId,
-                worker,
-                fence);
+            mappers.attempts().insertActiveAttempt(query, tenant, attempt, taskId, worker, fence);
           }
 
           @Override
           public void assignLease(String worker, String attempt, long fence) {
-            db.update(
-                "UPDATE task SET state='RUNNING',fence=?,current_attempt_id=?,worker_id=?,lease_until=CURRENT_TIMESTAMP(6)+INTERVAL 30 SECOND WHERE tenant_id=? AND id=?",
-                fence,
-                attempt,
-                worker,
-                tenant,
-                taskId);
+            mappers.tasks().assignClaimedLease(query, fence, attempt, worker, tenant, taskId);
           }
 
           @Override
@@ -6344,10 +6294,7 @@ public final class JdbcLedger
   Map<String, Object> evaluation(Lease lease, boolean admission) {
     String run =
         s(
-            one(
-                "SELECT evaluation_run_id FROM task WHERE tenant_id=? AND id=?",
-                lease.tenant(),
-                lease.taskId()),
+            first(mappers.tasks().selectEvaluationRun(query, lease.tenant(), lease.taskId())),
             "evaluation_run_id");
     return evaluation(
         lease.tenant(), admission ? executionScopes.targetRun(lease.tenant(), run) : run);
@@ -6355,8 +6302,7 @@ public final class JdbcLedger
 
   Map<String, Object> evaluation(String tenant, String run) {
     if (run == null) return null;
-    var found =
-        rows("SELECT * FROM evaluation_budget WHERE tenant_id=? AND id=? FOR UPDATE", tenant, run);
+    var found = mappers.evaluations().selectRunForUpdate(query, tenant, run);
     if (found.isEmpty()) throw new TaskFailure(503, "MODEL_EVALUATION_UNAVAILABLE");
     return found.getFirst();
   }
@@ -6763,12 +6709,8 @@ public final class JdbcLedger
             lease.fence());
     if (bindings.size() != 1) throw new TaskFailure(409, "WEB_OBSERVATION_BINDING_REJECTED");
     String fact = "web-cancel:" + invocationId + ":" + lease.fence();
-    if (!rows(
-            "SELECT seq FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
-            lease.tenant(),
-            lease.taskId(),
-            fact)
-        .isEmpty()) return;
+    if (!mappers.events().selectFactSequence(query, lease.tenant(), lease.taskId(), fact).isEmpty())
+      return;
     event(task, fact, "web.fetch_cancelled", cancellation.phase() + "_" + cancellation.reason());
     event(
         task,
@@ -7661,17 +7603,15 @@ public final class JdbcLedger
   }
 
   private boolean writersQuiescent(Map<String, Object> task) {
-    if (!rows(
-            "SELECT root_invocation FROM native_search_run WHERE tenant_id=? AND task_id=? AND phase<>'STOPPED' LIMIT 1",
-            s(task, "tenant_id"),
-            s(task, "id"))
+    if (!mappers
+        .attempts()
+        .selectActiveNativeTask(query, s(task, "tenant_id"), s(task, "id"))
         .isEmpty()) return false;
     // Every attempt matters, including expired attempts fenced out by a later worker.
     // Missing receipts and process-observation failures remain unknown.
-    return rows(
-            "SELECT a.id FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.tenant_id=? AND a.task_id=? AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE)",
-            s(task, "tenant_id"),
-            s(task, "id"))
+    return mappers
+        .attempts()
+        .selectUnobservedWriters(query, s(task, "tenant_id"), s(task, "id"))
         .isEmpty();
   }
 
@@ -7689,10 +7629,9 @@ public final class JdbcLedger
     if (!writersQuiescent(task)) return;
     if ("CANCEL_REQUESTED".equals(s(task, "state"))) {
       boolean uncertain =
-          !rows(
-                  "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN')",
-                  s(task, "tenant_id"),
-                  s(task, "id"))
+          !mappers
+              .invocations()
+              .selectPendingEffects(query, s(task, "tenant_id"), s(task, "id"))
               .isEmpty();
       terminal(
           task,

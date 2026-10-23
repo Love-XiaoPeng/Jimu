@@ -30,18 +30,18 @@ final class JdbcExecutionRecords implements ExecutionRecords {
       }
 
       public boolean pendingEffect() {
-        return !db.queryForList(
-                "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN')",
-                lease.tenant(),
-                lease.taskId())
+        return !ledger
+            .mappers
+            .invocations()
+            .selectPendingEffects(ledger.queryContext(), lease.tenant(), lease.taskId())
             .isEmpty();
       }
 
       public void stopEvaluationRun() {
-        db.update(
-            "UPDATE evaluation_budget SET state='STOPPED' WHERE tenant_id=? AND id=?",
-            lease.tenant(),
-            ledger.s(row, "evaluation_run_id"));
+        ledger
+            .mappers
+            .evaluations()
+            .stopRun(ledger.queryContext(), lease.tenant(), ledger.s(row, "evaluation_run_id"));
       }
 
       public void terminal(String state, String code) {
@@ -55,11 +55,10 @@ final class JdbcExecutionRecords implements ExecutionRecords {
     var task = ledger.fenced(lease, true);
     return new Admission() {
       public Optional<StoredStep> latest() {
-        return db
-            .queryForList(
-                "SELECT * FROM step WHERE tenant_id=? AND task_id=? ORDER BY ordinal DESC LIMIT 1",
-                lease.tenant(),
-                lease.taskId())
+        return ledger
+            .mappers
+            .steps()
+            .selectLatestStep(ledger.queryContext(), lease.tenant(), lease.taskId())
             .stream()
             .map(
                 row ->
@@ -81,10 +80,10 @@ final class JdbcExecutionRecords implements ExecutionRecords {
       }
 
       public boolean unfinishedInvocations(String step) {
-        return !db.queryForList(
-                "SELECT id FROM invocation WHERE tenant_id=? AND step_id=? AND state<>'SUCCEEDED'",
-                lease.tenant(),
-                step)
+        return !ledger
+            .mappers
+            .invocations()
+            .selectUnfinishedStepInvocations(ledger.queryContext(), lease.tenant(), step)
             .isEmpty();
       }
 
@@ -117,10 +116,10 @@ final class JdbcExecutionRecords implements ExecutionRecords {
           long bytes = request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
           if (bytes > ledger.n(budget, "storage_limit") - ledger.storageHeld(budget))
             throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
-          db.update(
-              "UPDATE tenant_budget SET media_checkpoint_held=media_checkpoint_held+? WHERE tenant_id=?",
-              bytes,
-              lease.tenant());
+          ledger
+              .mappers
+              .budgets()
+              .holdMediaCheckpoint(ledger.queryContext(), bytes, lease.tenant());
           ledger.reserve(
               lease.tenant(),
               lease.taskId(),
@@ -130,37 +129,44 @@ final class JdbcExecutionRecords implements ExecutionRecords {
               bytes,
               "SETTLED",
               "KNOWN");
-          db.update(
-              "UPDATE reservation SET actual=amount WHERE tenant_id=? AND id=?",
-              lease.tenant(),
-              stepId + ":media-checkpoint");
+          ledger
+              .mappers
+              .reservations()
+              .settleReservedAmount(
+                  ledger.queryContext(), lease.tenant(), stepId + ":media-checkpoint");
         }
       }
 
       public void insertStep(String stepId, int ordinal, String request) {
-        db.update(
-            "INSERT INTO step(tenant_id,id,task_id,attempt_id,ordinal,state,request_snapshot,request_digest,model_version) VALUES(?,?,?,?,?,'PREPARED',?,?,?)",
-            lease.tenant(),
-            stepId,
-            lease.taskId(),
-            lease.attemptId(),
-            ordinal,
-            request,
-            Payloads.hash(request),
-            ledger.snapshot(task).model());
+        ledger
+            .mappers
+            .steps()
+            .insertPreparedStep(
+                ledger.queryContext(),
+                lease.tenant(),
+                stepId,
+                lease.taskId(),
+                lease.attemptId(),
+                ordinal,
+                request,
+                Payloads.hash(request),
+                ledger.snapshot(task).model());
       }
 
       public void prepareProjections(String stepId, String request) {
         if (JdbcSessionRecords.task(task)) ledger.sessions.prepare(task, request, stepId);
         if (ledger.directoryTask(task)) {
           var p = ledger.directoryProjection(task);
-          db.update(
-              "UPDATE step SET directory_revision=?,directory_cwd=?,directory_binding_digest=? WHERE tenant_id=? AND id=?",
-              ledger.n(p, "revision"),
-              ledger.s(p, "cwd"),
-              ledger.s(p, "binding_digest"),
-              lease.tenant(),
-              stepId);
+          ledger
+              .mappers
+              .steps()
+              .bindDirectoryProjection(
+                  ledger.queryContext(),
+                  ledger.n(p, "revision"),
+                  ledger.s(p, "cwd"),
+                  ledger.s(p, "binding_digest"),
+                  lease.tenant(),
+                  stepId);
         }
         if (ledger.questionTask(task)) {
           var wire =
@@ -178,10 +184,10 @@ final class JdbcExecutionRecords implements ExecutionRecords {
                   != 1) throw new TaskFailure(409, "QUESTION_DELIVERY_CONFLICT");
             }
           }
-          db.update(
-              "UPDATE task SET question_continuation_step_id=NULL WHERE tenant_id=? AND id=?",
-              lease.tenant(),
-              lease.taskId());
+          ledger
+              .mappers
+              .tasks()
+              .clearQuestionContinuation(ledger.queryContext(), lease.tenant(), lease.taskId());
         }
       }
 
@@ -233,10 +239,11 @@ final class JdbcExecutionRecords implements ExecutionRecords {
 
       public String latestStepId() {
         return ledger.s(
-            ledger.one(
-                "SELECT id FROM step WHERE tenant_id=? AND task_id=? ORDER BY ordinal DESC LIMIT 1",
-                lease.tenant(),
-                lease.taskId()),
+            JdbcLedger.first(
+                ledger
+                    .mappers
+                    .steps()
+                    .selectLatestStepId(ledger.queryContext(), lease.tenant(), lease.taskId())),
             "id");
       }
 
@@ -250,35 +257,34 @@ final class JdbcExecutionRecords implements ExecutionRecords {
       }
 
       public boolean publishedReport() {
-        return !db.queryForList(
-                "SELECT a.id FROM artifact a JOIN invocation i ON i.tenant_id=a.tenant_id AND i.id=a.producer_invocation AND i.task_id=a.task_id WHERE a.tenant_id=? AND a.task_id=? AND a.state='PUBLISHED' AND a.file_receipt IS NOT NULL AND i.tool='present' AND i.state='SUCCEEDED'",
-                lease.tenant(),
-                lease.taskId())
+        return !ledger
+            .mappers
+            .artifacts()
+            .selectPublishedReport(ledger.queryContext(), lease.tenant(), lease.taskId())
             .isEmpty();
       }
 
       public boolean unresolvedInvocations() {
-        return !db.queryForList(
-                "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state<>'SUCCEEDED'",
-                lease.tenant(),
-                lease.taskId())
+        return !ledger
+            .mappers
+            .invocations()
+            .selectUnfinishedTaskInvocations(ledger.queryContext(), lease.tenant(), lease.taskId())
             .isEmpty();
       }
 
       public boolean unresolvedArtifacts() {
-        return !db.queryForList(
-                "SELECT id FROM artifact WHERE tenant_id=? AND task_id=? AND state<>'PUBLISHED'",
-                lease.tenant(),
-                lease.taskId())
+        return !ledger
+            .mappers
+            .artifacts()
+            .selectUnpublishedArtifacts(ledger.queryContext(), lease.tenant(), lease.taskId())
             .isEmpty();
       }
 
       public void finishSummary(String summary) {
-        db.update(
-            "UPDATE task SET summary=? WHERE tenant_id=? AND id=?",
-            summary,
-            lease.tenant(),
-            lease.taskId());
+        ledger
+            .mappers
+            .tasks()
+            .finishSummary(ledger.queryContext(), summary, lease.tenant(), lease.taskId());
       }
 
       public void terminal(String state, String code) {

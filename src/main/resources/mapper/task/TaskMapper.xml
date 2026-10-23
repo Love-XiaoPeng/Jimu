@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskMapper">
+  <update id="renewOwnedLease">
+    <![CDATA[UPDATE task SET lease_until=CURRENT_TIMESTAMP(6)+INTERVAL 30 SECOND WHERE tenant_id=#{tenant} AND id=#{taskId} AND current_attempt_id=#{attemptId} AND worker_id=#{worker} AND fence=#{fence} AND lease_until>CURRENT_TIMESTAMP(6) AND state IN ('RUNNING','CANCEL_REQUESTED')]]>
+  </update>
+  <update id="expireStoppedWorkerLease">
+    <![CDATA[UPDATE task SET lease_until=CURRENT_TIMESTAMP(6)-INTERVAL 1 MICROSECOND WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
+  </update>
+  <select id="selectTaskForUpdate" resultType="map">
+    <![CDATA[SELECT tenant_id,id,owner_actor_id,idempotency_key,request_digest,request_snapshot,goal,capabilities,installation_epoch,policy_version,record_version,state,revision,created_at,updated_at,deadline,ready_at,cancel_requested_at,current_attempt_id,worker_id,fence,lease_until,next_event_seq,max_models,max_tools,models_used,tools_used,token_held,max_tokens,code,summary,model_snapshot,model_digest,evaluation_run_id,cost_held,max_cost_micros,tools_snapshot,tools_digest,report_time,evaluation_snapshot,evaluation_digest,evaluation_phase,evaluation_sample,evaluation_model,material_snapshot,material_digest,material_system_digest,material_file_snapshot,material_file_digest,execution_scope_digest,business_policy_snapshot,business_policy_digest,media_snapshot,media_digest,media_cleanup_state,mcp_snapshot,mcp_digest,question_binding,question_binding_digest,waiting_question_id,question_continuation_step_id,question_cleanup_state,question_retained_digests,lease_until>CURRENT_TIMESTAMP(6) AS live,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=#{tenant} AND id=#{taskId} FOR UPDATE]]>
+  </select>
+  <select id="selectEvaluationRun" resultType="map">
+    <![CDATA[SELECT evaluation_run_id FROM task WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
+  </select>
+  <select id="selectReadyCandidate" resultType="map">
+    <![CDATA[SELECT id,evaluation_run_id FROM task t WHERE tenant_id=#{tenant} AND record_version IN (1,2,3) AND (state='QUEUED' OR (state='RESUME_READY' AND NOT EXISTS(SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.tenant_id=t.tenant_id AND a.task_id=t.id AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE)) AND NOT EXISTS(SELECT 1 FROM reservation r WHERE r.tenant_id=t.tenant_id AND r.id=CONCAT(t.id,':run') AND r.state='RESERVED')) OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6) AND (FIND_IN_SET('working_directory',t.capabilities)=0 OR (NOT EXISTS(SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.tenant_id=t.tenant_id AND a.task_id=t.id AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE)) AND NOT EXISTS(SELECT 1 FROM native_search_run n WHERE n.tenant_id=t.tenant_id AND n.task_id=t.id AND n.phase<>'STOPPED'))))) ORDER BY ready_at,id LIMIT 1]]>
+  </select>
+  <select id="claimExactCandidate" resultType="map">
+    <![CDATA[SELECT tenant_id,id,owner_actor_id,idempotency_key,request_digest,request_snapshot,goal,capabilities,installation_epoch,policy_version,record_version,state,revision,created_at,updated_at,deadline,ready_at,cancel_requested_at,current_attempt_id,worker_id,fence,lease_until,next_event_seq,max_models,max_tools,models_used,tools_used,token_held,max_tokens,code,summary,model_snapshot,model_digest,evaluation_run_id,cost_held,max_cost_micros,tools_snapshot,tools_digest,report_time,evaluation_snapshot,evaluation_digest,evaluation_phase,evaluation_sample,evaluation_model,material_snapshot,material_digest,material_system_digest,material_file_snapshot,material_file_digest,execution_scope_digest,business_policy_snapshot,business_policy_digest,media_snapshot,media_digest,media_cleanup_state,mcp_snapshot,mcp_digest,question_binding,question_binding_digest,waiting_question_id,question_continuation_step_id,question_cleanup_state,question_retained_digests,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=#{tenant} AND id=#{taskId} AND record_version IN (1,2,3) AND (state IN ('QUEUED','RESUME_READY') OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) FOR UPDATE SKIP LOCKED]]>
+  </select>
+  <update id="assignClaimedLease">
+    <![CDATA[UPDATE task SET state='RUNNING',fence=#{fence},current_attempt_id=#{attemptId},worker_id=#{worker},lease_until=CURRENT_TIMESTAMP(6)+INTERVAL 30 SECOND WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
+  </update>
+  <select id="selectNextEventSequence" resultType="long">
+    <![CDATA[SELECT next_event_seq FROM task WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
+  </select>
+  <update id="advanceEventSequence">
+    <![CDATA[UPDATE task SET next_event_seq=next_event_seq+1, revision=revision+1, updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
+  </update>
+  <select id="selectState" resultType="string">
+    <![CDATA[SELECT state FROM task WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
+  </select>
+  <update id="clearQuestionContinuation">
+    <![CDATA[UPDATE task SET question_continuation_step_id=NULL WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
+  </update>
+  <update id="finishSummary">
+    <![CDATA[UPDATE task SET summary=#{summary} WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
+  </update>
+</mapper>

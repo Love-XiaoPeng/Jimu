@@ -9,7 +9,6 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionQueryDeadline
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
 import javax.sql.DataSource;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.session.LocalCacheScope;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -52,12 +51,8 @@ public class LedgerPersistenceConfiguration {
 
   @Bean
   ConfigurationCustomizer ledgerMybatisConfiguration() {
-    return configuration -> {
-      configuration.setCacheEnabled(false);
-      configuration.setLocalCacheScope(LocalCacheScope.STATEMENT);
-      configuration.setMapUnderscoreToCamelCase(true);
-      configuration.setDefaultStatementTimeout(5);
-    };
+    return io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure.LedgerMapperSessions
+        ::configure;
   }
 
   @Bean

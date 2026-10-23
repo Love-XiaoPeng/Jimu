@@ -36,12 +36,17 @@ class PersistencePathTrackingTest {
     assertEquals(36, capture.path("tables").size());
     for (var table : capture.path("tables")) {
       assertEquals("OPEN", table.path("state").asText());
-      assertTrue(table.path("actualBusinessMapper").isNull());
+      assertTrue(table.path("actualBusinessMapper").isArray());
     }
     assertEquals(153, capture.path("baseline").path("entries").size());
     // A SQL verb must be followed by whitespace; created_at/SETTLED were old false positives.
     assertTrue(capture.path("baseline").path("sql").size() > 500);
     assertTrue(capture.path("current").path("dynamicSql").size() > 0);
+    assertTrue(capture.path("mapperSql").size() >= 48);
+    for (var mapper : capture.path("mapperSql")) {
+      assertTrue(!mapper.path("sql").asText().contains("${"));
+      assertTrue(!mapper.path("sql").asText().matches("(?is).*SELECT\\s+(?:\\w+\\.)?\\*.*"));
+    }
     for (var entry : capture.path("baseline").path("entries")) {
       assertTrue(entry.hasNonNull("targetService"));
       assertTrue(entry.has("transactionNodes"));

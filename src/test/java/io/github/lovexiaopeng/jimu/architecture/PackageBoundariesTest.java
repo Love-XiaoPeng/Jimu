@@ -31,7 +31,8 @@ class PackageBoundariesTest {
   static final ArchRule KERNEL_MAPPER =
       noClasses()
           .that()
-          .resideInAnyPackage("..kernel..", "..execution..")
+          .resideInAnyPackage(
+              "io.github.lovexiaopeng.jimu.kernel..", "io.github.lovexiaopeng.jimu.execution..")
           .should()
           .dependOnClassesThat()
           .resideInAnyPackage("org.apache.ibatis..", "com.baomidou..", "..adapters.persistence..");
@@ -57,7 +58,8 @@ class PackageBoundariesTest {
         .check(classes);
     noClasses()
         .that()
-        .resideInAnyPackage("..kernel..", "..execution..")
+        .resideInAnyPackage(
+            "io.github.lovexiaopeng.jimu.kernel..", "io.github.lovexiaopeng.jimu.execution..")
         .should()
         .dependOnClassesThat()
         .resideInAnyPackage(

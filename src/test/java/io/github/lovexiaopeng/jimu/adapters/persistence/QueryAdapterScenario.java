@@ -19,6 +19,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Actual MyBatis ResultSet/empty result/ignored columns, cumulative limits and commit deadline. */
 final class QueryAdapterScenario {
   interface ProbeMapper {
+    @Select("SELECT NULL AS nullable")
+    List<java.util.Map<String, Object>> nullProjection(@Param("query") SessionQueryContext query);
+
     @Select("SELECT CAST('2026-01-02 03:04:05.000000' AS DATETIME(6)) AS observed_at")
     List<String> observed(@Param("query") SessionQueryContext query);
 
@@ -36,6 +39,17 @@ final class QueryAdapterScenario {
     var factory = beans.getBean(org.apache.ibatis.session.SqlSessionFactory.class);
     factory.getConfiguration().addMapper(ProbeMapper.class);
     var mapper = beans.getBean(SqlSessionTemplate.class).getMapper(ProbeMapper.class);
+    var nullQuery = context(new QueryResources(0, 0, 0));
+    var nullable = mapper.nullProjection(nullQuery);
+    check(
+        nullable.size() == 1
+            && nullable.getFirst() != null
+            && nullable.getFirst().containsKey("nullable")
+            && nullable.getFirst().get("nullable") == null,
+        "all-null-row-retains-jdbc-map-shape");
+    check(
+        nullQuery.resources().reads() == 1 && nullQuery.resources().bytes() == 17,
+        "all-null-row-actual-metering");
     var work =
         new SessionQueryTransaction(source, beans.getBean(DataSourceTransactionManager.class));
     var query = context(new QueryResources(0, 0, 0));
