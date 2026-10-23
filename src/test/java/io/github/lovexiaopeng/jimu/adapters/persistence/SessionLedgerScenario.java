@@ -55,8 +55,15 @@ public final class SessionLedgerScenario {
             env.getRequiredProperty("jimu.db.password"));
     var db = new JdbcTemplate(source);
     var fault = new java.util.concurrent.atomic.AtomicReference<String>();
+    var ledgerSource =
+        args.length == 4
+            ? new DriverManagerDataSource(
+                args[3],
+                env.getRequiredProperty("jimu.db.user"),
+                env.getRequiredProperty("jimu.db.password"))
+            : source;
     var faultySource =
-        new org.springframework.jdbc.datasource.DelegatingDataSource(source) {
+        new org.springframework.jdbc.datasource.DelegatingDataSource(ledgerSource) {
           @Override
           public java.sql.Connection getConnection() throws java.sql.SQLException {
             var connection = super.getConnection();
@@ -156,6 +163,27 @@ public final class SessionLedgerScenario {
         step = s(i, "step_id"),
         output = s(i, "output_snapshot");
     long used = n(task, "tools_used");
+    if (args[2].equals("connection-timeout")) {
+      long started = System.nanoTime();
+      String code;
+      try {
+        ledger.readOrResult(lease, step, call, version, digest);
+        throw new AssertionError("Expected connection/transaction deadline");
+      } catch (TaskFailure failure) {
+        require(
+            failure.status() == 504 && failure.code().equals("SESSION_QUERY_TIMEOUT"),
+            "Safe deadline error");
+        code = failure.code();
+      } catch (
+          io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionCommitUnconfirmed failure) {
+        code = "SESSION_COMMIT_UNCONFIRMED";
+      }
+      long millis = java.time.Duration.ofNanos(System.nanoTime() - started).toMillis();
+      require(
+          millis >= 1800 && millis < 2700, "Whole connection/transaction budget elapsed=" + millis);
+      System.out.println("PASS connection deadline elapsed_ms=" + millis + " code=" + code);
+      return;
+    }
     if (args[2].startsWith("uncertain-")) {
       String point = args[2].substring("uncertain-".length());
       fault.set(point);

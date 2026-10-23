@@ -16,6 +16,7 @@ Linux/WSL 使用 Java21、Docker 和固定 MySQL8.0.46 镜像。以下脚本在�
 python3 tools/session_event_verify.py --jar <jar> --evidence <directory> --case all
 python3 tools/session_event_migration_verify.py --jar <jar> --v18-jar <exact-v18-jar> --evidence <directory>
 python3 tools/session_event_regression_verify.py --jar <jar> --evidence <directory>
+python3 tools/session_connection_verify.py --jar <jar> --evidence <directory>
 ```
 
 `JIMU_IT_JAVA` 可指向 Linux Java21。迁移入口要求从 `270a5d15611f5d7e59bbbd1d96c94d07567fc858` 源码构建的真实 V18 制品，不能用新制品伪造旧 schema。所有实验按 JAR hash 固定；失败尝试保留，不覆盖为成功。
@@ -39,3 +40,9 @@ python3 tools/session_event_regression_verify.py --jar <jar> --evidence <directo
 默认完整 Windows `verify` 已执行，存在历史 SourceIntegrityTest ADR README 长度3446/3819差异，以及 `/proc`、POSIX workspace 在 Windows 不支持的既有失败。本任务不修改冻结基线来抹除失败，不声称默认完整 verify 通过。新契约、包边界、SpotBugs 和真实 Linux 业务实验分别报告。
 
 细项限制必须随最终交付明确：本地 JDBC 丢确认注入不等于真实 TCP 中断的每一种时序；未穷举2秒内每条语句、64KiB元数据/7MiB正文/128事件/256可靠事件的全部组合边界；未覆盖每种 schema字段损坏、权限撤销与 commit 的所有交错；未以真实时钟等待7日，也不运行真实付费模型/生产部署。owner/provider 故障和保留竞争的实际覆盖以原断言文件为准，不由此表扩大。
+
+## R1 建连截止差异复验
+
+`SessionDeadlineTest` 在真实 loopback TCP 上验证：已接受连接但无 greeting，以及先延迟900ms再发送 greeting、随后停顿认证。调用须在整体预算到期返回504，测试对端观察客户端主动关闭物理连接，测试线程在前台 join。与契约/包边界一并运行时将 `SessionDeadlineTest` 加入上述 `-Dtest`。
+
+`session_connection_verify.py` 在私有 MySQL 的原 RESPONDED/PENDING 槽上注入无 greeting、认证停顿、消耗800ms握手预算后停顿事务 SQL、事务 UPDATE 已执行但未提交时停顿回复；逐次验证整体截止、安全错误、socket/对端线程回收、调用后原 task/工具用量/read binding/收据/reservation 不变，无迟到写入，随后释放原 worker 验证同槽恰好一次完成。另以原 diagnostics 验证真实行锁超时，以 recovery 验证接管及 commit-unconfirmed 两侧。系统 DNS 停顿及所有 TLS 时序仍未实测，不记作通过；平台解析延迟不能转成迟到 JDBC 写者。

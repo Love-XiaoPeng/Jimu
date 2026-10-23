@@ -45,7 +45,9 @@ public-v1 在捕获时先最长优先替换 runtime 已知敏感字面值，再�
 
 通用 admit/toolSucceeded/toolFailed/uncertain 禁止绕过 session 原槽事务。数据库提交确认不确定时抛专用 `SessionCommitUnconfirmed`，退出当前执行栈并由 lease 接管核对实际提交事实，不补写普通工具失败。已调用模型的真实已知 usage 即使响应输入被拒绝、权限变化或 flag 关闭仍结算。
 
-每个查询事务预算为 2000ms；语句使用剩余 MAX_EXECUTION_TIME、query/socket timeout，InnoDB lock wait 最多1秒，并在提交前重新核对单调时钟与 lease 条件。提交确认超时走不确定恢复；不在外部线程取消后让写者继续提交。连接会话设置恢复，事务内无网络模型/文件调用。
+每次查询从取得连接之前开始共享一个2000ms单调时钟截止。项目现有 DriverManagerDataSource 及其装饰层仅在本次 session 查询内选择截止感知的 Connector/J socket factory；其他 profile 使用原数据源。DNS 解析只在有界的8个独立只读解析槽内运行，调用方只等待剩余预算；迟到的 DNS 不得建连或执行 JDBC。TCP、greeting、认证、TLS、驱动初始化及事务共享同一截止，到期直接关闭本次查询的全部物理 socket；所有 JDBC 和提交仍在调用线程同步退出，没有可在返回后继续执行的 JDBC 写者。
+
+语句继续使用剩余 MAX_EXECUTION_TIME、query/socket timeout，InnoDB lock wait 最多1秒，并在提交前重新核对单调时钟与 lease 条件。建连/已回滚的超时映射504；提交确认异常仍走专用不确定恢复，不映射成普通工具失败。owner 查询到期返回504，立即的连接故障仍为503。连接会话设置恢复，事务内无网络模型/文件调用。平台 DNS 若不响应中断，解析线程可占其原槽至真正退出，但它不能取得连接或成为迟到写者；本批未注入系统 DNS 停顿或所有 TLS/网络故障时序。
 
 事件最大16KiB，输出最大32KiB；邻接摘要最多256码点/1024 UTF-8 bytes，带真实 summary_truncated 标记。无全量日志回退或分页。一个 task 预留独立8MiB、正文最多7MiB；tenant 默认历史桶64MiB。正文采用实际写入差额记账，包含 task/request/checkpoint/response/arguments/output/usage/native event 的全部副本；固定 model/tool/policy pins 归为元数据。元数据按合同的行/字段/UTF-8 标量口径计数，并为结算、终态及未来 hash/length 清理收据留出容量，预检不足时在模型响应准入前拒绝。
 

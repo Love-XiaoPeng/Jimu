@@ -4,6 +4,7 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.model.BusinessPolicies;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationMaterials;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationPlans;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
+import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionQueryDeadline;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger;
@@ -107,7 +108,7 @@ public final class JdbcLedger
     transaction.setTimeout(2);
     long started = System.nanoTime();
     sessionQueryDeadline.set(started + 2_000_000_000L);
-    try {
+    try (var deadline = new SessionQueryDeadline(sessionQueryDeadline.get())) {
       return transaction.execute(
           status ->
               db.execute(
@@ -168,6 +169,13 @@ public final class JdbcLedger
                           }
                         }
                       }));
+    } catch (RuntimeException failure) {
+      if (System.nanoTime() - started >= 2_000_000_000L
+          && (failure instanceof org.springframework.dao.DataAccessException
+              || failure
+                  instanceof org.springframework.transaction.CannotCreateTransactionException))
+        throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
+      throw failure;
     } finally {
       sessionQueryDeadline.remove();
     }
@@ -210,6 +218,7 @@ public final class JdbcLedger
   }
 
   private <T> T sessionOwnerRead(java.util.function.Supplier<T> work) {
+    long started = System.nanoTime();
     try {
       return sessionTransaction(work);
     } catch (org.springframework.dao.QueryTimeoutException
@@ -217,6 +226,8 @@ public final class JdbcLedger
       throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
     } catch (org.springframework.dao.DataAccessException
         | org.springframework.transaction.TransactionException e) {
+      if (System.nanoTime() - started >= 2_000_000_000L)
+        throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
       throw new TaskFailure(503, "SESSION_QUERY_UNAVAILABLE");
     }
   }
@@ -3079,6 +3090,7 @@ public final class JdbcLedger
   }
 
   public JdbcLedger(DataSource source, ModelProfiles models) {
+    source = SessionQueryDeadline.source(source);
     this.models = models;
     db =
         new JdbcTemplate(source) {
