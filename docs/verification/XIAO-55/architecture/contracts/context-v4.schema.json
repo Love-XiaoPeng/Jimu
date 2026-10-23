@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session-history:4:context",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "session_event_context"
+    },
+    "version": {
+      "const": 4
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "upper_seq": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 127
+    },
+    "user_message_seq": {
+      "const": 0
+    },
+    "recent": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 127
+          },
+          "type": {
+            "enum": [
+              "user.message",
+              "step.started",
+              "model.response",
+              "session.read",
+              "turn.ended"
+            ]
+          }
+        },
+        "required": [
+          "seq",
+          "type"
+        ]
+      }
+    },
+    "scope_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "retain_until": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 32,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|[+-][0-9]{2}:[0-9]{2})$",
+      "description": "Host additionally validates Gregorian dates, offsets, inclusive UTC microsecond ranges and ordering."
+    },
+    "prior_sessions": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "upper_seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 127
+          }
+        },
+        "required": [
+          "session_id",
+          "upper_seq"
+        ]
+      }
+    }
+  },
+  "required": [
+    "kind",
+    "version",
+    "session_id",
+    "upper_seq",
+    "user_message_seq",
+    "recent",
+    "scope_sha256",
+    "retain_until",
+    "prior_sessions"
+  ]
+}

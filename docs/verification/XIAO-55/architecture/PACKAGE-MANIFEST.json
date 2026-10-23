@@ -1,0 +1,1113 @@
+{
+  "version": 1,
+  "baseline": "d6d2d28a8f4fb3c2f05ed2bd410b1d5f65a16fe1",
+  "baselineTree": "af0e11992efdc00d3e8bc6d656d9aeda30159a90",
+  "scope": "Architecture candidate, referenced immutable source evidence and baseline files; no product implementation or JAR",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 1887,
+      "sha256": "800f18428bfbe802353d9a04a0d9f09fdc6a3ec9fde162f4562bae283bc20816"
+    },
+    {
+      "path": "docs/adr/0014-explicit-prior-session-search-scope.md",
+      "bytes": 4788,
+      "sha256": "7fef18c5fa1129439542eb210b83be1b08bd40959be78a0c1537bd8aeb6c9936"
+    },
+    {
+      "path": "docs/adr/README.md",
+      "bytes": 3819,
+      "sha256": "85a6c148823fb50a2c7d1361d452973e9011d427eab34b80882d58e1cb44cd70"
+    },
+    {
+      "path": "docs/baseline/README.md",
+      "bytes": 1917,
+      "sha256": "15760921d7c1a6d805d306f6b179d7cbd280d2cba577daf11d07bca31ed1bf15"
+    },
+    {
+      "path": "docs/baseline/sources.json",
+      "bytes": 3311,
+      "sha256": "6bb5d032f661b2575c5d17b16bec91135ea1c3896ce588ee0225a23d412add28"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-harness-tool-inventory-v1.1.json",
+      "bytes": 196149,
+      "sha256": "30b6904aad8d85dac3e789434e434c449575383cb23e254329a84930436f5b02"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-security-performance-recheck-v2.md",
+      "bytes": 5808,
+      "sha256": "6839750256d799baaa2bdbed4472c9a36afb7ef7deb1415cea1db6f4d70f9792"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-testability-recheck-v2.md",
+      "bytes": 7632,
+      "sha256": "4b8b4a3893fb55ceafdef0937c1b78818931d433a86949dd36d55165a19d9725"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-tool-migration-evidence-v1.1.md",
+      "bytes": 87122,
+      "sha256": "2111bc4a0be86a3cc69420fb9b9d08adc0bc5b609686d859b38830edce17c0f7"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-web-fetch-output-v0.2.0.schema.json",
+      "bytes": 602,
+      "sha256": "08a144489ed9ea37b5b33a5ffdc815237f31d4f229b76ba1d5e465b9e13f9ff8"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-可行性与总体方案-v0.3.md",
+      "bytes": 95190,
+      "sha256": "2b8e53c700aab0d96a6f06351ee9f924a43c8d5af4b5f62837b20e6f92e6c014"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-合稿修订与评审对照-v0.3.md",
+      "bytes": 8322,
+      "sha256": "ca708c3693ffd385cbedc5b5bb4a619c5bbd72e3a1e39031bc4f528974278ea5"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-工程规范-v0.2.md",
+      "bytes": 27621,
+      "sha256": "36553f58e0b129903f04389c852f75560cf4879bbe9fbdac0e2759cb3f8298b7"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/docs__subsystems__session-projection.md",
+      "bytes": 22473,
+      "sha256": "dac9f68590978614831fd43db91f726ee63ad90dd47c6a378e43fc159f9c610c"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/docs__subsystems__session-query.md",
+      "bytes": 21696,
+      "sha256": "56700e4a7dd44b34bbb1dbe066039f6c470d813876a90d50f606c863f4edfef2"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/LICENSE",
+      "bytes": 1065,
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent__src__index.ts",
+      "bytes": 31398,
+      "sha256": "218b30227cdc55d4c193112495a852507d12070028572ac95e6f9d1f954d1077"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent__src__projection.ts",
+      "bytes": 360,
+      "sha256": "2113e31ffcb4c98a1d4ddb15d36ee833f086ed5965520febaca65d6dbea6fe40"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent__src__types.ts",
+      "bytes": 3887,
+      "sha256": "b237d5d00d9b549cc32c7d91e08aaf83004d14d2bfa0179eeebc3fbfe18fed62"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent-loop__src__agent.ts",
+      "bytes": 28972,
+      "sha256": "4add12f5c22bb1b8cf1dbc239c9b09fa3351feff2c936cb2b8900036468bd01b"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent-loop__src__index.ts",
+      "bytes": 39200,
+      "sha256": "3ea0262656c8ddcaa3be315c150bdc2af09371031c3c471d4ded511e21c6e86b"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__session__src__index.ts",
+      "bytes": 65812,
+      "sha256": "c1f08f7dcf4075eeebb13e6ea06b3f348bfeb85b8a5d4e4bfd1c3b93c1959332"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__session__src__types.ts",
+      "bytes": 24681,
+      "sha256": "515cba50f366b06dc3caaab45e8ce98c48c80fc07684437aba014df13ce04f2f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__package.json",
+      "bytes": 2140,
+      "sha256": "7c9521f081c49e116f850743b368d9e3aa35099ffc0ba7786c1ca94b7dd2c087"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__index.ts",
+      "bytes": 5993,
+      "sha256": "01ece54934bdec5f9145995d050b4af0e76c939cc695828f39da53a1089a2825"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__input.ts",
+      "bytes": 11609,
+      "sha256": "d27d365537360ec82402b91d24092d715906ffae74fb9ca947dfa35d58a5cb3f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__operations.ts",
+      "bytes": 10387,
+      "sha256": "e80e9c55e3e1568491bb9c6c356f7bd595fc9804f65c765a791e77e908c00c6e"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__presentation.ts",
+      "bytes": 8499,
+      "sha256": "f05f5fa18507d03cab12ea1c689e4f72fb448e1dab21245f0074a289520bf462"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__service-boundary.ts",
+      "bytes": 5417,
+      "sha256": "f67e74bdf163d79ec399c8f63865e9180346623ba970c60ea0d2cea76b20bd99"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__workspace-access.ts",
+      "bytes": 7822,
+      "sha256": "6f2f38689b945e86bf898ecd2063eeaa257c2aea27838f884fd1ee777f763e35"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__tests__sqlite-integration.spec.ts",
+      "bytes": 9039,
+      "sha256": "6ab114e48a688db0832ce7fc76f396fe8d3b859b12185dbdb4d042976c220b8f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__tests__tool-session-query.spec.ts",
+      "bytes": 84774,
+      "sha256": "70cf5bc29d453266680ab1ed3a8d2c99fd239130640d92edfe8df72ddf988f3c"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence__src__handle.ts",
+      "bytes": 5319,
+      "sha256": "2fd8b5c5188ffdf5adee78a260b3dd0a9be97e5eb9fcdb5aafae5a8ed5471a31"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence__src__index.ts",
+      "bytes": 8535,
+      "sha256": "d3da1fc3977e23eb5c2f73d6245a0d9c5967f9a0d755065e74ccd26e76794f14"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence__src__storage-contract.ts",
+      "bytes": 6252,
+      "sha256": "062911ece08832418f2fd0dc8fabdd8848897de6b2d97bc7fca54a634e0c99bd"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence-jsonl__src__index.ts",
+      "bytes": 75605,
+      "sha256": "52cad4e39f5ba4d173ec322c647f16bac12385b4819aa07684f12a123f94f72f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence-jsonl__src__storage.ts",
+      "bytes": 24212,
+      "sha256": "57d5fa1d7efd17789d6a223f6aa5e06b79092665bea13f8a23d3bab644d066c3"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-projection__src__index.ts",
+      "bytes": 31588,
+      "sha256": "f6e57c06f57b20a74e87a8a476a7adfb67ccbbd3d924bd52420db93ac9a7381b"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-projection__src__types.ts",
+      "bytes": 1066,
+      "sha256": "6ad9530ea5cfc8ff3e73b34413e5757da8091248b0a874c304f5c5a83500f555"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__cold-read.ts",
+      "bytes": 2499,
+      "sha256": "e2bbc3e2e59c7a4843e9d957e99c37f323d59d224502366a1fcc17f29e196317"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__config.ts",
+      "bytes": 2321,
+      "sha256": "5850ab0dd78a26843d6ff899f5bb85af4cc8745f163ff71a17586bcda5da570f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__corpus.ts",
+      "bytes": 12664,
+      "sha256": "632b1178f54b88a607c61f4929551e8f766f15a8fac57fb22697df8e6cdbab60"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__documents.ts",
+      "bytes": 2731,
+      "sha256": "07f4a5af51d1a4bee5aede654e6cf9198d97c176d8b4ea39666bf6c3fdd95acd"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__extraction.ts",
+      "bytes": 2853,
+      "sha256": "7ee4fbae1b5101613fd1174289678c97faf77ecbee57649b9970998822277479"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__index.ts",
+      "bytes": 15460,
+      "sha256": "549f7f90c90efec63a5c7d69dbc65938c0f9578f85dcfc8ee25a49a43a8e83e3"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__observation.ts",
+      "bytes": 14878,
+      "sha256": "04a470ad5245aac1e70e0bf899515a931e52e7dba94ffcc0bfe9a978932e1347"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__sources.ts",
+      "bytes": 869,
+      "sha256": "57bf2721a598b86f796aac4946ace26d59529cb15f2eec587c068b1cdd88feb7"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__types.ts",
+      "bytes": 10880,
+      "sha256": "0d61d7fbeb325f93cc6a99ec362b825f264a1764e8bbf48d4136dc1634a026b6"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__tests__session-query.spec.ts",
+      "bytes": 53872,
+      "sha256": "a4f9749ead00fcaaff7adf689213c14bb945a41de9256caa684de55180d3b1c6"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__src__index.ts",
+      "bytes": 41094,
+      "sha256": "72868e4ae967fee94967df5939ee092a582249ff7b37afc4fe0cf7660d48b8d3"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__src__query.ts",
+      "bytes": 15548,
+      "sha256": "b29363581b715a1eb50509d7c5ff039d7d4004926160cd88ffcbadaa44ca1c48"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__src__schema.ts",
+      "bytes": 6098,
+      "sha256": "2cc4c7c8e50409847599a048922d55ef4ffbd1ac2309502f3a5a06420bc1a28f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__tests__query.spec.ts",
+      "bytes": 10405,
+      "sha256": "6e181e90f4cdba647a368a7bf3ee84c4d5b5a9921a3a5e2981b3f869ea09f2c6"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__tests__sqlite.spec.ts",
+      "bytes": 85376,
+      "sha256": "112fe7bf3e2b405c87b6caca0c9a40174402025caf0bd36ad2117238459f6295"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/evidence/upstream/packages__session-query__session-query__src__cursor.ts",
+      "bytes": 569,
+      "sha256": "78eb05f7db53414fd742572f91fa7f575622a4759d32ce5ba2999aa1ed4825f6"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/evidence/upstream/packages__session-query__session-query__src__filters.ts",
+      "bytes": 8506,
+      "sha256": "574759cf15980ad2e0b69791d26c596c6a573bae52d613294e12770ac583ecdc"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/upstream/packages__core__session__src__surface.ts",
+      "bytes": 30011,
+      "sha256": "5b5394dc02584cb3549330b358fbe5919d05f8a6920d90f6819bb7e3b4783154"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/upstream/packages__core__session__tests__surface.spec.ts",
+      "bytes": 43645,
+      "sha256": "24ff96add9f77859b01a662f48c3406b12b9a3ae2e9393f3317198cd214b3a03"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/upstream/packages__session__session-format-catalog__src__message-projections.ts",
+      "bytes": 507,
+      "sha256": "55440dba1a74e200d303d9653e069f2c49d226860d91159eb17e65262e0b8d89"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/upstream/packages__session-query__session-query__src__tracing.ts",
+      "bytes": 8342,
+      "sha256": "f63d528f4e31bbf7bb79c9add03095885e87f1ecf71c6aeaee01d509639ea60a"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/upstream/packages__session-query__session-query__tests__tracing.spec.ts",
+      "bytes": 20400,
+      "sha256": "539c570f2e3e4fe2849919195125e3892740996c2e397bfcba8c08687b35a744"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/capture-evidence.cjs",
+      "bytes": 8258,
+      "sha256": "024abab1a00407f78f11c83b968db5929047f511d712935eddc581b41d5f0b3f"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/ContractProbe.java",
+      "bytes": 8625,
+      "sha256": "b5d8ede6d0e4718e7ee1f0da22c3d23147dd053f823fbba2b51d4d1494646022"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/admission-input.schema.json",
+      "bytes": 600,
+      "sha256": "014b4d6b78a574967b81882b1e1b2fc541e9bb299095b127db771f435947575f"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/admission-output.schema.json",
+      "bytes": 2331,
+      "sha256": "a404b3c299c60f0b0698915e0d28bbf59b1aebe85f9b74f1f75fb02cd88ca222"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/authority-scope.schema.json",
+      "bytes": 3477,
+      "sha256": "77ced585e1815c23b3d00251ca88f00de1c8eec5f5245fe3c8ff658f2bd0f8bc"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/catalog-v4.json",
+      "bytes": 2082,
+      "sha256": "cca1703817362eca300b745b9111177a7d295c9791e17515b104c037bd084a15"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/context-v4.schema.json",
+      "bytes": 2318,
+      "sha256": "240fe19ecc91ebd7bc55e4604f4038d1d9890ca3301551c43aa62bee8f5bb5c0"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/event-v4.schema.json",
+      "bytes": 10572,
+      "sha256": "105f63550e64f5cf893d3c6b2df4e3f7fe14c015fcd65a3deca9aee09a87b5f0"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/admission-empty-scope.json",
+      "bytes": 88,
+      "sha256": "a68222a637d809369ece40fc595c725a84a104f59414eb8499f32fb658d80b55"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/admission-output.json",
+      "bytes": 254,
+      "sha256": "f78eaaf573170c74db8f0abf1a72193926daec336242c8b6498082ca1e5dcf40"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/admission.json",
+      "bytes": 202,
+      "sha256": "e0658ceb9959001c56d6f7cd0fcee59ffd4e0e0c5e8e6cc5e72781db62f85b44"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/binding.json",
+      "bytes": 2108,
+      "sha256": "ab7ec75b98fd97dcd8a0145573f70b5b552305d65d773e4a9e086031c120b8f3"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/context.json",
+      "bytes": 747,
+      "sha256": "6025f0f565ab7f4abb01504ef45d2bc3e04bb5e270efc9db802947d2856d774a"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/empty-output.json",
+      "bytes": 418,
+      "sha256": "7ca6d9d3dbff131d8c0e65511910b5b63e9a1afe9abaffb02a79acddd3ac8898"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/owner-history.json",
+      "bytes": 597,
+      "sha256": "d03c8d59bc4a3b3160b04ce74f7ed8886785587ee7219e9ae391be3054179428"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/read-output.json",
+      "bytes": 750,
+      "sha256": "962d40839045c4f3db265d926647c8fc2155cb604920b0721e9772c26611fff5"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/read-receipt.json",
+      "bytes": 876,
+      "sha256": "9ccae5c18da9f87c294e54a2bbba78b2a34f2686fbb191a98ceee6bea41fe746"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/read-refs.json",
+      "bytes": 171,
+      "sha256": "e98dfc8527f29f9fcbab3fcf70b4dc94d3413e3e641368f725c814f435d2bc43"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/scope.json",
+      "bytes": 1285,
+      "sha256": "a639bd34258b3afb5257aa79742ab9be678adf162eecf682551bb1cec932d5d0"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/search-input.json",
+      "bytes": 237,
+      "sha256": "af424ee455391aedcebc49ab823d23130568bfe665e09f10bf50094baae83fe2"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/search-output.json",
+      "bytes": 1706,
+      "sha256": "a1c7c1580bcdbe2d41e7b4a7b2c4ce652bdad9d9084124403e3d0a3bff878a87"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/user-event.json",
+      "bytes": 381,
+      "sha256": "37f41bbc645b13e39eee107e47d77ea108aed85c71eb19cdb9f69086d5fdbf23"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/http-catalog.json",
+      "bytes": 1340,
+      "sha256": "d37d96e64547870818496abae82f65800664a507718f7d85fd17a24993a87de2"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/owner-history-v4.schema.json",
+      "bytes": 1838,
+      "sha256": "a735462f235e43fbf6c1e83f0ff55d36a2014a0a730b173cfae99b176c0e207a"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/read-refs.schema.json",
+      "bytes": 699,
+      "sha256": "3f907834c55f81e783e1a48d822aeb0fc7646d9bacf603c729dd99cb20c94dd7"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_event_read-0.4.0/description.txt",
+      "bytes": 513,
+      "sha256": "695b9ea5f0fac218aa5abfbb207c803995502eb8de516c5b5404ba32a1095412"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_event_read-0.4.0/input.schema.json",
+      "bytes": 627,
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_event_read-0.4.0/output.schema.json",
+      "bytes": 18396,
+      "sha256": "361a97e7da6592d44989759f0256c05c6bd1ec6041c5b11c30ad4e0b162208e4"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_event_read-0.4.0/plugin.yaml",
+      "bytes": 897,
+      "sha256": "d31a4fefdd020bf8c598cc10d4c35afc2b4a72482c4e4938e58b3c979d7ea4c7"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_search-0.1.0/description.txt",
+      "bytes": 758,
+      "sha256": "77cc9f0ab2b2534f0277aa5469822a7212802f89836b538f058ec79dc112b756"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_search-0.1.0/input.schema.json",
+      "bytes": 4236,
+      "sha256": "a3055ae0da20e6815ad712163f66461db483728bdee928aa599c442a1ab055b8"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_search-0.1.0/output.schema.json",
+      "bytes": 5112,
+      "sha256": "8ad3904e0d7d6d946fb84efd34935e5b35c0ee240b17034f8b2a0c9fbe0b4778"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_search-0.1.0/plugin.yaml",
+      "bytes": 886,
+      "sha256": "97b81f0b7c07b869f810592dc8e335c0b7957d4ea7e96650ff12390344ce26d4"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/task-binding-v4.schema.json",
+      "bytes": 5430,
+      "sha256": "4446f01591b241122073fba2f6de8634b5a3f845c5a4719bb7bcedda09f3fee4"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/actual-master.json",
+      "bytes": 482,
+      "sha256": "c9a7b3b26c2676eca9a4bc475563f71e2630dfce15c2134d8b2e7dd7334fd937"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/artifact-check.json",
+      "bytes": 212,
+      "sha256": "54a3c4b7d51c077774ba679669dfc6c00cbbe45d8b6b66b78c841ccafcc11d96"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/java-version.txt",
+      "bytes": 208,
+      "sha256": "c09b3f6e7993628681d0f0e0fdfa12ccbfef6d7798ad260ec13807486db8b267"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/jimu-sources.json",
+      "bytes": 30935,
+      "sha256": "dcb99b410ab27f729d91a77aabe23cb44582a43dcee597439dcbb2c97c136e46"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/jvm-probe.txt",
+      "bytes": 40,
+      "sha256": "a7ccc2312a22f7c21477958392b8837e5633f0efdb372b04130e9929781d58c9"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/probe-compile.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/schema-cases.json",
+      "bytes": 2736,
+      "sha256": "c10a1da35846821567b29eb771684679555d3e7f9a554be1408d81184ffe0110"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/source-map.md",
+      "bytes": 7439,
+      "sha256": "eca4b4537d82334ad9beaabbb1dec2a24158df08c51f0bd2848121e4c0b05bca"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/upstream-sources.json",
+      "bytes": 26003,
+      "sha256": "5e2452435ea612c90c785780f5f45c810a2fbbd0560ba51a758dec5ec7c1d3ae"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/implementation-contract.md",
+      "bytes": 25822,
+      "sha256": "7e13ea382c4cd4572da0f0278504b8e0bdc46bb9640a23bfef63086c17a72629"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/make-contracts.cjs",
+      "bytes": 16448,
+      "sha256": "6d099025cadd7f9512c915ab96007086de2e1721c2a956ef34962a07f010a6f0"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/migration-contract.sql",
+      "bytes": 9979,
+      "sha256": "9d0066b33aafed97517861387c4e57afcadaff3026cb17942e592a8b5eda14e6"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/package.cjs",
+      "bytes": 1974,
+      "sha256": "9dd0c42cc58155067614d5800ae094fa83eb2c51b617f6394da3efe522b6262a"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/README.md",
+      "bytes": 1891,
+      "sha256": "9104f42b34140dc374eee838772c42aab4366b0c3ac830bc477e6821f04d49db"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/THIRD_PARTY_NOTICES.md",
+      "bytes": 600,
+      "sha256": "b9792abf5033168c3ff0ed277f4663d8a8c57564da37f047ea51975144b1d647"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/VERIFICATION.md",
+      "bytes": 3402,
+      "sha256": "6ca8b441a33f96a38aaf7945750be08c13dc06bcaf9d55747dfad00ec28e356b"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/verify-artifacts.cjs",
+      "bytes": 4326,
+      "sha256": "60da90c8b6d28f67d84e4b7ed502cfe74626993e6c0195d08f1415b88f8574f1"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/verify.ps1",
+      "bytes": 1322,
+      "sha256": "ee45eea219e165cbed45e36c5c2c534e53ed14daa05154ae2841ff2feda9d4c6"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+      "bytes": 53477,
+      "sha256": "34986b98d4ee4a433f786518b896047efe34fc74ea01eb958e8eae1bc0eb9e36"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "bytes": 378644,
+      "sha256": "84dfd64f8be3d2435cd5d8d6aec3717cebc8b124c91755cb251c0fca5b7084d3"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "bytes": 53680,
+      "sha256": "83c279110e74425516dfc7fbdacce8b5de61db4f6bb830c53d794838aee88a5c"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelProfiles.java",
+      "bytes": 22035,
+      "sha256": "e8644c544e789d63c0f4c03d6447f5934ac786ba5d2d6b4fa9bc04534ffc92f3"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionQueryDeadline.java",
+      "bytes": 7756,
+      "sha256": "1e09b57cdc459a5e6f3cf770d2731dc2e24bfb1f5d5bfa13a7d05ff5e25db6f4"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchBodyFilter.java",
+      "bytes": 5107,
+      "sha256": "5792c9cfaeb680e579247188548987cd511e39c13855be5f7130d42feac99127"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchMatcher.java",
+      "bytes": 4919,
+      "sha256": "6138afd219817ac9ccbe5b23ec7bb012d210a22148bc124011c844c2a6e1beb4"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/api/SessionHistoryController.java",
+      "bytes": 7320,
+      "sha256": "b2993562700e09d1c1cff5908438084571b134f770c2c00a4fc71cf880acd1fc"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskController.java",
+      "bytes": 11615,
+      "sha256": "19ba367f8eefe5db864657e4335e5a752d8365ef0865d650999cf07387f43692"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/SessionEventLedger.java",
+      "bytes": 1598,
+      "sha256": "f256c0a32a643b8ac47921369878e850b48eb6cf06c4005f071461ff9605a73d"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/Tasks.java",
+      "bytes": 2413,
+      "sha256": "458057b47bdbbc8f2b29cb5f8d77f368d1787d736b6d2a7975db0b414ae05902"
+    },
+    {
+      "path": "src/main/resources/db/migration/V1__p2_ledger.sql",
+      "bytes": 7122,
+      "sha256": "c1d4c158b1f5c5a9cc955bee9fe93a5cdbed7a2a80e3026f4c835da235977e70"
+    },
+    {
+      "path": "src/main/resources/db/migration/V10__business_task_policy.sql",
+      "bytes": 387,
+      "sha256": "dd53e8624bbee3fb8e3ed4edf826d67bfa2a074ac1fe6262c4cc7517d5bb20e4"
+    },
+    {
+      "path": "src/main/resources/db/migration/V11__native_search.sql",
+      "bytes": 1780,
+      "sha256": "6a13006bd44552a2507a4e15b3a5fec7dfab20326773d60b440fcd0c288fe6a9"
+    },
+    {
+      "path": "src/main/resources/db/migration/V12__process_observer_identity.sql",
+      "bytes": 205,
+      "sha256": "0229b5e2064768f14806845e0045a3dfde817b08e397e6747b1f54caee2802d1"
+    },
+    {
+      "path": "src/main/resources/db/migration/V13__task_images.sql",
+      "bytes": 1946,
+      "sha256": "c6f4ad00f2bb2c618cdc5551420e272e883d6bfc53c64e877084d184817f147e"
+    },
+    {
+      "path": "src/main/resources/db/migration/V14__image_checkpoint_retention.sql",
+      "bytes": 1399,
+      "sha256": "3efa3e1240e1f3917265915d0e3713d799b7839a45618f97577fc1029a9801ab"
+    },
+    {
+      "path": "src/main/resources/db/migration/V15__mcp_resources.sql",
+      "bytes": 2330,
+      "sha256": "4a33b950278439feac9b11312381b78207f38f78a298f78923402db86bd03244"
+    },
+    {
+      "path": "src/main/resources/db/migration/V16__durable_user_questions.sql",
+      "bytes": 2694,
+      "sha256": "8b24cad2e4cd2c8118274972e81623a832ead2b47f0899f33b51a6ae93258c28"
+    },
+    {
+      "path": "src/main/resources/db/migration/V17__task_todo_projection.sql",
+      "bytes": 4136,
+      "sha256": "1e5892b4409ff93c1c4fdd6e8928cd7b4e0c3dccf13bf10d2d9cf639642d1b04"
+    },
+    {
+      "path": "src/main/resources/db/migration/V18__task_logical_directory.sql",
+      "bytes": 6475,
+      "sha256": "b0f0c5289e5fffafcdfc4a80f612b772cba40fa15c11f4fbb3a8487d1865fb63"
+    },
+    {
+      "path": "src/main/resources/db/migration/V19__authorized_session_history.sql",
+      "bytes": 7604,
+      "sha256": "e507d7378f7737d104fd8a2ad8bd2a7e51d89c5dfe0e014ed106356cbc0866d7"
+    },
+    {
+      "path": "src/main/resources/db/migration/V2__local_worker_receipts.sql",
+      "bytes": 295,
+      "sha256": "98497bd4a3d2adbe3f401036a123d11b9c2af17309f452c8090ac8158a9c02c5"
+    },
+    {
+      "path": "src/main/resources/db/migration/V20__bounded_session_event_search.sql",
+      "bytes": 4664,
+      "sha256": "3ffb24906f323dd33a92d5e8d97278a542d7ae998df2d44ad857e172193cb857"
+    },
+    {
+      "path": "src/main/resources/db/migration/V21__captured_session_event_read_provenance.sql",
+      "bytes": 6125,
+      "sha256": "6d24e72f1260d49343f017af7f060ddec1afa8f70faaa60fef87a44ee8bb6fbc"
+    },
+    {
+      "path": "src/main/resources/db/migration/V3__attempt_quiescence.sql",
+      "bytes": 253,
+      "sha256": "f2095fb71fd867c5715f7a531ea79b72f4beb3c42f775dd421986d76ebb9e6df"
+    },
+    {
+      "path": "src/main/resources/db/migration/V4__model_snapshots_and_budgets.sql",
+      "bytes": 1942,
+      "sha256": "1a1d5fa336be3d55decfab17cd7acf62abdfcab520b35414d3f8fb0cca7ac981"
+    },
+    {
+      "path": "src/main/resources/db/migration/V5__task_tool_snapshots.sql",
+      "bytes": 1289,
+      "sha256": "f87c2370145760e4d712bb9ff62a1ebcfac0d3461aea67b0f4b7c59f32c72615"
+    },
+    {
+      "path": "src/main/resources/db/migration/V6__report_receipts.sql",
+      "bytes": 257,
+      "sha256": "0678241322741e682f02c580f4894f68de8283a17538a2dd70ff350e394a5d7e"
+    },
+    {
+      "path": "src/main/resources/db/migration/V7__bounded_evaluation_plans.sql",
+      "bytes": 876,
+      "sha256": "cbb04f1f00e5ee468def9fe9d3d309947e691f4f1b1ac54e426a856fc761a314"
+    },
+    {
+      "path": "src/main/resources/db/migration/V8__evaluation_material_binding.sql",
+      "bytes": 326,
+      "sha256": "f91f70a6fc008b02942ded03bf25bcb6870bc7f272df8546be0cfdcb7b12d28d"
+    },
+    {
+      "path": "src/main/resources/db/migration/V9__evaluation_execution_scope.sql",
+      "bytes": 771,
+      "sha256": "bd4e7327e825554ccf64b2110a9bec7e203a0443b99eb01bc65504ba4cba7066"
+    },
+    {
+      "path": "src/main/resources/session/catalog.json",
+      "bytes": 1159,
+      "sha256": "82ac8d60427d7b60632c8d0072d2c6c4fff2858f9f8c342ca412080a703b24e0"
+    },
+    {
+      "path": "src/main/resources/session/context-v1.schema.json",
+      "bytes": 1283,
+      "sha256": "94a3ab013b2decf90cdf2ab54e3554ad6fa10d63037d0fdef36988697a3cb6f1"
+    },
+    {
+      "path": "src/main/resources/session/event-v1.schema.json",
+      "bytes": 8282,
+      "sha256": "7626dd1e7b1f599e3b5bcc90ca0190c44e48f4142b462ddf48634286fc2a8471"
+    },
+    {
+      "path": "src/main/resources/session/examples/binding.json",
+      "bytes": 1098,
+      "sha256": "c7accb59b5216ffeda05ae7608a5ec49c033813412cb2abe49a3b2ca7ed9fb64"
+    },
+    {
+      "path": "src/main/resources/session/examples/context.json",
+      "bytes": 405,
+      "sha256": "d5b25eb7aea02b09c50eb693082c9db0c301b6cc27a1a12cd67dcd1a7e1955b2"
+    },
+    {
+      "path": "src/main/resources/session/examples/current-input.json",
+      "bytes": 71,
+      "sha256": "07dbea2c5b19f100cb80c455186e46af86b7277de004c2acf306b93ad44e3466"
+    },
+    {
+      "path": "src/main/resources/session/examples/first-read-output.json",
+      "bytes": 749,
+      "sha256": "6b297e8e7110908d598cf568f9877ab17b879251058c38571db8b69604411d6b"
+    },
+    {
+      "path": "src/main/resources/session/examples/first-read-output.wire.json",
+      "bytes": 581,
+      "sha256": "7bed00eb1df7fa697d67d82c8e7bbe5e97101bec7df8d8c5cf7bc64f522509bb"
+    },
+    {
+      "path": "src/main/resources/session/examples/input.json",
+      "bytes": 44,
+      "sha256": "dad416dfb699bd23f447b0c282ca2d796f4215563b24357b194ae2d8c1cb9e23"
+    },
+    {
+      "path": "src/main/resources/session/examples/owner-history.json",
+      "bytes": 491,
+      "sha256": "dd54b0d7de30ffff68d3ee1ff195f893d7f579278b0b076633bc6051686078f4"
+    },
+    {
+      "path": "src/main/resources/session/examples/read-output.json",
+      "bytes": 1434,
+      "sha256": "b78f42c46e704513d4970bb4f9e825867acaa13a98c967a6466ae4776ade388c"
+    },
+    {
+      "path": "src/main/resources/session/examples/read-receipt.json",
+      "bytes": 611,
+      "sha256": "ab4da31188b0bb9a2bc994147b9400222faaef3f90759cc8c11ca8a64f85cfe4"
+    },
+    {
+      "path": "src/main/resources/session/examples/response-event.json",
+      "bytes": 568,
+      "sha256": "4cb9c684aae3315095eeb7ac36e87ef4dee4140b85274c8bd4582bc54fc38844"
+    },
+    {
+      "path": "src/main/resources/session/examples/trace.json",
+      "bytes": 5267,
+      "sha256": "557c5cd40fbd110bc47fcb7eb2f3d4510d6396c9eeb7607eaf5380dad1ea6653"
+    },
+    {
+      "path": "src/main/resources/session/examples/user-event.json",
+      "bytes": 390,
+      "sha256": "bdbb1a52d412ab2d3b3064f5f717952bc3f28b3b2434e988d452b153d521f026"
+    },
+    {
+      "path": "src/main/resources/session/owner-history-v1.schema.json",
+      "bytes": 1611,
+      "sha256": "dd4291e10d0d60abc930826fa5f88c233281ea66c79868d93fa9b8e6118d6ee6"
+    },
+    {
+      "path": "src/main/resources/session/session_event_read-0.1.0/description.txt",
+      "bytes": 489,
+      "sha256": "353537c1d241ce90d0a707d60ac25fa615516ad3a28c37e41f64b9465549f563"
+    },
+    {
+      "path": "src/main/resources/session/session_event_read-0.1.0/input.schema.json",
+      "bytes": 627,
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0"
+    },
+    {
+      "path": "src/main/resources/session/session_event_read-0.1.0/output.schema.json",
+      "bytes": 15590,
+      "sha256": "266801da14857cee3bb79a7ffcd2fadcda33e8bb5480c451917302171ed4c9b7"
+    },
+    {
+      "path": "src/main/resources/session/session_event_read-0.1.0/plugin.yaml",
+      "bytes": 897,
+      "sha256": "bb28507cfd9486a96ab2996e577342733816dd3d72923c2ae0e07f6dcdef2294"
+    },
+    {
+      "path": "src/main/resources/session/task-binding-v1.schema.json",
+      "bytes": 3080,
+      "sha256": "54a30c835bb7b27dc30f48e2d091703d051a13a2f3fe989232c4c43a1ddbca9c"
+    },
+    {
+      "path": "src/main/resources/session/v2/catalog-v2.json",
+      "bytes": 1674,
+      "sha256": "3b46a1165221462186eb862d4c86ed6e9f7258b0a05abfe03d5e35896db1a3dd"
+    },
+    {
+      "path": "src/main/resources/session/v2/context-v2.schema.json",
+      "bytes": 1273,
+      "sha256": "3116de9c3a95c4e5eac7f870915b1fb5fbc7d48a8771768ce713dc29884521b0"
+    },
+    {
+      "path": "src/main/resources/session/v2/event-v2.schema.json",
+      "bytes": 8989,
+      "sha256": "05046a2212bd106d7026e94db1d124ba50365182da7963a443bd965e5f4e7075"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/binding.json",
+      "bytes": 1718,
+      "sha256": "1b0f5990bd940a2d60863406e041d4a0305502811c81d0fef4d37b4260def6dc"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/context.json",
+      "bytes": 405,
+      "sha256": "21adf98084445e197287f42bcc7a68915c7350f1fbafcafa0b2fd748b5e794a4"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/empty-output.json",
+      "bytes": 344,
+      "sha256": "afd5e4474bf2a95e652926ada7bb06c02224e22986353c5b1807f46935fe349c"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/model-event.json",
+      "bytes": 725,
+      "sha256": "65e33209db0e85ae9a73eedf2e25ba95bcc511d3430055d02cb132c79e9a46af"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/normalized-query.json",
+      "bytes": 210,
+      "sha256": "1614325666c02c9af5634fbb571cded1961c1ba51235f2fd3095396e1b30fc73"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/owner-history.json",
+      "bytes": 491,
+      "sha256": "f2338f789f73fd00f75c5aa4971c470f21627207305fc89af4618036f13f8287"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/read-output.json",
+      "bytes": 740,
+      "sha256": "579dc12addbaa3d593cf640f17bbe970d44c6b47034fbf57252e1f0377a36e3c"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/search-input.json",
+      "bytes": 114,
+      "sha256": "b6549424b28f5305661ab3faa2f85b0cd3a48587d5767d4fb47b71855c8df925"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/search-output.json",
+      "bytes": 806,
+      "sha256": "f6cfe33e796d3121fa4ad900b3c502ec7e698a4aa4b4f6a844332beb5cbeb516"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/search-output.wire.json",
+      "bytes": 638,
+      "sha256": "29edda7a86d3306e13a7e5c5121a8c4b84a7c1332dd39e863a12334232e56997"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/user-event.json",
+      "bytes": 381,
+      "sha256": "3cf0082ba1e3255ebc0e0be0ccc721c138dfa0621f3681fe11217cf9993ad1a8"
+    },
+    {
+      "path": "src/main/resources/session/v2/owner-history-v2.schema.json",
+      "bytes": 1601,
+      "sha256": "a76d748919da9650e87179fede4d1a469fdfd1d0f4d3b8e882167ecc514e690c"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_read-0.2.0/description.txt",
+      "bytes": 541,
+      "sha256": "14b708a833e18d2e887ce72b00de2d1ef8715ee90322fdf20cbf5b9f4a9d64f9"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_read-0.2.0/input.schema.json",
+      "bytes": 627,
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_read-0.2.0/output.schema.json",
+      "bytes": 16509,
+      "sha256": "7823e04505d76cb80e7d6a644d10504ece4260be0e01e7026206df833a7ea6d9"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_read-0.2.0/plugin.yaml",
+      "bytes": 897,
+      "sha256": "968cf2ab9e3557b995151bce2bac40ea32a41b8d489550a38938e2e61d768ffa"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_search-0.1.0/description.txt",
+      "bytes": 767,
+      "sha256": "b91db9e0ccd349b8d0d23185f642f6350b04c472d5ec406455238659a0290209"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_search-0.1.0/input.schema.json",
+      "bytes": 2300,
+      "sha256": "52fdd4305f6791d80469a4f2537d1b544790e8dec59e24960f731cf5f9295584"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_search-0.1.0/output.schema.json",
+      "bytes": 3540,
+      "sha256": "51356d3c17c2bf298c653f21160bbe052e5638f189dc932b40cce75f12e53076"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_search-0.1.0/plugin.yaml",
+      "bytes": 903,
+      "sha256": "cec185661a7afac5cbf4ceb558c949cf166779e018c409ac5098f6568c195d9b"
+    },
+    {
+      "path": "src/main/resources/session/v2/task-binding-v2.schema.json",
+      "bytes": 4604,
+      "sha256": "fa5b2bf3542723a2cb98f4aaa30357659523520107502bde153ace6cc1b02634"
+    },
+    {
+      "path": "src/main/resources/session/v3/catalog-v3.json",
+      "bytes": 2308,
+      "sha256": "064089523d52fe0161d53530c1d8b088ee5e8e20c1d7f57f75badeec15b0d0c7"
+    },
+    {
+      "path": "src/main/resources/session/v3/context-v3.schema.json",
+      "bytes": 1273,
+      "sha256": "5691a2e400d7f8006715512524cf25b6e84c4387ba64b10f7501ac08f85f310e"
+    },
+    {
+      "path": "src/main/resources/session/v3/event-v3.schema.json",
+      "bytes": 10452,
+      "sha256": "ba3eed79df80f9eafccf121badd8bd88d5c211344775e143b199d3cc1831edb7"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/binding.json",
+      "bytes": 2182,
+      "sha256": "7771ece9ad5e134403b13c91a532c1479a254d3a9ab47f9a975eb3260a2b5769"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/context.json",
+      "bytes": 405,
+      "sha256": "66ec916ace04676e2ed23831d57c5147615bed47401aa803438e33362752bfed"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/owner-history.json",
+      "bytes": 491,
+      "sha256": "25c276f24e6a488e1e8f50fd17cbb170821cc20e84c5e9e4f9ee41b2e4c940e3"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/read-output.json",
+      "bytes": 769,
+      "sha256": "d1735727fa9118c4075674327fdd4c5dcf20da7d232796e58a87828b8c6d9a70"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/read-receipt.json",
+      "bytes": 647,
+      "sha256": "9492c7dbc9e3cd8753adb63d06f551636d8941753707e33ff73e7e26ad49b589"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/read-sources.json",
+      "bytes": 113,
+      "sha256": "129d0b1748f5fc075e396e7a7f32ee90beba0f1fc5bd49dd10331e0457675ca0"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/search-output.json",
+      "bytes": 806,
+      "sha256": "610c0ec2dce73068d618b8fb713220b7367d306e56fff1c594250ae86280a199"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/trace-input.json",
+      "bytes": 15,
+      "sha256": "60f43ffef07c31271f73f931ffce77379518c410946df4aa23817c02e921311e"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/trace-output.json",
+      "bytes": 737,
+      "sha256": "a275605eb69624afcd601c55da57ad1aaeb37b4624423083e343829544484199"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/user-event.json",
+      "bytes": 408,
+      "sha256": "418efab7e13cffd37c7fd478a543ae09206c329edfa0faa26b2e9a2160d980c9"
+    },
+    {
+      "path": "src/main/resources/session/v3/owner-history-v3.schema.json",
+      "bytes": 1601,
+      "sha256": "9e0924f0d307ae3ddbf61780fab12a6c190a1a83a186995aaf2c79116d04053d"
+    },
+    {
+      "path": "src/main/resources/session/v3/read-sources.schema.json",
+      "bytes": 502,
+      "sha256": "819c3b54a9b68aa8dd18ecbec487397821e2c82db2e0b76a81b80d3fad41c3ee"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_read-0.3.0/description.txt",
+      "bytes": 206,
+      "sha256": "d4dd2398b320d91ba355ff30a45506696b433aa02d81e7bdad34a37a5f45ad8c"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_read-0.3.0/input.schema.json",
+      "bytes": 627,
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_read-0.3.0/output.schema.json",
+      "bytes": 18106,
+      "sha256": "762f4ca547c81156a35937e0fd2120deb7a4aa5da9f401b9f4ecde778db14da2"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_read-0.3.0/plugin.yaml",
+      "bytes": 897,
+      "sha256": "3b99e0428a0e3605724a8b7790539b3ed17b06fe24afc9c7c48678ced1be4cb6"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_search-0.2.0/description.txt",
+      "bytes": 170,
+      "sha256": "04b04c1a490134039e95a864a9d25dafc4e93cc595196d26b16746cc285b9989"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_search-0.2.0/input.schema.json",
+      "bytes": 2300,
+      "sha256": "52fdd4305f6791d80469a4f2537d1b544790e8dec59e24960f731cf5f9295584"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_search-0.2.0/output.schema.json",
+      "bytes": 3540,
+      "sha256": "457e3723413e6c9b2b548a27ca6832159dfff6c5741fd3b021a5825dffb695e7"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_search-0.2.0/plugin.yaml",
+      "bytes": 903,
+      "sha256": "e73db11770e860c29f9d24de477f8107355cebfdefab45bed945234fc1a1a6b7"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_trace-0.1.0/description.txt",
+      "bytes": 264,
+      "sha256": "a604404610101a18c86797e38f3725bf21a5a6d961ca7d8656fd071519567a60"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_trace-0.1.0/input.schema.json",
+      "bytes": 455,
+      "sha256": "7849c52bcc5b58775f5a7dec28bf41399746ef1780c815a88dc8630e03227c91"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_trace-0.1.0/output.schema.json",
+      "bytes": 3547,
+      "sha256": "5595052fbd89307318bc1593438ff208117c29ddfdf747d0f86c15fb5ae532dc"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_trace-0.1.0/plugin.yaml",
+      "bytes": 900,
+      "sha256": "5ed8ee7d9db15d5c10cb644d3172977e6e174a5e4135f69fa999172ed5fc7c0a"
+    },
+    {
+      "path": "src/main/resources/session/v3/task-binding-v3.schema.json",
+      "bytes": 5782,
+      "sha256": "fded13d824326d679d306d6a24512414c9e0c1ae170768fbce860b3627fe6b17"
+    },
+    {
+      "path": "tools/evaluation/application_grants.py",
+      "bytes": 2588,
+      "sha256": "ca54d34e6a7db4420ef6a3a9e065840c6604847516a1cdeac43c3f590fb34d42"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+      "bytes": 24270,
+      "sha256": "6db9c8a5a501c9456dedd24eb2dfc4f32cf9d01887d4ac79564f803a90ca2256"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelProfiles.java",
+      "bytes": 10615,
+      "sha256": "11542cc2e82229fc73e8f899ab888a490aaeb8e92a7a28da13f3408488f8e3d0"
+    }
+  ]
+}

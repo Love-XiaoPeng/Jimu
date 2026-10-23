@@ -32,3 +32,5 @@ docs/verification/XIAO-50/architecture/evidence/dependency-classpath-log.txt -di
 docs/verification/XIAO-53/architecture/** -text
 # XIAO-54 original blobs and candidate contract pins are byte-significant.
 docs/verification/XIAO-54/architecture/** -text
+# XIAO-55 candidate contract bytes and captured evidence are hash-pinned.
+docs/verification/XIAO-55/architecture/** -text

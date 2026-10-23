@@ -1,0 +1,30 @@
+{
+  "version": 4,
+  "session_id": "00000000-0000-4000-8000-000000000055",
+  "content_state": "PRESENT",
+  "upper_seq": 3,
+  "user_message_seq": 0,
+  "recent": [
+    {
+      "seq": 0,
+      "type": "user.message"
+    },
+    {
+      "seq": 1,
+      "type": "step.started"
+    },
+    {
+      "seq": 2,
+      "type": "model.response"
+    },
+    {
+      "seq": 3,
+      "type": "session.read"
+    }
+  ],
+  "as_of_sse_seq": 8,
+  "retain_until": "2026-10-30T05:00:00Z",
+  "readable": true,
+  "scope_sha256": "973b622f5028573ef6c213f8760690763738e33708730787c63b570fe24ee1a9",
+  "scope_state": "ACTIVE"
+}
