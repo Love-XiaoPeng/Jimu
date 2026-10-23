@@ -4798,7 +4798,12 @@ public final class JdbcLedger
                     s(installed, "plugin_digest"),
                     n(installed, "epoch")));
           }
-          String toolSnapshot = Payloads.json(new ToolSnapshot(1, pins));
+          String toolSnapshot =
+              prior
+                  ? Payloads.json(
+                      new java.util.TreeMap<>(
+                          Map.of("schemaVersion", 1, "pins", new java.util.TreeMap<>(pins))))
+                  : Payloads.json(new ToolSnapshot(1, pins));
           if (pins.containsKey("compose_report")
               && media != pins.get("compose_report").version().equals("0.2.0"))
             throw new TaskFailure(503, "PLUGIN_PIN_MISMATCH");
