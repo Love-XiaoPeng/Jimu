@@ -136,7 +136,10 @@ public final class SessionQueryDeadline implements AutoCloseable {
                 url
                     + (url.contains("?") ? "&" : "?")
                     + "socketFactory="
-                    + DeadlineSocketFactory.class.getName(),
+                    + DeadlineSocketFactory.class.getName()
+                    // Connector/J's statement timer opens a separate KILL QUERY connection.
+                    // The scoped socket alarm and server MAX_EXECUTION_TIME own cancellation.
+                    + "&enableQueryTimeouts=false",
                 properties);
           }
         };
