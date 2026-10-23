@@ -43,6 +43,18 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 @ConditionalOnProperty(name = "jimu.durable.enabled", havingValue = "true")
 public class DurableConfiguration {
   @Bean
+  org.springframework.boot.web.servlet.FilterRegistrationBean<
+          io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchBodyFilter>
+      sessionSearchBodyFilter() {
+    var registration =
+        new org.springframework.boot.web.servlet.FilterRegistrationBean<>(
+            new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchBodyFilter());
+    registration.setAsyncSupported(true);
+    registration.addUrlPatterns("/api/tasks/*");
+    return registration;
+  }
+
+  @Bean
   ModelProfiles modelProfiles(Environment env) {
     return new ModelProfiles(env);
   }
@@ -107,6 +119,8 @@ public class DurableConfiguration {
       sensitive.addAll(models.sessionPrivateValues());
     ledger.sessionReadEnabled(
         env.getProperty("jimu.session-event-read.enabled", Boolean.class, false), sensitive);
+    ledger.sessionSearchEnabled(
+        env.getProperty("jimu.session-event-search.enabled", Boolean.class, false));
     ledger.check();
     return ledger;
   }

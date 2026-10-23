@@ -91,6 +91,10 @@ public final class TaskController {
     if (request.capabilityIds() != null
         && request.capabilityIds().stream().anyMatch(java.util.Objects::isNull))
       throw new TaskFailure(400, "INVALID_CAPABILITIES");
+    if (request.capabilityIds() != null
+        && request.capabilityIds().contains("session_event_search")
+        && !request.capabilityIds().equals(List.of("session_event_read", "session_event_search")))
+      throw new TaskFailure(400, "INVALID_CAPABILITIES");
     var capabilities =
         request.capabilityIds() == null
             ? List.of("web_fetch")
@@ -114,7 +118,8 @@ public final class TaskController {
                 "ask_user_question",
                 "todo_write",
                 "working_directory",
-                "session_event_read")
+                "session_event_read",
+                "session_event_search")
             .containsAll(capabilities)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
     // Resources remain operator-bound; no user-supplied connection or credential handles.
     if (request.resourceIds() != null && !request.resourceIds().isEmpty())

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session-history:2:owner-history",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 2
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "content_state": {
+      "enum": [
+        "PRESENT",
+        "PURGED"
+      ]
+    },
+    "upper_seq": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 127
+    },
+    "recent": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 127
+          },
+          "type": {
+            "enum": [
+              "user.message",
+              "step.started",
+              "model.response",
+              "session.read",
+              "turn.ended"
+            ]
+          }
+        },
+        "required": [
+          "seq",
+          "type"
+        ]
+      }
+    },
+    "user_message_seq": {
+      "const": 0
+    },
+    "as_of_sse_seq": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 256
+    },
+    "retain_until": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "readable": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "version",
+    "session_id",
+    "content_state",
+    "upper_seq",
+    "recent",
+    "user_message_seq",
+    "as_of_sse_seq",
+    "retain_until",
+    "readable"
+  ]
+}

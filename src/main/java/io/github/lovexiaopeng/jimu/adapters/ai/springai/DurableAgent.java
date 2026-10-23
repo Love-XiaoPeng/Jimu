@@ -178,7 +178,7 @@ public final class DurableAgent implements AutoCloseable {
             .anyMatch(io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES::contains);
     boolean askOnly = lease.capabilities().equals(List.of("ask_user_question"));
     boolean todoOnly = lease.capabilities().equals(List.of("todo_write"));
-    boolean sessionOnly = lease.capabilities().equals(List.of("session_event_read"));
+    boolean sessionOnly = lease.capabilities().contains("session_event_read");
     if (workspace != null && !mcpOnly && !askOnly && !todoOnly && !sessionOnly)
       workspace.prepareEvaluation(lease, ledger);
     Session session = new Session(lease, modelSnapshot, definitions);
@@ -341,8 +341,25 @@ public final class DurableAgent implements AutoCloseable {
                 .build());
         continue;
       }
+      if (name.equals("session_event_search")) {
+        var contracts =
+            new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts();
+        var pin = pins.get(name);
+        if (!pin.version().equals(contracts.descriptor().version())
+            || !pin.digest().equals(contracts.descriptor().outputSha256()))
+          throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+        result.add(
+            ToolDefinition.builder()
+                .name(name)
+                .description(contracts.description())
+                .inputSchema(contracts.inputSchema())
+                .build());
+        continue;
+      }
       if (name.equals("session_event_read")) {
-        var contracts = new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts();
+        var contracts =
+            new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts(
+                lease.capabilities().contains("session_event_search") ? 2 : 1);
         var pin = pins.get(name);
         if (!pin.version().equals(contracts.descriptor().version())
             || !pin.digest().equals(contracts.descriptor().outputSha256()))
@@ -568,7 +585,7 @@ public final class DurableAgent implements AutoCloseable {
                   List.of()));
         }
       }
-      if (lease.capabilities().equals(List.of("session_event_read"))) {
+      if (lease.capabilities().contains("session_event_read")) {
         var latest = ledger.checkpoint(lease);
         boolean replay =
             latest.isPresent()
@@ -782,6 +799,7 @@ public final class DurableAgent implements AutoCloseable {
       if (call.tool().equals("working_directory"))
         return workspace.directories().invoke(ledger, lease, step.id(), call, input, probe);
       if (call.tool().equals("session_event_read")) return invokeSession(call, input);
+      if (call.tool().equals("session_event_search")) return invokeSessionSearch(call, input);
       if (call.tool().equals("todo_write")) return invokeTodo(call, input);
       if (call.tool().equals("ask_user_question")) return invokeQuestion(call, input);
       if (io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES.contains(call.tool()))
@@ -909,9 +927,37 @@ public final class DurableAgent implements AutoCloseable {
       return output;
     }
 
+    private String invokeSessionSearch(Call call, String input) {
+      if (!call.input().equals(input)) throw new TaskFailure(409, "INVOCATION_MISMATCH");
+      var contracts =
+          new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts();
+      var canonical = contracts.input(input);
+      var pin = ledger.toolSnapshot(lease).pins().get(call.tool());
+      io.github.lovexiaopeng.jimu.plugin.api.SessionEventSearchPort port =
+          value -> {
+            if (!canonical.equals(value)) throw new TaskFailure(409, "INVOCATION_MISMATCH");
+            probe.hit("SESSION_SEARCH_COMMIT_BEFORE", lease.taskId());
+            String output =
+                ((io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger) ledger)
+                    .searchOrResult(lease, step.id(), call, pin.version(), pin.digest());
+            probe.hit("SESSION_SEARCH_COMMIT_AFTER", lease.taskId());
+            contracts.output(output);
+            return output;
+          };
+      return new io.github.lovexiaopeng.jimu.plugins.builtin.session.SessionEventSearchPlugin(
+              port, contracts.descriptor())
+          .execute(
+              canonical,
+              new ExecutionContext(
+                  call.providerId(), lease.deadline(), () -> ledger.checkpoint(lease)))
+          .output();
+    }
+
     private String invokeSession(Call call, String input) {
       if (!call.input().equals(input)) throw new TaskFailure(409, "INVOCATION_MISMATCH");
-      var contracts = new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts();
+      var contracts =
+          new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts(
+              lease.capabilities().contains("session_event_search") ? 2 : 1);
       var canonical = contracts.input(input);
       var pin = ledger.toolSnapshot(lease).pins().get(call.tool());
       io.github.lovexiaopeng.jimu.plugin.api.SessionEventPort port =

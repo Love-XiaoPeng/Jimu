@@ -188,6 +188,14 @@ public final class ModelProfiles {
       throw new TaskFailure(403, "DIRECTORY_NOT_AUTHORIZED");
   }
 
+  public void requireSessionSearch(ModelSnapshot model) {
+    try {
+      requireSessionRead(model);
+    } catch (TaskFailure rejected) {
+      throw new TaskFailure(403, "SESSION_SEARCH_DISABLED");
+    }
+  }
+
   public void requireSessionRead(ModelSnapshot model) {
     if (fixture
         || model.paid()
@@ -468,7 +476,16 @@ public final class ModelProfiles {
     if (input != null
         && (input.version() != 1
             || input.maxTokens() < 1
-            || input.maxTokens() > 8192
+            || input.maxTokens()
+                > (testMode
+                        && !p.paid()
+                        && "trusted-local-v1".equals(p.transportPolicy())
+                        && List.of("127.0.0.1", "[::1]").contains(uri.getHost())
+                        && "local-byte-accounted-v1".equals(p.model())
+                        && "local-byte-accounted-v1".equals(p.revision())
+                        && "test-whole-request-utf8-v1".equals(input.proof())
+                    ? 65536
+                    : 8192)
             || input.proof() == null
             || input.proof().isBlank()
             || input.proof().length() > 160))

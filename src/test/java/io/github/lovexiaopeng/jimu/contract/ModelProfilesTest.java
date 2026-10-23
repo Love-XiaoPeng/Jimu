@@ -23,6 +23,33 @@ import org.springframework.core.env.SystemEnvironmentPropertySource;
 
 class ModelProfilesTest {
   @Test
+  void largerWholeRequestLimitRequiresTheExactUnpaidLocalProof() {
+    var p = local();
+    String prefix = "jimu.model.profiles.local.";
+    p.put("jimu.test-mode", "true");
+    p.put(prefix + "paid", "false");
+    p.put(prefix + "model", "local-byte-accounted-v1");
+    p.put(prefix + "revision", "local-byte-accounted-v1");
+    p.put(prefix + "input-limit.version", "1");
+    p.put(prefix + "input-limit.max-tokens", "65536");
+    p.put(prefix + "input-limit.proof", "test-whole-request-utf8-v1");
+    var allowed = profiles(p);
+    allowed.checkInput(allowed.selected("tenant"), "x".repeat(65536));
+    assertThrows(
+        TaskFailure.class, () -> allowed.checkInput(allowed.selected("tenant"), "x".repeat(65537)));
+    for (String key :
+        new String[] {
+          "jimu.test-mode", prefix + "model", prefix + "revision", prefix + "input-limit.proof"
+        }) {
+      var denied = new HashMap<>(p);
+      denied.put(key, key.equals("jimu.test-mode") ? "false" : "unproven");
+      assertThrows(IllegalArgumentException.class, () -> profiles(denied));
+    }
+    p.put(prefix + "input-limit.max-tokens", "65537");
+    assertThrows(IllegalArgumentException.class, () -> profiles(p));
+  }
+
+  @Test
   void closedPlanNeverEnablesCloudEvenWithDispatchAndTestFlags() {
     var p = local();
     p.put("jimu.test-mode", "true");
