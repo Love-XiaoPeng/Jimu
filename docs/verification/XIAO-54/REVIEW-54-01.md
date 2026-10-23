@@ -17,7 +17,7 @@ Build on Windows JDK21, Maven wrapper:
 Runtime commands use WSL Ubuntu with `JIMU_IT_JAVA=/opt/jimu-test-toolchains/neo4j-3388e05ee53c-java21/bin/java`, private MySQL8.0.46 and `--jar target/jimu-0.1.0-SNAPSHOT.jar`:
 
 ```text
-python3 tools/session_trace_verify.py --evidence target/xiao54/review54-pending-cleanup --case pending-cleanup
+python3 tools/session_trace_verify.py --evidence target/xiao54/review54-pending-cleanup-final --case pending-cleanup
 python3 tools/session_trace_verify.py --evidence target/xiao54/review54-observations --case observations
 python3 tools/session_trace_migration_verify.py --old-jar ../jimu-v20.jar --evidence target/xiao54/review54-migration
 ```
@@ -31,5 +31,7 @@ The pending-cleanup case creates actual M2-bound reads and ends them through own
 - Source-capture/trace, actual SSE reconnect and bounded PK observations still work. V20→21 preserves old bytes/checksums and old binaries reject21 before readiness.
 
 The correction delivery manifest supplies the new source/tree/JAR, actual exit codes, packaged-entry checks, protected-baseline comparison, raw protocol/ledger/database evidence and private resource cleanup receipts. Earlier 188-test/full T01–T11 evidence remains attached to the earlier JAR and is not relabeled as a rerun on this patch. This pass uses 73 targeted tests and differential runtime cases. Seven-day expiry is a private timestamp fixture. No exhaustive capacity/authorization/DNS/TLS matrix or purge-transaction process kill was added; independent reviewer/QA acceptance is still required. No GitHub CI was run or awaited.
+
+The first new live-writer probe compared body byte counts after issuing cancellation. Terminalization legitimately changes those bodies, so that assertion failed while history still remained PRESENT with the full reservation and NULL cleanup receipt. The corrected probe observes an actual nonquiescent M2 writer before cancellation and checks content/held quota/receipt directly. This fixture failure and its successful private-resource teardown are retained separately; neither is recorded as a successful product cleanup run.
 
 Scope remains only `read-receipt-sources-v1`, with `replacement_policy=unsupported`; surface/replacement chains, inferred model causality and old-history backfill remain undelivered.

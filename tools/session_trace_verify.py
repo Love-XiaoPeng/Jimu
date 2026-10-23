@@ -320,16 +320,15 @@ class TraceExperiment(SessionExperiment):
             worker=self.start('pending-'+mode,'worker','M2'); self.barrier(worker)
             pending=self.sql("SELECT outcome,relation_version,content_state,read_sources_snapshot,read_sources_digest,read_sources_bytes,receipt_seq FROM invocation_session_read WHERE task_id='"+task+"';")
             self.assert_that(pending=='PENDING\t1\tPRESENT\tNULL\tNULL\tNULL\tNULL','REVIEW-54-01 real M2 pending read '+mode)
+            if mode=='cancel':
+                self.sql("UPDATE task_session_history SET retain_until=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE task_id='"+task+"';")
+                time.sleep(3)
+                self.assert_that(worker['process'].poll() is None and self.sql("SELECT COUNT(*) FROM task_attempt WHERE task_id='"+task+"' AND quiescent=FALSE;")=='1' and self.sql("SELECT content_state,held_bytes,cleanup_receipt FROM task_session_history WHERE task_id='"+task+"';")=='PRESENT\t8388608\tNULL','REVIEW-54-01 live writer not purged or released')
+                self.sql("UPDATE task_session_history SET retain_until=CURRENT_TIMESTAMP(6)+INTERVAL 7 DAY WHERE task_id='"+task+"';")
             if mode in ('cancel','unknown'):
                 self.assert_that(self.http('POST','/api/tasks/'+task+'/cancel')[0]==202,'REVIEW-54-01 owner cancel '+mode)
             elif mode=='deadline':
                 self.sql("UPDATE task SET deadline=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE id='"+task+"';")
-            if mode=='cancel':
-                self.sql("UPDATE task_session_history SET retain_until=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE task_id='"+task+"';")
-                before=self.sql("SELECT content_state,held_bytes,body_bytes,cleanup_receipt FROM task_session_history WHERE task_id='"+task+"';")
-                time.sleep(3)
-                self.assert_that(worker['process'].poll() is None and before==self.sql("SELECT content_state,held_bytes,body_bytes,cleanup_receipt FROM task_session_history WHERE task_id='"+task+"';"),'REVIEW-54-01 live writer not purged or released')
-                self.sql("UPDATE task_session_history SET retain_until=CURRENT_TIMESTAMP(6)+INTERVAL 7 DAY WHERE task_id='"+task+"';")
             (worker['folder']/'release').write_text('continue')
             terminal=self.state(task,'CANCELLED' if mode in ('cancel','unknown') else 'FAILED'); self.stop(worker)
             if mode=='deadline': self.assert_that(terminal['code']=='DEADLINE_EXCEEDED','REVIEW-54-01 real deadline terminal')
