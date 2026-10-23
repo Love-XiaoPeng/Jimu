@@ -1,0 +1,431 @@
+{
+  "scope": "Architecture design and provenance, not product runtime validation",
+  "productBaseline": "270a5d15611f5d7e59bbbd1d96c94d07567fc858",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 1486,
+      "sha256": "a435f21cb86f25f380d5ebc53ad3bc6c3e133fe0bac5114371d62fbe7e2847ba"
+    },
+    {
+      "path": "docs/adr/0011-authorized-session-event-read.md",
+      "bytes": 5618,
+      "sha256": "9a113c57955d555b88cd42b8002624d211c4a3e3703720188634bc0ee76c2c0c"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/ContractProbe.java",
+      "bytes": 10022,
+      "sha256": "d4bbd3c963daec7f54aa1948584bfafae3c1fa982fcb2113e068737af3afd9eb"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/README.md",
+      "bytes": 2788,
+      "sha256": "d1a3db51b475ccc4e0907bf7a097e46401d37812242703a057b59d4f12cd4136"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/THIRD_PARTY_NOTICES.md",
+      "bytes": 998,
+      "sha256": "5ca4c68f0f122053570e0b6464b9321fc8a99fb9621f4d6111251f04c16a5e06"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/VERIFICATION.md",
+      "bytes": 3611,
+      "sha256": "97a46cd9989fa2aeba8ab8a458601e64d04c657b16d1eaeb955bd68c9d95343e"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/capture-evidence.cjs",
+      "bytes": 7856,
+      "sha256": "388ecfb7ba1fe5424eafad682abbbcc9d31aeba687af477f7292c182133133db"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/catalog.json",
+      "bytes": 1159,
+      "sha256": "82ac8d60427d7b60632c8d0072d2c6c4fff2858f9f8c342ca412080a703b24e0"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/context-v1.schema.json",
+      "bytes": 1283,
+      "sha256": "94a3ab013b2decf90cdf2ab54e3554ad6fa10d63037d0fdef36988697a3cb6f1"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/event-v1.schema.json",
+      "bytes": 8282,
+      "sha256": "7626dd1e7b1f599e3b5bcc90ca0190c44e48f4142b462ddf48634286fc2a8471"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/binding.json",
+      "bytes": 1098,
+      "sha256": "c7accb59b5216ffeda05ae7608a5ec49c033813412cb2abe49a3b2ca7ed9fb64"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/context.json",
+      "bytes": 405,
+      "sha256": "d5b25eb7aea02b09c50eb693082c9db0c301b6cc27a1a12cd67dcd1a7e1955b2"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/current-input.json",
+      "bytes": 71,
+      "sha256": "07dbea2c5b19f100cb80c455186e46af86b7277de004c2acf306b93ad44e3466"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/first-read-output.json",
+      "bytes": 749,
+      "sha256": "6b297e8e7110908d598cf568f9877ab17b879251058c38571db8b69604411d6b"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/first-read-output.wire.json",
+      "bytes": 581,
+      "sha256": "7bed00eb1df7fa697d67d82c8e7bbe5e97101bec7df8d8c5cf7bc64f522509bb"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/input.json",
+      "bytes": 44,
+      "sha256": "dad416dfb699bd23f447b0c282ca2d796f4215563b24357b194ae2d8c1cb9e23"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/owner-history.json",
+      "bytes": 491,
+      "sha256": "dd54b0d7de30ffff68d3ee1ff195f893d7f579278b0b076633bc6051686078f4"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/read-output.json",
+      "bytes": 1434,
+      "sha256": "b78f42c46e704513d4970bb4f9e825867acaa13a98c967a6466ae4776ade388c"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/read-receipt.json",
+      "bytes": 611,
+      "sha256": "ab4da31188b0bb9a2bc994147b9400222faaef3f90759cc8c11ca8a64f85cfe4"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/response-event.json",
+      "bytes": 568,
+      "sha256": "4cb9c684aae3315095eeb7ac36e87ef4dee4140b85274c8bd4582bc54fc38844"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/trace.json",
+      "bytes": 5267,
+      "sha256": "557c5cd40fbd110bc47fcb7eb2f3d4510d6396c9eeb7607eaf5380dad1ea6653"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/user-event.json",
+      "bytes": 390,
+      "sha256": "bdbb1a52d412ab2d3b3064f5f717952bc3f28b3b2434e988d452b153d521f026"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/owner-history-v1.schema.json",
+      "bytes": 1611,
+      "sha256": "dd4291e10d0d60abc930826fa5f88c233281ea66c79868d93fa9b8e6118d6ee6"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/session_event_read-0.1.0/description.txt",
+      "bytes": 489,
+      "sha256": "353537c1d241ce90d0a707d60ac25fa615516ad3a28c37e41f64b9465549f563"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/session_event_read-0.1.0/input.schema.json",
+      "bytes": 627,
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/session_event_read-0.1.0/output.schema.json",
+      "bytes": 15590,
+      "sha256": "266801da14857cee3bb79a7ffcd2fadcda33e8bb5480c451917302171ed4c9b7"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/session_event_read-0.1.0/plugin.yaml",
+      "bytes": 897,
+      "sha256": "bb28507cfd9486a96ab2996e577342733816dd3d72923c2ae0e07f6dcdef2294"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/task-binding-v1.schema.json",
+      "bytes": 3080,
+      "sha256": "54a30c835bb7b27dc30f48e2d091703d051a13a2f3fe989232c4c43a1ddbca9c"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/dependency-classpath.txt",
+      "bytes": 887,
+      "sha256": "ccaf9b71c151c78ff2d913decd9510f0027a798b6edfc787f4433af0143a9021"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/frozen-migrations.json",
+      "bytes": 8040,
+      "sha256": "75d73c1205c5e9703bd8713867ace85488b3a416e3795f7e86dba13e82899d42"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/java-version.txt",
+      "bytes": 208,
+      "sha256": "c09b3f6e7993628681d0f0e0fdfa12ccbfef6d7798ad260ec13807486db8b267"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/jimu-sources.json",
+      "bytes": 13672,
+      "sha256": "5757c16f26bdc1ac29068d5b7b9d98f8aa965d19421802b65ee29db419c160e6"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/jvm-probe.txt",
+      "bytes": 89,
+      "sha256": "1b4fcce86519110464ff21a84e2d964f2b1a01417c46812d0687d86f0dae4ef4"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/probe-compile.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/probe-dependencies.json",
+      "bytes": 14066,
+      "sha256": "0184c5a6145267bcbd35fbee2a819ff6d45a149352ff5b3e9d657bafd011f9b1"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/schema-cases.json",
+      "bytes": 1975,
+      "sha256": "2b5ee5ec08c575e72cb33787918d3e42d9ec7e13f637b6bb4e6bab1c0f3276ee"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/source-map.md",
+      "bytes": 3508,
+      "sha256": "7e24db85cdeb379c6c630efd24855ab570dc00befeb02e9ef61f65efa3bbbb7a"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream-sources.json",
+      "bytes": 21078,
+      "sha256": "8f3e56ba42b046b39330c51264b17bdc46547d0140c64029cc25a5ab0841872c"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/LICENSE",
+      "bytes": 1065,
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/docs__subsystems__session-projection.md",
+      "bytes": 22473,
+      "sha256": "dac9f68590978614831fd43db91f726ee63ad90dd47c6a378e43fc159f9c610c"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/docs__subsystems__session-query.md",
+      "bytes": 21696,
+      "sha256": "56700e4a7dd44b34bbb1dbe066039f6c470d813876a90d50f606c863f4edfef2"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent-loop__src__agent.ts",
+      "bytes": 28972,
+      "sha256": "4add12f5c22bb1b8cf1dbc239c9b09fa3351feff2c936cb2b8900036468bd01b"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent-loop__src__index.ts",
+      "bytes": 39200,
+      "sha256": "3ea0262656c8ddcaa3be315c150bdc2af09371031c3c471d4ded511e21c6e86b"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent__src__index.ts",
+      "bytes": 31398,
+      "sha256": "218b30227cdc55d4c193112495a852507d12070028572ac95e6f9d1f954d1077"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent__src__projection.ts",
+      "bytes": 360,
+      "sha256": "2113e31ffcb4c98a1d4ddb15d36ee833f086ed5965520febaca65d6dbea6fe40"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent__src__types.ts",
+      "bytes": 3887,
+      "sha256": "b237d5d00d9b549cc32c7d91e08aaf83004d14d2bfa0179eeebc3fbfe18fed62"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__session__src__index.ts",
+      "bytes": 65812,
+      "sha256": "c1f08f7dcf4075eeebb13e6ea06b3f348bfeb85b8a5d4e4bfd1c3b93c1959332"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__session__src__types.ts",
+      "bytes": 24681,
+      "sha256": "515cba50f366b06dc3caaab45e8ce98c48c80fc07684437aba014df13ce04f2f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__package.json",
+      "bytes": 2140,
+      "sha256": "7c9521f081c49e116f850743b368d9e3aa35099ffc0ba7786c1ca94b7dd2c087"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__index.ts",
+      "bytes": 5993,
+      "sha256": "01ece54934bdec5f9145995d050b4af0e76c939cc695828f39da53a1089a2825"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__input.ts",
+      "bytes": 11609,
+      "sha256": "d27d365537360ec82402b91d24092d715906ffae74fb9ca947dfa35d58a5cb3f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__operations.ts",
+      "bytes": 10387,
+      "sha256": "e80e9c55e3e1568491bb9c6c356f7bd595fc9804f65c765a791e77e908c00c6e"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__presentation.ts",
+      "bytes": 8499,
+      "sha256": "f05f5fa18507d03cab12ea1c689e4f72fb448e1dab21245f0074a289520bf462"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__service-boundary.ts",
+      "bytes": 5417,
+      "sha256": "f67e74bdf163d79ec399c8f63865e9180346623ba970c60ea0d2cea76b20bd99"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__workspace-access.ts",
+      "bytes": 7822,
+      "sha256": "6f2f38689b945e86bf898ecd2063eeaa257c2aea27838f884fd1ee777f763e35"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__tests__sqlite-integration.spec.ts",
+      "bytes": 9039,
+      "sha256": "6ab114e48a688db0832ce7fc76f396fe8d3b859b12185dbdb4d042976c220b8f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__tests__tool-session-query.spec.ts",
+      "bytes": 84774,
+      "sha256": "70cf5bc29d453266680ab1ed3a8d2c99fd239130640d92edfe8df72ddf988f3c"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__src__index.ts",
+      "bytes": 41094,
+      "sha256": "72868e4ae967fee94967df5939ee092a582249ff7b37afc4fe0cf7660d48b8d3"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__src__query.ts",
+      "bytes": 15548,
+      "sha256": "b29363581b715a1eb50509d7c5ff039d7d4004926160cd88ffcbadaa44ca1c48"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__src__schema.ts",
+      "bytes": 6098,
+      "sha256": "2cc4c7c8e50409847599a048922d55ef4ffbd1ac2309502f3a5a06420bc1a28f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__tests__query.spec.ts",
+      "bytes": 10405,
+      "sha256": "6e181e90f4cdba647a368a7bf3ee84c4d5b5a9921a3a5e2981b3f869ea09f2c6"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__tests__sqlite.spec.ts",
+      "bytes": 85376,
+      "sha256": "112fe7bf3e2b405c87b6caca0c9a40174402025caf0bd36ad2117238459f6295"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__cold-read.ts",
+      "bytes": 2499,
+      "sha256": "e2bbc3e2e59c7a4843e9d957e99c37f323d59d224502366a1fcc17f29e196317"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__config.ts",
+      "bytes": 2321,
+      "sha256": "5850ab0dd78a26843d6ff899f5bb85af4cc8745f163ff71a17586bcda5da570f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__corpus.ts",
+      "bytes": 12664,
+      "sha256": "632b1178f54b88a607c61f4929551e8f766f15a8fac57fb22697df8e6cdbab60"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__documents.ts",
+      "bytes": 2731,
+      "sha256": "07f4a5af51d1a4bee5aede654e6cf9198d97c176d8b4ea39666bf6c3fdd95acd"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__extraction.ts",
+      "bytes": 2853,
+      "sha256": "7ee4fbae1b5101613fd1174289678c97faf77ecbee57649b9970998822277479"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__index.ts",
+      "bytes": 15460,
+      "sha256": "549f7f90c90efec63a5c7d69dbc65938c0f9578f85dcfc8ee25a49a43a8e83e3"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__observation.ts",
+      "bytes": 14878,
+      "sha256": "04a470ad5245aac1e70e0bf899515a931e52e7dba94ffcc0bfe9a978932e1347"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__sources.ts",
+      "bytes": 869,
+      "sha256": "57bf2721a598b86f796aac4946ace26d59529cb15f2eec587c068b1cdd88feb7"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__types.ts",
+      "bytes": 10880,
+      "sha256": "0d61d7fbeb325f93cc6a99ec362b825f264a1764e8bbf48d4136dc1634a026b6"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__tests__session-query.spec.ts",
+      "bytes": 53872,
+      "sha256": "a4f9749ead00fcaaff7adf689213c14bb945a41de9256caa684de55180d3b1c6"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence-jsonl__src__index.ts",
+      "bytes": 75605,
+      "sha256": "52cad4e39f5ba4d173ec322c647f16bac12385b4819aa07684f12a123f94f72f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence-jsonl__src__storage.ts",
+      "bytes": 24212,
+      "sha256": "57d5fa1d7efd17789d6a223f6aa5e06b79092665bea13f8a23d3bab644d066c3"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence__src__handle.ts",
+      "bytes": 5319,
+      "sha256": "2fd8b5c5188ffdf5adee78a260b3dd0a9be97e5eb9fcdb5aafae5a8ed5471a31"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence__src__index.ts",
+      "bytes": 8535,
+      "sha256": "d3da1fc3977e23eb5c2f73d6245a0d9c5967f9a0d755065e74ccd26e76794f14"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence__src__storage-contract.ts",
+      "bytes": 6252,
+      "sha256": "062911ece08832418f2fd0dc8fabdd8848897de6b2d97bc7fca54a634e0c99bd"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-projection__src__index.ts",
+      "bytes": 31588,
+      "sha256": "f6e57c06f57b20a74e87a8a476a7adfb67ccbbd3d924bd52420db93ac9a7381b"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-projection__src__types.ts",
+      "bytes": 1066,
+      "sha256": "6ad9530ea5cfc8ff3e73b34413e5757da8091248b0a874c304f5c5a83500f555"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/fetch-upstream.cjs",
+      "bytes": 4059,
+      "sha256": "b9aa47ce85652db2cf9ff2582cf3b5fafbe9d41d8f3fcd1f5da1cfae83fb1c9d"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/implementation-contract.md",
+      "bytes": 27595,
+      "sha256": "b14bd3ae971f334b6b03c34f45d127dbbeb354987f7fa358294a0ad2f0470f69"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/make-contracts.cjs",
+      "bytes": 10359,
+      "sha256": "2c89e5588e24dff0b7ff8ae898aedf527e791a8c1c658a909b73e0620f2bead9"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/migration-contract.sql",
+      "bytes": 7600,
+      "sha256": "8a79f8d40e315aa8f8dfd136ba294dbf36f18333386f74e256a656c7289e3c81"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/package.cjs",
+      "bytes": 2921,
+      "sha256": "48a149df895fe63b1fc6d314cc6fec109a66dc227377b5b851d9d6a4a3a7a900"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/verify.ps1",
+      "bytes": 1717,
+      "sha256": "622d35a14a6b76b19a28d8715a6947bc6a37495bf18ac3dcccf95ab278eedfb0"
+    }
+  ]
+}

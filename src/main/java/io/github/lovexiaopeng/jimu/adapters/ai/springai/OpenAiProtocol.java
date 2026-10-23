@@ -202,6 +202,7 @@ public final class OpenAiProtocol {
     var ids = new HashSet<String>();
     var wireCalls = message.path("tool_calls");
     boolean directory = authorizedTools.contains("working_directory");
+    boolean session = authorizedTools.contains("session_event_read");
     if (!wireCalls.isMissingNode() && !wireCalls.isArray()) throw new IOException("Invalid calls");
     for (var c : wireCalls) {
       String id = c.path("id").asText();
@@ -229,7 +230,7 @@ public final class OpenAiProtocol {
       // Bound raw bytes before a MySQL TEXT invocation snapshot can be planned. Strict draft
       // parsing remains at the gateway, before executable admission.
       // Retain raw argument bytes so duplicate keys are not erased by a JsonNode conversion.
-      if (!composition && !todo && !directory) {
+      if (!composition && !todo && !directory && !session) {
         var parsed = json.readTree(arguments.asText());
         if (parsed == null || !parsed.isObject()) throw new IOException("Invalid tool arguments");
       }
