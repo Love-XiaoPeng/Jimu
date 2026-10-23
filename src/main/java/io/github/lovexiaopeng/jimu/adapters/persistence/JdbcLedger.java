@@ -386,9 +386,14 @@ public final class JdbcLedger
                   identity.actor());
           if (found.size() != 1 || !JdbcSessionScopes.task(found.getFirst()))
             throw JdbcSessionScopes.unavailable();
-          identity(identity);
-          if (!validRequest) throw new TaskFailure(400, "TOOL_INPUT_INVALID");
           var task = found.getFirst();
+          try {
+            identity(identity);
+          } catch (TaskFailure failure) {
+            invalidateScopeAfterTransaction(task);
+            throw JdbcSessionScopes.unavailable();
+          }
+          if (!validRequest) throw new TaskFailure(400, "TOOL_INPUT_INVALID");
           db.update(
               "UPDATE task_session_scope SET grant_state='REVOKED',revoked_at=COALESCE(revoked_at,CURRENT_TIMESTAMP(6)),invalidated_at=COALESCE(invalidated_at,CURRENT_TIMESTAMP(6)),next_validation_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND caller_task_id=? AND grant_state='ACTIVE'",
               identity.tenant(),
@@ -705,7 +710,7 @@ public final class JdbcLedger
             identity.actor());
     if (found.isEmpty()) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
     var task = found.getFirst();
-    identity(identity);
+    if (!JdbcSessionScopes.task(task)) identity(identity);
     access(task);
     return task;
   }
@@ -5204,7 +5209,19 @@ public final class JdbcLedger
 
   private Map<String, Object> visible(Identity identity, String task) {
     sessionScopes.lock(identity.tenant(), task);
-    identity(identity);
+    try {
+      identity(identity);
+    } catch (TaskFailure failure) {
+      var found =
+          rows(
+              "SELECT tenant_id,id,capabilities FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=?",
+              identity.tenant(),
+              task,
+              identity.actor());
+      if (found.size() == 1 && JdbcSessionScopes.task(found.getFirst()))
+        invalidateScopeAfterTransaction(found.getFirst());
+      throw failure;
+    }
     return one(
         "SELECT * FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=?",
         identity.tenant(),
@@ -5324,7 +5341,6 @@ public final class JdbcLedger
           if (hint.size() == 1 && JdbcSessionScopes.task(hint.getFirst())) {
             bucket(identity.tenant());
             var row = locked(identity.tenant(), task);
-            identity(identity);
             try {
               access(row);
               return view(row);

@@ -1,5 +1,6 @@
 """XIAO-55 foreground acceptance with private MySQL, real dual workers and paid=false HTTP."""
 import argparse
+import concurrent.futures
 import hashlib
 import http.client
 import json
@@ -24,7 +25,13 @@ class Model(Handler):
         assert {t['function']['name'] for t in body['tools']} == {'session_event_read', 'session_search'}
         replies = [json.loads(m['content']) for m in body['messages'] if m['role'] == 'tool']
         message = {'role': 'assistant', 'content': 'Verified public nebula evidence.'}
-        if goal.startswith('caller') and not replies:
+        if goal.startswith('caller multislot') and not replies:
+            prior=context['prior_sessions'][0]['session_id']
+            slots=[('session_search',{'query':'nebula'}),('session_event_read',{'seq':0}),('session_search',{'query':'caller multislot'}),('session_event_read',{'session_id':prior,'seq':0})]
+            message['tool_calls']=[{'id':'multi_'+str(i),'type':'function','function':{'name':name,'arguments':json.dumps(arguments)}} for i,(name,arguments) in enumerate(slots)]
+        elif goal.startswith('caller multislot'):
+            assert len(replies)==4 and replies[1]['session_id']==context['session_id'] and replies[1]['upper_seq']==0 and replies[2]['items']==[]
+        elif goal.startswith('caller') and not replies:
             message['tool_calls'] = [{'id': 'search_0', 'type': 'function', 'function': {'name': 'session_search', 'arguments': json.dumps({'query': 'nebula'})}}]
         elif goal.startswith('caller') and len(replies) == 1:
             hit = replies[0]['items'][0]
@@ -127,6 +134,7 @@ class PriorExperiment(SessionExperiment):
         self.assert_that(raw(valid,content_type='text/plain')[0]==400 and raw(valid,suffix='?x=1')[0]==400,'owner JSON transport enforced')
         for subject in ('b','c'):
             self.assert_that(raw(b'{invalid',subject=subject)[0]==404,'owner authorization precedes malformed input '+subject)
+        self.assert_that(self.http('DELETE','/api/tasks/'+caller+'/session-search-scope?x=1',subject='c')[0]==404 and self.http('DELETE','/api/tasks/'+caller+'/session-search-scope?x=1')[0]==400,'revoke owner authorization precedes malformed request')
         for endpoint in (path,'/api/session-search/tasks'):
             connection=http.client.HTTPConnection('127.0.0.1',self.control['port'],timeout=5)
             started=time.monotonic()
@@ -150,6 +158,22 @@ class PriorExperiment(SessionExperiment):
         self.sql("UPDATE session_public_event SET event_digest=REPEAT('f',64) WHERE task_id='"+source+"' AND seq=0;")
         self.assert_that(self.search(caller,{'query':'absent','event_types':['step.started']},409)['code']=='SESSION_HISTORY_CORRUPT','no-match filters still verify full source')
         self.sql("UPDATE session_public_event SET event_digest='"+original+"' WHERE task_id='"+source+"' AND seq=0;")
+        self.search(caller,{'query':'nebula'})
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            lock=executor.submit(self.sql,"START TRANSACTION; SELECT id FROM task WHERE id='"+source+"' FOR UPDATE; DO SLEEP(4); ROLLBACK;")
+            eventually(lambda:bool(self.sql("SELECT trx_id FROM information_schema.innodb_trx WHERE trx_query='DO SLEEP(4)';")),'prior source privately locked')
+            started=time.monotonic()
+            self.assert_that(self.search(caller,{'query':'nebula'},504)['code']=='SESSION_QUERY_TIMEOUT' and time.monotonic()-started<2.7,'whole scope source lock uses original absolute deadline')
+            lock.result(timeout=8)
+        self.search(caller,{'query':'nebula'})
+        subprocess.run(['docker','stop','--time','2',self.cid],check=True,capture_output=True,timeout=20)
+        try:
+            started=time.monotonic()
+            status,value=self.http('POST',path,{'query':'nebula'})
+            self.assert_that(status in (503,504) and value['code'] in ('SESSION_QUERY_UNAVAILABLE','SESSION_QUERY_TIMEOUT') and time.monotonic()-started<2.7,'provider loss is bounded error without empty fallback',status=status)
+        finally:
+            subprocess.run(['docker','start',self.cid],check=True,capture_output=True,timeout=20)
+            eventually(lambda:self.database_ready(),'private source provider restored')
         self.search(caller,{'query':'nebula'})
 
     def run(self):
@@ -244,6 +268,12 @@ class PriorExperiment(SessionExperiment):
         self.assert_that(original_digest==self.sql("SELECT output_digest FROM invocation WHERE task_id='"+recovery+"' ORDER BY ordinal LIMIT 1;") and original_cut==self.sql("SELECT session_upper_seq,session_context_digest FROM step WHERE task_id='"+recovery+"' ORDER BY ordinal LIMIT 1;"),'supervised takeover retains original output and M1 cut')
         self.scenario(worker,recovery,'account')
         self.stop(worker)
+        multi=self.prior_task('caller multislot nebula',[one,two])
+        writer=self.start('worker-multislot','worker')
+        self.state(multi,'SUCCEEDED');self.quiet(multi);self.stop(writer)
+        values=self.outputs(multi)
+        self.assert_that(len(values)==4 and values[1]['upper_seq']==0 and values[1]['session_id']==multi and values[2]['items']==[] and values[3]['session_id'] in (one,two),'same-response search and read freeze original caller and source cuts')
+        self.assert_that(self.sql("SELECT tools_used FROM task WHERE id='"+multi+"';")=='4','four same-response slots consume exactly four')
         unknown=self.prior_task('unknown cleanup guard',[extra[2]])
         self.http('POST','/api/tasks/'+unknown+'/cancel')
         self.sql("INSERT INTO reservation(tenant_id,id,task_id,category,amount,state,usage_quality) VALUES('tenant-a','"+unknown+":unknown','"+unknown+"','MODEL',1,'HELD_UNKNOWN','UNKNOWN');")
@@ -270,6 +300,23 @@ class PriorExperiment(SessionExperiment):
         self.sql("UPDATE task_session_scope SET next_validation_at=CURRENT_TIMESTAMP(6) WHERE caller_task_id='"+revoked+"';")
         eventually(lambda:self.sql("SELECT content_state FROM task_session_history WHERE task_id='"+revoked+"';")=='PURGED','pending revoked slot safely purged')
         self.assert_that(self.sql("SELECT CONCAT(state,':',q.content_state,':',outcome,':',COALESCE(native_read_seq,'NULL')) FROM invocation JOIN invocation_session_scope_query q ON q.invocation_id=invocation.id AND q.tenant_id=invocation.tenant_id WHERE task_id='"+revoked+"';")=='PENDING:PURGED:PENDING:NULL','pending purge invents no execution or receipt')
+        self.stop(self.control)
+        self.control=self.start('control-flag-off','control',extra={'jimu.session-search.enabled':'false'})
+        self.search(recovery,{'query':'nebula'})
+        self.assert_that('session_search' not in self.http('GET','/api/capabilities')[1],'flag off hides new capability while authorized owner history remains')
+        self.assert_that(self.prior_task('flag-off admission',expected=403)['code']=='SESSION_SEARCH_DISABLED','flag off rejects new admission')
+        self.stop(self.control);self.control=self.start('control-flag-restored','control')
+        actor_source=self.prior_task('source bob nebula',subject='c')
+        writer=self.start('worker-actor-loss','worker')
+        self.state(actor_source,'SUCCEEDED');self.quiet(actor_source)
+        actor_caller=self.prior_task('caller actor nebula',[actor_source],subject='c')
+        self.state(actor_caller,'SUCCEEDED');self.quiet(actor_caller);self.stop(writer)
+        self.sql("UPDATE actor_access SET enabled=FALSE WHERE tenant_id='tenant-a' AND actor_id='bob';")
+        self.search(actor_caller,{'query':'nebula'},404,subject='c')
+        self.assert_that(self.sql("SELECT invalidated_at IS NOT NULL FROM task_session_scope WHERE caller_task_id='"+actor_caller+"';")=='1','observed actor loss durably invalidates after rollback')
+        self.sql("UPDATE actor_access SET enabled=TRUE WHERE tenant_id='tenant-a' AND actor_id='bob';")
+        self.search(actor_caller,{'query':'nebula'},404,subject='c')
+        self.assert_that(self.http('GET','/api/tasks/'+actor_caller,subject='c')[1]['summary'] is None,'reenabled actor cannot revive derived body')
         self.sql("UPDATE installation SET enabled=FALSE WHERE tenant_id='tenant-a' AND plugin_id='session_search';")
         self.search(recovery,{'query':'nebula'},404)
         self.assert_that(self.sql("SELECT invalidated_at IS NOT NULL FROM task_session_scope WHERE caller_task_id='"+recovery+"';")=='1','observed pin loss durably invalidates after rollback')
