@@ -29,6 +29,7 @@ function owner(id) {
  if(/WorkerLoop|ZombieReaper/.test(type)) return 'WorkerService';
  if(/LedgerMaintenance/.test(type)) return 'module cleanup Services';
  if(/ReadinessController/.test(type)) return 'ReadinessService';
+ if(/SessionSearchController/.test(type)) return 'SessionScopeService';
  if(/Payloads/.test(type)) return 'SnapshotCodec (no business Service)';
  if(/ModelCosts/.test(type)) return 'ModelCosts (budget domain)';
  if(/ExecutionScopeBinding|ExecutionScopes|ExecutionScopeOperator/.test(type)) return 'ExecutionScopeService';
@@ -61,7 +62,7 @@ function capture(graph,label) {
  }
  for(const method of Object.values(graph)) for(const [index,call] of method.calls.entries()) if(call.sql) {
    const text=call.sql,used=tables.filter(t=>new RegExp('\\b'+t.table+'\\b','i').test(text)).map(t=>t.table);
-   const item={id:sha(method.id+'@'+index+'@'+text).slice(0,20),method:method.id,file:method.file,line:call.line,sql:text,parameters:call.arguments.slice(1),conditions:call.conditions,tables:used,lock:/FOR UPDATE|FOR SHARE|LOCK IN SHARE/i.test(text)?'explicit-row-lock':/^(UPDATE|DELETE|INSERT)/i.test(text)?'mutation-locks':'read',tenantMention:/tenant_id/i.test(text),keyContracts:used.map(table=>({table,...contracts[table],columnsMentioned:contracts[table].primaryKey?.filter(k=>new RegExp('\\b'+k+'\\b','i').test(text))??[],review:'lexical occurrence is not a WHERE/full-key proof; retain statement predicates and bound arguments'})),targetMapperStatements:used.map(table=>({mapper:contracts[table].mapper,statement:'planned_'+sha(text).slice(0,12),state:'PLANNED_NOT_LOADED'}))};
+   const item={id:sha(method.id+'@'+index+'@'+text).slice(0,20),method:method.id,file:method.file,line:call.line,sql:text,sourceArguments:call.arguments,parameters:call.arguments.slice(1).filter(arg=>!arg.endsWith('.class')),conditions:call.conditions,callbackOwners:call.callbackOwners,tables:used,lock:/FOR UPDATE|FOR SHARE|LOCK IN SHARE/i.test(text)?'explicit-row-lock':/^(UPDATE|DELETE|INSERT)/i.test(text)?'mutation-locks':'read',tenantMention:/tenant_id/i.test(text),keyContracts:used.map(table=>({table,...contracts[table],columnsMentioned:contracts[table].primaryKey?.filter(k=>new RegExp('\\b'+k+'\\b','i').test(text))??[],review:'lexical occurrence is not a WHERE/full-key proof; retain statement predicates and bound arguments'})),targetMapperStatements:used.map(table=>({mapper:contracts[table].mapper,statement:'planned_'+sha(text).slice(0,12),state:'PLANNED_NOT_LOADED'}))};
    sql.push(item);call.sql_id=item.id;
  }
  const roots=Object.values(graph).filter(m=>(m.modifiers.includes('public') && (/\/adapters\/persistence\//.test(m.file)||/\/api\/.*Controller.java$/.test(m.file)||/ExecutionScopeOperator/.test(m.file)) || /\/(WorkerLoop|LedgerMaintenance|ZombieReaper).java$/.test(m.file) && /^(tick|run|start)$/.test(name(m.id))) && !/#(Jdbc|<init>)/.test(m.id));

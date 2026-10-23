@@ -35,7 +35,39 @@ class ModelFailurePolicyTest {
             events.add("lock");
             return this;
           },
-          this);
+          this,
+          new io.github.lovexiaopeng.jimu.kernel.model.port.ModelWorkflowRecords() {
+            public SnapshotAccess lockModelSnapshot(Lease lease) {
+              throw new AssertionError("not a failure path");
+            }
+
+            public io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ToolSnapshot
+                lockToolSnapshot(Lease lease) {
+              throw new AssertionError("not a failure path");
+            }
+
+            public Admission lockAdmission(Lease lease, String step) {
+              throw new AssertionError("not a failure path");
+            }
+
+            public Response lockResponse(Lease lease, String step, String dispatch) {
+              throw new AssertionError("not a failure path");
+            }
+
+            public Outcome outcome(Lease lease, String dispatch) {
+              throw new AssertionError("not a failure path");
+            }
+          },
+          new io.github.lovexiaopeng.jimu.kernel.transaction.port.LeaseUnitOfWork() {
+            public <T> T admission(Lease lease, Supplier<T> work) {
+              throw new AssertionError("not a failure path");
+            }
+
+            public <T> T directory(Lease lease, Supplier<T> work) {
+              throw new AssertionError("not a failure path");
+            }
+          },
+          io.github.lovexiaopeng.jimu.adapters.codec.Payloads::hash);
     }
 
     @Override

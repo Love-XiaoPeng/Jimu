@@ -1,18 +1,36 @@
 package io.github.lovexiaopeng.jimu.kernel.invocation.service.impl;
 
 import io.github.lovexiaopeng.jimu.kernel.invocation.port.InvocationRecords;
+import io.github.lovexiaopeng.jimu.kernel.invocation.port.InvocationWorkflowRecords;
 import io.github.lovexiaopeng.jimu.kernel.invocation.service.InvocationService;
+import io.github.lovexiaopeng.jimu.kernel.snapshot.api.SnapshotDigest;
+import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
+import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Invocation;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
+import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.transaction.port.LeaseUnitOfWork;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
 
+/** 原槽效果准入和一次结算；未知效果不重放，已确认成功不因材料后验拒绝而消失。 */
 public final class InvocationServiceImpl implements InvocationService {
   private final InvocationRecords records;
   private final LedgerUnitOfWork work;
+  private final InvocationWorkflowRecords workflows;
+  private final LeaseUnitOfWork admissions;
+  private final SnapshotDigest digest;
 
-  public InvocationServiceImpl(InvocationRecords records, LedgerUnitOfWork work) {
+  public InvocationServiceImpl(
+      InvocationRecords records,
+      LedgerUnitOfWork work,
+      InvocationWorkflowRecords workflows,
+      LeaseUnitOfWork admissions,
+      SnapshotDigest digest) {
     this.records = records;
     this.work = work;
+    this.workflows = workflows;
+    this.admissions = admissions;
+    this.digest = digest;
   }
 
   @Override
@@ -42,5 +60,96 @@ public final class InvocationServiceImpl implements InvocationService {
           row.reconciliationRequired();
           return null;
         });
+  }
+
+  @Override
+  public Invocation admit(
+      Lease lease, String step, Call call, String pluginVersion, String pluginDigest) {
+    if (call.tool().equals("session_search")
+        || lease.capabilities().contains("session_search")
+            && call.tool().equals("session_event_read"))
+      throw new TaskFailure(409, "SESSION_SCOPE_COMMIT_REQUIRED");
+    if (call.tool().equals("session_event_trace"))
+      throw new TaskFailure(409, "SESSION_TRACE_COMMIT_REQUIRED");
+    if (call.tool().equals("session_event_search"))
+      throw new TaskFailure(409, "SESSION_SEARCH_COMMIT_REQUIRED");
+    if (call.tool().equals("session_event_read"))
+      throw new TaskFailure(409, "SESSION_READ_COMMIT_REQUIRED");
+    if (call.tool().equals("working_directory"))
+      throw new TaskFailure(409, "DIRECTORY_COMMIT_REQUIRED");
+    if (call.tool().equals("todo_write")) throw new TaskFailure(409, "TODO_COMMIT_REQUIRED");
+
+    return admissions.admission(
+        lease,
+        () -> {
+          var row = workflows.lockAdmission(lease, step, call, pluginVersion, pluginDigest);
+          var slot = row.slot();
+          if (!digest.hash(call.input()).equals(slot.inputDigest())
+              || !call.tool().equals(slot.tool())
+              || !call.providerId().equals(slot.provider()))
+            throw new TaskFailure(409, "INVOCATION_MISMATCH");
+          row.freezeDirectory();
+          row.validateMaterial();
+          slot = row.slot();
+          var pin = row.pin();
+          if (!pluginVersion.equals(pin.version())
+              || !pluginDigest.equals(pin.digest())
+              || !pluginVersion.equals(pin.pinnedVersion())
+              || !pluginDigest.equals(pin.pinnedDigest())
+              || pin.epoch() != pin.pinnedEpoch()
+              || !pluginVersion.equals(pin.installedVersion())
+              || !pluginDigest.equals(pin.installedDigest()))
+            throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+          if ("SUCCEEDED".equals(slot.state())) {
+            if (!digest.hash(slot.output()).equals(slot.outputDigest()))
+              throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+            return new Invocation(slot.id(), slot.effect(), "SUCCEEDED", slot.output());
+          }
+          if (!"PENDING".equals(slot.state())) throw new TaskFailure(409, "EFFECT_OUTCOME_UNKNOWN");
+          if (row.toolsUsed() >= row.maxTools() || row.tenantTools() >= row.tenantToolLimit())
+            throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
+          row.reserveUnit();
+          row.markRunning();
+          row.dispatched();
+          row.commitFence();
+          return new Invocation(slot.id(), slot.effect(), "RUNNING", null);
+        });
+  }
+
+  @Override
+  public void succeeded(Lease lease, String invocation, String output) {
+    records.requireOrdinaryCommit(lease, invocation);
+    commit(lease, invocation, output, false);
+  }
+
+  @Override
+  public void commit(Lease lease, String invocation, String output, boolean mcpCommit) {
+    boolean rejected =
+        work.required(
+            () ->
+                admissions.directory(
+                    lease,
+                    () -> {
+                      var row = workflows.lockSuccess(lease, invocation, output);
+                      if (McpLedger.NAMES.contains(row.tool()) && !mcpCommit)
+                        throw new TaskFailure(409, "MCP_COMMIT_REQUIRED");
+                      if ("present".equals(row.tool()))
+                        throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
+                      row.validateResultProof();
+                      if (row.succeed() != 1) throw new TaskFailure(409, "INVOCATION_STATE");
+                      row.settleUnit();
+                      row.succeeded();
+                      row.commitFence();
+                      try {
+                        row.validateMaterial();
+                        return false;
+                      } catch (TaskFailure failure) {
+                        if (!failure.code().equals("EVALUATION_MATERIAL_MISMATCH")) throw failure;
+                        row.stopEvaluationRun();
+                        return true;
+                      }
+                    }));
+    // 成功、计账和STOPPED已提交，随后通知调用者材料不再匹配。
+    if (rejected) throw new TaskFailure(409, "EVALUATION_MATERIAL_MISMATCH");
   }
 }

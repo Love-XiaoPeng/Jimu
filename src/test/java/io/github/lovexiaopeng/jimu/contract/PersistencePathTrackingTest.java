@@ -38,8 +38,9 @@ class PersistencePathTrackingTest {
       assertEquals("OPEN", table.path("state").asText());
       assertTrue(table.path("actualBusinessMapper").isNull());
     }
-    assertTrue(capture.path("baseline").path("entries").size() >= 119);
-    assertTrue(capture.path("baseline").path("sql").size() >= 623);
+    assertEquals(153, capture.path("baseline").path("entries").size());
+    // A SQL verb must be followed by whitespace; created_at/SETTLED were old false positives.
+    assertTrue(capture.path("baseline").path("sql").size() > 500);
     assertTrue(capture.path("current").path("dynamicSql").size() > 0);
     for (var entry : capture.path("baseline").path("entries")) {
       assertTrue(entry.hasNonNull("targetService"));
@@ -47,5 +48,31 @@ class PersistencePathTrackingTest {
       assertTrue(entry.has("locks"));
       assertTrue(entry.has("verification"));
     }
+  }
+
+  @Test
+  void extractedCoreSqlPreservesAcceptedStatementsExactly() throws Exception {
+    JsonNode capture;
+    try (var compressed =
+        new GZIPInputStream(
+            Files.newInputStream(
+                Path.of("docs/verification/XIAO-60/evidence/path-tracking.json.gz")))) {
+      capture =
+          Payloads.read(
+              new String(compressed.readAllBytes(), StandardCharsets.UTF_8), JsonNode.class);
+    }
+    var accepted = new java.util.HashSet<String>();
+    for (var statement : capture.path("baseline").path("sql"))
+      accepted.add(statement.path("sql").asText());
+    int checked = 0;
+    for (var statement : capture.path("current").path("sql")) {
+      if (!statement
+          .path("file")
+          .asText()
+          .matches(".*Jdbc(ExecutionRecords|ModelWorkflows|InvocationWorkflows)\\.java")) continue;
+      assertTrue(accepted.contains(statement.path("sql").asText()), statement.toString());
+      checked++;
+    }
+    assertTrue(checked > 40, "Real extracted SQL inventory is required");
   }
 }

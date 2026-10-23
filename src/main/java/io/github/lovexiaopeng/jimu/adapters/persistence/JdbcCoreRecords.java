@@ -4,10 +4,12 @@ import io.github.lovexiaopeng.jimu.kernel.execution.port.ExecutionRecords;
 import io.github.lovexiaopeng.jimu.kernel.invocation.port.InvocationRecords;
 import io.github.lovexiaopeng.jimu.kernel.model.port.ModelDispatchRecords;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
+import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.WorkerProcess;
 import io.github.lovexiaopeng.jimu.kernel.worker.port.WorkerRecords;
 import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /** B1 transition only: named record operations; B2 replaces these SQL bodies with Mapper calls. */
@@ -26,6 +28,51 @@ final class JdbcCoreRecords {
 
   WorkerRecords worker() {
     return new WorkerRecords() {
+      public int renewLease(Lease lease) {
+        return db.update(
+            "UPDATE task SET lease_until=CURRENT_TIMESTAMP(6)+INTERVAL 30 SECOND WHERE tenant_id=? AND id=? AND current_attempt_id=? AND worker_id=? AND fence=? AND lease_until>CURRENT_TIMESTAMP(6) AND state IN ('RUNNING','CANCEL_REQUESTED')",
+            lease.tenant(),
+            lease.taskId(),
+            lease.attemptId(),
+            lease.worker(),
+            lease.fence());
+      }
+
+      public void insertProcess(
+          String worker,
+          String host,
+          long pid,
+          long startTicks,
+          String bootId,
+          String observerPidNamespace) {
+        db.update(
+            "INSERT INTO worker_process(id,host_id,pid,start_ticks,boot_id,observer_pid_namespace) VALUES(?,?,?,?,?,?)",
+            worker,
+            host,
+            pid,
+            startTicks,
+            bootId,
+            observerPidNamespace);
+      }
+
+      public List<WorkerProcess> processes(String host) {
+        return ledger
+            .rows(
+                "SELECT w.*,EXISTS(SELECT 1 FROM task_attempt a JOIN task t ON t.tenant_id=a.tenant_id AND t.id=a.task_id WHERE a.worker_id=w.id AND a.quiescent=FALSE AND (t.cancel_requested_at<CURRENT_TIMESTAMP(6)-INTERVAL 3 SECOND OR (t.state='NEEDS_RECONCILIATION' AND t.updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 3 SECOND AND EXISTS(SELECT 1 FROM native_search_run n WHERE n.tenant_id=t.tenant_id AND n.task_id=t.id AND n.worker_id=w.id AND n.phase<>'STOPPED')))) AS overdue FROM worker_process w WHERE host_id=? AND stopped=FALSE ORDER BY id LIMIT 64",
+                host)
+            .stream()
+            .map(
+                w ->
+                    new WorkerProcess(
+                        ledger.s(w, "id"),
+                        ledger.n(w, "pid"),
+                        ledger.n(w, "start_ticks"),
+                        ledger.n(w, "overdue") == 1,
+                        ledger.s(w, "boot_id"),
+                        ledger.s(w, "observer_pid_namespace")))
+            .toList();
+      }
+
       @Override
       public void maintainQuestions() {
         ledger.maintainQuestions();
@@ -38,12 +85,12 @@ final class JdbcCoreRecords {
       }
 
       @Override
-      public java.util.Optional<Candidate> candidate(String tenant) {
+      public Optional<Candidate> candidate(String tenant) {
         return ledger.claimCandidate(tenant);
       }
 
       @Override
-      public java.util.Optional<Claim> lockCandidate(Candidate candidate) {
+      public Optional<Claim> lockCandidate(Candidate candidate) {
         return ledger.lockClaim(candidate);
       }
 
@@ -127,42 +174,7 @@ final class JdbcCoreRecords {
   }
 
   ExecutionRecords execution() {
-    return lease -> {
-      var row = ledger.fenced(lease, false);
-      return new ExecutionRecords.Task() {
-        @Override
-        public boolean hasEvaluationRun() {
-          return row.get("evaluation_run_id") != null;
-        }
-
-        @Override
-        public boolean cancellationRequested() {
-          return row.get("cancel_requested_at") != null;
-        }
-
-        @Override
-        public boolean pendingEffect() {
-          return !db.queryForList(
-                  "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN')",
-                  lease.tenant(),
-                  lease.taskId())
-              .isEmpty();
-        }
-
-        @Override
-        public void stopEvaluationRun() {
-          db.update(
-              "UPDATE evaluation_budget SET state='STOPPED' WHERE tenant_id=? AND id=?",
-              lease.tenant(),
-              s(row, "evaluation_run_id"));
-        }
-
-        @Override
-        public void terminal(String state, String code) {
-          ledger.terminal(row, state, code);
-        }
-      };
-    };
+    return new JdbcExecutionRecords(ledger, db);
   }
 
   ModelDispatchRecords model() {

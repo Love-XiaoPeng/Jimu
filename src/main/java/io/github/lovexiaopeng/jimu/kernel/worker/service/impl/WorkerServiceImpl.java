@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.kernel.worker.service.impl;
 
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
+import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.WorkerProcess;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
 import io.github.lovexiaopeng.jimu.kernel.worker.port.WorkerRecords;
@@ -17,6 +18,27 @@ public final class WorkerServiceImpl implements WorkerService {
   public WorkerServiceImpl(WorkerRecords records, LedgerUnitOfWork work) {
     this.records = records;
     this.work = work;
+  }
+
+  @Override
+  public boolean renew(Lease lease) {
+    return records.renewLease(lease) == 1;
+  }
+
+  @Override
+  public void register(
+      String worker,
+      String host,
+      long pid,
+      long startTicks,
+      String bootId,
+      String observerPidNamespace) {
+    records.insertProcess(worker, host, pid, startTicks, bootId, observerPidNamespace);
+  }
+
+  @Override
+  public List<WorkerProcess> processes(String host) {
+    return records.processes(host);
   }
 
   @Override

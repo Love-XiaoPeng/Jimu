@@ -1,5 +1,7 @@
 # B0/B1 核心业务及显式查询检查点
 
+> 本页是 `363214a` 历史检查点，保留原验证与开放项。接续工作流、当前 SQL 计数口径、符号映射及锁序适用说明见 `core-workflow-checkpoint.md`，历史行号和词法计数不能作为当前关闭依据。
+
 本批接续 `9dabdbeab9a8503f638809ae48c45d8a448bf8be`，继续唯一集成分支 `agent/agent/7aeccb14d7a9` 和草稿 [PR #22](https://github.com/Love-XiaoPeng/Jimu/pull/22)，base master。最终源码 SHA、tree、远端回读、JAR SHA256/大小及原始日志以本批独立附件 manifest 为准。不是整体重构验收，不启用初级、独审、QA、CI 或新功能。
 
 ## 本批已实现的边界

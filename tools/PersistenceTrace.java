@@ -60,6 +60,7 @@ class PersistenceTrace {
       call.put("select",source(tree.getMethodSelect()));
       call.put("arguments",tree.getArguments().stream().map(arg -> arg instanceof LambdaExpressionTree ? "<callback>" : source(arg).length()>2048 ? "<"+arg.getKind()+": see source>" : source(arg)).toList());
       var conditions = new ArrayList<String>();
+      var callbacks = new ArrayList<String>();
       Tree child=tree;
       for(TreePath path=getCurrentPath().getParentPath(); path!=null && !(path.getLeaf() instanceof MethodTree); child=path.getLeaf(),path=path.getParentPath()) {
         Tree parent=path.getLeaf();
@@ -69,11 +70,17 @@ class PersistenceTrace {
         else if(parent instanceof ForLoopTree loop) conditions.add("for "+loop.getCondition());
         else if(parent instanceof WhileLoopTree loop) conditions.add("while "+loop.getCondition());
         else if(parent instanceof CatchTree caught) conditions.add("catch "+caught.getParameter());
-        else if(parent instanceof LambdaExpressionTree) conditions.add("callback: transaction/stream/external caller, see expression");
+        else if(parent instanceof LambdaExpressionTree) {
+          conditions.add("callback: transaction/stream/external caller, see expression");
+          var enclosing=path.getParentPath();
+          if(enclosing!=null && enclosing.getLeaf() instanceof MethodInvocationTree)
+            callbacks.add(id(trees.getElement(enclosing)));
+        }
       }
       Collections.reverse(conditions);call.put("conditions",conditions);
+      Collections.reverse(callbacks);call.put("callbackOwners",callbacks);
       for(ExpressionTree argument:tree.getArguments()) {
-        if(argument instanceof LiteralTree literal && literal.getValue() instanceof String sql && sql.matches("(?is)^(SELECT|INSERT|UPDATE|DELETE|SET|SHOW|ALTER|CREATE).*")) {
+        if(argument instanceof LiteralTree literal && literal.getValue() instanceof String sql && sql.matches("(?is)^(SELECT|INSERT|UPDATE|DELETE|SET|SHOW|ALTER|CREATE)\\s+.*")) {
           call.put("sql",sql); break;
         }
       }

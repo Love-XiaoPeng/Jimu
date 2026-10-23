@@ -1,6 +1,8 @@
-# B0 锁序核查检查点
+# B0 历史锁序核查检查点（不得作为当前关闭依据）
 
-基线为 `620d5e0e5bfe7b5da530f10997936466159ba34f`。以下行号相对旧 `adapters/persistence/JdbcLedger.java`，来自实际方法体；不是所有方法统一锁序的假设。当前未迁这些业务 SQL，所列顺序保持原实现。本表仍需在各业务切换时按方法及 Mapper statement 逐项关闭；其余入口见 `evidence/method-tracking.json`，OPEN 不代表已完成核查。
+基线为 `620d5e0e5bfe7b5da530f10997936466159ba34f`。以下行号仅相对旧 `adapters/persistence/JdbcLedger.java`，保留原检查点记录。后续代码已提取 Service/records 和 query adapter，旧行号、词法命中及本表的阶段预测不适用于当前关闭判断。当前按符号的分支策略、参数谓词及回调节点见 `core-workflow-checkpoint.md` 与 `evidence/reviewed-paths.json.gz`；实际 Mapper 切换全部 OPEN。
+
+特别更正：不存在全仓统一的 evaluation→budget→task 锁序。当前 `reserveImage`、`imageSucceeded` 继承 budget→fenced(evaluation→budget→task) 分支，付费 run 下与 evaluation-first 路径交错的并发风险未在本批验证关闭。owner、cleanup、scope/query、worker 收据各自有不同顺序，必须使用具体方法/分支的有序 call plan。
 
 | 路径 | 已核实顺序/行为 | 后续迁移验证 |
 | --- | --- | --- |

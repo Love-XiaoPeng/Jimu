@@ -1,10 +1,24 @@
 package io.github.lovexiaopeng.jimu.kernel.worker.port;
 
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
+import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.WorkerProcess;
 import java.util.List;
+import java.util.Optional;
 
 /** Locked handles are transaction-local; implementations cannot open a transaction. */
 public interface WorkerRecords {
+  int renewLease(Lease lease);
+
+  void insertProcess(
+      String worker,
+      String host,
+      long pid,
+      long startTicks,
+      String bootId,
+      String observerPidNamespace);
+
+  List<WorkerProcess> processes(String host);
+
   record Candidate(String tenant, String taskId, String evaluationRun) {}
 
   interface Claim {
@@ -59,9 +73,9 @@ public interface WorkerRecords {
 
   List<String> tenants();
 
-  java.util.Optional<Candidate> candidate(String tenant);
+  Optional<Candidate> candidate(String tenant);
 
-  java.util.Optional<Claim> lockCandidate(Candidate candidate);
+  Optional<Claim> lockCandidate(Candidate candidate);
 
   record TaskKey(String tenant, String taskId) {}
 

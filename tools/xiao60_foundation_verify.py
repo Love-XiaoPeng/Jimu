@@ -42,6 +42,29 @@ def verify(experiment, old_jar):
     experiment.assert_that(len(core['accepted']) == 8 and core['accepted'] == core['current'],
         'eight exact old/new ledger settlement snapshots: tokens/UNKNOWN/proof commit/missing receipt/CAS/fence/recovery/cancel/receipts')
     (evidence / 'core-differential.json').write_text(json.dumps(core, indent=2))
+    workflows = {}
+    for tag, binary in [('accepted', old_jar), ('current', experiment.jar)]:
+        if tag == 'current':
+            experiment.sql("SET GLOBAL log_output='TABLE'; SET GLOBAL general_log='ON';")
+        try:
+            result = subprocess.run([experiment.java,
+                '-Dloader.main=io.github.lovexiaopeng.jimu.adapters.persistence.CoreWorkflowScenario',
+                '-Dloader.path=' + str(classes), '-cp', str(binary),
+                'org.springframework.boot.loader.launch.PropertiesLauncher',
+                str(experiment.control['folder'] / 'runtime.properties'), tag], text=True, capture_output=True, timeout=100)
+            (evidence / ('workflow-' + tag + '.log')).write_text(result.stdout + result.stderr)
+            experiment.assert_that(result.returncode == 0 and 'PASS core workflow differential' in result.stdout,
+                'actual core workflow ' + tag, exit=result.returncode)
+            workflows[tag] = [line for line in result.stdout.splitlines() if line.startswith('RESULT ')]
+        finally:
+            if tag == 'current':
+                experiment.sql("SET GLOBAL general_log='OFF';")
+                (evidence / 'workflow-runtime-sql.tsv').write_text(experiment.sql(
+                    "SELECT event_time,thread_id,command_type,argument FROM mysql.general_log "
+                    "WHERE user_host LIKE 'runtime%' ORDER BY event_time;"))
+    experiment.assert_that(len(workflows['accepted']) == 22 and workflows['accepted'] == workflows['current'],
+        '22 exact accepted/new checkpoint/prepare/dispatch/responded/admit/success/finish and concurrent snapshots')
+    (evidence / 'workflow-differential.json').write_text(json.dumps(workflows, indent=2))
     current_jar = experiment.jar
     task = experiment.submit('b1-from-new')
     old_current = experiment.http('GET', '/api/tasks/' + task)
