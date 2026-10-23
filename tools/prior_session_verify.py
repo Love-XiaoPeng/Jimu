@@ -51,16 +51,17 @@ class Model(Handler):
 
 class PriorExperiment(SessionExperiment):
     def prepare(self):
+        self.input_jar = self.jar
+        self.input_sha256 = hashlib.sha256(self.input_jar.read_bytes()).hexdigest()
         if getattr(self,'v21',None):
-            retained=self.root/'v22-under-test.jar'
-            shutil.copyfile(self.jar,retained)
-            shutil.copyfile(self.v21,self.jar)
+            self.jar = self.v21
         super().prepare()
         if getattr(self,'v21',None):
             self.assert_that(self.sql('SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success=TRUE;')=='21','old exact-master binary creates actual V21 schema')
             old_checksums=self.sql('SELECT version,checksum,success FROM flyway_schema_history ORDER BY installed_rank;')
             self.stop(self.control)
-            shutil.copyfile(retained,self.jar)
+            shutil.copyfile(self.input_jar,self.jar)
+            self.assert_that(hashlib.sha256(self.jar.read_bytes()).hexdigest()==self.input_sha256,'upgraded private JAR matches immutable input',jarSha256=self.input_sha256)
             self.control=self.start('control-upgrade-v22','control')
             self.assert_that(self.sql('SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success=TRUE;')=='22','new binary migrates actual V21 to22')
             self.assert_that(self.sql('SELECT version,checksum,success FROM flyway_schema_history WHERE CAST(version AS UNSIGNED)<=21 ORDER BY installed_rank;')==old_checksums,'V1 through21 migration checksums preserved')
@@ -92,6 +93,7 @@ class PriorExperiment(SessionExperiment):
                 try: (self.evidence/(table+'.tsv')).write_text(self.sql('SELECT * FROM '+table+' ORDER BY tenant_id;'))
                 except Exception as failure: (self.evidence/(table+'-capture-error.txt')).write_text(type(failure).__name__)
         super().cleanup()
+        self.assert_that(hashlib.sha256(self.input_jar.read_bytes()).hexdigest()==self.input_sha256,'input artifact unchanged by fixture',jarSha256=self.input_sha256)
 
     def scenario(self, worker, task, mode):
         classes=self.root/'prior-test-classes'
@@ -166,13 +168,13 @@ class PriorExperiment(SessionExperiment):
             self.assert_that(self.search(caller,{'query':'nebula'},504)['code']=='SESSION_QUERY_TIMEOUT' and time.monotonic()-started<2.7,'whole scope source lock uses original absolute deadline')
             lock.result(timeout=8)
         self.search(caller,{'query':'nebula'})
-        subprocess.run(['docker','stop','--time','2',self.cid],check=True,capture_output=True,timeout=20)
+        subprocess.run(['docker','pause',self.cid],check=True,capture_output=True,timeout=20)
         try:
             started=time.monotonic()
             status,value=self.http('POST',path,{'query':'nebula'})
             self.assert_that(status in (503,504) and value['code'] in ('SESSION_QUERY_UNAVAILABLE','SESSION_QUERY_TIMEOUT') and time.monotonic()-started<2.7,'provider loss is bounded error without empty fallback',status=status)
         finally:
-            subprocess.run(['docker','start',self.cid],check=True,capture_output=True,timeout=20)
+            subprocess.run(['docker','unpause',self.cid],check=True,capture_output=True,timeout=20)
             eventually(lambda:self.database_ready(),'private source provider restored')
         self.search(caller,{'query':'nebula'})
 
