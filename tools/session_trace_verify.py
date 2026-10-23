@@ -281,16 +281,52 @@ class TraceExperiment(SessionExperiment):
                     (self.evidence/(table+'.tsv')).write_text(self.sql('SELECT * FROM '+table+';'))
         finally: super().cleanup()
 
+    def observations(self):
+        task=self.task('T01 SSE real trace observation',[(READ,{'seq':0}),(TRACE,{'seq':0})])
+        worker=self.start('observation-worker','worker'); self.state(task,'SUCCEEDED'); self.stop(worker)
+        status,sse=self.http('GET','/api/tasks/'+task+'/events')
+        rows=[json.loads(line[5:]) for line in sse.splitlines() if line.startswith('data:')]
+        self.assert_that(status==200 and [row['seq'] for row in rows]==list(range(1,len(rows)+1)),'T01 real v3 SSE ordered committed replay')
+        last=rows[-3:]
+        status,resumed=self.http('GET','/api/tasks/'+task+'/events',headers={'Last-Event-ID':rows[-4]['eventId']})
+        self.assert_that(status==200 and [json.loads(line[5:]) for line in resumed.splitlines() if line.startswith('data:')]==last,'T01 SSE reconnect resumes exact suffix')
+        self.assert_that('HIDDEN_TRACE_REASONING' not in sse and '/private/trace' not in sse,'T08 safe SSE projection')
+        (self.evidence/'trace.sse').write_text(sse)
+        upper=self.metadata(task)['upper_seq']
+        plan=self.sql("EXPLAIN ANALYZE SELECT * FROM session_public_event FORCE INDEX (PRIMARY) WHERE tenant_id='tenant-a' AND task_id='"+task+"' AND seq BETWEEN 0 AND "+str(upper)+" ORDER BY seq LIMIT 128;")
+        self.assert_that('using PRIMARY' in plan and 'rows='+str(upper+1)+' loops=1' in plan,'T07 actual bounded PK range rows examined')
+        (self.evidence/'trace-explain-analyze.tsv').write_text(plan)
+        self.stop(self.control); self.control=self.start('observation-reconnected','control')
+        output=self.trace(task,{'seq':0})
+        self.assert_that(output['derived_event_seqs']==[3],'T01 reconnect retains actual read relationship')
+
+    def legacy_v2(self):
+        root=Path(__file__).resolve().parents[1]/'src/main/resources/session/v2'
+        for name,version in ((READ,'0.2.0'),(SEARCH,'0.1.0')):
+            digest=hashlib.sha256((root/(name+'-'+version)/'output.schema.json').read_bytes()).hexdigest()
+            self.sql("UPDATE installation SET plugin_version='"+version+"',plugin_digest='"+digest+"' WHERE tenant_id='tenant-a' AND plugin_id='"+name+"';")
+        status,value=self.http('POST','/api/tasks',{'goal':'T09 legacy v2 trace unavailable','capabilityIds':[READ,SEARCH]},key='legacy-v2-trace')
+        self.assert_that(status==202,'T09 explicit legacy v2 task accepted')
+        task=value['taskId']
+        self.assert_that(self.metadata(task)['version']==2,'T09 retained v2 wire')
+        value=self.trace(task,{'seq':0},status=409)
+        self.assert_that(value['code']=='SESSION_TRACE_UNAVAILABLE','T09 v2 trace unavailable without invented sources')
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--jar', required=True)
     parser.add_argument('--evidence', required=True)
+    parser.add_argument('--case',choices=['all','observations','legacy-v2'],default='all')
     args = parser.parse_args()
     evidence = Path(args.evidence).resolve(); evidence.mkdir(parents=True, exist_ok=True)
     experiment = TraceExperiment(Path(args.jar), evidence)
     try:
-        experiment.prepare(); experiment.normal(); experiment.inputs(); experiment.integrity(); experiment.boundaries(); experiment.recovery(); experiment.retention()
+        experiment.prepare()
+        if args.case=='observations': experiment.observations()
+        elif args.case=='legacy-v2': experiment.legacy_v2()
+        else:
+            experiment.normal(); experiment.inputs(); experiment.integrity(); experiment.boundaries(); experiment.recovery(); experiment.retention()
     except Exception:
         (evidence/'failure.txt').write_text(traceback.format_exc())
         raise
