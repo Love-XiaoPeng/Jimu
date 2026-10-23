@@ -86,8 +86,8 @@ Object.assign(binding,{version:2,profile:'local-session-event-search-v2',history
 write('examples/binding.json',binding);
 write('task-binding-v2.schema.json',schema('task-binding-v2',obj(Object.fromEntries(Object.entries(binding).map(([key,value])=>[key,{const:value}])))));
 const first=load('examples/first-read-output.json');first.history_version=2;first.target.version=2;
-write('examples/read-output.json',first);
 const id=first.session_id, goal=first.target;goal.data.content='积木验证 Unicode 🧱，核查历史内容。';
+write('examples/read-output.json',first);
 write('examples/user-event.json',goal);
 const response=load('examples/response-event.json');response.version=2;
 response.data.calls=[{id:'search-1',type:'function',name:'session_event_search',arguments:'{"query":"积木"}'},

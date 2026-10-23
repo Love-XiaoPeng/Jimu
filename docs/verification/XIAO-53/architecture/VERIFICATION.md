@@ -16,6 +16,8 @@ Schema探针明确不证明public-content-literal-v1匹配/排序、精确时间
 
 执行中 `gh auth status` 退出1（本机没有gh命令），随后使用本地Git credential helper已授权的GitHub API读取验证当前账号Love-XiaoPeng、仓库master和push权限；凭据只在内存，无秘密写入文件或输出。首个PowerShell未加引号的 `HEAD^{tree}` 被shell改写而失败，随后使用引号准确回读；没有改动源码。
 
+交付前复核统一了search示例命中与后续read示例的同一seq0正文，并加入逐对象一致性断言；重新生成后原58项Schema探针、摘要及包检查通过。owner POST的2秒截止明确包含授权/body读取/解析，DB继承剩余预算。两次普通Git push分别遇连接重置/443连接失败，改用已授权GitHub Git Database API传送Git对象，核远端tree/commit与本地完全一致后才建分支/草稿PR；没有改动全局网络、代理或daemon设置。
+
 未执行产品构建/JAR、私有MySQL升级/索引计划、真实control/双worker/paid=false模型、匹配与过滤边界、授权/撤权/提交/恢复竞争、容量/超时、保留清理及业务回归。S01–S12为后端自测和原独审/原QA后续完成条件，不记为通过。原XIAO-52 R1/QA-52-01已关闭事实来自同SHA独审/QA与产品验收，非本轮重新运行。
 
 GitHub CI未运行、启用、恢复、重跑或等待。旧Windows verify 262项1failure/15errors、ADR README冻结长度3446/实际3819及历史POSIX失败保持原事实；不重跑旧完整矩阵，不修改基线追认。无生产、真实Key、付费调用、部署、共享服务/daemon/代理/FRP或外部发送操作。

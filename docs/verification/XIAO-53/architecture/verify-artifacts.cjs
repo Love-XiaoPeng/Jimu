@@ -33,6 +33,7 @@ const wire=read('contracts/examples/search-output.wire.json');
 const output=json('contracts/examples/search-output.json'),goal=json('contracts/examples/user-event.json');
 check(JSON.stringify(JSON.parse(wire))===JSON.stringify(output),'wire/object');
 check(output.items[0].event_sha256===hash(Buffer.from(JSON.stringify(goal))),'example source digest');
+check(JSON.stringify(json('contracts/examples/read-output.json').target)===JSON.stringify(goal),'search/read example same event');
 check(output.returned_count===output.items.length&&wire.length<=32768,'example count/bytes');
 const selected=[
  ['packages/experimental/tool-session-query/src/index.ts',['DEFAULT_MAX_SEARCH_RESULTS','DEFAULT_SEARCH_TIMEOUT_MS',"name: 'session_event_search'"]],

@@ -235,8 +235,8 @@
     },
     {
       "path": "docs/verification/XIAO-53/architecture/VERIFICATION.md",
-      "bytes": 3308,
-      "sha256": "d30377811957c41759f8f065cb218b75b8b52c4f8121385b09f705ebeadae4e2"
+      "bytes": 3814,
+      "sha256": "c967cc66d9d929514cc25310d8f6dc9d20f75f41ddf2c4970838c577e0523902"
     },
     {
       "path": "docs/verification/XIAO-53/architecture/capture-evidence.cjs",
@@ -290,8 +290,8 @@
     },
     {
       "path": "docs/verification/XIAO-53/architecture/contracts/examples/read-output.json",
-      "bytes": 749,
-      "sha256": "62fcf1571c94ce52a73f4a1c50717cbf65aa68ab73966129d69126b83b474a21"
+      "bytes": 740,
+      "sha256": "579dc12addbaa3d593cf640f17bbe970d44c6b47034fbf57252e1f0377a36e3c"
     },
     {
       "path": "docs/verification/XIAO-53/architecture/contracts/examples/search-input.json",
@@ -415,13 +415,13 @@
     },
     {
       "path": "docs/verification/XIAO-53/architecture/implementation-contract.md",
-      "bytes": 25635,
-      "sha256": "b55344b258ad1257e13bd636dbd7a8eb8d78d6f2465c1260ca045cf33d7624ea"
+      "bytes": 25869,
+      "sha256": "f0d9ceb5ca0e4489c76dafde308557e0e1810d547a6aa92d0517d5f6a5d2ff45"
     },
     {
       "path": "docs/verification/XIAO-53/architecture/make-contracts.cjs",
       "bytes": 10588,
-      "sha256": "ea7baa339abd12ab5eeb9bae9034384175c0a9e6a93545874282edc775958acb"
+      "sha256": "c28d8f64990c571e7fd8c4836ed2bb025eaa5799e57660008fd878103f3df160"
     },
     {
       "path": "docs/verification/XIAO-53/architecture/migration-contract.sql",
@@ -435,8 +435,8 @@
     },
     {
       "path": "docs/verification/XIAO-53/architecture/verify-artifacts.cjs",
-      "bytes": 8267,
-      "sha256": "5a3ced380e3fd07c95161fb70eb40cae825ff600eaf325832b4257e51aeb4857"
+      "bytes": 8398,
+      "sha256": "3c3e487992860f5dba950fbc89ecac6a05646b4a740655b9de3b4b0e336e6833"
     },
     {
       "path": "docs/verification/XIAO-53/architecture/verify.ps1",

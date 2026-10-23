@@ -67,7 +67,7 @@ searchOrResult一次事务：复核flag/本地模型/原槽/step/binding/当前l
 
 确定的版本/来源损坏、硬限额等查询失败采用与read同样的原槽一次失败/消费/可靠事件原子绑定，output_bytes=0；严格输入/授权/fence/取消/截止/flag拒绝不消费、不查内容。provider/连接/锁/计算超时回滚，不绑定假失败或空结果。commit确认不明沿SessionCommitUnconfirmed退出，由静止原写者后接管同槽读提交事实，不另toolFailed，不遗留超时返回后的写线程。通用admit/toolSucceeded/uncertain明确拒绝此工具 `SESSION_SEARCH_COMMIT_REQUIRED`，不能旁路原槽，不能越过未完成前槽。
 
-owner新增 POST `/api/tasks/{taskId}/session-history/search`，Authorization沿SignedIdentity，Content-Type application/json，body就是同一输入Schema；path是唯一待授权task，显式body session_id须等于path。拒绝querystring、重复/未知字段、非法/超长body；传输读取须有有界request timeout/2048byte流式计数，不能先全量缓冲。先认证并授权path，再返回body语义错误；不能因错误差异泄漏其他task存在性。只为其已授权且仍保留的v2 task工作，包括终态；v1自身返回409 SESSION_SEARCH_UNAVAILABLE。upper在同一授权只读事务开始固定，输出boundary=owner-snapshot；不建invocation/search binding/可靠事件、不花工具/模型预算、不更新task状态/历史，不接纳跨task body ID。
+owner新增 POST `/api/tasks/{taskId}/session-history/search`，Authorization沿SignedIdentity，Content-Type application/json，body就是同一输入Schema；path是唯一待授权task，显式body session_id须等于path。拒绝querystring、重复/未知字段、非法/超长body；认证完成后、读取task或body前建立2000ms整体截止，覆盖授权、body流式读取/解析及同次DB查询，2048byte流式计数且不能先全量缓冲。DB只继承剩余预算，慢body超时也安全退出SESSION_QUERY_TIMEOUT并回收本请求读取者，不能另获2秒或留下异步请求写者。先认证并授权path，再返回body语义错误；不能因错误差异泄漏其他task存在性。只为其已授权且仍保留的v2 task工作，包括终态；v1自身返回409 SESSION_SEARCH_UNAVAILABLE。upper在同一授权只读事务开始固定，输出boundary=owner-snapshot；不建invocation/search binding/可靠事件、不花工具/模型预算、不更新task状态/历史，不接纳跨task body ID。
 
 owner metadata/原read/SSE沿现有入口并按task版本分派，Cache-Control:no-store；search也是no-store，不建前端。flag off不关闭owner既有v2搜索/read和清理，但仍核当前actor/安装/两工具pin/保留；v1查询仍只核v1原read pin。模型工具与owner每条结果及后续read均重新复核当前授权；search结果不是后续read的authority。GET/SSE重连不自动调用模型/工具，不恢复终态/PURGED task。
 

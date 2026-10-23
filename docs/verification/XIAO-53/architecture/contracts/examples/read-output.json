@@ -25,7 +25,7 @@
     "content_policy": "public-v1",
     "redacted": false,
     "data": {
-      "content": "核查早先消息：积木支持中文与 Unicode 🧱。"
+      "content": "积木验证 Unicode 🧱，核查历史内容。"
     }
   },
   "before": [],
