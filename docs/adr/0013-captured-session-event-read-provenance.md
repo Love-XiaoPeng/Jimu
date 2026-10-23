@@ -1,6 +1,6 @@
 # ADR-0013：捕获式会话事件读取来源追溯
 
-2026-10-23；XIAO-54 / G22 / T46。状态：proposed（技术方案及契约候选已冻结，须由产品经理裁定下述业务差异后交唯一后端实施）。
+2026-10-23；XIAO-54 / G22 / T46。状态：accepted（仅接受 read-receipt-sources-v1 的有界业务范围；产品经理于 2026-10-23 裁定，评论 01a166ed-74fb-7321-9dce-1f0e5419d460）。
 
 基线为实际 master `3e5f77549562691634c0a166d8b944ecdcdf1bb8`，tree `93d353f8efac07c34676bc3bffb1790e048fc75d`。固定上游 `571902028a75c64c1d767f4ae5fd099485f0ddf0`；原始 blob、MIT、逐文件摘要及源码定位见 `../verification/XIAO-54/architecture/evidence/`。没有改写 ADR-0011/0012 或冻结基线。
 
@@ -8,7 +8,7 @@
 
 Jimu 的五类公开事件均无上述关系事实，不能从 seq、同 step、同模型输入、工具参数或表中的 source_step_id 推断。新增完整 surface/替换生产者会改变当前执行和模型上下文语义，超过本批有界事件追溯的最小规模。单纯返回空链则不能交付真实关联闭环。
 
-推荐的候选决定：
+已接受的有界决定：
 
 1. 新增默认关闭的 `local-session-event-trace-v3`，有序组合 read@0.3.0、search@0.2.0、trace@0.1.0，三个 flag 全开，显式本地 paid=false、180 秒，沿现有唯一循环/预算/权限。不改变旧 v1/v2。
 2. 仅承诺 `read-receipt-sources-v1`：新 v3 模型 read 成功提交时，由宿主在同一事务记录实际返回的目标和邻接摘要的真实 seq/digest，最多9个。新 read 收据公开其直接 source_event_seqs；其余事件和失败 read 为 []。这个关系表示“该读取收据引用了哪些实际返回事件”，不声称模型引用、推理因果、上游 surface 或替换关系。
@@ -19,4 +19,4 @@ Jimu 的五类公开事件均无上述关系事实，不能从 seq、同 step、
 
 取舍：复用当前真实 read 事务可以形成可核查的授权事件关系，避免新增模型上下文压缩/编辑生产者、surface 引擎或通用图服务；代价是**这不是固定上游完整 T46 的兼容实现**。若产品要求替换链或模型 surface 来源，须另明确真实生产者及捕获时机，再改新版本契约；不得让后端猜测关系或把本候选标成完全移植。
 
-产品经理下一动作：明确接受该 read 来源追溯差异后，按 `implementation-contract.md`、`contracts/`、`migration-contract.sql` 交原后端唯一实施；或说明本批必须保留的上游替换生产行为，再由架构补充。架构没有启动后端或新增团队。候选文档核验不代表实现、迁移、业务闭环或独立 QA 已通过。
+实施入口：按 `implementation-contract.md`、`contracts/`、`migration-contract.sql` 由原后端唯一实施。surface/替换链继续记为未交付，本批验收不代表 G22/T46 完整兼容；新增生产行为须另行定范围。架构没有启动后端或新增团队。候选文档核验不代表实现、迁移、业务闭环或独立 QA 已通过。

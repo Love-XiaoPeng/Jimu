@@ -1,0 +1,38 @@
+{
+  "manifestVersion": 1,
+  "id": "jimu.session.event_read",
+  "version": "0.3.0",
+  "kind": "tool",
+  "hostApi": ">=0.1.0 <0.2.0",
+  "entry": {
+    "type": "trusted-jvm",
+    "class": "io.github.lovexiaopeng.jimu.plugins.builtin.session.SessionEventReadPlugin"
+  },
+  "capabilities": [
+    {
+      "name": "session_event_read",
+      "inputSchema": "input.schema.json",
+      "outputSchema": "output.schema.json",
+      "sideEffect": "read"
+    }
+  ],
+  "permissions": {},
+  "secretRefs": [],
+  "dependencies": [],
+  "limits": {
+    "timeoutMs": 2000,
+    "outputBytes": 32768
+  },
+  "healthCheck": {
+    "operation": "session-event-ledger-readiness",
+    "timeoutMs": 2000
+  },
+  "errorContract": "jimu-invocation-result",
+  "eventTypes": [
+    "invocation.started",
+    "invocation.completed",
+    "invocation.failed",
+    "session_history.changed",
+    "session_history.content_deleted"
+  ]
+}

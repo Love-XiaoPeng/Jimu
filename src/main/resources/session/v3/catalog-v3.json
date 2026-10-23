@@ -1,0 +1,48 @@
+{
+  "version": 3,
+  "profile": "local-session-event-trace-v3",
+  "historyVersion": 3,
+  "eventVersion": 3,
+  "contentPolicy": "public-v1",
+  "relationPolicy": "read-receipt-sources-v1",
+  "tools": [
+    {
+      "name": "session_event_read",
+      "version": "0.3.0",
+      "pluginId": "jimu.session.event_read",
+      "inputSha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0",
+      "outputSha256": "762f4ca547c81156a35937e0fd2120deb7a4aa5da9f401b9f4ecde778db14da2",
+      "manifestSha256": "3b99e0428a0e3605724a8b7790539b3ed17b06fe24afc9c7c48678ced1be4cb6",
+      "descriptionSha256": "d4dd2398b320d91ba355ff30a45506696b433aa02d81e7bdad34a37a5f45ad8c"
+    },
+    {
+      "name": "session_event_search",
+      "version": "0.2.0",
+      "pluginId": "jimu.session.event_search",
+      "inputSha256": "52fdd4305f6791d80469a4f2537d1b544790e8dec59e24960f731cf5f9295584",
+      "outputSha256": "457e3723413e6c9b2b548a27ca6832159dfff6c5741fd3b021a5825dffb695e7",
+      "manifestSha256": "e73db11770e860c29f9d24de477f8107355cebfdefab45bed945234fc1a1a6b7",
+      "descriptionSha256": "04b04c1a490134039e95a864a9d25dafc4e93cc595196d26b16746cc285b9989"
+    },
+    {
+      "name": "session_event_trace",
+      "version": "0.1.0",
+      "pluginId": "jimu.session.event_trace",
+      "inputSha256": "7849c52bcc5b58775f5a7dec28bf41399746ef1780c815a88dc8630e03227c91",
+      "outputSha256": "5595052fbd89307318bc1593438ff208117c29ddfdf747d0f86c15fb5ae532dc",
+      "manifestSha256": "5ed8ee7d9db15d5c10cb644d3172977e6e174a5e4135f69fa999172ed5fc7c0a",
+      "descriptionSha256": "a604404610101a18c86797e38f3725bf21a5a6d961ca7d8656fd071519567a60"
+    }
+  ],
+  "schemas": {
+    "event-v3.schema.json": "ba3eed79df80f9eafccf121badd8bd88d5c211344775e143b199d3cc1831edb7",
+    "context-v3.schema.json": "5691a2e400d7f8006715512524cf25b6e84c4387ba64b10f7501ac08f85f310e",
+    "owner-history-v3.schema.json": "9e0924f0d307ae3ddbf61780fab12a6c190a1a83a186995aaf2c79116d04053d",
+    "read-sources.schema.json": "819c3b54a9b68aa8dd18ecbec487397821e2c82db2e0b76a81b80d3fad41c3ee"
+  },
+  "upstream": {
+    "revision": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "license": "MIT"
+  },
+  "compatibility": "ADR-0013 and implementation-contract.md; product decision required for reduced relationship semantics"
+}

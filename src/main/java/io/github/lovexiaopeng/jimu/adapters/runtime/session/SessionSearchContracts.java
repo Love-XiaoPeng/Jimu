@@ -36,19 +36,27 @@ public final class SessionSearchContracts {
           .withResolverStyle(ResolverStyle.STRICT);
   private static final DateTimeFormatter UTC =
       DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSS'Z'").withZone(ZoneOffset.UTC);
-  private final SessionContracts history = new SessionContracts(2);
+  private final SessionContracts history;
   private final SchemaContract input, output;
   private final ToolDescriptor descriptor;
   private final String schema, description;
 
   public SessionSearchContracts() {
+    this(2);
+  }
+
+  public SessionSearchContracts(int version) {
+    history = new SessionContracts(version);
     try {
       var catalog =
           history.json(
-              new String(SessionContracts.resource("v2/catalog-v2.json"), StandardCharsets.UTF_8),
+              new String(
+                  SessionContracts.resource("v" + version + "/catalog-v" + version + ".json"),
+                  StandardCharsets.UTF_8),
               8192);
       var entry = catalog.path("tools").get(1);
-      String root = "v2/session_event_search-0.1.0/";
+      String toolVersion = version == 2 ? "0.1.0" : "0.2.0";
+      String root = "v" + version + "/session_event_search-" + toolVersion + "/";
       byte[] in =
           SessionContracts.checked(root + "input.schema.json", entry.path("inputSha256").asText());
       byte[] out =
@@ -66,7 +74,7 @@ public final class SessionSearchContracts {
       descriptor =
           new ToolDescriptor(
               "jimu.session.event_search",
-              "0.1.0",
+              toolVersion,
               NAME,
               "session/" + root + "input.schema.json",
               "session/" + root + "output.schema.json",

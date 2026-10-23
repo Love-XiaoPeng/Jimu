@@ -29,6 +29,17 @@ public interface SessionEventLedger {
 
   String sessionSearch(Tasks.Identity identity, String taskId, SearchBody body, long deadlineNanos);
 
+  void authorizeSessionTrace(Tasks.Identity identity, String taskId, long deadlineNanos);
+
+  String sessionTrace(Tasks.Identity identity, String taskId, SearchBody body, long deadlineNanos);
+
+  String traceOrResult(
+      ExecutionLedger.Lease lease,
+      String stepId,
+      ExecutionLedger.Call call,
+      String version,
+      String digest);
+
   String searchOrResult(
       ExecutionLedger.Lease lease,
       String stepId,

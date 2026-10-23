@@ -119,6 +119,8 @@ public class DurableConfiguration {
       sensitive.addAll(models.sessionPrivateValues());
     ledger.sessionReadEnabled(
         env.getProperty("jimu.session-event-read.enabled", Boolean.class, false), sensitive);
+    ledger.sessionTraceEnabled(
+        env.getProperty("jimu.session-event-trace.enabled", Boolean.class, false));
     ledger.sessionSearchEnabled(
         env.getProperty("jimu.session-event-search.enabled", Boolean.class, false));
     ledger.check();

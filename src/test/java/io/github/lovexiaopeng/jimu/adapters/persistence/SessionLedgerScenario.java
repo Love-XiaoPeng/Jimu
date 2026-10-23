@@ -47,9 +47,11 @@ public final class SessionLedgerScenario {
       ExecutionLedger.Call call,
       String version,
       String digest) {
-    return call.tool().equals("session_event_search")
-        ? ledger.searchOrResult(lease, step, call, version, digest)
-        : ledger.readOrResult(lease, step, call, version, digest);
+    return call.tool().equals("session_event_trace")
+        ? ledger.traceOrResult(lease, step, call, version, digest)
+        : call.tool().equals("session_event_search")
+            ? ledger.searchOrResult(lease, step, call, version, digest)
+            : ledger.readOrResult(lease, step, call, version, digest);
   }
 
   public static void main(String[] args) throws Exception {
@@ -108,6 +110,7 @@ public final class SessionLedgerScenario {
             env.getRequiredProperty("jimu.identity.key"),
             env.getRequiredProperty("jimu.db.password")));
     ledger.sessionSearchEnabled(true);
+    ledger.sessionTraceEnabled(true);
     String taskId = java.util.UUID.fromString(args[1]).toString();
     var task = db.queryForMap("SELECT * FROM task WHERE tenant_id='tenant-a' AND id=?", taskId);
     var records = new JdbcSessionRecords(db);
@@ -119,7 +122,8 @@ public final class SessionLedgerScenario {
             "invocation",
             "model_dispatch",
             "session_public_event",
-            "invocation_session_search")) {
+            "invocation_session_search",
+            "invocation_session_read")) {
       for (var row :
           db.queryForList(
               "SELECT * FROM "
@@ -138,7 +142,8 @@ public final class SessionLedgerScenario {
                 "output_snapshot",
                 "usage_snapshot",
                 "event_snapshot",
-                "normalized_query_snapshot"))
+                "normalized_query_snapshot",
+                "read_sources_snapshot"))
           if (row.get(field) != null)
             body += s(row, field).getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
       }

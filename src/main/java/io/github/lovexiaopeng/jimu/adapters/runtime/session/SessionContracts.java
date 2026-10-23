@@ -48,11 +48,17 @@ public final class SessionContracts {
 
   public SessionContracts(int version) {
     try {
-      byte[] catalogBytes = resource(version == 1 ? "catalog.json" : "v2/catalog-v2.json");
+      byte[] catalogBytes =
+          resource(
+              version == 1 ? "catalog.json" : "v" + version + "/catalog-v" + version + ".json");
       var catalog = JSON.readTree(catalogBytes);
       var entry = catalog.path("tools").get(0);
-      String prefix = version == 1 ? "" : "v2/";
-      String root = prefix + "session_event_read-" + (version == 1 ? "0.1.0" : "0.2.0") + "/";
+      String prefix = version == 1 ? "" : "v" + version + "/";
+      String root =
+          prefix
+              + "session_event_read-"
+              + (version == 1 ? "0.1.0" : version == 2 ? "0.2.0" : "0.3.0")
+              + "/";
       byte[] in = checked(root + "input.schema.json", entry.path("inputSha256").asText());
       byte[] out = checked(root + "output.schema.json", entry.path("outputSha256").asText());
       checked(root + "plugin.yaml", entry.path("manifestSha256").asText());
@@ -90,7 +96,7 @@ public final class SessionContracts {
       descriptor =
           new ToolDescriptor(
               "jimu.session.event_read",
-              version == 1 ? "0.1.0" : "0.2.0",
+              version == 1 ? "0.1.0" : version == 2 ? "0.2.0" : "0.3.0",
               NAME,
               "session/" + root + "input.schema.json",
               "session/" + root + "output.schema.json",

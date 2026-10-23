@@ -68,6 +68,38 @@ public final class SessionHistoryController {
     return result;
   }
 
+  @PostMapping("/api/tasks/{taskId}/session-history/trace")
+  public DeferredResult<ResponseEntity<String>> trace(
+      @RequestHeader(value = "Authorization", required = false) String authorization,
+      @PathVariable String taskId,
+      HttpServletRequest request) {
+    var identity = authentication.authenticate(authorization);
+    long deadline = System.nanoTime() + 2_000_000_000L;
+    history.authorizeSessionTrace(identity, taskId, deadline);
+    try {
+      if (request.getQueryString() != null
+          || request.getContentType() == null
+          || !MediaType.APPLICATION_JSON.isCompatibleWith(
+              MediaType.parseMediaType(request.getContentType()))
+          || request.getContentLengthLong() > 1024)
+        throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+    } catch (org.springframework.http.InvalidMediaTypeException invalid) {
+      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+    }
+    long millis = Math.max(1, (deadline - System.nanoTime() + 999999) / 1000000);
+    var result = new DeferredResult<ResponseEntity<String>>(millis);
+    result.onTimeout(() -> result.setErrorResult(new TaskFailure(504, "SESSION_QUERY_TIMEOUT")));
+    request.setAttribute(
+        "jimu.session.search.request",
+        new SessionEventLedger.SearchRequest(
+            deadline,
+            body ->
+                result.setResult(
+                    response(history.sessionTrace(identity, taskId, end -> body, deadline))),
+            failure -> result.setErrorResult(failure)));
+    return result;
+  }
+
   @GetMapping("/api/tasks/{taskId}/session-history")
   public ResponseEntity<String> metadata(
       @RequestHeader(value = "Authorization", required = false) String authorization,

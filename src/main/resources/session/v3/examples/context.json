@@ -1,0 +1,25 @@
+{
+  "kind": "session_event_context",
+  "version": 3,
+  "session_id": "00000000-0000-4000-8000-000000000052",
+  "upper_seq": 3,
+  "user_message_seq": 0,
+  "recent": [
+    {
+      "seq": 0,
+      "type": "user.message"
+    },
+    {
+      "seq": 1,
+      "type": "step.started"
+    },
+    {
+      "seq": 2,
+      "type": "model.response"
+    },
+    {
+      "seq": 3,
+      "type": "session.read"
+    }
+  ]
+}

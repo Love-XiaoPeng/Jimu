@@ -188,6 +188,14 @@ public final class ModelProfiles {
       throw new TaskFailure(403, "DIRECTORY_NOT_AUTHORIZED");
   }
 
+  public void requireSessionTrace(ModelSnapshot model) {
+    try {
+      requireSessionRead(model);
+    } catch (TaskFailure failure) {
+      throw new TaskFailure(403, "SESSION_TRACE_DISABLED");
+    }
+  }
+
   public void requireSessionSearch(ModelSnapshot model) {
     try {
       requireSessionRead(model);

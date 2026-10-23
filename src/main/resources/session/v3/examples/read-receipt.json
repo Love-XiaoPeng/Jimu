@@ -1,0 +1,27 @@
+{
+  "version": 3,
+  "session_id": "00000000-0000-4000-8000-000000000052",
+  "seq": 4,
+  "type": "session.read",
+  "time": "2026-10-23T00:00:01.000000Z",
+  "source": {
+    "kind": "invocation",
+    "step_id": "00000000-0000-4000-8000-000000000101",
+    "invocation_id": "00000000-0000-4000-8000-000000000102"
+  },
+  "content_policy": "public-v1",
+  "redacted": false,
+  "data": {
+    "seq": 0,
+    "before": 0,
+    "after": 0,
+    "upper_seq": 0,
+    "outcome": "SUCCEEDED",
+    "code": null,
+    "output_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "output_bytes": 600
+  },
+  "source_event_seqs": [
+    0
+  ]
+}

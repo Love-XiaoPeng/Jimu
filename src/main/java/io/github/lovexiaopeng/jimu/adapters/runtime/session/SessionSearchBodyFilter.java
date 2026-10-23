@@ -39,7 +39,8 @@ public final class SessionSearchBodyFilter implements Filter {
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
     if (request instanceof jakarta.servlet.http.HttpServletRequest http
-        && http.getRequestURI().endsWith("/session-history/search"))
+        && (http.getRequestURI().endsWith("/session-history/search")
+            || http.getRequestURI().endsWith("/session-history/trace")))
       ((jakarta.servlet.http.HttpServletResponse) response).setHeader("Cache-Control", "no-store");
     chain.doFilter(request, response);
     var value = request.getAttribute(ATTRIBUTE);
@@ -47,7 +48,13 @@ public final class SessionSearchBodyFilter implements Filter {
       return;
     request.removeAttribute(ATTRIBUTE);
     var stream = request.getInputStream();
-    var reader = new Reader(stream, search);
+    var reader =
+        new Reader(
+            stream,
+            search,
+            ((jakarta.servlet.http.HttpServletRequest) request).getRequestURI().endsWith("/trace")
+                ? 1024
+                : 2048);
     request.getAsyncContext().addListener(reader);
     reader.timeout(
         deadlines.schedule(
@@ -61,10 +68,12 @@ public final class SessionSearchBodyFilter implements Filter {
     private final ServletInputStream stream;
     private final SessionEventLedger.SearchRequest search;
     private final ByteArrayOutputStream bytes = new ByteArrayOutputStream(2049);
+    private final int max;
     private boolean done;
     private java.util.concurrent.ScheduledFuture<?> timeout;
 
-    Reader(ServletInputStream stream, SessionEventLedger.SearchRequest search) {
+    Reader(ServletInputStream stream, SessionEventLedger.SearchRequest search, int max) {
+      this.max = max;
       this.stream = stream;
       this.search = search;
     }
@@ -88,7 +97,7 @@ public final class SessionSearchBodyFilter implements Filter {
         int next = stream.read();
         if (next < 0) break;
         bytes.write(next);
-        if (bytes.size() > 2048) {
+        if (bytes.size() > max) {
           fail(new TaskFailure(400, "TOOL_INPUT_INVALID"));
           return;
         }

@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session-event-trace:0.1.0:output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "history_version": {
+      "const": 3
+    },
+    "content_policy": {
+      "const": "public-v1"
+    },
+    "boundary": {
+      "enum": [
+        "pre-step",
+        "owner-snapshot"
+      ]
+    },
+    "upper_seq": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 127
+    },
+    "relation_policy": {
+      "const": "read-receipt-sources-v1"
+    },
+    "replacement_policy": {
+      "const": "unsupported"
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 127
+        },
+        "type": {
+          "enum": [
+            "user.message",
+            "step.started",
+            "model.response",
+            "session.read",
+            "turn.ended"
+          ]
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "request",
+                "step",
+                "model",
+                "invocation",
+                "task"
+              ]
+            },
+            "step_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "invocation_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "step_id",
+            "invocation_id"
+          ]
+        },
+        "redacted": {
+          "type": "boolean"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "summary_truncated": {
+          "type": "boolean"
+        },
+        "event_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "seq",
+        "type",
+        "time",
+        "source",
+        "redacted",
+        "text",
+        "summary_truncated",
+        "event_sha256"
+      ]
+    },
+    "source_event_seqs": {
+      "type": "array",
+      "maxItems": 9,
+      "uniqueItems": true,
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 127
+      }
+    },
+    "derived_event_seqs": {
+      "type": "array",
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 127
+      }
+    }
+  },
+  "required": [
+    "version",
+    "session_id",
+    "history_version",
+    "content_policy",
+    "boundary",
+    "upper_seq",
+    "relation_policy",
+    "replacement_policy",
+    "target",
+    "source_event_seqs",
+    "derived_event_seqs"
+  ]
+}
