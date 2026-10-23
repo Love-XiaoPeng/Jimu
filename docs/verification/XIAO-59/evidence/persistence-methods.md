@@ -1,0 +1,385 @@
+# 基线持久化入口及辅助方法
+
+按声明首行索引；具体语义须读方法体，不能把此清单当调用图。
+
+## adapters/persistence/JdbcLedger.java
+
+- L65: `public void sessionTraceEnabled(boolean enabled) {`
+- L69: `public void sessionSearchEnabled(boolean enabled) {`
+- L77: `public void priorSessionSearchEnabled(boolean enabled) {`
+- L81: `public void sessionReadEnabled(boolean enabled, java.util.List<String> sensitive) {`
+- L86: `private void sessionAccess(Map<String, Object> task) {`
+- L106: `private void sessionAdmission(Map<String, Object> task) {`
+- L120: `private boolean traceAvailable(Identity identity) {`
+- L145: `private boolean priorAvailable(Identity identity) {`
+- L167: `private boolean sessionAvailable(Identity identity, boolean search) {`
+- L193: `private <T> T sessionTransaction(java.util.function.Supplier<T> work) {`
+- L197: `private <T> T sessionTransaction(java.util.function.Supplier<T> work, long end) {`
+- L277: `public View submitSessionSearch(`
+- L292: `public View submitSessionSearch(`
+- L323: `private Map<String, Object> priorSearchOwner(Identity identity, String caller) {`
+- L335: `public QueryResources authorizePriorSessionSearch(`
+- L351: `public String priorSessionSearch(`
+- L375: `public void revokeSessionSearchScope(`
+- L410: `public String scopedOrResult(`
+- L419: `private String scopedQueryOrResult(`
+- L678: `private int sessionRemainingMillis() {`
+- L685: `public String sessionContext(Lease lease) {`
+- L696: `private Map<String, Object> sessionOwner(Identity identity, String taskId) {`
+- L715: `private <T> T sessionOwnerRead(java.util.function.Supplier<T> work) {`
+- L731: `public String sessionHistory(Identity identity, String taskId) {`
+- L736: `public String sessionEvent(Identity identity, String taskId, long seq, int before, int after) {`
+- L751: `public void authorizeSessionSearch(Identity identity, String taskId, long deadlineNanos) {`
+- L760: `private Map<String, Object> sessionSearchOwner(Identity identity, String taskId) {`
+- L769: `public String sessionSearch(`
+- L786: `public void authorizeSessionTrace(Identity identity, String taskId, long deadlineNanos) {`
+- L795: `private Map<String, Object> sessionTraceOwner(Identity identity, String taskId) {`
+- L804: `public String sessionTrace(`
+- L819: `private <T> T sessionSearchOwnerRead(Supplier<T> work, long deadlineNanos) {`
+- L835: `private long sessionAppend(`
+- L859: `private void sessionFact(Map<String, Object> task, String fact) {`
+- L943: `public String readOrResult(Lease lease, String stepId, Call call, String version, String digest) {`
+- L1124: `public String searchOrResult(`
+- L1323: `public String traceOrResult(`
+- L1519: `private static int sessionFailureStatus(String code) {`
+- L1528: `private boolean sessionCleanupSafe(Map<String, Object> task) {`
+- L1548: `private void validateSessionScopes() {`
+- L1627: `private void cleanupSessionHistory() {`
+- L1660: `public void directoryWorkspace(`
+- L1665: `private boolean directoryCleanupSafe(Map<String, Object> task) {`
+- L1686: `private void cleanupDirectories() {`
+- L1858: `public void directoryEnabled(boolean enabled) {`
+- L1862: `private boolean directoryTask(Map<String, Object> task) {`
+- L1866: `private Map<String, Object> directoryProjection(Map<String, Object> task) {`
+- L1888: `private void directoryAccess(Map<String, Object> task) {`
+- L1923: `private void directoryAdmission(Map<String, Object> task) {`
+- L1930: `private void directoryStorage(Map<String, Object> task, long additional) {`
+- L1968: `public void directoryReady(Lease lease) {`
+- L1985: `private Map<String, Object> originalDirectorySlot(`
+- L2046: `private Map<String, Object> freezeDirectorySlot(Map<String, Object> task, Map<String, Object> i) {`
+- L2129: `public io.github.lovexiaopeng.jimu.kernel.task.api.WorkingDirectoryLedger.Frozen freezeDirectory(`
+- L2158: `private void directoryResultSource(`
+- L2192: `public io.github.lovexiaopeng.jimu.plugin.api.WorkingDirectoryPort.Result commitDirectory(`
+- L2313: `public String directoryFilePath(Lease lease, String invocationId) {`
+- L2342: `public Map<String, Object> getWorkingDirectory(Identity identity, String taskId) {`
+- L2440: `public void todosEnabled(boolean enabled) {`
+- L2444: `private void directoryContext(Map<String, Object> task, String request) {`
+- L2465: `private boolean todoTask(Map<String, Object> task) {`
+- L2469: `private Map<String, Object> todoProjection(Map<String, Object> task) {`
+- L2488: `private void todoAccess(Map<String, Object> task) {`
+- L2504: `private void todoStorage(Map<String, Object> task, long additional) {`
+- L2515: `private void todoCommitFence(Lease lease) {`
+- L2526: `private void directoryMetadata(Map<String, Object> task, boolean closing) {`
+- L2581: `private void todoMetadata(Map<String, Object> task, boolean closing) {`
+- L2629: `public io.github.lovexiaopeng.jimu.plugin.api.TodoPort.Result replaceOrResult(`
+- L2796: `private void todoResultSource(Map<String, Object> task, Map<String, Object> i) {`
+- L2819: `public Map<String, Object> getTodos(Identity identity, String taskId) {`
+- L2894: `public void questionsEnabled(boolean enabled) {`
+- L2898: `private boolean directoryAvailable(Identity identity) {`
+- L2913: `private boolean todoAvailable(Identity identity) {`
+- L2931: `private void rejectTodoBypass(Lease lease, String invocation) {`
+- L2967: `private void releaseQuestionTask(Map<String, Object> task) {`
+- L2980: `private void cleanupTodos() {`
+- L3104: `private void cleanupQuestions() {`
+- L3195: `private void retainQuestionBody(Map<String, Object> metadata, String key, String body) {`
+- L3206: `private boolean questionTask(Map<String, Object> task) {`
+- L3210: `private void questionAccess(Map<String, Object> task) {`
+- L3231: `private Instant questionNow() {`
+- L3236: `private Map<String, Object> questionVisible(Identity identity, String taskId) {`
+- L3251: `public Map<String, Object> listQuestions(Identity identity, String taskId) {`
+- L3318: `public void authorizeAnswer(Identity identity, String taskId, String requestId) {`
+- L3334: `public Submission answer(`
+- L3480: `private String questionAnswerDigest(`
+- L3490: `private record QuestionAnswerRequest(`
+- L3496: `private record LateQuestionReply(`
+- L3506: `private Map<String, Object> receipt(Map<String, Object> q) {`
+- L3511: `public OpenResult openOrResult(`
+- L3616: `private void questionPause(`
+- L3634: `private void questionToolResult(Map<String, Object> task, Map<String, Object> q, String output) {`
+- L3653: `private void questionResume(Map<String, Object> task, String requestId) {`
+- L3663: `private void continueQuestion(Map<String, Object> task, Map<String, Object> q) {`
+- L3684: `private void closeQuestions(Map<String, Object> task, String code) {`
+- L3720: `public List<String> pendingQuestionMessages(Lease lease) {`
+- L3724: `private Map<String, String> questionMessages(Map<String, Object> task) {`
+- L3751: `public boolean questionContinuation(Lease lease) {`
+- L3755: `private void questionStorage(Map<String, Object> task, long additional) {`
+- L3766: `private void maintainQuestions() {`
+- L3802: `public void imageStorage(ArtifactStore store) {`
+- L3806: `public void mcpSettings(io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings settings) {`
+- L3811: `public Binding mcpBinding(Lease lease) {`
+- L3816: `public Server mcpServer(Lease lease, String server) {`
+- L3823: `public int mcpDispatch(`
+- L3882: `public void mcpResponded(Lease lease, String invocation, int ordinal, String error) {`
+- L3900: `public void reserveMcpList(Lease lease, String invocation) {`
+- L3941: `public String mcpPage(Lease lease, String query, String cursor) {`
+- L3970: `private void validateMcpList(Map<String, Object> task, ListSnapshot snapshot) {`
+- L4045: `public void mcpSucceeded(Lease lease, String invocation, String output, ListSnapshot snapshot) {`
+- L4119: `private void cleanupMcp() {`
+- L4171: `private boolean imagesAvailable() {`
+- L4182: `public void nativeSearchAvailability(java.util.function.BooleanSupplier availability) {`
+- L4186: `public JdbcLedger(DataSource source, ModelProfiles models) {`
+- L4236: `private <T> T tx(Supplier<T> work) {`
+- L4258: `public io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages.Snapshot mediaSnapshot(`
+- L4264: `public io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.Raw imageInput(`
+- L4276: `public String reserveImage(Lease lease, String invocation, String inputId) {`
+- L4303: `public void imageSucceeded(`
+- L4329: `public io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ObjectValue imageObject(`
+- L4335: `public List<io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ObjectValue> stepImages(`
+- L4341: `public void imageDecodeTimedOut(Lease lease) {`
+- L4355: `private String requireScope(`
+- L4405: `private boolean businessTask(Map<String, Object> task) {`
+- L4411: `private void requireBusiness(`
+- L4454: `private <T> T leaseTx(Lease lease, Supplier<T> work) {`
+- L4473: `private <T> T directoryTransaction(Lease lease, Supplier<T> work) {`
+- L4501: `private List<Map<String, Object>> rows(String sql, Object... args) {`
+- L4505: `private Map<String, Object> one(String sql, Object... args) {`
+- L4511: `private static String s(Map<String, Object> row, String key) {`
+- L4515: `private static long n(Map<String, Object> row, String key) {`
+- L4519: `private static Instant time(Map<String, Object> row, String key) {`
+- L4525: `private static String id() {`
+- L4529: `private Map<String, Object> bucket(String tenant) {`
+- L4533: `private void identity(Identity identity) {`
+- L4543: `private long epoch(Identity identity, List<String> capabilities) {`
+- L4562: `public List<String> capabilities(Identity identity) {`
+- L4599: `public View submit(Identity identity, String key, Request request) {`
+- L4604: `public View submit(`
+- L4618: `private View submitBound(`
+- L5200: `private Map<String, Object> locked(String tenant, String task) {`
+- L5208: `private Map<String, Object> visible(Identity identity, String task) {`
+- L5230: `private List<String> caps(Map<String, Object> row) {`
+- L5275: `private void invalidateScopeAfterTransaction(Map<String, Object> task) {`
+- L5298: `private void access(Map<String, Object> row) {`
+- L5311: `private void baseAccess(Map<String, Object> row) {`
+- L5330: `public View get(Identity identity, String task) {`
+- L5366: `private View view(Map<String, Object> row) {`
+- L5402: `private Artifact artifact(Map<String, Object> row) {`
+- L5412: `public View cancel(Identity identity, String task) {`
+- L5444: `public List<Event> events(Identity identity, String task, long after, int limit) {`
+- L5483: `public Download download(Identity identity, String artifactId) {`
+- L5500: `private long storageHeld(Map<String, Object> budget) {`
+- L5504: `private void reserve(`
+- L5525: `private void event(Map<String, Object> task, String fact, String type, String code) {`
+- L5589: `public Optional<Lease> claim(String worker) {`
+- L5784: `private Map<String, Object> fenced(Lease lease, boolean admission) {`
+- L5840: `private EvaluationMaterials.Material material(Map<String, Object> task) {`
+- L5860: `private void checkMaterials(Map<String, Object> task) {`
+- L5913: `public Optional<String> evaluationFile(Lease lease) {`
+- L5936: `private ReportFile initialFile(Map<String, Object> task) {`
+- L5944: `public void bindEvaluationFile(Lease lease, ReportFile file) {`
+- L5980: `private void materialBody(Map<String, Object> task, String request, int ordinal) {`
+- L6184: `private String runRejection(Map<String, Object> evaluation) {`
+- L6192: `private String modelRejection(Map<String, Object> task) {`
+- L6202: `public boolean renew(Lease lease) {`
+- L6214: `public Optional<Step> checkpoint(Lease lease) {`
+- L6233: `private Step step(Map<String, Object> row) {`
+- L6250: `private ModelSnapshot snapshot(Map<String, Object> task) {`
+- L6256: `private ModelSnapshot historicalSnapshot(Map<String, Object> task) {`
+- L6266: `public ModelSnapshot modelSnapshot(Lease lease) {`
+- L6278: `private ToolSnapshot tools(Map<String, Object> task) {`
+- L6292: `public ToolSnapshot toolSnapshot(Lease lease) {`
+- L6297: `private Map<String, Object> evaluation(Lease lease) {`
+- L6301: `private Map<String, Object> evaluation(Lease lease, boolean admission) {`
+- L6313: `private Map<String, Object> evaluation(String tenant, String run) {`
+- L6321: `private EvaluationPlans.Plan plan(Map<String, Object> evaluation) {`
+- L6343: `private EvaluationPlans.Binding bindEvaluation(`
+- L6434: `private void checkEvaluation(`
+- L6456: `private void admitPlanDispatch(`
+- L6505: `public Step prepare(Lease lease, String request) {`
+- L6622: `public String dispatchModel(Lease lease, String stepId) {`
+- L6767: `public void modelResponded(`
+- L7054: `private ModelSnapshot settlementModel(Lease lease, Map<String, Object> task, String dispatch) {`
+- L7089: `private boolean settleCost(`
+- L7192: `public void modelFailed(Lease lease, String dispatch, String code, ModelUsage usage) {`
+- L7247: `public Invocation admit(`
+- L7362: `public void observeWebFetch(Lease lease, String invocationId, WebFetchObservation observation) {`
+- L7391: `private void observeWebCancellation(`
+- L7435: `public void preserveWebFetchResult(Lease lease, String invocationId, String output) {`
+- L7482: `public void toolSucceeded(Lease lease, String invocationId, String output) {`
+- L7487: `private void commitTool(Lease lease, String invocationId, String output, boolean mcpCommit) {`
+- L7583: `public void uncertain(Lease lease, String invocationId) {`
+- L7603: `public boolean searchQuiescent(Lease lease, String invocation) {`
+- L7613: `public void prepareSearch(`
+- L7682: `public void searchStarted(Lease lease, String invocation, NativeIdentity identity) {`
+- L7700: `public void searchStopped(Run run, NativeIdentity identity) {`
+- L7734: `public void searchCompleted(`
+- L7772: `public Result searchPage(Lease lease, String query, String pin, String cursor) {`
+- L7800: `public List<Run> nativeSearches(String host) {`
+- L7825: `public List<Run> expiredSearches(String host) {`
+- L7848: `public void searchStorageRemoved(Run run) {`
+- L7889: `private boolean publicReport(Map<String, Object> task) {`
+- L7899: `public ReportContext reportContext(Lease lease) {`
+- L7910: `private ReportContext reportContext(Map<String, Object> task) {`
+- L7937: `public io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ReportEvidence imageReportContext(`
+- L7942: `private io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ReportEvidence imageReportContext(`
+- L8016: `private void requirePresent(Lease lease, Map<String, Object> task, String invocationId) {`
+- L8029: `public List<Upload> stageReports(Lease lease, String invocationId, List<ReportFile> files) {`
+- L8133: `private void requireComposition(Map<String, Object> task, ReportFile file) {`
+- L8159: `public void presentSucceeded(`
+- L8227: `public void toolFailed(Lease lease, String invocationId, String code) {`
+- L8251: `public Upload stage(Lease lease, String hash, long size) {`
+- L8302: `public void verified(Lease lease, String artifactId, String key) {`
+- L8320: `public void publish(Lease lease, String artifactId) {`
+- L8350: `public void finish(Lease lease, String summary) {`
+- L8427: `public void stop(Lease lease, String code) {`
+- L8451: `private void terminal(Map<String, Object> task, String state, String code) {`
+- L8498: `public void registerWorker(`
+- L8516: `public List<WorkerProcess> processes(String host) {`
+- L8533: `private void releaseRun(Map<String, Object> task) {`
+- L8544: `private boolean writersQuiescent(Map<String, Object> task) {`
+- L8560: `public void quiescent(Lease lease) {`
+- L8582: `public void processStopped(String worker) {`
+- L8614: `private void settleStoppedWriters(Map<String, Object> task) {`
+- L8644: `public void check() {`
+- L8656: `public void cleanupArtifacts(ArtifactStore store) {`
+- L8723: `private void cleanupImages() {`
+
+## adapters/persistence/JdbcSessionRecords.java
+
+- L31: `static boolean traceTask(Map<String, Object> task) {`
+- L36: `io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts searchContract(`
+- L41: `io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor descriptor(`
+- L108: `static boolean searchTask(Map<String, Object> task) {`
+- L113: `int version(Map<String, Object> task) {`
+- L117: `SessionContracts contract(Map<String, Object> task) {`
+- L165: `JdbcSessionRecords(JdbcTemplate db) {`
+- L169: `void sensitive(List<String> values) {`
+- L173: `List<String> sensitive() {`
+- L178: `static String s(Map<String, Object> row, String name) {`
+- L182: `static long n(Map<String, Object> row, String name) {`
+- L186: `static boolean task(Map<String, Object> task) {`
+- L192: `private List<Map<String, Object>> rows(String sql, Object... args) {`
+- L206: `private Map<String, Object> one(String sql, Object... args) {`
+- L212: `static TaskFailure corrupt() {`
+- L216: `Map<String, Object> history(Map<String, Object> task, boolean readable) {`
+- L234: `void create(Map<String, Object> task) {`
+- L250: `void body(Map<String, Object> task, long additional) {`
+- L261: `private List<String> columns(String table) {`
+- L275: `long metadata(Map<String, Object> task, boolean closing) {`
+- L279: `long metadata(Map<String, Object> task, boolean closing, long planned) {`
+- L315: `private static int scalarBytes(Object value) {`
+- L321: `void account(Map<String, Object> task, boolean closing) {`
+- L343: `Map<String, Object> source(String kind, String step, String invocation) {`
+- L351: `long append(`
+- L425: `List<Map<String, Object>> recent(Map<String, Object> task, long upper) {`
+- L438: `String context(Map<String, Object> task) {`
+- L472: `void prepare(Map<String, Object> task, String request, String step) {`
+- L506: `void bindCalls(Map<String, Object> task, String step) {`
+- L579: `void validateStep(Map<String, Object> task, Map<String, Object> st) {`
+- L599: `void response(`
+- L643: `String metadataView(Map<String, Object> task) {`
+- L667: `record Read(`
+- L670: `Read read(`
+- L689: `private Read readRows(`
+- L757: `private static Map<String, Object> readSummary(JsonNode value) {`
+- L770: `JsonNode verify(Map<String, Object> task, Map<String, Object> r) {`
+- L779: `private JsonNode verifyEvent(Map<String, Object> task, Map<String, Object> r) {`
+- L919: `List<JsonNode> readSources(Map<String, Object> task, String invocation) {`
+- L951: `private void verifyReadRelation(`
+- L1040: `record Trace(`
+- L1049: `Trace trace(`
+- L1161: `Map<String, Object> receipt(Map<String, Object> b) {`
+- L1174: `void validateInput(`
+- L1207: `record PublicCalls(List<DurableAgent.ToolCall> calls, boolean redacted) {}`
+- L1209: `PublicCalls projectedCalls(Map<String, Object> task, List<DurableAgent.ToolCall> calls) {`
+- L1231: `private static Map<String, Object> scopeRef(String id, long seq, String digest) {`
+- L1239: `String normalizedScope(`
+- L1277: `private void bindScopeCall(`
+- L1307: `List<JsonNode> scopeReadRefs(Map<String, Object> task, String invocation) {`
+- L1325: `Map<String, Object> scopeReceipt(Map<String, Object> b) {`
+- L1337: `void validateNormalizedScope(String expected, Map<String, Object> binding) {`
+- L1345: `private String verifyScopeRead(`
+- L1463: `Search priorSearch(`
+- L1510: `Read scopeRead(Map<String, Object> caller, String normalized, Runnable deadline) {`
+- L1537: `record Search(String output, String scanDigest, int rows, int eventBytes) {}`
+- L1539: `Search search(`
+- L1588: `void purge(Map<String, Object> task) {`
+- L1702: `void release(Map<String, Object> task) {`
+
+## adapters/persistence/JdbcSessionScopes.java
+
+- L29: `JdbcSessionScopes(`
+- L36: `static boolean task(Map<String, Object> task) {`
+- L40: `static TaskFailure unavailable() {`
+- L44: `void lock(String tenant, String caller) {`
+- L61: `void lock(String tenant, List<String> ids) {`
+- L66: `private Map<String, Object> row(String sql, Object... args) {`
+- L72: `Map<String, Object> scope(Map<String, Object> task) {`
+- L79: `JsonNode snapshot(Map<String, Object> task, Map<String, Object> scope) {`
+- L111: `record Scope(Map<String, Object> row, JsonNode authority, List<Map<String, Object>> sources) {}`
+- L113: `Scope require(Map<String, Object> task) {`
+- L122: `private Scope requireCurrent(Map<String, Object> task) {`
+- L173: `private Map<String, Object> source(Map<String, Object> caller, String id, boolean admission) {`
+- L208: `void create(Map<String, Object> caller, List<String> ids) {`
+
+## adapters/persistence/JdbcImageRecords.java
+
+- L19: `JdbcImageRecords(JdbcTemplate db) {`
+- L23: `private static String s(Map<String, Object> row, String key) {`
+- L27: `private static long n(Map<String, Object> row, String key) {`
+- L31: `private static TaskFailure corrupt() {`
+- L35: `void insert(`
+- L66: `TaskImages.Snapshot snapshot(Map<String, Object> task) {`
+- L97: `ImageLedger.Raw raw(Map<String, Object> task, String path) {`
+- L113: `private Map<String, Object> input(Map<String, Object> task, String inputId) {`
+- L128: `void reserve(Map<String, Object> task, String invocation, String image, String inputId) {`
+- L159: `void succeeded(Map<String, Object> task, String invocation, String key, ImagePort.Result result) {`
+- L186: `ImageLedger.ObjectValue object(Map<String, Object> task, ImagePort.Result ref) {`
+- L251: `List<ImageLedger.ObjectValue> step(Map<String, Object> task, String step) {`
+
+## adapters/persistence/JdbcExecutionScopes.java
+
+- L19: `JdbcExecutionScopes(JdbcTemplate db, ModelProfiles models) {`
+- L25: `JdbcExecutionScopes(JdbcTemplate db, ExecutionScopes.Requirement requirement) {`
+- L31: `private Map<String, Object> receipt(String tenant) {`
+- L41: `private List<String> boundRuns(String tenant) {`
+- L46: `String targetRun(String tenant, String fallback) {`
+- L66: `boolean needed(String tenant, Map<String, Object> task) {`
+- L75: `private void fail(String code) {`
+- L79: `ExecutionScopes.Requirement requirement(String tenant) {`
+- L110: `void businessAnchor(`
+- L127: `String require(`
+- L188: `static boolean matches(ExecutionScopes.Requirement r, ExecutionScopes.Scope s) {`
+- L198: `void verifyBinding(`
+
+## adapters/persistence/ExecutionScopeBinding.java
+
+- L15: `public record Input(`
+- L25: `public ExecutionScopeBinding(DataSource operator, ModelProfiles models) {`
+- L33: `public ExecutionScopeBinding(DataSource operator, ExecutionScopes.Requirement requirement) {`
+- L41: `public Map<String, Object> bindOnce(Input input) {`
+- L129: `private Map<String, Object> readback(Map<String, Object> row) {`
+
+## adapters/persistence/JdbcMcpRecords.java
+
+- L20: `JdbcMcpRecords(JdbcTemplate db) {`
+- L29: `void configure(McpSettings settings) {`
+- L33: `boolean enabled() {`
+- L37: `private McpLedger.Server server(Map<String, Object> row) {`
+- L56: `McpLedger.Binding bind(String tenant, String actor) {`
+- L78: `McpLedger.Binding binding(Map<String, Object> task) {`
+- L115: `static TaskFailure unauthorized() {`
+- L119: `static TaskFailure corrupt() {`
+
+## adapters/persistence/WebFetchReceipts.java
+
+- L21: `private WebFetchReceipts() {}`
+- L23: `static String digest(`
+- L108: `private static void requireHash(Map<String, Object> row, String body, String digest) {`
+
+## adapters/persistence/Payloads.java
+
+- L58: `private Payloads() {}`
+- L63: `public static String json(Object value) {`
+- L71: `public static <T> T read(String value, Class<T> type) {`
+- L79: `public static String hash(String value) {`
+- L83: `public static String hash(byte[] value) {`
+
+## adapters/persistence/WebFetchReconciliation.java
+
+- L16: `public WebFetchReconciliation(DataSource source) {`
+- L25: `public Map<String, Object> assess(String tenant, String taskId, String invocationId) {`
+
+## adapters/persistence/ModelCosts.java
+
+- L8: `private ModelCosts() {}`
+- L10: `public static long amount(ModelSnapshot.Price price, long input, long output) {`

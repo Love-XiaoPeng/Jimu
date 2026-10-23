@@ -15,3 +15,9 @@
 依赖候选为 JDK21 / Maven3.9.9 / Boot4.1.1 / Spring AI2.0.1，一条工具循环。单 Maven 制品采用真实职责包，通过 ArchUnit 约束；控制和 worker 为独立进程角色。实际兼容性、依赖收敛和当前阶段必需的真实集成在骨架验收前补证；恢复与网页业务分别按 P2/E1、P3 验收。
 
 三份 ADR 来自附件 `01a13dea-6390-784e-8cab-52e565d627b2`，保持原字节，来源摘要见 `adr/sources.json`。原交接索引和 verification.txt 是架构师当时的静态记录；当前创建通道诊断见根目录 VERIFICATION.md。
+
+## 2026-10-23 全仓重构提案
+
+XIAO-55 / PR #20 已由产品经理验收合并；XIAO-58重构基线为master `620d5e0e5bfe7b5da530f10997936466159ba34f` / tree `ef29f391b8355a7d693a48cefdcc379e35c32929`。ADR-0014及实现说明中当时“待验收”的文字是历史阶段状态，当前合并/限制以本次核定基线及事项验收回执为准，不重写历史快照。
+
+[XIAO-59全仓方案](refactoring/XIAO-58/README.md)、[工程规范补充](engineering.md)、[ADR-0015提案](adr/0015-business-services-and-mybatis-plus.md)记录业务Service接口/impl、Controller职责、35表MP真实迁移、业务值治理、分批/回退与必要验证。当前仅交方案，待父项核定后激活XIAO-60；不能当作重构已完成。T48及其他新功能继续暂停，既有不运行或等待GitHub CI的决定保持。

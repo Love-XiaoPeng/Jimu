@@ -1,0 +1,958 @@
+[
+  {
+    "edge": "adapters.ai.springai -> adapters.ai.springai.DurableAgent",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/OpenAiProtocol.java"
+    ]
+  },
+  {
+    "edge": "adapters.ai.springai -> adapters.persistence",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java"
+    ]
+  },
+  {
+    "edge": "adapters.ai.springai -> adapters.runtime.contract",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/OpenAiProtocol.java"
+    ]
+  },
+  {
+    "edge": "adapters.ai.springai -> adapters.runtime.http",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java"
+    ]
+  },
+  {
+    "edge": "adapters.ai.springai -> adapters.runtime.model",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java"
+    ]
+  },
+  {
+    "edge": "adapters.ai.springai -> adapters.runtime.web",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java"
+    ]
+  },
+  {
+    "edge": "adapters.ai.springai -> adapters.runtime.worker",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java"
+    ]
+  },
+  {
+    "edge": "adapters.ai.springai -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java"
+    ]
+  },
+  {
+    "edge": "adapters.ai.springai -> kernel.task.api.ExecutionLedger",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java"
+    ]
+  },
+  {
+    "edge": "adapters.ai.springai -> model.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/OpenAiProtocol.java"
+    ]
+  },
+  {
+    "edge": "adapters.ai.springai -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/ToolDefinitionMapper.java"
+    ]
+  },
+  {
+    "edge": "adapters.ai.springai -> plugins.builtin.webfetch",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java"
+    ]
+  },
+  {
+    "edge": "adapters.persistence -> adapters.ai.springai",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java"
+    ]
+  },
+  {
+    "edge": "adapters.persistence -> adapters.persistence.JdbcSessionRecords",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java"
+    ]
+  },
+  {
+    "edge": "adapters.persistence -> adapters.runtime.contract",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReceipts.java"
+    ]
+  },
+  {
+    "edge": "adapters.persistence -> adapters.runtime.mcp",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcMcpRecords.java"
+    ]
+  },
+  {
+    "edge": "adapters.persistence -> adapters.runtime.media",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java"
+    ]
+  },
+  {
+    "edge": "adapters.persistence -> adapters.runtime.model",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ExecutionScopeBinding.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java"
+    ]
+  },
+  {
+    "edge": "adapters.persistence -> adapters.runtime.session",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java"
+    ]
+  },
+  {
+    "edge": "adapters.persistence -> adapters.runtime.web",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReceipts.java"
+    ]
+  },
+  {
+    "edge": "adapters.persistence -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ExecutionScopeBinding.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcMcpRecords.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReceipts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReconciliation.java"
+    ]
+  },
+  {
+    "edge": "adapters.persistence -> kernel.task.api.ExecutionLedger",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReceipts.java"
+    ]
+  },
+  {
+    "edge": "adapters.persistence -> model.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ExecutionScopeBinding.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ModelCosts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java"
+    ]
+  },
+  {
+    "edge": "adapters.persistence -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java"
+    ]
+  },
+  {
+    "edge": "adapters.persistence -> plugins.builtin.webfetch",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReceipts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.contract -> adapters.persistence",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ImageReportComposer.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportComposer.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportPolicy.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.contract -> adapters.runtime.search",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.contract -> adapters.runtime.worker",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.contract -> adapters.storage",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.contract -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ImageReportComposer.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportComposer.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportPolicy.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.contract -> kernel.task.api.ExecutionLedger",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportComposer.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportPolicy.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.contract -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/BuiltinManifestLoader.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ImageReportComposer.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportComposer.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportPolicy.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.contract -> plugin.api.ReportCompositionPort",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportComposer.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.contract -> plugins.builtin.webfetch",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportPolicy.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.contract -> plugins.builtin.workspace",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportComposer.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.directory -> adapters.persistence",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.directory -> adapters.runtime.contract",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.directory -> adapters.runtime.worker",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.directory -> adapters.storage",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.directory -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryPaths.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.directory -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryPaths.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.directory -> plugins.builtin.workspace",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.events -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/events/DatabaseEventFeed.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.health -> adapters.runtime.http",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/health/HttpResourceProbe.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.health -> kernel.readiness.port",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/health/HttpResourceProbe.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/health/LedgerProbe.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.health -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/health/LedgerProbe.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.http -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/http/ProviderHttp.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.identity -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/identity/SignedIdentity.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.identity -> kernel.task.api.Tasks",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/identity/SignedIdentity.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.interaction -> adapters.persistence",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/interaction/QuestionContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.interaction -> adapters.runtime.contract",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/interaction/QuestionContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.interaction -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/interaction/QuestionContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.interaction -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/interaction/QuestionContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.interaction -> plugins.builtin.interaction",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/interaction/QuestionContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.mcp -> adapters.persistence",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpRuntime.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpWire.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.mcp -> adapters.runtime.contract",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.mcp -> adapters.runtime.contract.WorkspaceContracts",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.mcp -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpPolicy.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpRuntime.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpSettings.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpWire.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.mcp -> kernel.task.api.ExecutionLedger",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.mcp -> kernel.task.api.McpLedger",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpPolicy.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpSettings.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.mcp -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.mcp -> plugins.builtin.mcp",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.media -> adapters.persistence",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageInputs.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageMessages.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.media -> adapters.runtime.worker",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.media -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageInputs.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageMessages.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.media -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageMessages.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageNormalizer.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.model -> adapters.persistence",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/BusinessPolicies.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/EvaluationMaterials.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/EvaluationPlans.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ExecutionScopeOperator.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ExecutionScopes.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelProfiles.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.model -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/BusinessPolicies.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/EvaluationMaterials.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/EvaluationPlans.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelImages.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelInputBounds.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelProfiles.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.model -> model.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/BusinessPolicies.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/EvaluationPlans.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelImages.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelInputBounds.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelProfiles.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.search -> adapters.persistence",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeProcesses.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeResults.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeRunner.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.search -> adapters.runtime.worker",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeRunner.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.search -> adapters.storage",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchRuntime.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/SearchFiles.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.search -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.search -> kernel.task.api.NativeSearchLedger",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeProcesses.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeRunner.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchRuntime.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.search -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeResults.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeRunner.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchQuery.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchRuntime.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/SearchFiles.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.session -> adapters.persistence",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionMatcher.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchMatcher.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionTraceContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.session -> adapters.runtime.contract",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionTraceContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.session -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionMatcher.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionQueryDeadline.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionScopeQueryBudget.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchBodyFilter.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchMatcher.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionTraceContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.session -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionMatcher.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchContracts.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchMatcher.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionTraceContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.todo -> adapters.persistence",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/todo/TodoContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.todo -> adapters.runtime.contract",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/todo/TodoContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.todo -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/todo/TodoContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.todo -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/todo/TodoContracts.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.web -> adapters.runtime.http",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/ConfiguredOriginReader.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.web -> adapters.runtime.worker",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicWebReader.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.web -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/DisabledSearch.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/FetchRuntime.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicWebReader.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/WebFetchCancellation.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.web -> kernel.task.api.WebFetchObservation",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PinnedHttpsTransport.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicWebReader.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/WebFetchCancellation.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.web -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/ConfiguredOriginReader.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/DisabledSearch.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/FetchRuntime.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PinnedHttpsTransport.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicWebReader.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.web -> plugins.builtin.webfetch",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/ConfiguredOriginReader.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/FetchRuntime.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PinnedHttpsTransport.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicPageProjection.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicWebReader.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.web -> plugins.builtin.websearch",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/DisabledSearch.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.worker -> adapters.ai.springai",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/WorkerLoop.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.worker -> adapters.runtime.search",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LocalWorkerSupervisor.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/WorkerLoop.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.worker -> kernel.readiness.port",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/WorkerLoop.java"
+    ]
+  },
+  {
+    "edge": "adapters.runtime.worker -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LedgerMaintenance.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LocalWorkerSupervisor.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/WorkerLoop.java"
+    ]
+  },
+  {
+    "edge": "adapters.storage -> adapters.persistence",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/LocalArtifactStore.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureImageStore.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureWorkspaceStore.java"
+    ]
+  },
+  {
+    "edge": "adapters.storage -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/LocalArtifactStore.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureImageStore.java"
+    ]
+  },
+  {
+    "edge": "adapters.storage -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureImageStore.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureWorkspaceStore.java"
+    ]
+  },
+  {
+    "edge": "api -> kernel.readiness.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/api/ReadinessController.java"
+    ]
+  },
+  {
+    "edge": "api -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/api/SessionHistoryController.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/api/SessionSearchController.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/api/TaskController.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/api/TaskErrors.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/api/TodoController.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/api/UserQuestionController.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/api/WorkingDirectoryController.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> adapters.ai.springai",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> adapters.persistence",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> adapters.runtime.contract",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> adapters.runtime.events",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> adapters.runtime.health",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> adapters.runtime.identity",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> adapters.runtime.model",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> adapters.runtime.search",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> adapters.runtime.web",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> adapters.runtime.worker",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> adapters.storage",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> kernel.plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> kernel.plugin.application",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> kernel.readiness.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> kernel.readiness.application",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> kernel.readiness.port",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> kernel.task.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> kernel.task.api.Tasks",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java"
+    ]
+  },
+  {
+    "edge": "bootstrap -> plugins.builtin.webfetch",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java"
+    ]
+  },
+  {
+    "edge": "kernel.plugin.api -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/kernel/plugin/api/PluginCatalog.java"
+    ]
+  },
+  {
+    "edge": "kernel.plugin.application -> kernel.plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/kernel/plugin/application/PluginRegistry.java"
+    ]
+  },
+  {
+    "edge": "kernel.plugin.application -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/kernel/plugin/application/PluginRegistry.java"
+    ]
+  },
+  {
+    "edge": "kernel.readiness.application -> kernel.plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/kernel/readiness/application/ReadinessService.java"
+    ]
+  },
+  {
+    "edge": "kernel.readiness.application -> kernel.readiness.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/kernel/readiness/application/ReadinessService.java"
+    ]
+  },
+  {
+    "edge": "kernel.readiness.application -> kernel.readiness.port",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/kernel/readiness/application/ReadinessService.java"
+    ]
+  },
+  {
+    "edge": "kernel.task.api -> model.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/ExecutionLedger.java"
+    ]
+  },
+  {
+    "edge": "kernel.task.api -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/ImageLedger.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/TodoLedger.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/UserQuestionLedger.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/WorkingDirectoryLedger.java"
+    ]
+  },
+  {
+    "edge": "plugins.builtin.interaction -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/interaction/AskUserQuestionPlugin.java"
+    ]
+  },
+  {
+    "edge": "plugins.builtin.mcp -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/mcp/ListMcpResourceTemplatesPlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/mcp/ListMcpResourcesPlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/mcp/ReadMcpResourcePlugin.java"
+    ]
+  },
+  {
+    "edge": "plugins.builtin.session -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/session/SessionEventReadPlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/session/SessionEventSearchPlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/session/SessionEventTracePlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/session/SessionSearchPlugin.java"
+    ]
+  },
+  {
+    "edge": "plugins.builtin.todo -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/todo/TodoWritePlugin.java"
+    ]
+  },
+  {
+    "edge": "plugins.builtin.webfetch -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/WebFetchPlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/WebPageReader.java"
+    ]
+  },
+  {
+    "edge": "plugins.builtin.websearch -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/websearch/SearchProvider.java"
+    ]
+  },
+  {
+    "edge": "plugins.builtin.workspace -> plugin.api",
+    "files": [
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/ComposeReportPlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/EditPlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/GlobPlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/GrepPlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/PresentPlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/ReadImagePlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/ReadPlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/WorkingDirectoryPlugin.java",
+      "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/WritePlugin.java"
+    ]
+  }
+]

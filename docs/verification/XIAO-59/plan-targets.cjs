@@ -1,0 +1,46 @@
+// Explicit planned destinations for every baseline production file. Does not move any code.
+const fs=require('node:fs'),path=require('node:path');
+const dir=path.join(__dirname,'evidence');
+const files=JSON.parse(fs.readFileSync(path.join(dir,'java-inventory.json'))).files;
+const prefix='src/main/java/io/github/lovexiaopeng/jimu/';
+const overrides={};
+function set(old,targets,reason){overrides[old]={action:targets.length===1?'move-or-refactor':'split',targets,reason};}
+const apiAreas={TaskController:'task',SessionHistoryController:'session',SessionSearchController:'session',TodoController:'todo',UserQuestionController:'interaction',WorkingDirectoryController:'directory',ReadinessController:'readiness'};
+for(const [n,a]of Object.entries(apiAreas))set('api/'+n+'.java',['api/'+a+'/controller/'+n+'.java'],'协议适配；业务规则下沉对应Service，DTO/VO按真实复用拆出。');
+set('api/TaskErrors.java',['api/common/TaskErrors.java'],'保留公开错误形状/安全映射，按真实异常分类。');
+const services={Tasks:['task','TaskService'],ExecutionLedger:['execution','ExecutionService'],TodoLedger:['todo','TodoService'],UserQuestionLedger:['interaction','UserQuestionService'],WorkingDirectoryLedger:['directory','WorkingDirectoryService'],SessionEventLedger:['session','SessionHistoryService'],SessionSearchScopeLedger:['session','SessionScopeService'],McpLedger:['mcp','McpService'],ImageLedger:['media','ImageService'],NativeSearchLedger:['search','NativeSearchService']};
+for(const [n,[a,t]]of Object.entries(services))set('kernel/task/api/'+n+'.java',['kernel/'+a+'/service/'+t+'.java','kernel/'+a+'/api/'+t.replace('Service','Contracts')+'.java'],n==='ExecutionLedger'?'发布方法按worker/model/invocation/artifact归属进一步拆分，见总方案用例表；不可保留巨型接口转发壳。':'重用原有接口语义，接口移service，嵌套DTO按需要移api；不改公开协议。');
+set('kernel/task/api/ArtifactStore.java',['kernel/artifact/port/ArtifactStore.java'],'存储端口，Controller不再依赖。');
+set('kernel/task/api/Authenticator.java',['kernel/identity/api/Authenticator.java'],'受信身份端口，无请求JSON授权。');
+set('kernel/task/api/EventFeed.java',['kernel/event/port/EventFeed.java'],'订阅能力端口，HTTP生命周期仍由MVC适配。');
+set('kernel/task/api/TaskFailure.java',['kernel/shared/api/TaskFailure.java'],'稳定安全code与现有status兼容；不新建一套竞争错误协议。');
+set('kernel/task/api/TaskImages.java',['kernel/media/api/TaskImages.java'],'媒体输入/快照值，不是数据库Entity。');
+set('kernel/task/api/WebFetchObservation.java',['kernel/invocation/api/WebFetchObservation.java'],'宿主观察收据，保持原事实字段。');
+set('kernel/readiness/api/Readiness.java',['kernel/readiness/service/ReadinessService.java'],'已有发布接口语义，非新增空层。');
+set('kernel/readiness/application/ReadinessService.java',['kernel/readiness/service/impl/ReadinessServiceImpl.java'],'实际readiness规则，保留失败语义。');
+set('kernel/plugin/api/PluginCatalog.java',['kernel/plugin/service/PluginCatalogService.java'],'已有发现集接口。');
+set('kernel/plugin/application/PluginRegistry.java',['kernel/plugin/service/impl/PluginCatalogServiceImpl.java'],'已有去重和不可变规则，不额外加Registry转发层。');
+const business=['task','worker','execution','model','invocation','artifact','session','directory','todo','interaction','mcp','media','search'];
+set('adapters/persistence/JdbcLedger.java',business.map(a=>'kernel/'+a+'/service/impl/').concat(['adapters/persistence/transaction/SpringLedgerUnitOfWork.java','adapters/persistence/query/','adapters/persistence/<business>/{mapper,entity,projection,MybatisRecords}']),'按总方案方法锚点/持久化35表矩阵拆分；最终删除旧类，无并行业务JDBC。');
+for(const [old,a]of Object.entries({JdbcSessionRecords:'session',JdbcSessionScopes:'session',JdbcImageRecords:'media',JdbcMcpRecords:'mcp',JdbcExecutionScopes:'model'}))set('adapters/persistence/'+old+'.java',['kernel/'+a+'/service/impl/','adapters/persistence/'+a+'/Mybatis'+old.replace('Jdbc','')+'.java','adapters/persistence/'+a+'/{mapper,entity,projection}/'], '业务规则进入Service，显式SQL/结果转换进入Records；旧JDBC删除。');
+set('adapters/persistence/ExecutionScopeBinding.java',['kernel/model/service/ExecutionScopeService.java','kernel/model/service/impl/ExecutionScopeServiceImpl.java','adapters/persistence/model/mapper/ExecutionScopeMapper.java'],'operator路径也迁Mapper，保持独立账户/一次绑定，启动不调用。');
+set('adapters/persistence/WebFetchReconciliation.java',['kernel/model/service/WebFetchAssessmentService.java','kernel/model/service/impl/WebFetchAssessmentServiceImpl.java','adapters/persistence/model/mapper/WebFetchAssessmentMapper.java'],'只读评估及证明，不产生恢复/结算授权。');
+set('adapters/persistence/WebFetchReceipts.java',['kernel/invocation/domain/WebFetchProof.java','adapters/codec/WebFetchReceiptCodec.java'],'证明不变量与JSON解释分离，保持原digest输入和字段。');
+set('adapters/persistence/ModelCosts.java',['kernel/budget/domain/ModelCosts.java'],'纯整数费用规则，与SQL适配层分离。');
+set('adapters/persistence/Payloads.java',['adapters/codec/SnapshotCodec.java','kernel/execution/port/SnapshotCodec.java'],'保留旧JSON2 mixins/字节；kernel通过窄codec端口，不传播框架类型。');
+set('adapters/ai/springai/DurableAgent.java',['execution/service/AttemptExecutionService.java','execution/service/impl/AttemptExecutionServiceImpl.java','execution/service/HostInvocationGateway.java','execution/service/impl/HostInvocationGatewayImpl.java','execution/port/AgentAttemptRunner.java','adapters/ai/springai/SpringAiAttemptRunner.java','adapters/ai/springai/SpringAiSession.java','adapters/codec/CheckpointCodec.java'],'拆attempt编排、网关、单advisor适配、快照，保持一次循环及原槽恢复。');
+set('bootstrap/DurableConfiguration.java',['bootstrap/config/DurableDataConfiguration.java','bootstrap/config/WorkerConfiguration.java','bootstrap/config/IdentityConfiguration.java','bootstrap/config/ServiceConfiguration.java','bootstrap/properties/'],'按数据/worker/受信身份/业务装配分开；共享文件仅集成人写。');
+for(const n of ['ModelProfiles','BusinessPolicies','EvaluationPlans','ExecutionScopes'])set('adapters/runtime/model/'+n+'.java',['bootstrap/properties/'+n+'Properties.java','kernel/model/domain/'+n+'.java','adapters/codec/model/'],'配置/纯策略/快照边界按实际职责拆，不改冻结plan/profile。');
+for(const n of ['SessionContracts','SessionSearchContracts','SessionTraceContracts','PriorSessionContracts'])set('adapters/runtime/session/'+n+'.java',['adapters/codec/session/'+n+'.java','kernel/session/domain/'+n+'Policy.java'],'Schema/JSON解释留适配层，业务范围/值校验进入纯策略，冻结资源不移动。');
+for(const n of ['SessionSearchMatcher','PriorSessionMatcher'])set('adapters/runtime/session/'+n+'.java',['kernel/session/domain/'+n+'.java','adapters/codec/session/EventProjectionCodec.java'],'排序/字面匹配纯函数，输入类型化；JSON树只留转换边界。');
+set('adapters/runtime/session/SessionQueryDeadline.java',['adapters/persistence/query/SessionQueryDeadline.java'],'驱动socket例外；同步ThreadLocal限此设施，重定位类名同步装配/门禁。');
+set('adapters/runtime/session/SessionScopeQueryBudget.java',['kernel/session/api/SessionQueryContext.java','adapters/persistence/query/SessionResultMeter.java'],'预算显式传递，Mapper逐读计量；无新跨线程ThreadLocal。');
+set('adapters/runtime/session/SessionSearchBodyFilter.java',['api/common/SessionSearchBodyFilter.java'],'仅Servlet有界异步body生命周期，不含授权业务。');
+for(const [p,a,n]of [['todo','todo','TodoContracts'],['interaction','interaction','QuestionContracts'],['directory','directory','DirectoryContracts']])set('adapters/runtime/'+p+'/'+n+'.java',['adapters/codec/'+a+'/'+n+'.java','kernel/'+a+'/domain/'+n+'Policy.java'],'协议Schema解释与纯业务规则分离，不复制资源。');
+for(const [p,a,n]of [['todo','todo','TodoCommitUnconfirmed'],['directory','directory','DirectoryCommitUnconfirmed'],['session','session','SessionCommitUnconfirmed'],['interaction','interaction','QuestionSuspended']])set('adapters/runtime/'+p+'/'+n+'.java',['kernel/'+a+'/api/'+n+'.java'],'执行边界的明确控制信号，保留unknown/暂停语义。');
+for(const n of ['ReportPolicy','ReportComposer','ImageReportComposer'])set('adapters/runtime/contract/'+n+'.java',['kernel/artifact/domain/'+n+'Policy.java','adapters/codec/artifact/'+n+'.java'],'报告来源/时间/证明规则进内核，JSON/提示词投影保留适配。');
+const result=files.map(f=>{const old=f.path.slice(prefix.length);return {source:f.path,baselineLines:f.lines,...(overrides[old]??{action:'retain',targets:[old],reason:old.startsWith('plugin/api/')||old.startsWith('model/api/')?'JDK叶子契约；保持公开边界/字节。':old.startsWith('plugins/')?'薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。':'保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。'})};});
+fs.writeFileSync(path.join(dir,'file-mapping.json'),JSON.stringify({status:'proposed; targets relative to Java root; directories/braces describe one-to-many splits expanded in architecture and persistence tables',baseline:'620d5e0e5bfe7b5da530f10997936466159ba34f',files:result},null,2)+'\n');
+const symbols=new Map();for(const c of JSON.parse(fs.readFileSync(path.join(dir,'literal-candidates.json'))).candidates)for(const m of c.text.matchAll(/"([A-Z][A-Z0-9_]{2,})"/g)){const v=symbols.get(m[1])??[];v.push({path:c.path,line:c.line});symbols.set(m[1],v);}
+fs.writeFileSync(path.join(dir,'symbol-values.json'),JSON.stringify({note:'All standalone uppercase semantic string candidates in production Java; includes status/code/test hooks and standard protocol values. Classification follows magic-values.md, not automatic replacement.',values:[...symbols].sort().map(([value,uses])=>({value,uses}))},null,2)+'\n');
+console.log(JSON.stringify({mappedFiles:result.length,classifiedSymbolCandidates:symbols.size}));

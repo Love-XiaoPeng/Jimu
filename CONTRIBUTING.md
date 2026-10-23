@@ -2,6 +2,8 @@
 
 以 [工程规范 0.2](docs/baseline/XIAO-33-工程规范-v0.2.md) 为规则基线，来源及适用范围见 [基线索引](docs/baseline/README.md)。骨架实际启用范围和资源约定见 [P1 实现说明](docs/implementation-p1.md)。
 
+XIAO-58整体重构的 [工程规范补充](docs/engineering.md)、[架构方案](docs/refactoring/XIAO-58/README.md) 和 [ADR-0015](docs/adr/0015-business-services-and-mybatis-plus.md) 当前为待核定提案。核定后按其实际业务Service/impl、Controller边界、MP及验证矩阵实施；原始规范/来源不改写。方案交付不表示代码迁移或业务验收通过。
+
 ## 实施顺序
 
 1. 核实 `Love-XiaoPeng/Jimu` 的远端、已有内容和权限；保留历史、可见性及他人改动。

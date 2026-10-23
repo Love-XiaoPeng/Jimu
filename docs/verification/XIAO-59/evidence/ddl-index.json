@@ -1,0 +1,400 @@
+[
+  {
+    "path": "src/main/resources/db/migration/V10__business_task_policy.sql",
+    "statements": [
+      {
+        "line": 2,
+        "text": "ALTER TABLE task"
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V11__native_search.sql",
+    "statements": [
+      {
+        "line": 2,
+        "text": "CREATE TABLE native_search_run ("
+      },
+      {
+        "line": 20,
+        "text": "CREATE TABLE native_search_stop ("
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V12__process_observer_identity.sql",
+    "statements": [
+      {
+        "line": 2,
+        "text": "ALTER TABLE worker_process"
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V13__task_images.sql",
+    "statements": [
+      {
+        "line": 1,
+        "text": "ALTER TABLE task ADD COLUMN media_snapshot MEDIUMTEXT NULL,"
+      },
+      {
+        "line": 5,
+        "text": "ALTER TABLE invocation ADD UNIQUE KEY invocation_task_identity(tenant_id,task_id,id);"
+      },
+      {
+        "line": 6,
+        "text": "CREATE TABLE task_image_input ("
+      },
+      {
+        "line": 15,
+        "text": "CREATE TABLE task_image_object ("
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V14__image_checkpoint_retention.sql",
+    "statements": [
+      {
+        "line": 3,
+        "text": "ALTER TABLE tenant_budget ADD COLUMN media_checkpoint_held BIGINT NOT NULL DEFAULT 0,"
+      },
+      {
+        "line": 5,
+        "text": "ALTER TABLE step ADD COLUMN request_cleanup_state VARCHAR(24) NOT NULL DEFAULT 'RETAINED',"
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V15__mcp_resources.sql",
+    "statements": [
+      {
+        "line": 1,
+        "text": "ALTER TABLE task ADD COLUMN mcp_snapshot MEDIUMTEXT,"
+      },
+      {
+        "line": 5,
+        "text": "CREATE TABLE mcp_server ("
+      },
+      {
+        "line": 12,
+        "text": "CREATE TABLE mcp_io ("
+      },
+      {
+        "line": 22,
+        "text": "CREATE TABLE mcp_result ("
+      },
+      {
+        "line": 33,
+        "text": "CREATE TABLE mcp_cursor ("
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V16__durable_user_questions.sql",
+    "statements": [
+      {
+        "line": 1,
+        "text": "ALTER TABLE tenant_budget"
+      },
+      {
+        "line": 6,
+        "text": "ALTER TABLE task"
+      },
+      {
+        "line": 14,
+        "text": "CREATE TABLE user_question ("
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V17__task_todo_projection.sql",
+    "statements": [
+      {
+        "line": 2,
+        "text": "ALTER TABLE tenant_budget"
+      },
+      {
+        "line": 8,
+        "text": "ALTER TABLE invocation"
+      },
+      {
+        "line": 29,
+        "text": "CREATE TABLE task_todo_projection ("
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V18__task_logical_directory.sql",
+    "statements": [
+      {
+        "line": 3,
+        "text": "ALTER TABLE tenant_budget"
+      },
+      {
+        "line": 10,
+        "text": "ALTER TABLE step"
+      },
+      {
+        "line": 21,
+        "text": "CREATE TABLE task_directory ("
+      },
+      {
+        "line": 49,
+        "text": "CREATE TABLE invocation_path_binding ("
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V19__authorized_session_history.sql",
+    "statements": [
+      {
+        "line": 3,
+        "text": "ALTER TABLE tenant_budget"
+      },
+      {
+        "line": 10,
+        "text": "ALTER TABLE step"
+      },
+      {
+        "line": 19,
+        "text": "CREATE TABLE task_session_history ("
+      },
+      {
+        "line": 41,
+        "text": "CREATE TABLE session_public_event ("
+      },
+      {
+        "line": 66,
+        "text": "CREATE TABLE invocation_session_read ("
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V1__p2_ledger.sql",
+    "statements": [
+      {
+        "line": 1,
+        "text": "CREATE TABLE tenant_budget ("
+      },
+      {
+        "line": 12,
+        "text": "CREATE TABLE actor_access ("
+      },
+      {
+        "line": 17,
+        "text": "CREATE TABLE installation ("
+      },
+      {
+        "line": 23,
+        "text": "CREATE TABLE task ("
+      },
+      {
+        "line": 41,
+        "text": "CREATE TABLE task_attempt ("
+      },
+      {
+        "line": 49,
+        "text": "CREATE TABLE step ("
+      },
+      {
+        "line": 59,
+        "text": "CREATE TABLE invocation ("
+      },
+      {
+        "line": 71,
+        "text": "CREATE TABLE event ("
+      },
+      {
+        "line": 78,
+        "text": "CREATE TABLE reservation ("
+      },
+      {
+        "line": 85,
+        "text": "CREATE TABLE artifact ("
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V20__bounded_session_event_search.sql",
+    "statements": [
+      {
+        "line": 2,
+        "text": "-- Confirm these V19-generated names using SHOW CREATE TABLE on the private upgrade fixture."
+      },
+      {
+        "line": 4,
+        "text": "ALTER TABLE task_session_history"
+      },
+      {
+        "line": 7,
+        "text": "ALTER TABLE session_public_event"
+      },
+      {
+        "line": 14,
+        "text": "CREATE TABLE invocation_session_search ("
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V21__captured_session_event_read_provenance.sql",
+    "statements": [
+      {
+        "line": 2,
+        "text": "-- Validate V20 named CHECKs using SHOW CREATE TABLE; mismatch must fail closed."
+      },
+      {
+        "line": 4,
+        "text": "ALTER TABLE task_session_history"
+      },
+      {
+        "line": 8,
+        "text": "ALTER TABLE session_public_event"
+      },
+      {
+        "line": 13,
+        "text": "ALTER TABLE invocation_session_read"
+      },
+      {
+        "line": 30,
+        "text": "CREATE TABLE invocation_session_trace ("
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V22__explicit_prior_session_search_scope.sql",
+    "statements": [
+      {
+        "line": 3,
+        "text": "-- Confirm V21 CHECK names from SHOW CREATE TABLE. Never edit V1-V21 or repair checksums."
+      },
+      {
+        "line": 4,
+        "text": "ALTER TABLE task_session_history"
+      },
+      {
+        "line": 8,
+        "text": "ALTER TABLE session_public_event"
+      },
+      {
+        "line": 13,
+        "text": "CREATE TABLE task_session_scope ("
+      },
+      {
+        "line": 37,
+        "text": "CREATE TABLE task_session_scope_target ("
+      },
+      {
+        "line": 53,
+        "text": "CREATE TABLE step_session_scope ("
+      },
+      {
+        "line": 68,
+        "text": "CREATE TABLE invocation_session_scope_query ("
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V2__local_worker_receipts.sql",
+    "statements": [
+      {
+        "line": 1,
+        "text": "CREATE TABLE worker_process ("
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V3__attempt_quiescence.sql",
+    "statements": [
+      {
+        "line": 3,
+        "text": "ALTER TABLE task_attempt ADD COLUMN quiescent BOOLEAN NOT NULL DEFAULT FALSE;"
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V4__model_snapshots_and_budgets.sql",
+    "statements": [
+      {
+        "line": 1,
+        "text": "ALTER TABLE task"
+      },
+      {
+        "line": 7,
+        "text": "ALTER TABLE tenant_budget"
+      },
+      {
+        "line": 10,
+        "text": "ALTER TABLE step MODIFY COLUMN model_version VARCHAR(160) NOT NULL DEFAULT 'fixture-v1';"
+      },
+      {
+        "line": 12,
+        "text": "CREATE TABLE evaluation_budget ("
+      },
+      {
+        "line": 21,
+        "text": "ALTER TABLE task ADD FOREIGN KEY(tenant_id,evaluation_run_id) REFERENCES evaluation_budget(tenant_id,id);"
+      },
+      {
+        "line": 23,
+        "text": "CREATE TABLE model_dispatch ("
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V5__task_tool_snapshots.sql",
+    "statements": [
+      {
+        "line": 1,
+        "text": "ALTER TABLE task"
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V6__report_receipts.sql",
+    "statements": [
+      {
+        "line": 1,
+        "text": "ALTER TABLE task ADD COLUMN report_time DATETIME(6);"
+      },
+      {
+        "line": 2,
+        "text": "ALTER TABLE artifact ADD COLUMN file_receipt TEXT,"
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V7__bounded_evaluation_plans.sql",
+    "statements": [
+      {
+        "line": 1,
+        "text": "ALTER TABLE evaluation_budget"
+      },
+      {
+        "line": 11,
+        "text": "ALTER TABLE task"
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V8__evaluation_material_binding.sql",
+    "statements": [
+      {
+        "line": 2,
+        "text": "ALTER TABLE task"
+      }
+    ]
+  },
+  {
+    "path": "src/main/resources/db/migration/V9__evaluation_execution_scope.sql",
+    "statements": [
+      {
+        "line": 2,
+        "text": "CREATE TABLE evaluation_execution_scope ("
+      },
+      {
+        "line": 13,
+        "text": "ALTER TABLE task ADD COLUMN execution_scope_digest CHAR(64) NULL"
+      }
+    ]
+  }
+]
