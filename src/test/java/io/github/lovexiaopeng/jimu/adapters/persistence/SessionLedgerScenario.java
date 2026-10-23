@@ -199,6 +199,50 @@ public final class SessionLedgerScenario {
         step = s(i, "step_id"),
         output = s(i, "output_snapshot");
     long used = n(task, "tools_used");
+    if (args[2].equals("search-failed-replay")) {
+      String original =
+          db.queryForObject(
+              "SELECT event_digest FROM session_public_event WHERE task_id=? AND seq=0",
+              String.class,
+              taskId);
+      db.update(
+          "UPDATE session_public_event SET event_digest=? WHERE task_id=? AND seq=0",
+          "f".repeat(64),
+          taskId);
+      try {
+        rejects(
+            "SESSION_HISTORY_CORRUPT", () -> invoke(ledger, lease, step, call, version, digest));
+      } finally {
+        db.update(
+            "UPDATE session_public_event SET event_digest=? WHERE task_id=? AND seq=0",
+            original,
+            taskId);
+      }
+      rejects("SESSION_HISTORY_CORRUPT", () -> invoke(ledger, lease, step, call, version, digest));
+      require(
+          db.queryForObject("SELECT tools_used FROM task WHERE id=?", Long.class, taskId)
+              == used + 1,
+          "Failed original slot consumes once even after source repaired");
+      require(
+          db.queryForObject(
+                  "SELECT COUNT(*) FROM invocation_session_search WHERE task_id=? AND outcome='FAILED' AND failure_code='SESSION_HISTORY_CORRUPT' AND output_bytes=0",
+                  Long.class,
+                  taskId)
+              == 1,
+          "Failure binding retains safe code and no output");
+      require(
+          db.queryForObject(
+                  "SELECT COUNT(*) FROM event WHERE task_id=? AND type='tool.failed' AND code='SESSION_HISTORY_CORRUPT'",
+                  Long.class,
+                  taskId)
+              == 1,
+          "Failure has one canonical reliable receipt");
+      ledger.sessionSearchEnabled(false);
+      rejects("SESSION_SEARCH_DISABLED", () -> invoke(ledger, lease, step, call, version, digest));
+      System.out.println(
+          "PASS failed search replay, no rescan after repair, one charge/receipt, current flag rechecked");
+      return;
+    }
     if (args[2].equals("connection-timeout")) {
       long started = System.nanoTime();
       String code;

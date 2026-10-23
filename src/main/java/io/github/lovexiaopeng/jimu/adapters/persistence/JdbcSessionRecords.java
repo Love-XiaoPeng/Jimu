@@ -842,10 +842,11 @@ final class JdbcSessionRecords {
         "UPDATE session_public_event SET event_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND task_id=?",
         tenant,
         id);
-    db.update(
-        "UPDATE invocation_session_search SET normalized_query_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND task_id=?",
-        tenant,
-        id);
+    if (searchTask(task))
+      db.update(
+          "UPDATE invocation_session_search SET normalized_query_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND task_id=?",
+          tenant,
+          id);
     db.update(
         "UPDATE invocation_session_read SET content_state='PURGED' WHERE tenant_id=? AND task_id=?",
         tenant,

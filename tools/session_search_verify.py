@@ -275,6 +275,17 @@ class SearchExperiment(SessionExperiment):
         private=self.sql("SELECT input_snapshot FROM invocation WHERE task_id='"+task+"' ORDER BY ordinal LIMIT 1;")
         self.assert_that('SYNTHETIC_TOKEN' in private, 'original recovery arguments preserved separately')
 
+    def failed_replay(self):
+        task=self.task('S05 failed original search needle53',[(SEARCH,{'query':'needle53'})])
+        worker=self.start('failed-search-before','worker','M2'); self.barrier(worker)
+        self.ledger_scenario(worker,task,'search-failed-replay')
+        self.stop(worker,kill=True); self.expire(task)
+        resumed=self.start('failed-search-after','worker'); self.state(task,'FAILED'); self.stop(resumed)
+        self.assert_that(self.sql("SELECT tools_used FROM task WHERE id='"+task+"';") == '1'
+            and self.sql("SELECT total_tokens FROM model_dispatch WHERE task_id='"+task+"';") == '150',
+            'failed original search recovery preserves one charge and actual usage')
+        self.ledger_scenario(resumed,task,'accounting')
+
     def retention(self):
         task=self.primary_task
         before=int(self.sql("SELECT history_storage_held FROM tenant_budget WHERE tenant_id='tenant-a';"))
@@ -306,7 +317,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt('foreground supervisor terminated')))
     parser=argparse.ArgumentParser()
     parser.add_argument('--jar',type=Path,required=True); parser.add_argument('--evidence',type=Path,required=True)
-    parser.add_argument('--case',choices=['normal','lifecycle','core','recovery','boundaries','integrity','retention','all'],default='core')
+    parser.add_argument('--case',choices=['normal','lifecycle','failure','core','recovery','boundaries','integrity','retention','all'],default='core')
     args=parser.parse_args(); experiment=SearchExperiment(args.jar,args.evidence)
     experiment.takeover=args.case == 'lifecycle'
     try:
@@ -315,6 +326,7 @@ if __name__ == '__main__':
         if args.case in ('recovery','all'): experiment.recovery()
         if args.case in ('boundaries','all'): experiment.boundaries()
         if args.case in ('integrity','all'): experiment.integrity()
+        if args.case in ('failure','lifecycle','all'): experiment.failed_replay()
         if args.case in ('retention','all'): experiment.retention()
     except BaseException:
         (experiment.evidence/'failure.txt').write_text(traceback.format_exc()); raise
