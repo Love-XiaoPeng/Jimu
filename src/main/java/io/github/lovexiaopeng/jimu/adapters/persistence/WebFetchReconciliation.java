@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import java.util.Map;
 import javax.sql.DataSource;

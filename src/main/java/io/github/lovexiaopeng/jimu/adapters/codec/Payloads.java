@@ -1,4 +1,4 @@
-package io.github.lovexiaopeng.jimu.adapters.persistence;
+package io.github.lovexiaopeng.jimu.adapters.codec;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;

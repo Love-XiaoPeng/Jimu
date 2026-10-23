@@ -2,6 +2,7 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.BuiltinManifestLoader;
 import io.github.lovexiaopeng.jimu.adapters.runtime.web.PublicWebPolicy;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.PluginPin;

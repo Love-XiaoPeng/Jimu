@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionContracts;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionMatcher;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;

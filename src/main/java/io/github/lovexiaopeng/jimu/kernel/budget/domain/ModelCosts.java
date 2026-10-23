@@ -1,4 +1,4 @@
-package io.github.lovexiaopeng.jimu.adapters.persistence;
+package io.github.lovexiaopeng.jimu.kernel.budget.domain;
 
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import java.math.BigInteger;

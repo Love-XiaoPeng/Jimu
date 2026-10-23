@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.OpenAiProtocol;
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportPolicy;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceContracts;

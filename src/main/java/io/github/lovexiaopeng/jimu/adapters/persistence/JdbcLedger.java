@@ -1,10 +1,12 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.BusinessPolicies;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationMaterials;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationPlans;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionQueryDeadline;
+import io.github.lovexiaopeng.jimu.kernel.budget.domain.ModelCosts;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger;
@@ -44,6 +46,8 @@ public final class JdbcLedger
   private final JdbcTemplate db;
   private final ThreadLocal<Long> sessionQueryDeadline = new ThreadLocal<>();
   private final TransactionTemplate transactions;
+  private final io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork unitOfWork;
+  private final Runnable schemaCheck;
   private final ModelProfiles models;
   private final JdbcExecutionScopes executionScopes;
   private java.util.function.BooleanSupplier searchAvailable = () -> false;
@@ -4184,7 +4188,16 @@ public final class JdbcLedger
   }
 
   public JdbcLedger(DataSource source, ModelProfiles models) {
-    source = SessionQueryDeadline.source(source);
+    this(SessionQueryDeadline.source(source), models, null, null, null);
+  }
+
+  /** B1 过渡装配；产品传入已包装的唯一 DS，旧夹具构造在 B5 删除。 */
+  public JdbcLedger(
+      DataSource source,
+      ModelProfiles models,
+      DataSourceTransactionManager manager,
+      io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork unitOfWork,
+      Runnable schemaCheck) {
     this.models = models;
     db =
         new JdbcTemplate(source) {
@@ -4228,15 +4241,22 @@ public final class JdbcLedger
     mcp = new JdbcMcpRecords(db);
     db.setQueryTimeout(5);
     executionScopes = new JdbcExecutionScopes(db, models);
-    transactions = new TransactionTemplate(new DataSourceTransactionManager(source));
+    var shared = manager == null ? new DataSourceTransactionManager(source) : manager;
+    transactions = new TransactionTemplate(shared);
     transactions.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     transactions.setTimeout(10);
+    this.unitOfWork =
+        unitOfWork == null
+            ? new io.github.lovexiaopeng.jimu.adapters.persistence.transaction
+                .SpringLedgerUnitOfWork(shared)
+            : unitOfWork;
+    this.schemaCheck = schemaCheck;
   }
 
   private <T> T tx(Supplier<T> work) {
     AdmissionResult<T> result =
-        transactions.execute(
-            status -> {
+        unitOfWork.required(
+            () -> {
               try {
                 return new AdmissionResult<T>(work.get(), null);
               } catch (TaskFailure failure) {
@@ -8642,6 +8662,10 @@ public final class JdbcLedger
 
   @Override
   public void check() {
+    if (schemaCheck != null) {
+      schemaCheck.run();
+      return;
+    }
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22') AND success=TRUE",
             Integer.class)

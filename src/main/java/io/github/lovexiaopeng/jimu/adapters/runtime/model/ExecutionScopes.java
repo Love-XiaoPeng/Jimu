@@ -1,6 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.model;
 
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;

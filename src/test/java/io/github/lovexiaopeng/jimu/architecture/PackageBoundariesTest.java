@@ -34,7 +34,16 @@ class PackageBoundariesTest {
         .resideInAnyPackage("..kernel..", "..execution..")
         .should()
         .dependOnClassesThat()
-        .resideInAnyPackage("..adapters..", "..plugins..", "org.springframework..", "java.sql..")
+        .resideInAnyPackage(
+            "..adapters..",
+            "..plugins..",
+            "org.springframework..",
+            "java.sql..",
+            "javax.sql..",
+            "org.apache.ibatis..",
+            "com.baomidou..",
+            "com.fasterxml.jackson..",
+            "tools.jackson..")
         .check(classes);
     noClasses()
         .that()
@@ -43,7 +52,36 @@ class PackageBoundariesTest {
         .haveSimpleNameEndingWith("Controller")
         .should()
         .dependOnClassesThat()
-        .resideInAnyPackage("..plugins..", "..adapters..", "java.sql..")
+        .resideInAnyPackage(
+            "..plugins..",
+            "..adapters..",
+            "java.sql..",
+            "javax.sql..",
+            "org.apache.ibatis..",
+            "com.baomidou..",
+            "..service.impl..")
+        .check(classes);
+    noClasses()
+        .that()
+        .resideInAPackage("..api..")
+        .and()
+        .haveSimpleNameEndingWith("Controller")
+        .should()
+        .dependOnClassesThat()
+        .haveFullyQualifiedName("io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore")
+        .check(classes);
+    // B1 唯一过渡例外：operator bindOnce 将在 B2 迁 Mapper，不是最终 JDBC 豁免。
+    noClasses()
+        .that()
+        .resideInAPackage("..adapters.runtime..")
+        .and()
+        .doNotHaveFullyQualifiedName(
+            "io.github.lovexiaopeng.jimu.adapters.runtime.model.ExecutionScopeOperator")
+        .and().doNotHaveFullyQualifiedName(
+            "io.github.lovexiaopeng.jimu.adapters.runtime.model.ExecutionScopeOperator$Command")
+        .should()
+        .dependOnClassesThat()
+        .resideInAPackage("..adapters.persistence..")
         .check(classes);
     noClasses()
         .that()
@@ -90,6 +128,11 @@ class PackageBoundariesTest {
     noClasses().should().callMethod(Runtime.class, "exit", int.class).check(classes);
     noClasses().should().callMethod(Runtime.class, "halt", int.class).check(classes);
     slices().matching("io.github.lovexiaopeng.jimu.(*)..").should().beFreeOfCycles().check(classes);
+    slices()
+        .matching("io.github.lovexiaopeng.jimu.kernel.(*)..")
+        .should()
+        .beFreeOfCycles()
+        .check(classes);
     for (var type : classes) {
       for (var dependency : type.getDirectDependenciesFromSelf()) {
         String from = type.getPackageName();
@@ -99,7 +142,11 @@ class PackageBoundariesTest {
           String fromModule = from.substring(root.length()).split("\\.")[0];
           String toModule = to.substring(root.length()).split("\\.")[0];
           if (!fromModule.equals(toModule))
-            assertTrue(to.startsWith(root + toModule + ".api"), dependency.toString());
+            assertTrue(
+                to.startsWith(root + toModule + ".api")
+                    || to.startsWith(root + toModule + ".service") && !to.contains(".service.impl")
+                    || to.equals(root + "transaction.port"),
+                dependency.toString());
         }
       }
     }

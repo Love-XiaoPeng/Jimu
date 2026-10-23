@@ -1,6 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.media;
 
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages;
 import io.github.lovexiaopeng.jimu.plugin.api.ImagePort;
 import java.util.Base64;

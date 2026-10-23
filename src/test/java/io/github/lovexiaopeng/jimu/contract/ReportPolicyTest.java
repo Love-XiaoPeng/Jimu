@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportPolicy;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ReportContext;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Source;

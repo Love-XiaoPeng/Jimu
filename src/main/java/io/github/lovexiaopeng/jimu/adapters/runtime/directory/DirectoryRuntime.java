@@ -1,6 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.directory;
 
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.BoundaryProbe;
 import io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;

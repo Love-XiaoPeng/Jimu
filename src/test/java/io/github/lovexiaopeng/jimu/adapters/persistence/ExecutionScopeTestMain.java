@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationPlans;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ExecutionScopes;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;

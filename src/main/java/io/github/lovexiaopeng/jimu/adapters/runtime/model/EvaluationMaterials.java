@@ -1,7 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

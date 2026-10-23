@@ -1,6 +1,6 @@
 # 积木工程规范补充：业务分层与持久化
 
-2026-10-23，XIAO-59。状态：**提案，待XIAO-58产品经理核定后用于XIAO-60实施**。原 `docs/baseline/XIAO-33-工程规范-v0.2.md` 保持原字节；未启动的目标结构不能写成当前实现。
+2026-10-23，XIAO-59。状态：**accepted，XIAO-58产品经理于2026-10-23核定，授权范围见XIAO-60正文**。B0/B1开始实施，后续迁移和总验收尚未完成。原 `docs/baseline/XIAO-33-工程规范-v0.2.md` 保持原字节；目标结构不能写成全部当前实现。
 
 本补充采用 [ADR-0015](adr/0015-business-services-and-mybatis-plus.md) 与 [全仓方案](refactoring/XIAO-58/README.md)。历史命名、插件Schema和冻结证据沿既有ADR；开发只按批准范围迁移，不预生成空层。
 

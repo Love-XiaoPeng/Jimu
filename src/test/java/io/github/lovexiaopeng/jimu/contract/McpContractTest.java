@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpContracts;
 import io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpPolicy;
 import io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpWire;

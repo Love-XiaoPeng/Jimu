@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpContracts;
 import io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings;
 import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger;

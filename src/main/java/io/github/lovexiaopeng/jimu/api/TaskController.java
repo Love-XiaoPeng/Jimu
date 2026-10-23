@@ -1,14 +1,15 @@
 package io.github.lovexiaopeng.jimu.api;
 
-import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
+import io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.EventFeed;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskSubmission;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
+import io.github.lovexiaopeng.jimu.kernel.task.service.TaskService;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -47,16 +48,16 @@ public final class TaskController {
           .enable(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
           .enable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
 
-  private final Tasks tasks;
+  private final TaskService tasks;
   private final Authenticator authentication;
-  private final ArtifactStore store;
+  private final ArtifactService artifacts;
   private final EventFeed feed;
 
   public TaskController(
-      Tasks tasks, Authenticator authentication, ArtifactStore store, EventFeed feed) {
+      TaskService tasks, Authenticator authentication, ArtifactService artifacts, EventFeed feed) {
     this.tasks = tasks;
     this.authentication = authentication;
-    this.store = store;
+    this.artifacts = artifacts;
     this.feed = feed;
   }
 
@@ -79,84 +80,28 @@ public final class TaskController {
                   .anyMatch(reference -> "images".equals(reference.getFieldName()));
       throw new TaskFailure(400, image ? "INVALID_IMAGE_INPUT" : "INVALID_REQUEST");
     }
-    if (request != null && request.images() != null && request.images().isEmpty())
-      throw new TaskFailure(400, "INVALID_IMAGE_INPUT");
-    if (request == null
-        || key == null
-        || !key.matches("[!-~]{1,128}")
-        || request.goal() == null
-        || request.goal().isBlank()
-        || request.goal().getBytes(StandardCharsets.UTF_8).length > 8192)
-      throw new TaskFailure(400, "INVALID_REQUEST");
-    if (request.capabilityIds() != null
-        && request.capabilityIds().stream().anyMatch(java.util.Objects::isNull))
-      throw new TaskFailure(400, "INVALID_CAPABILITIES");
-    if (request.capabilityIds() != null
-        && (request.capabilityIds().contains("session_event_search")
-            || request.capabilityIds().contains("session_event_trace"))
-        && !(request.capabilityIds().contains("session_event_trace")
-            ? request
-                .capabilityIds()
-                .equals(
-                    List.of("session_event_read", "session_event_search", "session_event_trace"))
-            : request
-                .capabilityIds()
-                .equals(List.of("session_event_read", "session_event_search"))))
-      throw new TaskFailure(400, "INVALID_CAPABILITIES");
-    var capabilities =
-        request.capabilityIds() == null
-            ? List.of("web_fetch")
-            : request.capabilityIds().stream().distinct().toList();
-    if (capabilities.isEmpty()
-        || capabilities.size() > 7
-        || !List.of(
-                "web_fetch",
-                "read",
-                "read_image",
-                "write",
-                "present",
-                "web_search",
-                "compose_report",
-                "edit",
-                "glob",
-                "grep",
-                "list_mcp_resource_templates",
-                "list_mcp_resources",
-                "read_mcp_resource",
-                "ask_user_question",
-                "todo_write",
-                "working_directory",
-                "session_event_read",
-                "session_event_search",
-                "session_event_trace")
-            .containsAll(capabilities)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
-    // Resources remain operator-bound; no user-supplied connection or credential handles.
-    if (request.resourceIds() != null && !request.resourceIds().isEmpty())
-      throw new TaskFailure(403, "RESOURCE_NOT_AUTHORIZED");
-    BudgetRequest b = request.budget();
-    if (b != null && b.maxCostMicros() != null && b.maxCostMicros() < 1)
-      throw new TaskFailure(400, "INVALID_BUDGET");
-    var budget =
-        new Tasks.Budget(
-            bound(b == null ? null : b.deadlineSeconds(), 180),
-            bound(b == null ? null : b.maxModelRequests(), 8),
-            bound(b == null ? null : b.maxToolInvocations(), 20),
-            b == null ? null : b.maxCostMicros());
+    var budget = request == null ? null : request.budget();
     var result =
         tasks.submit(
             identity,
             key,
-            new Tasks.Request(request.goal(), capabilities, List.of(), budget),
-            request.images() == null ? List.of() : request.images());
+            request == null
+                ? null
+                : new TaskSubmission(
+                    request.goal(),
+                    request.capabilityIds(),
+                    request.resourceIds(),
+                    budget == null
+                        ? null
+                        : new TaskSubmission.BudgetInput(
+                            budget.deadlineSeconds(),
+                            budget.maxModelRequests(),
+                            budget.maxToolInvocations(),
+                            budget.maxCostMicros()),
+                    request.images()));
     return ResponseEntity.accepted()
         .location(URI.create("/api/tasks/" + result.taskId()))
         .body(result);
-  }
-
-  private static int bound(Integer value, int maximum) {
-    if (value == null) return maximum;
-    if (value < 1 || value > maximum) throw new TaskFailure(400, "INVALID_BUDGET");
-    return value;
   }
 
   private static String taskId(String value) {
@@ -193,13 +138,8 @@ public final class TaskController {
   public ResponseEntity<byte[]> download(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable String id) {
-    var result = tasks.download(authentication.authenticate(authorization), taskId(id));
-    byte[] bytes =
-        store.read(
-            result.tenant(),
-            result.snapshotKey(),
-            result.artifact().sha256(),
-            result.artifact().size());
+    var result = artifacts.download(authentication.authenticate(authorization), taskId(id));
+    byte[] bytes = result.bytes();
     return ResponseEntity.ok()
         .contentType(MediaType.parseMediaType(result.artifact().mediaType()))
         .contentLength(bytes.length)

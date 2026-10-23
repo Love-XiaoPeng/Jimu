@@ -4,6 +4,7 @@ import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcSessionRecord
 import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcSessionRecords.s;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionContracts;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;

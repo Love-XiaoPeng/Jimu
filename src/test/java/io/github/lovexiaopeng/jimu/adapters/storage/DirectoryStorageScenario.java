@@ -1,6 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.storage;
 
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
 import java.nio.file.Files;
 import java.nio.file.Path;
