@@ -21,6 +21,10 @@ XIAO-55 依据 accepted ADR-0014 和 `docs/verification/XIAO-55/architecture/imp
 
 后续 read 独立复核原 scope 和当前来源，不由命中结果产生授权。caller read 限原 M1 切点；来源 read 限准入上界。原 invocation 固定输入、scope、context、cut、输出和可靠收据；成功重放核当前授权后返回原字节且不再消费工具。未知提交确认沿 `SessionCommitUnconfirmed` 恢复；provider 损坏、故障和超时回滚。
 
+REVIEW-55-01 修复保持 read refs 的完整事件 SHA256：收据公开读取及成功重放校验原切点内最多9条直接来源事件的完整字节/digest，再分别比对完整 target 和由来源事件按原规则生成的邻接摘要。摘要复用原有256码点/1536字节限制，不将摘要 digest 冒充事件 digest；遇到旧 read 收据只核直接事件，不递归展开其输出。旧收据字节无需迁移。
+
+同轮实测发现 `Map.of` 的 JSON 字段顺序可跨 JVM 改变。原槽 normalized snapshot 继续按已存原字节核验 digest/bytes，再按 JSON 字段值与重新核定的输入/cut 比较；不重写旧快照或输出，不将进程内字段顺序误作契约。
+
 ## 保留与配额
 
 caller 保留期不晚于任一来源。任一来源失权/到期、显式撤销或已经记录的失效，立即阻断全部衍生正文入口，包括模型请求/恢复/成功重放、owner 历史和 SSE。观察到的失权在原事务完成后单独记录 invalidated_at，避免因原查询回滚而恢复授权；所有操作仍受原绝对截止约束。安全静止前保留正文并继续计费，不释放 UNKNOWN 或活写者。
@@ -35,6 +39,7 @@ caller 保留期不晚于任一来源。任一来源失权/到期、显式撤销
 
 - `PriorSessionContractsTest`：v4资源逐字节绑定、严格输入、代表排序和累计预算交接。
 - `tools/prior_session_verify.py --jar … --v21-jar … --evidence …`：真实私有MySQL V21→22、双worker、本地HTTP模型、原槽故障、撤销及配额等实现验证。
+- `tools/prior_session_read_verify.py --jar … --evidence …`：REVIEW-55-01 定向实测；零/单边/双边及边缘裁剪邻接、Unicode摘要、收据公开读取、嵌套收据不展开、篡改拒绝，精确READ invocation/step的丢确认、成功重放及新fence接管和单次消费。`--expect-bug` 仅在旧JAR上确认409缺陷，exit0不表示产品通过。
 - `tools/prior_session_legacy_verify.py --jar … --evidence … --case read --case search --case trace --case todo --case questions --case directory --case workspace-mcp`：复用已有受监督夹具的必要旧能力切片；不重跑旧完整矩阵。
 
 WSL 夹具须显式设置 `JIMU_IT_JAVA` 为已核本地 Linux Java21。只使用私有 MySQL、paid=false HTTP 服务与合成数据，前台收集并清理全部子进程。不运行、启用或等待 GitHub CI；原取消/失败/未完成记录保持原样。

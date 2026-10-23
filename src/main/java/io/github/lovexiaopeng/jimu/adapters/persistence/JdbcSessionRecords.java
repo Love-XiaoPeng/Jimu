@@ -718,16 +718,7 @@ final class JdbcSessionRecords {
         target = value;
         targetDigest = s(r, "event_digest");
       } else {
-        var summary = new LinkedHashMap<String, Object>();
-        for (String key : List.of("seq", "type", "time", "source", "redacted"))
-          summary.put(key, value.get(key));
-        String text = value.path("data").path("content").asText("");
-        String prefix = SessionContracts.prefix(text);
-        summary.put("text", prefix);
-        summary.put("summary_truncated", !prefix.equals(text));
-        if (SessionContracts.bytes(Payloads.json(summary)) > 1536)
-          throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-        (n(r, "seq") < input.seq() ? before : after).add(summary);
+        (n(r, "seq") < input.seq() ? before : after).add(readSummary(value));
       }
     }
     if (target == null) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
@@ -761,6 +752,19 @@ final class JdbcSessionRecords {
         targetDigest,
         Payloads.json(sources),
         records.stream().mapToInt(r -> Math.toIntExact(n(r, "event_bytes"))).sum());
+  }
+
+  private static Map<String, Object> readSummary(JsonNode value) {
+    var summary = new LinkedHashMap<String, Object>();
+    for (String key : List.of("seq", "type", "time", "source", "redacted"))
+      summary.put(key, value.get(key));
+    String text = value.path("data").path("content").asText("");
+    String prefix = SessionContracts.prefix(text);
+    summary.put("text", prefix);
+    summary.put("summary_truncated", !prefix.equals(text));
+    if (SessionContracts.bytes(Payloads.json(summary)) > 1536)
+      throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    return summary;
   }
 
   JsonNode verify(Map<String, Object> task, Map<String, Object> r) {
@@ -1330,6 +1334,14 @@ final class JdbcSessionRecords {
     return result;
   }
 
+  void validateNormalizedScope(String expected, Map<String, Object> binding) {
+    String stored = s(binding, "normalized_snapshot");
+    // 保留原槽快照及其字节证明；Map.of 的跨 JVM 字段顺序不属于输入语义。
+    if (!contracts.json(expected, 4096).equals(contracts.json(stored, 4096))
+        || !Payloads.hash(stored).equals(s(binding, "normalized_digest"))
+        || SessionContracts.bytes(stored) != n(binding, "normalized_bytes")) throw corrupt();
+  }
+
   private String verifyScopeRead(
       Map<String, Object> task, Map<String, Object> event, JsonNode value) {
     var i =
@@ -1362,12 +1374,10 @@ final class JdbcSessionRecords {
             s(i, "step_id"));
     String normalizedInput =
         normalizedScope(task, step, "session_event_read", s(i, "input_snapshot"));
+    validateNormalizedScope(normalizedInput, b);
     if (!"READ".equals(s(b, "operation"))
         || !"session_event_read".equals(s(i, "tool"))
         || !Payloads.hash(s(i, "input_snapshot")).equals(s(i, "input_digest"))
-        || !normalizedInput.equals(s(b, "normalized_snapshot"))
-        || !Payloads.hash(normalizedInput).equals(s(b, "normalized_digest"))
-        || SessionContracts.bytes(normalizedInput) != n(b, "normalized_bytes")
         || !s(scope.row(), "authority_digest").equals(s(b, "authority_digest"))
         || !s(b, "authority_digest").equals(s(cut, "authority_digest"))
         || !s(step, "session_context_digest").equals(s(b, "context_digest"))
@@ -1391,15 +1401,31 @@ final class JdbcSessionRecords {
           || SessionContracts.bytes(raw) != n(b, "output_bytes")) throw corrupt();
       var output = contracts.json(raw, 32768);
       var normalized = contracts.json(s(b, "normalized_snapshot"), 4096);
+      long targetSeq = normalized.path("seq").asLong();
+      long from = Math.max(0, targetSeq - normalized.path("before").asInt());
+      long to =
+          Math.min(
+              normalized.path("upper_seq").asLong(), targetSeq + normalized.path("after").asInt());
       if (!output.path("session_id").asText().equals(normalized.path("target_session_id").asText())
           || output.path("upper_seq").asLong() != normalized.path("upper_seq").asLong()
-          || refs.size()
-              != output.path("window").path("to_seq").asLong()
-                  - output.path("window").path("from_seq").asLong()
-                  + 1) throw corrupt();
+          || output.path("window").path("from_seq").asLong() != from
+          || output.path("window").path("to_seq").asLong() != to
+          || output.path("before").size() != targetSeq - from
+          || output.path("after").size() != to - targetSeq
+          || refs.size() != to - from + 1) throw corrupt();
+      // 只核原切点内的直接端点；收据的来源仍为完整事件摘要，不递归展开旧 read。
+      var endpoints =
+          rows(
+              "SELECT seq,event_snapshot,event_digest,event_bytes FROM session_public_event FORCE INDEX(PRIMARY) WHERE tenant_id=? AND task_id=? AND seq BETWEEN ? AND ? AND content_state='PRESENT' AND event_bytes BETWEEN 1 AND 16384 AND OCTET_LENGTH(event_snapshot)=event_bytes ORDER BY seq LIMIT 9",
+              s(task, "tenant_id"),
+              normalized.path("target_session_id").asText(),
+              from,
+              to);
+      if (endpoints.size() != refs.size()) throw corrupt();
       for (int index = 0; index < refs.size(); index++) {
         var ref = refs.get(index);
-        long seq = ref.path("seq").asLong(), targetSeq = normalized.path("seq").asLong();
+        var endpoint = endpoints.get(index);
+        long seq = ref.path("seq").asLong();
         var projected =
             seq == targetSeq
                 ? output.path("target")
@@ -1407,11 +1433,20 @@ final class JdbcSessionRecords {
                     ? output.path("before").get(index)
                     : output.path("after").get((int) (seq - targetSeq - 1));
         if (!ref.path("session_id").asText().equals(output.path("session_id").asText())
-            || ref.path("seq").asLong() != output.path("window").path("from_seq").asLong() + index)
+            || seq != from + index
+            || seq != n(endpoint, "seq")) throw corrupt();
+        String endpointRaw = s(endpoint, "event_snapshot");
+        if (SessionContracts.bytes(endpointRaw) != n(endpoint, "event_bytes")
+            || !Payloads.hash(endpointRaw).equals(s(endpoint, "event_digest"))
+            || !s(endpoint, "event_digest").equals(ref.path("event_sha256").asText()))
           throw corrupt();
-        if (projected == null
-            || !Payloads.hash(Payloads.json(projected)).equals(ref.path("event_sha256").asText()))
-          throw corrupt();
+        v4.event(endpointRaw);
+        var sourceEvent = contracts.json(endpointRaw, 16384);
+        if (sourceEvent.path("seq").asLong() != seq
+            || !sourceEvent.path("session_id").asText().equals(ref.path("session_id").asText())
+            || projected == null
+            || !Payloads.json(seq == targetSeq ? sourceEvent : readSummary(sourceEvent))
+                .equals(Payloads.json(projected))) throw corrupt();
       }
       var target =
           refs.stream()

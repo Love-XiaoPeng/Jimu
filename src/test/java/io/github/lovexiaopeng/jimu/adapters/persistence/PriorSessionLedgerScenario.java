@@ -145,7 +145,18 @@ public final class PriorSessionLedgerScenario {
       return;
     }
     var invocation =
-        db.queryForMap("SELECT * FROM invocation WHERE task_id=? ORDER BY ordinal LIMIT 1", id);
+        args.length == 5
+            ? db.queryForMap(
+                "SELECT * FROM invocation WHERE task_id=? AND id=? AND step_id=?",
+                id,
+                java.util.UUID.fromString(args[3]).toString(),
+                java.util.UUID.fromString(args[4]).toString())
+            : db.queryForMap(
+                "SELECT * FROM invocation WHERE task_id=? ORDER BY ordinal LIMIT 1", id);
+    if (args[2].equals("read-fault"))
+      require(
+          args.length == 5 && s(invocation, "tool").equals("session_event_read"),
+          "READ recovery binds the exact original invocation and step");
     var lease =
         new ExecutionLedger.Lease(
             "tenant-a",
@@ -170,7 +181,7 @@ public final class PriorSessionLedgerScenario {
     java.util.function.Supplier<String> invoke =
         () -> ledger.scopedOrResult(lease, step, call, version, digest);
     long used = n(task, "tools_used");
-    if (args[2].equals("fault")) {
+    if (args[2].equals("fault") || args[2].equals("read-fault")) {
       require(
           s(invocation, "state").equals("PENDING"), "Private barrier holds original pending slot");
       for (String at : List.of("before", "after")) {
@@ -214,6 +225,13 @@ public final class PriorSessionLedgerScenario {
       rejects("SESSION_SCOPE_UNAVAILABLE", invoke::get);
       require(ledger.get(identity, id).summary() == null, "Revoked caller summary is hidden");
     }
-    System.out.println("PASS original v4 slot " + args[2] + " replay/mismatch/flag/consumption");
+    System.out.println(
+        "PASS original v4 slot "
+            + args[2]
+            + " invocation="
+            + s(invocation, "id")
+            + " step="
+            + step
+            + " replay/mismatch/flag/consumption");
   }
 }

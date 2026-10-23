@@ -95,11 +95,14 @@ class PriorExperiment(SessionExperiment):
         super().cleanup()
         self.assert_that(hashlib.sha256(self.input_jar.read_bytes()).hexdigest()==self.input_sha256,'input artifact unchanged by fixture',jarSha256=self.input_sha256)
 
-    def scenario(self, worker, task, mode):
+    def scenario(self, worker, task, mode, invocation=None, step=None):
         classes=self.root/'prior-test-classes'
         if classes.exists(): shutil.rmtree(classes)
         shutil.copytree(Path(__file__).resolve().parents[1]/'target/test-classes',classes)
-        result=subprocess.run([self.java,'-Dloader.main=io.github.lovexiaopeng.jimu.adapters.persistence.PriorSessionLedgerScenario','-Dloader.path='+str(classes),'-cp',str(self.jar),'org.springframework.boot.loader.launch.PropertiesLauncher',str(worker['folder']/'runtime.properties'),task,mode],text=True,capture_output=True,timeout=40)
+        command=[self.java,'-Dloader.main=io.github.lovexiaopeng.jimu.adapters.persistence.PriorSessionLedgerScenario','-Dloader.path='+str(classes),'-cp',str(self.jar),'org.springframework.boot.loader.launch.PropertiesLauncher',str(worker['folder']/'runtime.properties'),task,mode]
+        if invocation is not None:
+            command.extend([invocation,step])
+        result=subprocess.run(command,text=True,capture_output=True,timeout=40)
         (self.evidence/('scenario-'+task+'-'+mode+'.log')).write_text(result.stdout+result.stderr)
         self.assert_that(result.returncode==0 and 'PASS' in result.stdout,'real ledger '+mode,exit=result.returncode,output=result.stdout[-3000:])
 
@@ -227,6 +230,8 @@ class PriorExperiment(SessionExperiment):
         self.scenario(a,caller,'account')
         raw = self.outputs(caller)
         self.assert_that(len(raw) == 2, 'real model search/read outputs', outputs=raw)
+        for seq in self.sql("SELECT seq FROM session_public_event WHERE task_id='"+caller+"' AND type='session.read' ORDER BY seq;").splitlines():
+            self.assert_that(self.event(caller,int(seq))['target']['type']=='session.read','v4 receipt with real neighbors remains publicly readable')
         requests = [r for r in self.fixture.requests if r['goal'].startswith('caller')]
         self.assert_that(len(requests) == 3 and len(requests[-1]['replies']) == 2, 'model consumes prior response before independent read')
         for request in requests:

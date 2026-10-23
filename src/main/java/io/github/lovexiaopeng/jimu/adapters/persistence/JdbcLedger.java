@@ -448,6 +448,7 @@ public final class JdbcLedger
                         lease.tenant(),
                         s(i, "id"));
                 String normalized = sessions.normalizedScope(task, st, call.tool(), call.input());
+                sessions.validateNormalizedScope(normalized, b);
                 boolean read = call.tool().equals("session_event_read");
                 if (n(b, "record_version") != 1
                     || !lease.taskId().equals(s(b, "caller_task_id"))
@@ -460,11 +461,6 @@ public final class JdbcLedger
                     || !s(st, "session_context_digest").equals(s(b, "context_digest"))
                     || !s(cut, "context_digest").equals(s(b, "context_digest"))
                     || !Payloads.hash(s(cut, "context_snapshot")).equals(s(cut, "context_digest"))
-                    || !normalized.equals(s(b, "normalized_snapshot"))
-                    || !Payloads.hash(normalized).equals(s(b, "normalized_digest"))
-                    || io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(
-                            normalized)
-                        != n(b, "normalized_bytes")
                     || !"PRESENT".equals(s(b, "content_state"))) throw JdbcSessionRecords.corrupt();
                 if (!"PENDING".equals(s(i, "state"))) {
                   boolean success = "SUCCEEDED".equals(s(b, "outcome"));
