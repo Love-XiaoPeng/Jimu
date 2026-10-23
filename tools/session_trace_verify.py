@@ -194,10 +194,62 @@ class TraceExperiment(SessionExperiment):
         task=self.task('T02 failed read no relationship', [(READ, {'seq': 9007199254740991})])
         worker=self.start('failed-read-worker','worker'); self.state(task,'FAILED'); self.stop(worker)
         self.assert_that(self.sql("SELECT read_sources_snapshot FROM invocation_session_read WHERE task_id='"+task+"';")=='[]' and self.trace(task,{'seq':0})['derived_event_seqs']==[], 'T02 failed read captures no edges')
+        self.failed_read_task=task
+        worker=self.start('strict-trace-model','worker')
+        try:
+            for index,raw in enumerate(('{"seq":-0}','{"seq":0,"seq":1}','{"seq":0,"unknown":1}', '{"seq":0,"session_id":"'+self.normal_task+'"}')):
+                invalid=self.task('T06 invalid trace model '+str(index),[(TRACE,raw)])
+                view=self.state(invalid,'FAILED')
+                self.assert_that(view['code'] in ('TOOL_INPUT_INVALID','SESSION_EVENT_NOT_FOUND') and self.sql("SELECT tools_used FROM task WHERE id='"+invalid+"';")=='0' and self.sql("SELECT total_tokens FROM model_dispatch WHERE task_id='"+invalid+"';")=='150','T06 rejected model input settles usage without tool consumption')
+            goal='T08 public trace Bearer SYNTHETIC_TOKEN /private/trace next'
+            redacted=self.task(goal,[(READ,{'seq':0}),(TRACE,{'seq':0})]); self.state(redacted,'SUCCEEDED')
+            value=self.trace(redacted,{'seq':0})
+            self.assert_that(value['target']['redacted'] and 'SYNTHETIC_TOKEN' not in json.dumps(value) and '/private/' not in json.dumps(value),'T08 trace summarizes captured public projection only')
+            summary=self.task('T07 '+('🧱'*300),[(TRACE,{'seq':0})]); self.state(summary,'SUCCEEDED')
+            value=self.trace(summary,{'seq':0})
+            self.assert_that(len(value['target']['text'])==256 and len(value['target']['text'].encode())<=1024 and value['target']['summary_truncated'],'T07 deterministic Unicode summary bound')
+        finally: self.stop(worker)
+
+    def recovery(self):
+        for point in ('M1','M2','SESSION_TRACE_COMMIT_BEFORE','SESSION_TRACE_COMMIT_AFTER'):
+            task=self.task('T04 recover '+point, [(TRACE,{'seq':0}),(READ,{'seq':0}),(TRACE,{'seq':0})])
+            worker=self.start('before-'+point,'worker',point); self.barrier(worker)
+            original=self.sql("SELECT session_upper_seq,session_context_digest FROM step WHERE task_id='"+task+"' ORDER BY ordinal LIMIT 1;")
+            if point=='SESSION_TRACE_COMMIT_AFTER': self.ledger_scenario(worker,task,'replay')
+            self.stop(worker,kill=True); self.expire(task)
+            resumed=self.start('after-'+point,'worker'); self.state(task,'SUCCEEDED'); self.stop(resumed)
+            outputs=self.outputs(task)
+            self.assert_that(original==self.sql("SELECT session_upper_seq,session_context_digest FROM step WHERE task_id='"+task+"' ORDER BY ordinal LIMIT 1;"),'T04 immutable M1 boundary '+point)
+            self.assert_that(outputs[0]['derived_event_seqs']==[] and len(outputs[2]['derived_event_seqs'])==1,'T03 old trace remains original after real later read '+point)
+            self.assert_that(self.sql("SELECT tools_used FROM task WHERE id='"+task+"';")=='3' and self.sql("SELECT COUNT(*) FROM event WHERE task_id='"+task+"' AND type='tool.completed';")=='3','T04 one charge/receipt per original slot '+point)
+        for point in ('before','after'):
+            task=self.task('T04 uncertain '+point,[(TRACE,{'seq':0})])
+            worker=self.start('uncertain-'+point,'worker','SESSION_TRACE_COMMIT_BEFORE'); self.barrier(worker)
+            self.ledger_scenario(worker,task,'uncertain-'+point)
+            self.stop(worker,kill=True); self.expire(task)
+            resumed=self.start('uncertain-resume-'+point,'worker'); self.state(task,'SUCCEEDED'); self.stop(resumed)
+            self.assert_that(self.sql("SELECT tools_used FROM task WHERE id='"+task+"';")=='1','T04 lost acknowledgement settles once '+point)
+        task=self.task('T04 failed bound trace',[(TRACE,{'seq':0})])
+        worker=self.start('trace-failure-before','worker','M2'); self.barrier(worker)
+        self.ledger_scenario(worker,task,'trace-failed-replay')
+        self.stop(worker,kill=True); self.expire(task)
+        resumed=self.start('trace-failure-after','worker'); self.state(task,'FAILED'); self.stop(resumed)
+        for mode in ('cancel','deadline'):
+            task=self.task('T04 '+mode,[(TRACE,{'seq':0})])
+            worker=self.start('trace-'+mode,'worker','SESSION_TRACE_COMMIT_BEFORE'); self.barrier(worker)
+            if mode=='cancel': self.http('POST','/api/tasks/'+task+'/cancel')
+            else: self.sql("UPDATE task SET deadline=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE id='"+task+"';")
+            (worker['folder']/'release').write_text('continue')
+            self.state(task,'CANCELLED' if mode=='cancel' else 'FAILED'); self.stop(worker)
+            self.assert_that(self.sql("SELECT tools_used FROM task WHERE id='"+task+"';")=='0','T04 '+mode+' prevents trace commit')
 
     def retention(self):
         task=self.normal_task
         self.ledger_scenario(self.accounting_worker,task,'accounting')
+        self.ledger_scenario(self.accounting_worker,task,'purge-rollback')
+        blocked=self.failed_read_task
+        self.sql("INSERT INTO reservation(tenant_id,id,task_id,category,amount,state,usage_quality) VALUES('tenant-a','"+blocked+":unknown','"+blocked+"','MODEL',1,'HELD_UNKNOWN','UNKNOWN');")
+        self.sql("UPDATE task_session_history SET retain_until=CURRENT_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE task_id='"+blocked+"';")
         self.stop(self.control)
         self.control=self.start('trace-flagoff-control','control',extra={'jimu.session-event-trace.enabled':'false'})
         self.trace(task,{'seq':0})
@@ -215,6 +267,7 @@ class TraceExperiment(SessionExperiment):
         self.assert_that(self.sql("SELECT COUNT(*) FROM invocation_session_trace WHERE task_id='"+task+"' AND content_state<>'PURGED';")=='0','T10 trace tombstones purged')
         receipt=self.sql("SELECT cleanup_receipt,held_bytes,metadata_bytes,body_bytes FROM task_session_history WHERE task_id='"+task+"';")
         self.assert_that(self.sql("SELECT COUNT(*) FROM event WHERE task_id='"+task+"' AND type='session_history.content_deleted';")=='1','T10 one deletion under dual controls')
+        self.assert_that(self.sql("SELECT content_state FROM task_session_history WHERE task_id='"+blocked+"';")=='PRESENT' and self.sql("SELECT read_sources_snapshot FROM invocation_session_read WHERE task_id='"+blocked+"';")=='[]','T10 UNKNOWN prevents source body release')
         time.sleep(3)
         self.assert_that(receipt==self.sql("SELECT cleanup_receipt,held_bytes,metadata_bytes,body_bytes FROM task_session_history WHERE task_id='"+task+"';") and after==int(self.sql("SELECT history_storage_held FROM tenant_budget WHERE tenant_id='tenant-a';")),'T10 repeated cleanup no second release')
         self.stop(second); self.stop(self.control)
@@ -237,7 +290,7 @@ def main():
     evidence = Path(args.evidence).resolve(); evidence.mkdir(parents=True, exist_ok=True)
     experiment = TraceExperiment(Path(args.jar), evidence)
     try:
-        experiment.prepare(); experiment.normal(); experiment.inputs(); experiment.integrity(); experiment.boundaries(); experiment.retention()
+        experiment.prepare(); experiment.normal(); experiment.inputs(); experiment.integrity(); experiment.boundaries(); experiment.recovery(); experiment.retention()
     except Exception:
         (evidence/'failure.txt').write_text(traceback.format_exc())
         raise

@@ -52,22 +52,43 @@ final class JdbcSessionRecords {
 
   private static final class SearchBudget {
     int reads;
-    long bytes;
+    long bytes, operations;
     final Runnable deadline;
+    final boolean trace;
+    final long scratchLimit;
 
     SearchBudget(Runnable deadline) {
+      this(deadline, false);
+    }
+
+    SearchBudget(Runnable deadline, boolean trace) {
+      this(deadline, trace, 8388608);
+    }
+
+    SearchBudget(Runnable deadline, boolean trace, long scratchLimit) {
       this.deadline = deadline;
+      this.trace = trace;
+      this.scratchLimit = scratchLimit;
     }
 
     void charge(List<Map<String, Object>> rows) {
       deadline.run();
       if (++reads > 1024) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
       for (var row : rows)
-        for (var entry : row.entrySet())
-          bytes += 8L + SessionContracts.bytes(entry.getKey()) + scalarBytes(entry.getValue());
+        for (var entry : row.entrySet()) {
+          long size = 8L + SessionContracts.bytes(entry.getKey()) + scalarBytes(entry.getValue());
+          bytes += size;
+          if (trace) operation(size);
+        }
       // Conservatively charge UTF-16 strings/row fields plus the active code point arrays.
-      if (bytes > 8388608 || bytes * 2 + 524288 > 8388608)
+      if (bytes > 8388608 || bytes * (trace ? 3 : 2) + 524288 > scratchLimit)
         throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    }
+
+    void operation(long count) {
+      operations += count;
+      if (trace && operations > 1048576) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+      deadline.run();
     }
   }
 
@@ -565,7 +586,23 @@ final class JdbcSessionRecords {
 
   record Read(String output, long from, long to, String targetDigest, String sources) {}
 
-  Read read(Map<String, Object> task, SessionEventPort.Input input, long upper, String boundary) {
+  Read read(
+      Map<String, Object> task,
+      SessionEventPort.Input input,
+      long upper,
+      String boundary,
+      Runnable deadline) {
+    if (!traceTask(task)) return readRows(task, input, upper, boundary);
+    searchBudget.set(new SearchBudget(deadline, true, 1048576));
+    try {
+      return readRows(task, input, upper, boundary);
+    } finally {
+      searchBudget.remove();
+    }
+  }
+
+  private Read readRows(
+      Map<String, Object> task, SessionEventPort.Input input, long upper, String boundary) {
     history(task, true);
     if (input.sessionId() != null && !input.sessionId().equals(s(task, "id"))
         || input.seq() > upper) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
@@ -633,6 +670,15 @@ final class JdbcSessionRecords {
   }
 
   JsonNode verify(Map<String, Object> task, Map<String, Object> r) {
+    try {
+      return verifyEvent(task, r);
+    } catch (TaskFailure failure) {
+      if (traceTask(task) && failure.status() == 400) throw corrupt();
+      throw failure;
+    }
+  }
+
+  private JsonNode verifyEvent(Map<String, Object> task, Map<String, Object> r) {
     if (!s(task, "tenant_id").equals(s(r, "tenant_id")) || !s(task, "id").equals(s(r, "task_id")))
       throw corrupt();
     if (n(r, "record_version") != 1 || n(r, "event_version") != version(task))
@@ -911,7 +957,7 @@ final class JdbcSessionRecords {
             s(task, "id"),
             input.seq())
         .isEmpty()) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
-    var budget = new SearchBudget(deadline);
+    var budget = new SearchBudget(deadline, true);
     searchBudget.set(budget);
     try {
       var records =
@@ -959,6 +1005,8 @@ final class JdbcSessionRecords {
           }
         }
         operations += 32L + s(r, "event_snapshot").length();
+        budget.operation(
+            32L + s(r, "event_snapshot").length() + value.path("source_event_seqs").size());
         if (operations > 1048576) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
       }
       if (target == null) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");

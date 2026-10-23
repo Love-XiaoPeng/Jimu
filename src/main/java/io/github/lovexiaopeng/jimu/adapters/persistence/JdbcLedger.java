@@ -305,7 +305,9 @@ public final class JdbcLedger
               sessions.contracts.input(
                   Payloads.json(Map.of("seq", seq, "before", before, "after", after)));
           long upper = n(sessions.history(task, true), "next_seq") - 1;
-          return sessions.read(task, input, upper, "owner-snapshot").output();
+          return sessions
+              .read(task, input, upper, "owner-snapshot", this::sessionRemainingMillis)
+              .output();
         });
   }
 
@@ -538,6 +540,8 @@ public final class JdbcLedger
                     || n(b, "target_seq") != input.seq()
                     || n(b, "before_count") != input.before()
                     || n(b, "after_count") != input.after()) throw JdbcSessionRecords.corrupt();
+                if (JdbcSessionRecords.traceTask(task) && n(b, "relation_version") != 1)
+                  throw JdbcSessionRecords.corrupt();
                 if (!"PENDING".equals(s(i, "state"))) {
                   if (!s(i, "state").equals(s(b, "outcome"))) throw JdbcSessionRecords.corrupt();
                   var receipt =
@@ -567,7 +571,9 @@ public final class JdbcLedger
                 JdbcSessionRecords.Read read = null;
                 TaskFailure failure = null;
                 try {
-                  read = sessions.read(task, input, n(b, "upper_seq"), "pre-step");
+                  read =
+                      sessions.read(
+                          task, input, n(b, "upper_seq"), "pre-step", this::sessionRemainingMillis);
                 } catch (TaskFailure rejected) {
                   if (!List.of(
                           "SESSION_EVENT_NOT_FOUND",
