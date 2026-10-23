@@ -29,7 +29,16 @@ class SessionDeadlineTest {
     stalled(true, 900);
   }
 
+  @Test
+  void contextConnectionUsesSameDeadlineAndSafeFailure() throws Exception {
+    stalled(false, 0, true);
+  }
+
   private void stalled(boolean authenticate, long greetingDelay) throws Exception {
+    stalled(authenticate, greetingDelay, false);
+  }
+
+  private void stalled(boolean authenticate, long greetingDelay, boolean context) throws Exception {
     try (var server = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
       var peer =
           new FutureTask<>(
@@ -74,13 +83,17 @@ class SessionDeadlineTest {
         TaskFailure failure =
             assertThrows(
                 TaskFailure.class,
-                () ->
+                () -> {
+                  if (context) ledger.sessionContext(null);
+                  else
                     ledger.sessionHistory(
                         new Identity("tenant-a", "actor-a"),
-                        "00000000-0000-4000-8000-000000000000"));
+                        "00000000-0000-4000-8000-000000000000");
+                });
         long elapsed = Duration.ofNanos(System.nanoTime() - started).toMillis();
         assertEquals(504, failure.status());
         assertEquals("SESSION_QUERY_TIMEOUT", failure.code());
+        assertEquals(null, failure.getCause(), "No JDBC SQL or credentials in exposed failure");
         assertTrue(elapsed >= 1800 && elapsed < 2600, "whole connection budget elapsed=" + elapsed);
         assertTrue(peer.get(1, java.util.concurrent.TimeUnit.SECONDS));
       } finally {

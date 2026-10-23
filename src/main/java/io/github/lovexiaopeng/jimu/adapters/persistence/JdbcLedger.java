@@ -37,6 +37,7 @@ public final class JdbcLedger
         io.github.lovexiaopeng.jimu.kernel.task.api.TodoLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.WorkingDirectoryLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger,
+        io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger {
@@ -70,6 +71,12 @@ public final class JdbcLedger
   }
 
   private final JdbcSessionRecords sessions;
+  private final JdbcSessionScopes sessionScopes;
+  private boolean priorSessionSearchEnabled;
+
+  public void priorSessionSearchEnabled(boolean enabled) {
+    priorSessionSearchEnabled = enabled;
+  }
 
   public void sessionReadEnabled(boolean enabled, java.util.List<String> sensitive) {
     sessionReadEnabled = enabled;
@@ -79,7 +86,7 @@ public final class JdbcLedger
   private void sessionAccess(Map<String, Object> task) {
     if (!JdbcSessionRecords.task(task)) throw new TaskFailure(409, "SESSION_HISTORY_UNAVAILABLE");
     sessions.history(task, false);
-    for (String name : caps(task)) {
+    for (String name : caps(task).stream().sorted().toList()) {
       var descriptor = sessions.descriptor(task, name);
       var pin = tools(task).pins().get(name);
       var installed =
@@ -98,6 +105,8 @@ public final class JdbcLedger
 
   private void sessionAdmission(Map<String, Object> task) {
     if (!sessionReadEnabled) throw new TaskFailure(403, "SESSION_READ_DISABLED");
+    if (JdbcSessionScopes.task(task) && !priorSessionSearchEnabled)
+      throw new TaskFailure(403, "SESSION_SEARCH_DISABLED");
     if (JdbcSessionRecords.searchTask(task) && !sessionSearchEnabled)
       throw new TaskFailure(403, "SESSION_SEARCH_DISABLED");
     if (JdbcSessionRecords.traceTask(task) && !sessionTraceEnabled)
@@ -133,7 +142,30 @@ public final class JdbcLedger
     }
   }
 
+  private boolean priorAvailable(Identity identity) {
+    if (!sessionReadEnabled || !priorSessionSearchEnabled) return false;
+    try {
+      models.requireSessionSearch(models.selected(identity.tenant()));
+      for (var descriptor :
+          List.of(sessions.v4.descriptor(), sessionScopes.contracts.descriptor())) {
+        var found =
+            rows(
+                "SELECT plugin_version,plugin_digest FROM installation WHERE tenant_id=? AND plugin_id=? AND enabled=TRUE",
+                identity.tenant(),
+                descriptor.capability());
+        if (found.size() != 1
+            || !descriptor.version().equals(s(found.getFirst(), "plugin_version"))
+            || !descriptor.outputSha256().equals(s(found.getFirst(), "plugin_digest")))
+          return false;
+      }
+      return true;
+    } catch (TaskFailure failure) {
+      return false;
+    }
+  }
+
   private boolean sessionAvailable(Identity identity, boolean search) {
+    if (!search && priorAvailable(identity)) return true;
     if (!sessionReadEnabled || search && !sessionSearchEnabled) return false;
     try {
       if (search) models.requireSessionSearch(models.selected(identity.tenant()));
@@ -241,6 +273,408 @@ public final class JdbcLedger
     }
   }
 
+  @Override
+  public View submitSessionSearch(
+      Identity identity,
+      String key,
+      io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger.SearchBody body,
+      long deadlineNanos) {
+    var input = sessionScopes.contracts.admission(body.read(deadlineNanos));
+    return submitSessionSearch(
+        identity,
+        key,
+        input.goal(),
+        input.historySessionIds().stream().map(java.util.UUID::fromString).toList(),
+        deadlineNanos);
+  }
+
+  @Override
+  public View submitSessionSearch(
+      Identity identity,
+      String key,
+      String goal,
+      List<java.util.UUID> sourceIds,
+      long deadlineNanos) {
+    if (key == null
+        || !key.matches("[!-~]{1,128}")
+        || goal == null
+        || goal.isBlank()
+        || io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(goal) > 8192
+        || sourceIds.size() > 8
+        || new java.util.HashSet<>(sourceIds).size() != sourceIds.size())
+      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+    var ids = sourceIds.stream().map(java.util.UUID::toString).sorted().toList();
+    return sessionSearchOwnerRead(
+        () ->
+            submitBound(
+                identity,
+                key,
+                new Request(
+                    goal,
+                    List.of("session_event_read", "session_search"),
+                    List.of(),
+                    new Budget(180, 8, 20, null)),
+                List.of(),
+                ids,
+                id()),
+        deadlineNanos);
+  }
+
+  private Map<String, Object> priorSearchOwner(Identity identity, String caller) {
+    try {
+      var task = sessionOwner(identity, caller);
+      if (!JdbcSessionScopes.task(task)) throw JdbcSessionScopes.unavailable();
+      return task;
+    } catch (TaskFailure failure) {
+      if (failure.status() == 403 || failure.status() == 404) throw JdbcSessionScopes.unavailable();
+      throw failure;
+    }
+  }
+
+  @Override
+  public QueryResources authorizePriorSessionSearch(
+      Identity identity, String caller, long deadlineNanos) {
+    try (var budget =
+        new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionScopeQueryBudget(
+            new QueryResources(0, 0, 0), this::sessionRemainingMillis)) {
+      sessionSearchOwnerRead(
+          () -> {
+            priorSearchOwner(identity, caller);
+            return null;
+          },
+          deadlineNanos);
+      return budget.resources();
+    }
+  }
+
+  @Override
+  public String priorSessionSearch(
+      Identity identity,
+      String caller,
+      io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger.SearchBody body,
+      long deadlineNanos,
+      QueryResources resources) {
+    try (var budget =
+        new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionScopeQueryBudget(
+            resources, this::sessionRemainingMillis)) {
+      return sessionSearchOwnerRead(
+          () -> {
+            var task = priorSearchOwner(identity, caller);
+            var input = sessionScopes.contracts.input(body.read(deadlineNanos));
+            sessionRemainingMillis();
+            var found = sessions.priorSearch(task, input, this::sessionRemainingMillis);
+            sessionScopes.require(task);
+            sessionRemainingMillis();
+            return found.output();
+          },
+          deadlineNanos);
+    }
+  }
+
+  @Override
+  public void revokeSessionSearchScope(
+      Identity identity, String caller, boolean validRequest, long deadlineNanos) {
+    sessionSearchOwnerRead(
+        () -> {
+          bucket(identity.tenant());
+          sessionScopes.lock(identity.tenant(), caller);
+          var found =
+              rows(
+                  "SELECT * FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=? FOR UPDATE",
+                  identity.tenant(),
+                  caller,
+                  identity.actor());
+          if (found.size() != 1 || !JdbcSessionScopes.task(found.getFirst()))
+            throw JdbcSessionScopes.unavailable();
+          var task = found.getFirst();
+          try {
+            identity(identity);
+          } catch (TaskFailure failure) {
+            invalidateScopeAfterTransaction(task);
+            throw JdbcSessionScopes.unavailable();
+          }
+          if (!validRequest) throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+          db.update(
+              "UPDATE task_session_scope SET grant_state='REVOKED',revoked_at=COALESCE(revoked_at,CURRENT_TIMESTAMP(6)),invalidated_at=COALESCE(invalidated_at,CURRENT_TIMESTAMP(6)),next_validation_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND caller_task_id=? AND grant_state='ACTIVE'",
+              identity.tenant(),
+              caller);
+          if (!List.of("SUCCEEDED", "FAILED", "CANCELLED", "NEEDS_RECONCILIATION")
+              .contains(s(task, "state"))) cancel(identity, caller);
+          sessions.account(task, true);
+          return null;
+        },
+        deadlineNanos);
+  }
+
+  @Override
+  public String scopedOrResult(
+      Lease lease, String stepId, Call call, String version, String digest) {
+    try (var queryBudget =
+        new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionScopeQueryBudget(
+            new QueryResources(0, 0, 0), this::sessionRemainingMillis)) {
+      return scopedQueryOrResult(lease, stepId, call, version, digest);
+    }
+  }
+
+  private String scopedQueryOrResult(
+      Lease lease, String stepId, Call call, String version, String digest) {
+    AdmissionResult<String> result;
+    try {
+      result =
+          sessionTransaction(
+              () -> {
+                var task = fenced(lease, true);
+                if (!JdbcSessionScopes.task(task)
+                    || !List.of("session_event_read", "session_search").contains(call.tool()))
+                  throw new TaskFailure(409, "INVOCATION_MISMATCH");
+                var i = originalDirectorySlot(lease, stepId, call, version, digest);
+                var st =
+                    one(
+                        "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=?",
+                        lease.tenant(),
+                        stepId,
+                        lease.taskId());
+                sessions.validateStep(task, st);
+                var scope = sessionScopes.require(task);
+                var cut =
+                    one(
+                        "SELECT * FROM step_session_scope WHERE tenant_id=? AND step_id=? AND caller_task_id=?",
+                        lease.tenant(),
+                        stepId,
+                        lease.taskId());
+                var b =
+                    one(
+                        "SELECT * FROM invocation_session_scope_query WHERE tenant_id=? AND invocation_id=? FOR UPDATE",
+                        lease.tenant(),
+                        s(i, "id"));
+                String normalized = sessions.normalizedScope(task, st, call.tool(), call.input());
+                sessions.validateNormalizedScope(normalized, b);
+                boolean read = call.tool().equals("session_event_read");
+                if (n(b, "record_version") != 1
+                    || !lease.taskId().equals(s(b, "caller_task_id"))
+                    || !stepId.equals(s(b, "step_id"))
+                    || !(read ? "READ" : "SEARCH").equals(s(b, "operation"))
+                    || !s(st, "session_binding_digest").equals(s(b, "binding_digest"))
+                    || !Payloads.hash(call.input()).equals(s(b, "input_digest"))
+                    || !s(scope.row(), "authority_digest").equals(s(b, "authority_digest"))
+                    || !s(cut, "authority_digest").equals(s(b, "authority_digest"))
+                    || !s(st, "session_context_digest").equals(s(b, "context_digest"))
+                    || !s(cut, "context_digest").equals(s(b, "context_digest"))
+                    || !Payloads.hash(s(cut, "context_snapshot")).equals(s(cut, "context_digest"))
+                    || !"PRESENT".equals(s(b, "content_state"))) throw JdbcSessionRecords.corrupt();
+                if (!"PENDING".equals(s(i, "state"))) {
+                  boolean success = "SUCCEEDED".equals(s(b, "outcome"));
+                  if (!s(i, "state").equals(s(b, "outcome"))
+                      || !List.of("SUCCEEDED", "FAILED").contains(s(b, "outcome")))
+                    throw JdbcSessionRecords.corrupt();
+                  var receipt =
+                      one(
+                          "SELECT * FROM event WHERE tenant_id=? AND task_id=? AND seq=?",
+                          lease.tenant(),
+                          lease.taskId(),
+                          n(b, "receipt_event_seq"));
+                  var reservation =
+                      one(
+                          "SELECT * FROM reservation WHERE tenant_id=? AND task_id=? AND id=?",
+                          lease.tenant(),
+                          lease.taskId(),
+                          s(i, "id"));
+                  if (!s(receipt, "fact_id").equals("result:" + s(i, "id"))
+                      || !s(receipt, "type").equals(success ? "tool.completed" : "tool.failed")
+                      || !java.util.Objects.equals(receipt.get("code"), b.get("failure_code"))
+                      || !"TOOL".equals(s(reservation, "category"))
+                      || !"SETTLED".equals(s(reservation, "state"))
+                      || n(reservation, "actual") != 1) throw JdbcSessionRecords.corrupt();
+                  one(
+                      "SELECT id FROM task_attempt WHERE tenant_id=? AND task_id=? AND id=? AND fence=?",
+                      lease.tenant(),
+                      lease.taskId(),
+                      s(b, "committed_attempt_id"),
+                      n(b, "committed_fence"));
+                  if (success) {
+                    String output = s(i, "output_snapshot");
+                    if (!Payloads.hash(output).equals(s(i, "output_digest"))
+                        || !s(i, "output_digest").equals(s(b, "output_digest"))
+                        || io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts
+                                .bytes(output)
+                            != n(b, "output_bytes")) throw JdbcSessionRecords.corrupt();
+                    if (read) sessions.v4.output(output);
+                    else sessionScopes.contracts.output(output);
+                  } else if (i.get("output_snapshot") != null
+                      || i.get("output_digest") != null
+                      || n(b, "output_bytes") != 0) throw JdbcSessionRecords.corrupt();
+                  if (read) {
+                    var nativeReceipt =
+                        one(
+                            "SELECT * FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq=?",
+                            lease.tenant(),
+                            lease.taskId(),
+                            n(b, "native_read_seq"));
+                    sessions.verify(task, nativeReceipt);
+                  }
+                  todoCommitFence(lease);
+                  sessionScopes.require(task);
+                  sessionRemainingMillis();
+                  sessions.account(task, false);
+                  return new AdmissionResult<String>(
+                      success ? s(i, "output_snapshot") : null,
+                      success
+                          ? null
+                          : new TaskFailure(
+                              sessionFailureStatus(s(b, "failure_code")), s(b, "failure_code")));
+                }
+                if (!"PENDING".equals(s(b, "outcome"))) throw JdbcSessionRecords.corrupt();
+                var budget = bucket(lease.tenant());
+                if (n(task, "tools_used") >= n(task, "max_tools")
+                    || n(task, "tools_used") >= 20
+                    || n(budget, "tool_used") >= n(budget, "tool_limit"))
+                  throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
+                JdbcSessionRecords.Search search = null;
+                JdbcSessionRecords.Read found = null;
+                TaskFailure failure = null;
+                try {
+                  if (read)
+                    found = sessions.scopeRead(task, normalized, this::sessionRemainingMillis);
+                  else
+                    search =
+                        sessions.priorSearch(
+                            task,
+                            sessionScopes.contracts.input(call.input()),
+                            this::sessionRemainingMillis);
+                } catch (TaskFailure rejected) {
+                  if (!rejected.code().equals("SESSION_EVENT_NOT_FOUND")) throw rejected;
+                  failure = rejected;
+                }
+                String output =
+                    found != null ? found.output() : search != null ? search.output() : null;
+                String refs = read ? found == null ? "[]" : found.sources() : null;
+                String outcome = failure == null ? "SUCCEEDED" : "FAILED",
+                    code = failure == null ? null : failure.code(),
+                    invocation = s(i, "id");
+                if (output != null)
+                  sessions.body(
+                      task,
+                      io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(
+                          output));
+                if (refs != null) {
+                  sessionScopes.contracts.refs(refs);
+                  sessions.body(
+                      task,
+                      io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(
+                          refs));
+                }
+                db.update(
+                    "UPDATE task SET tools_used=tools_used+1 WHERE tenant_id=? AND id=?",
+                    lease.tenant(),
+                    lease.taskId());
+                db.update(
+                    "UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=?",
+                    lease.tenant());
+                reserve(
+                    lease.tenant(),
+                    lease.taskId(),
+                    invocation,
+                    invocation,
+                    "TOOL",
+                    1,
+                    "SETTLED",
+                    "KNOWN");
+                db.update(
+                    "UPDATE reservation SET actual=1 WHERE tenant_id=? AND id=?",
+                    lease.tenant(),
+                    invocation);
+                db.update(
+                    "UPDATE invocation SET state=?,output_snapshot=?,output_digest=? WHERE tenant_id=? AND id=? AND state='PENDING'",
+                    outcome,
+                    output,
+                    output == null ? null : Payloads.hash(output),
+                    lease.tenant(),
+                    invocation);
+                event(task, "intent:" + invocation, "tool.dispatched", null);
+                event(
+                    task,
+                    "result:" + invocation,
+                    failure == null ? "tool.completed" : "tool.failed",
+                    code);
+                long receipt =
+                    n(
+                        one(
+                            "SELECT seq FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
+                            lease.tenant(),
+                            lease.taskId(),
+                            "result:" + invocation),
+                        "seq");
+                Long nativeSeq = read ? n(sessions.history(task, true), "next_seq") : null;
+                var refValues = read && found != null ? sessions.contracts.json(refs, 2048) : null;
+                String scan =
+                    search != null
+                        ? search.scanDigest()
+                        : found != null ? Payloads.hash(refs) : null;
+                Integer scanRows =
+                    search != null ? search.rows() : found != null ? refValues.size() : null;
+                Integer scanBytes =
+                    search != null
+                        ? search.eventBytes()
+                        : found != null ? found.eventBytes() : null;
+                db.update(
+                    "UPDATE invocation_session_scope_query SET outcome=?,failure_code=?,scan_digest=?,scan_rows=?,scan_event_bytes=?,read_refs_snapshot=?,read_refs_digest=?,read_refs_bytes=?,output_digest=?,output_bytes=?,receipt_event_seq=?,native_read_seq=?,committed_attempt_id=?,committed_fence=?,committed_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND invocation_id=? AND outcome='PENDING'",
+                    outcome,
+                    code,
+                    scan,
+                    scanRows,
+                    scanBytes,
+                    refs,
+                    refs == null ? null : Payloads.hash(refs),
+                    refs == null
+                        ? null
+                        : io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts
+                            .bytes(refs),
+                    output == null ? null : Payloads.hash(output),
+                    output == null
+                        ? 0
+                        : io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts
+                            .bytes(output),
+                    receipt,
+                    nativeSeq,
+                    lease.attemptId(),
+                    lease.fence(),
+                    lease.tenant(),
+                    invocation);
+                if (read) {
+                  var committed =
+                      one(
+                          "SELECT * FROM invocation_session_scope_query WHERE tenant_id=? AND invocation_id=?",
+                          lease.tenant(),
+                          invocation);
+                  sessionAppend(
+                      task,
+                      "read:" + invocation,
+                      "session.read",
+                      sessions.source("invocation", stepId, invocation),
+                      sessions.scopeReceipt(committed),
+                      false,
+                      s(i, "input_digest"),
+                      lease);
+                }
+                todoCommitFence(lease);
+                sessionScopes.require(task);
+                sessionRemainingMillis();
+                sessions.account(task, false);
+                return new AdmissionResult<String>(output, failure);
+              },
+              Math.min(
+                  System.nanoTime() + 2_000_000_000L,
+                  System.nanoTime()
+                      + java.time.Duration.between(java.time.Instant.now(), lease.deadline())
+                          .toNanos()));
+    } catch (org.springframework.dao.DataAccessException
+        | org.springframework.transaction.TransactionException failure) {
+      throw new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionCommitUnconfirmed();
+    }
+    if (result.rejection() != null) throw result.rejection();
+    return result.value();
+  }
+
   private int sessionRemainingMillis() {
     long remaining = sessionQueryDeadline.get() - System.nanoTime();
     if (remaining <= 0) throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
@@ -249,7 +683,8 @@ public final class JdbcLedger
 
   @Override
   public String sessionContext(Lease lease) {
-    return sessionTransaction(
+    // Context acquisition has the same bounded/sanitized failure contract as public reads.
+    return sessionOwnerRead(
         () -> {
           var task = fenced(lease, true);
           String context = sessions.context(task);
@@ -263,6 +698,7 @@ public final class JdbcLedger
       throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
     // Same lock order as worker commits: bucket -> task -> actor/installation -> history.
     bucket(identity.tenant());
+    sessionScopes.lock(identity.tenant(), taskId);
     var found =
         rows(
             "SELECT * FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=? FOR UPDATE",
@@ -271,7 +707,7 @@ public final class JdbcLedger
             identity.actor());
     if (found.isEmpty()) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
     var task = found.getFirst();
-    identity(identity);
+    if (!JdbcSessionScopes.task(task)) identity(identity);
     access(task);
     return task;
   }
@@ -1109,6 +1545,85 @@ public final class JdbcLedger
             .isEmpty();
   }
 
+  private void validateSessionScopes() {
+    long end = System.nanoTime() + 2_000_000_000L;
+    try {
+      var candidates =
+          sessionTransaction(
+              () ->
+                  rows(
+                      "SELECT tenant_id,caller_task_id FROM ((SELECT tenant_id,caller_task_id,next_validation_at FROM task_session_scope FORCE INDEX(scope_validation) WHERE content_state='PRESENT' AND grant_state='ACTIVE' AND next_validation_at<=CURRENT_TIMESTAMP(6) ORDER BY next_validation_at,tenant_id,caller_task_id LIMIT 8) UNION ALL (SELECT tenant_id,caller_task_id,next_validation_at FROM task_session_scope FORCE INDEX(scope_validation) WHERE content_state='PRESENT' AND grant_state='REVOKED' AND next_validation_at<=CURRENT_TIMESTAMP(6) ORDER BY next_validation_at,tenant_id,caller_task_id LIMIT 8)) bounded ORDER BY next_validation_at,tenant_id,caller_task_id LIMIT 8"),
+              end);
+      for (var candidate : candidates) {
+        if (System.nanoTime() >= end) break;
+        String tenant = s(candidate, "tenant_id"), caller = s(candidate, "caller_task_id");
+        try {
+          // Persist scheduling before validation, so a timed-out source cannot starve later rows.
+          sessionTransaction(
+              () -> {
+                bucket(tenant);
+                var task = locked(tenant, caller);
+                db.update(
+                    "UPDATE task_session_scope SET next_validation_at=TIMESTAMPADD(SECOND,60,CURRENT_TIMESTAMP(6)) WHERE tenant_id=? AND caller_task_id=?",
+                    tenant,
+                    caller);
+                sessions.account(task, true);
+                return null;
+              },
+              end);
+          sessionTransaction(
+              () -> {
+                bucket(tenant);
+                var task = locked(tenant, caller);
+                try {
+                  access(task);
+                } catch (TaskFailure failure) {
+                  if (!List.of(
+                          "SESSION_SCOPE_UNAVAILABLE",
+                          "CAPABILITY_REVOKED",
+                          "ACTOR_REVOKED",
+                          "SESSION_HISTORY_EXPIRED")
+                      .contains(failure.code())) throw failure;
+                  db.update(
+                      "UPDATE task_session_scope SET invalidated_at=COALESCE(invalidated_at,CURRENT_TIMESTAMP(6)) WHERE tenant_id=? AND caller_task_id=?",
+                      tenant,
+                      caller);
+                }
+                if (sessionScopes.scope(task).get("invalidated_at") != null
+                    && "PRESENT".equals(s(sessions.history(task, false), "content_state"))
+                    && sessionCleanupSafe(task)) {
+                  sessions.purge(task);
+                  event(task, "session-history-purged", "session_history.content_deleted", null);
+                  sessions.release(task);
+                } else sessions.account(task, true);
+                return null;
+              },
+              end);
+        } catch (org.springframework.dao.DataAccessException
+            | org.springframework.transaction.TransactionException failure) {
+          System.getLogger(JdbcLedger.class.getName())
+              .log(
+                  System.Logger.Level.WARNING,
+                  "Session scope validation deferred: " + failure.getClass().getSimpleName());
+        } catch (TaskFailure failure) {
+          System.getLogger(JdbcLedger.class.getName())
+              .log(
+                  System.Logger.Level.WARNING,
+                  "Session scope validation deferred: " + failure.code());
+        }
+      }
+    } catch (org.springframework.dao.DataAccessException
+        | org.springframework.transaction.TransactionException failure) {
+      // A bounded maintenance attempt may fail; public gates continue checking synchronously.
+      System.getLogger(JdbcLedger.class.getName())
+          .log(
+              System.Logger.Level.WARNING,
+              "Session scope validation scan deferred: " + failure.getClass().getSimpleName());
+    } catch (TaskFailure failure) {
+      if (!failure.code().equals("SESSION_QUERY_TIMEOUT")) throw failure;
+    }
+  }
+
   private void cleanupSessionHistory() {
     var candidates =
         rows(
@@ -1130,6 +1645,8 @@ public final class JdbcLedger
             var h = sessions.history(task, false);
             if (!"PRESENT".equals(s(h, "content_state"))
                 || n(h, "retained") == 1
+                    && (!JdbcSessionScopes.task(task)
+                        || sessionScopes.scope(task).get("invalidated_at") == null)
                 || !sessionCleanupSafe(task)) return null;
             sessions.purge(task);
             event(task, "session-history-purged", "session_history.content_deleted", null);
@@ -2412,6 +2929,9 @@ public final class JdbcLedger
   }
 
   private void rejectTodoBypass(Lease lease, String invocation) {
+    if (lease.capabilities().contains("session_search"))
+      throw new TaskFailure(409, "SESSION_SCOPE_COMMIT_REQUIRED");
+
     if (!rows(
             "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND tool='session_event_trace'",
             lease.tenant(),
@@ -3669,6 +4189,24 @@ public final class JdbcLedger
     db =
         new JdbcTemplate(source) {
           @Override
+          public List<Map<String, Object>> queryForList(String sql, Object... args) {
+            var result = super.queryForList(sql, args);
+            io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionScopeQueryBudget.charge(
+                result);
+            return result;
+          }
+
+          @Override
+          public <T> T queryForObject(String sql, Class<T> type, Object... args) {
+            T result = super.queryForObject(sql, type, args);
+            var row = new java.util.HashMap<String, Object>();
+            row.put("value", result);
+            io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionScopeQueryBudget.charge(
+                List.of(row));
+            return result;
+          }
+
+          @Override
           protected void applyStatementSettings(java.sql.Statement statement)
               throws java.sql.SQLException {
             super.applyStatementSettings(statement);
@@ -3683,6 +4221,9 @@ public final class JdbcLedger
           }
         };
     sessions = new JdbcSessionRecords(db);
+    sessionScopes = new JdbcSessionScopes(db, sessions, this::sessionCleanupSafe);
+    sessions.scopes = sessionScopes;
+    sessionScopes.invalidated = this::invalidateScopeAfterTransaction;
     images = new JdbcImageRecords(db);
     mcp = new JdbcMcpRecords(db);
     db.setQueryTimeout(5);
@@ -4002,7 +4543,7 @@ public final class JdbcLedger
   private long epoch(Identity identity, List<String> capabilities) {
     identity(identity);
     long epoch = 0;
-    for (String capability : capabilities) {
+    for (String capability : capabilities.stream().sorted().toList()) {
       var installed =
           rows(
               "SELECT * FROM installation WHERE tenant_id=? AND plugin_id=? FOR SHARE",
@@ -4041,6 +4582,7 @@ public final class JdbcLedger
               .filter(
                   name -> !name.equals("session_event_search") || sessionAvailable(identity, true))
               .filter(name -> !name.equals("session_event_trace") || traceAvailable(identity))
+              .filter(name -> !name.equals("session_search") || priorAvailable(identity))
               .filter(
                   name -> searchAvailable.getAsBoolean() || !List.of("glob", "grep").contains(name))
               .filter(
@@ -4070,6 +4612,21 @@ public final class JdbcLedger
             : io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageInputs.describe(input);
     if (original.images() != null && !original.images().equals(descriptors))
       throw new TaskFailure(400, "INVALID_IMAGE_INPUT");
+    return submitBound(identity, key, original, input, null, null);
+  }
+
+  private View submitBound(
+      Identity identity,
+      String key,
+      Request original,
+      List<io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages.Input> input,
+      List<String> historySources,
+      String callerId) {
+    var descriptors =
+        input.isEmpty()
+            ? null
+            : io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageInputs.describe(input);
+    boolean prior = historySources != null;
     var request =
         new Request(
             original.goal(),
@@ -4077,22 +4634,28 @@ public final class JdbcLedger
             original.resourceIds(),
             original.budget(),
             descriptors);
+    if (!prior && request.capabilityIds().contains("session_search"))
+      throw new TaskFailure(400, "INVALID_CAPABILITIES");
     boolean sessionTrace = request.capabilityIds().contains("session_event_trace");
     boolean sessionSearch = request.capabilityIds().contains("session_event_search");
     boolean sessionRead =
         request.capabilityIds().contains("session_event_read") || sessionSearch || sessionTrace;
     if (sessionRead
-        && (!(sessionTrace
-                ? request
-                    .capabilityIds()
-                    .equals(
-                        List.of(
-                            "session_event_read", "session_event_search", "session_event_trace"))
-                : sessionSearch
+        && (!(prior
+                ? request.capabilityIds().equals(List.of("session_event_read", "session_search"))
+                : sessionTrace
                     ? request
                         .capabilityIds()
-                        .equals(List.of("session_event_read", "session_event_search"))
-                    : request.capabilityIds().equals(List.of("session_event_read")))
+                        .equals(
+                            List.of(
+                                "session_event_read",
+                                "session_event_search",
+                                "session_event_trace"))
+                    : sessionSearch
+                        ? request
+                            .capabilityIds()
+                            .equals(List.of("session_event_read", "session_event_search"))
+                        : request.capabilityIds().equals(List.of("session_event_read")))
             || !request.resourceIds().isEmpty()
             || original.images() != null)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
     boolean directory = request.capabilityIds().contains("working_directory");
@@ -4144,8 +4707,37 @@ public final class JdbcLedger
           } else run = s(binding.getFirst(), "evaluation_run_id");
           var evaluation = evaluation(identity.tenant(), run);
           var budget = bucket(identity.tenant());
+          if (prior) {
+            var ids = new java.util.ArrayList<>(historySources);
+            ids.add(callerId);
+            var existing =
+                rows(
+                    "SELECT id FROM task WHERE tenant_id=? AND owner_actor_id=? AND idempotency_key=?",
+                    identity.tenant(),
+                    identity.actor(),
+                    key);
+            if (!existing.isEmpty()) {
+              String previous = s(existing.getFirst(), "id");
+              ids.add(previous);
+              var targets =
+                  rows(
+                      "SELECT source_task_id FROM task_session_scope_target FORCE INDEX(PRIMARY) WHERE tenant_id=? AND caller_task_id=? ORDER BY ordinal LIMIT 9",
+                      identity.tenant(),
+                      previous);
+              if (targets.size() > 8) throw JdbcSessionRecords.corrupt();
+              for (var target : targets)
+                if (target.get("source_task_id") != null) ids.add(s(target, "source_task_id"));
+            }
+            sessionScopes.lock(identity.tenant(), ids);
+          }
           identity(identity);
-          String snapshot = Payloads.json(request), digest = Payloads.hash(snapshot);
+          String
+              snapshot =
+                  prior
+                      ? Payloads.json(
+                          Map.of("request", request, "history_session_ids", historySources))
+                      : Payloads.json(request),
+              digest = Payloads.hash(snapshot);
           var old =
               rows(
                   "SELECT * FROM task WHERE tenant_id=? AND owner_actor_id=? AND idempotency_key=? FOR UPDATE",
@@ -4171,8 +4763,10 @@ public final class JdbcLedger
             if (!Payloads.hash(s(old.getFirst(), "request_snapshot"))
                 .equals(s(old.getFirst(), "request_digest")))
               throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-            if (!Payloads.read(s(old.getFirst(), "request_snapshot"), Request.class)
-                .equals(request)) throw new TaskFailure(409, "IDEMPOTENCY_CONFLICT");
+            if (prior
+                ? !snapshot.equals(s(old.getFirst(), "request_snapshot"))
+                : !Payloads.read(s(old.getFirst(), "request_snapshot"), Request.class)
+                    .equals(request)) throw new TaskFailure(409, "IDEMPOTENCY_CONFLICT");
             if (mcpTask || ask) access(old.getFirst());
             return view(old.getFirst());
           }
@@ -4207,7 +4801,12 @@ public final class JdbcLedger
                     s(installed, "plugin_digest"),
                     n(installed, "epoch")));
           }
-          String toolSnapshot = Payloads.json(new ToolSnapshot(1, pins));
+          String toolSnapshot =
+              prior
+                  ? Payloads.json(
+                      new java.util.TreeMap<>(
+                          Map.of("schemaVersion", 1, "pins", new java.util.TreeMap<>(pins))))
+                  : Payloads.json(new ToolSnapshot(1, pins));
           if (pins.containsKey("compose_report")
               && media != pins.get("compose_report").version().equals("0.2.0"))
             throw new TaskFailure(503, "PLUGIN_PIN_MISMATCH");
@@ -4222,7 +4821,10 @@ public final class JdbcLedger
             throw new TaskFailure(403, "QUESTION_NOT_AUTHORIZED");
           if (sessionRead) {
             if (!sessionReadEnabled) throw new TaskFailure(403, "SESSION_READ_DISABLED");
-            if (sessionTrace) {
+            if (prior) {
+              if (!priorSessionSearchEnabled) throw new TaskFailure(403, "SESSION_SEARCH_DISABLED");
+              models.requireSessionSearch(model);
+            } else if (sessionTrace) {
               if (!sessionTraceEnabled || !sessionSearchEnabled)
                 throw new TaskFailure(403, "SESSION_TRACE_DISABLED");
               models.requireSessionTrace(model);
@@ -4235,13 +4837,17 @@ public final class JdbcLedger
             for (String name : request.capabilityIds()) {
               var descriptor =
                   name.equals("session_event_read")
-                      ? (sessionTrace
-                              ? sessions.v3
-                              : sessionSearch ? sessions.v2 : sessions.contracts)
+                      ? (prior
+                              ? sessions.v4
+                              : sessionTrace
+                                  ? sessions.v3
+                                  : sessionSearch ? sessions.v2 : sessions.contracts)
                           .descriptor()
-                      : name.equals("session_event_search")
-                          ? (sessionTrace ? sessions.searchV3 : sessions.search).descriptor()
-                          : sessions.trace.descriptor();
+                      : name.equals("session_search")
+                          ? sessionScopes.contracts.descriptor()
+                          : name.equals("session_event_search")
+                              ? (sessionTrace ? sessions.searchV3 : sessions.search).descriptor()
+                              : sessions.trace.descriptor();
               var pin = pins.get(name);
               if (!pin.version().equals(descriptor.version())
                   || !pin.digest().equals(descriptor.outputSha256()))
@@ -4380,7 +4986,7 @@ public final class JdbcLedger
           String modelSnapshot = Payloads.json(model);
           if (n(budget, "queued") >= n(budget, "queue_limit"))
             throw new TaskFailure(429, "QUEUE_LIMIT");
-          String task = id();
+          String task = prior ? callerId : id();
           db.update(
               "INSERT INTO task(tenant_id,id,owner_actor_id,idempotency_key,request_digest,request_snapshot,goal,capabilities,installation_epoch,state,deadline,max_models,max_tools) VALUES(?,?,?,?,?,?,?,?,?,'QUEUED',TIMESTAMPADD(SECOND,?,CURRENT_TIMESTAMP(6)),?,?)",
               identity.tenant(),
@@ -4409,6 +5015,7 @@ public final class JdbcLedger
           if (sessionRead) {
             var accepted = locked(identity.tenant(), task);
             sessions.create(accepted);
+            if (prior) sessionScopes.create(accepted, historySources);
             db.update(
                 "UPDATE tenant_budget SET history_storage_held=history_storage_held+8388608 WHERE tenant_id=?",
                 identity.tenant());
@@ -4591,6 +5198,7 @@ public final class JdbcLedger
   }
 
   private Map<String, Object> locked(String tenant, String task) {
+    sessionScopes.lock(tenant, task);
     return one(
         "SELECT *,lease_until>CURRENT_TIMESTAMP(6) AS live,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND id=? FOR UPDATE",
         tenant,
@@ -4598,7 +5206,20 @@ public final class JdbcLedger
   }
 
   private Map<String, Object> visible(Identity identity, String task) {
-    identity(identity);
+    sessionScopes.lock(identity.tenant(), task);
+    try {
+      identity(identity);
+    } catch (TaskFailure failure) {
+      var found =
+          rows(
+              "SELECT tenant_id,id,capabilities FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=?",
+              identity.tenant(),
+              task,
+              identity.actor());
+      if (found.size() == 1 && JdbcSessionScopes.task(found.getFirst()))
+        invalidateScopeAfterTransaction(found.getFirst());
+      throw failure;
+    }
     return one(
         "SELECT * FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=?",
         identity.tenant(),
@@ -4610,7 +5231,84 @@ public final class JdbcLedger
     return Arrays.asList(s(row, "capabilities").split(","));
   }
 
+  private final class ScopeInvalidation
+      implements org.springframework.transaction.support.TransactionSynchronization {
+    private final String tenant, caller;
+
+    ScopeInvalidation(String tenant, String caller) {
+      this.tenant = tenant;
+      this.caller = caller;
+    }
+
+    @Override
+    public void afterCompletion(int status) {
+      // The failed admission is already rolled back (or genuine usage settled). Persist only the
+      // observed authority loss, never any rejected result, under the original absolute deadline.
+      Long original = sessionQueryDeadline.get();
+      long end = original == null ? System.nanoTime() + 2_000_000_000L : original;
+      if (System.nanoTime() >= end) return;
+      var transaction = new TransactionTemplate(transactions.getTransactionManager());
+      transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+      transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+      transaction.setTimeout(2);
+      sessionQueryDeadline.set(end);
+      try (var deadline = new SessionQueryDeadline(end)) {
+        transaction.execute(
+            state -> {
+              bucket(tenant);
+              var task = locked(tenant, caller);
+              db.update(
+                  "UPDATE task_session_scope SET invalidated_at=COALESCE(invalidated_at,CURRENT_TIMESTAMP(6)),next_validation_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND caller_task_id=? AND content_state='PRESENT'",
+                  tenant,
+                  caller);
+              sessions.account(task, true);
+              sessionRemainingMillis();
+              return null;
+            });
+      } finally {
+        if (original == null) sessionQueryDeadline.remove();
+        else sessionQueryDeadline.set(original);
+      }
+    }
+  }
+
+  private void invalidateScopeAfterTransaction(Map<String, Object> task) {
+    String tenant = s(task, "tenant_id"), caller = s(task, "id");
+    if (!org.springframework.transaction.support.TransactionSynchronizationManager
+        .isSynchronizationActive())
+      throw new IllegalStateException("Scope authority requires transaction");
+    boolean registered =
+        org
+            .springframework
+            .transaction
+            .support
+            .TransactionSynchronizationManager
+            .getSynchronizations()
+            .stream()
+            .anyMatch(
+                sync ->
+                    sync instanceof ScopeInvalidation invalid
+                        && invalid.tenant.equals(tenant)
+                        && invalid.caller.equals(caller));
+    if (!registered)
+      org.springframework.transaction.support.TransactionSynchronizationManager
+          .registerSynchronization(new ScopeInvalidation(tenant, caller));
+  }
+
   private void access(Map<String, Object> row) {
+    try {
+      baseAccess(row);
+      if (JdbcSessionScopes.task(row)) sessionScopes.require(row);
+    } catch (TaskFailure failure) {
+      if (JdbcSessionScopes.task(row) && failure.status() == 403) {
+        invalidateScopeAfterTransaction(row);
+        throw JdbcSessionScopes.unavailable();
+      }
+      throw failure;
+    }
+  }
+
+  private void baseAccess(Map<String, Object> row) {
     long currentEpoch =
         epoch(new Identity(s(row, "tenant_id"), s(row, "owner_actor_id")), caps(row));
     if (JdbcSessionRecords.task(row)) sessionAccess(row);
@@ -4632,6 +5330,33 @@ public final class JdbcLedger
   public View get(Identity identity, String task) {
     return tx(
         () -> {
+          var hint =
+              rows(
+                  "SELECT capabilities FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=?",
+                  identity.tenant(),
+                  task,
+                  identity.actor());
+          if (hint.size() == 1 && JdbcSessionScopes.task(hint.getFirst())) {
+            bucket(identity.tenant());
+            var row = locked(identity.tenant(), task);
+            try {
+              access(row);
+              return view(row);
+            } catch (TaskFailure failure) {
+              if (!failure.code().equals("SESSION_SCOPE_UNAVAILABLE") && failure.status() != 403)
+                throw failure;
+              return new View(
+                  s(row, "id"),
+                  s(row, "state"),
+                  n(row, "revision"),
+                  time(row, "created_at"),
+                  time(row, "updated_at"),
+                  time(row, "cancel_requested_at"),
+                  "SESSION_SCOPE_UNAVAILABLE",
+                  null,
+                  List.of());
+            }
+          }
           var row = visible(identity, task);
           access(row);
           return view(row);
@@ -4652,6 +5377,16 @@ public final class JdbcLedger
       var h = sessions.history(row, false);
       if (n(h, "retained") != 1 || !"PRESENT".equals(s(h, "content_state"))) summary = null;
     }
+    String publicCode = s(row, "code");
+    if (JdbcSessionScopes.task(row)) {
+      try {
+        access(row);
+      } catch (TaskFailure failure) {
+        summary = null;
+        artifacts = List.of();
+        publicCode = "SESSION_SCOPE_UNAVAILABLE";
+      }
+    }
     return new View(
         s(row, "id"),
         s(row, "state"),
@@ -4659,7 +5394,7 @@ public final class JdbcLedger
         time(row, "created_at"),
         time(row, "updated_at"),
         time(row, "cancel_requested_at"),
-        s(row, "code"),
+        publicCode,
         summary,
         artifacts);
   }
@@ -4709,6 +5444,8 @@ public final class JdbcLedger
   public List<Event> events(Identity identity, String task, long after, int limit) {
     return tx(
         () -> {
+          bucket(identity.tenant());
+          sessionScopes.lock(identity.tenant(), task);
           var row = visible(identity, task);
           access(row);
           if (after > n(row, "next_event_seq")) throw new TaskFailure(400, "FUTURE_CURSOR");
@@ -4871,6 +5608,7 @@ public final class JdbcLedger
                         tenant,
                         executionScopes.targetRun(tenant, s(candidate, "evaluation_run_id")));
                 var budget = bucket(tenant);
+                sessionScopes.lock(tenant, s(candidate, "id"));
                 var candidates =
                     rows(
                         "SELECT *,deadline>CURRENT_TIMESTAMP(6) AS within_deadline FROM task WHERE tenant_id=? AND id=? AND record_version IN (1,2,3) AND (state IN ('QUEUED','RESUME_READY') OR (state='RUNNING' AND lease_until<=CURRENT_TIMESTAMP(6))) FOR UPDATE SKIP LOCKED",
@@ -6508,6 +7246,10 @@ public final class JdbcLedger
   @Override
   public Invocation admit(
       Lease lease, String stepId, Call call, String pluginVersion, String pluginDigest) {
+    if (call.tool().equals("session_search")
+        || lease.capabilities().contains("session_search")
+            && call.tool().equals("session_event_read"))
+      throw new TaskFailure(409, "SESSION_SCOPE_COMMIT_REQUIRED");
     if (call.tool().equals("session_event_trace"))
       throw new TaskFailure(409, "SESSION_TRACE_COMMIT_REQUIRED");
     if (call.tool().equals("session_event_search"))
@@ -7901,13 +8643,13 @@ public final class JdbcLedger
   @Override
   public void check() {
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22') AND success=TRUE",
             Integer.class)
-        != 21) throw new IllegalStateException("Required migration unavailable");
+        != 22) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 21) throw new IllegalStateException("Unsupported schema version");
+        != 22) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override
@@ -7915,6 +8657,7 @@ public final class JdbcLedger
     maintainQuestions();
     cleanupQuestions();
     cleanupTodos();
+    validateSessionScopes();
     cleanupSessionHistory();
     cleanupDirectories();
     cleanupMcp();

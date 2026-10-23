@@ -21,6 +21,8 @@ final class JdbcSessionRecords {
   final SessionContracts contracts = new SessionContracts();
   final SessionContracts v2 = new SessionContracts(2);
   final SessionContracts v3 = new SessionContracts(3);
+  final SessionContracts v4 = new SessionContracts(4);
+  JdbcSessionScopes scopes;
   final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts searchV3 =
       new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts(3);
   final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTraceContracts trace =
@@ -40,9 +42,11 @@ final class JdbcSessionRecords {
       Map<String, Object> task, String name) {
     return name.equals("session_event_read")
         ? contract(task).descriptor()
-        : name.equals("session_event_search")
-            ? searchContract(task).descriptor()
-            : trace.descriptor();
+        : name.equals("session_search")
+            ? scopes.contracts.descriptor()
+            : name.equals("session_event_search")
+                ? searchContract(task).descriptor()
+                : trace.descriptor();
   }
 
   final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts search =
@@ -55,6 +59,7 @@ final class JdbcSessionRecords {
     long bytes, operations;
     final Runnable deadline;
     final boolean trace;
+    final boolean prior;
     final long scratchLimit;
 
     SearchBudget(Runnable deadline) {
@@ -66,22 +71,30 @@ final class JdbcSessionRecords {
     }
 
     SearchBudget(Runnable deadline, boolean trace, long scratchLimit) {
+      this(deadline, trace, scratchLimit, false);
+    }
+
+    SearchBudget(Runnable deadline, boolean trace, long scratchLimit, boolean prior) {
       this.deadline = deadline;
       this.trace = trace;
+      this.prior = prior;
       this.scratchLimit = scratchLimit;
     }
 
     void charge(List<Map<String, Object>> rows) {
       deadline.run();
-      if (++reads > 1024) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+      if (++reads > (prior ? 4096 : 1024)) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+      long batchBytes = 0;
       for (var row : rows)
         for (var entry : row.entrySet()) {
           long size = 8L + SessionContracts.bytes(entry.getKey()) + scalarBytes(entry.getValue());
           bytes += size;
+          batchBytes += size;
           if (trace) operation(size);
         }
       // Conservatively charge UTF-16 strings/row fields plus the active code point arrays.
-      if (bytes > 8388608 || bytes * (trace ? 3 : 2) + 524288 > scratchLimit)
+      if (bytes > (prior ? 16777216 : 8388608)
+          || (prior ? batchBytes * 3 : bytes * (trace ? 3 : 2)) + 524288 > scratchLimit)
         throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
     }
 
@@ -98,11 +111,13 @@ final class JdbcSessionRecords {
   }
 
   int version(Map<String, Object> task) {
-    return traceTask(task) ? 3 : searchTask(task) ? 2 : 1;
+    return JdbcSessionScopes.task(task) ? 4 : traceTask(task) ? 3 : searchTask(task) ? 2 : 1;
   }
 
   SessionContracts contract(Map<String, Object> task) {
-    return traceTask(task) ? v3 : searchTask(task) ? v2 : contracts;
+    return JdbcSessionScopes.task(task)
+        ? v4
+        : traceTask(task) ? v3 : searchTask(task) ? v2 : contracts;
   }
 
   private List<String> sensitive;
@@ -121,7 +136,13 @@ final class JdbcSessionRecords {
           "usage_snapshot",
           "event_snapshot",
           "normalized_query_snapshot",
-          "read_sources_snapshot");
+          "read_sources_snapshot",
+          "authority_snapshot",
+          "target_snapshot",
+          "source_task_id",
+          "context_snapshot",
+          "normalized_snapshot",
+          "read_refs_snapshot");
   private static final List<String> TABLES =
       List.of(
           "task",
@@ -130,6 +151,10 @@ final class JdbcSessionRecords {
           "invocation_session_read",
           "invocation_session_search",
           "invocation_session_trace",
+          "task_session_scope",
+          "task_session_scope_target",
+          "step_session_scope",
+          "invocation_session_scope_query",
           "task_attempt",
           "step",
           "invocation",
@@ -159,10 +184,20 @@ final class JdbcSessionRecords {
   }
 
   static boolean task(Map<String, Object> task) {
-    return SessionContracts.NAME.equals(s(task, "capabilities")) || searchTask(task);
+    return JdbcSessionScopes.task(task)
+        || SessionContracts.NAME.equals(s(task, "capabilities"))
+        || searchTask(task);
   }
 
   private List<Map<String, Object>> rows(String sql, Object... args) {
+    if (searchBudget.get() != null && searchBudget.get().prior) {
+      if (sql.startsWith("SELECT * FROM step WHERE"))
+        sql +=
+            " AND OCTET_LENGTH(request_snapshot)<=131072 AND COALESCE(OCTET_LENGTH(response_snapshot),0)<=16384";
+      if (sql.startsWith("SELECT * FROM invocation WHERE"))
+        sql +=
+            " AND OCTET_LENGTH(input_snapshot)<=4096 AND COALESCE(OCTET_LENGTH(output_snapshot),0)<=32768";
+    }
     var result = db.queryForList(sql, args);
     if (searchBudget.get() != null) searchBudget.get().charge(result);
     return result;
@@ -245,7 +280,8 @@ final class JdbcSessionRecords {
     long total = 0;
     long cleanupHeadroom = 1024;
     for (String table : TABLES) {
-      String key = table.equals("task") ? "id" : "task_id";
+      String key =
+          table.equals("task") ? "id" : table.contains("scope") ? "caller_task_id" : "task_id";
       for (var row :
           rows(
               "SELECT "
@@ -344,6 +380,12 @@ final class JdbcSessionRecords {
     value.put("content_policy", "public-v1");
     value.put("redacted", redacted);
     value.put("data", data);
+    if (JdbcSessionScopes.task(task))
+      value.put(
+          "source_event_refs",
+          type.equals("session.read")
+              ? scopeReadRefs(task, source.get("invocation_id").toString())
+              : List.of());
     if (traceTask(task))
       value.put(
           "source_event_seqs",
@@ -410,6 +452,19 @@ final class JdbcSessionRecords {
                 0,
                 "recent",
                 recent(task, upper)));
+    if (JdbcSessionScopes.task(task)) {
+      var scope = scopes.require(task);
+      var node = (com.fasterxml.jackson.databind.node.ObjectNode) contracts.json(raw, 4096);
+      node.put("scope_sha256", s(scope.row(), "authority_digest"));
+      node.put("retain_until", scope.authority().path("retain_until").asText());
+      var prior = node.putArray("prior_sessions");
+      for (var target : scope.authority().path("targets"))
+        prior
+            .addObject()
+            .put("session_id", target.path("session_id").asText())
+            .put("upper_seq", target.path("upper_seq").asLong());
+      raw = Payloads.json(node);
+    }
     contract(task).context(raw);
     return raw;
   }
@@ -431,6 +486,20 @@ final class JdbcSessionRecords {
         s(h, "binding_digest"),
         s(task, "tenant_id"),
         step);
+    if (JdbcSessionScopes.task(task)) {
+      String context = wire.messages().getLast().content();
+      var scope = scopes.require(task);
+      db.update(
+          "INSERT INTO step_session_scope(tenant_id,step_id,caller_task_id,authority_digest,context_snapshot,context_digest,context_bytes) VALUES(?,?,?,?,?,?,?)",
+          s(task, "tenant_id"),
+          step,
+          s(task, "id"),
+          s(scope.row(), "authority_digest"),
+          context,
+          Payloads.hash(context),
+          SessionContracts.bytes(context));
+      body(task, SessionContracts.bytes(context));
+    }
     body(task, SessionContracts.bytes(request));
   }
 
@@ -450,6 +519,10 @@ final class JdbcSessionRecords {
             s(task, "tenant_id"),
             s(task, "id"),
             step)) {
+      if (JdbcSessionScopes.task(task)) {
+        bindScopeCall(task, st, i);
+        continue;
+      }
       if (s(i, "tool").equals("session_event_trace")) {
         if (!traceTask(task)) throw corrupt();
         var input = trace.input(s(i, "input_snapshot"));
@@ -542,6 +615,7 @@ final class JdbcSessionRecords {
               .equals(call)
           || !"function".equals(wire.type())
           || !(SessionContracts.NAME.equals(call.tool())
+              || JdbcSessionScopes.task(task) && call.tool().equals("session_search")
               || searchTask(task) && call.tool().equals("session_event_search")
               || traceTask(task) && call.tool().equals("session_event_trace")))
         throw new TaskFailure(400, "TOOL_INPUT_INVALID");
@@ -562,6 +636,7 @@ final class JdbcSessionRecords {
     preview.put("redacted", text.redacted() || projected.redacted());
     preview.put("data", Map.of("content", text.content(), "calls", projected.calls()));
     if (traceTask(task)) preview.put("source_event_seqs", List.of());
+    if (JdbcSessionScopes.task(task)) preview.put("source_event_refs", List.of());
     contract(task).event(Payloads.json(preview));
   }
 
@@ -579,12 +654,18 @@ final class JdbcSessionRecords {
     value.put("as_of_sse_seq", n(task, "next_event_seq"));
     value.put("retain_until", UTC.format((LocalDateTime) h.get("retain_until")));
     value.put("readable", readable);
+    if (JdbcSessionScopes.task(task)) {
+      var scope = scopes.require(task);
+      value.put("scope_sha256", s(scope.row(), "authority_digest"));
+      value.put("scope_state", s(scope.row(), "grant_state"));
+    }
     String raw = Payloads.json(value);
     contract(task).owner(raw);
     return raw;
   }
 
-  record Read(String output, long from, long to, String targetDigest, String sources) {}
+  record Read(
+      String output, long from, long to, String targetDigest, String sources, int eventBytes) {}
 
   Read read(
       Map<String, Object> task,
@@ -592,8 +673,12 @@ final class JdbcSessionRecords {
       long upper,
       String boundary,
       Runnable deadline) {
-    if (!traceTask(task)) return readRows(task, input, upper, boundary);
-    searchBudget.set(new SearchBudget(deadline, true, 1048576));
+    if (!traceTask(task) && !JdbcSessionScopes.task(task))
+      return readRows(task, input, upper, boundary);
+    searchBudget.set(
+        JdbcSessionScopes.task(task)
+            ? new SearchBudget(deadline, false, 16777216, true)
+            : new SearchBudget(deadline, true, 1048576));
     try {
       return readRows(task, input, upper, boundary);
     } finally {
@@ -625,21 +710,15 @@ final class JdbcSessionRecords {
       var r = records.get(index);
       if (n(r, "seq") != from + index) throw corrupt();
       var value = verify(task, r);
-      sources.add(Map.of("seq", n(r, "seq"), "event_sha256", s(r, "event_digest")));
+      sources.add(
+          JdbcSessionScopes.task(task)
+              ? scopeRef(s(task, "id"), n(r, "seq"), s(r, "event_digest"))
+              : Map.of("seq", n(r, "seq"), "event_sha256", s(r, "event_digest")));
       if (n(r, "seq") == input.seq()) {
         target = value;
         targetDigest = s(r, "event_digest");
       } else {
-        var summary = new LinkedHashMap<String, Object>();
-        for (String key : List.of("seq", "type", "time", "source", "redacted"))
-          summary.put(key, value.get(key));
-        String text = value.path("data").path("content").asText("");
-        String prefix = SessionContracts.prefix(text);
-        summary.put("text", prefix);
-        summary.put("summary_truncated", !prefix.equals(text));
-        if (SessionContracts.bytes(Payloads.json(summary)) > 1536)
-          throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-        (n(r, "seq") < input.seq() ? before : after).add(summary);
+        (n(r, "seq") < input.seq() ? before : after).add(readSummary(value));
       }
     }
     if (target == null) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
@@ -666,7 +745,26 @@ final class JdbcSessionRecords {
     value.put("after", after);
     String raw = Payloads.json(value);
     contract(task).output(raw);
-    return new Read(raw, from, to, targetDigest, Payloads.json(sources));
+    return new Read(
+        raw,
+        from,
+        to,
+        targetDigest,
+        Payloads.json(sources),
+        records.stream().mapToInt(r -> Math.toIntExact(n(r, "event_bytes"))).sum());
+  }
+
+  private static Map<String, Object> readSummary(JsonNode value) {
+    var summary = new LinkedHashMap<String, Object>();
+    for (String key : List.of("seq", "type", "time", "source", "redacted"))
+      summary.put(key, value.get(key));
+    String text = value.path("data").path("content").asText("");
+    String prefix = SessionContracts.prefix(text);
+    summary.put("text", prefix);
+    summary.put("summary_truncated", !prefix.equals(text));
+    if (SessionContracts.bytes(Payloads.json(summary)) > 1536)
+      throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    return summary;
   }
 
   JsonNode verify(Map<String, Object> task, Map<String, Object> r) {
@@ -679,6 +777,8 @@ final class JdbcSessionRecords {
   }
 
   private JsonNode verifyEvent(Map<String, Object> task, Map<String, Object> r) {
+    if (JdbcSessionScopes.task(task))
+      io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionScopeQueryBudget.operation(1);
     if (!s(task, "tenant_id").equals(s(r, "tenant_id")) || !s(task, "id").equals(s(r, "task_id")))
       throw corrupt();
     if (n(r, "record_version") != 1 || n(r, "event_version") != version(task))
@@ -741,6 +841,10 @@ final class JdbcSessionRecords {
           throw corrupt();
       }
       case "session.read" -> {
+        if (JdbcSessionScopes.task(task)) {
+          digest = verifyScopeRead(task, r, value);
+          break;
+        }
         var i =
             one(
                 "SELECT * FROM invocation WHERE tenant_id=? AND id=? AND task_id=? AND step_id=?",
@@ -792,6 +896,9 @@ final class JdbcSessionRecords {
     if (traceTask(task)
         && !"session.read".equals(s(r, "type"))
         && !value.path("source_event_seqs").isEmpty()) throw corrupt();
+    if (JdbcSessionScopes.task(task)
+        && !"session.read".equals(s(r, "type"))
+        && !value.path("source_event_refs").isEmpty()) throw corrupt();
     var reliable =
         one(
             "SELECT type FROM event WHERE tenant_id=? AND task_id=? AND seq=?",
@@ -1067,7 +1174,22 @@ final class JdbcSessionRecords {
   void validateInput(
       Map<String, Object> task,
       io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call call) {
-    if (call.tool().equals("session_event_trace") && traceTask(task)) {
+    if (JdbcSessionScopes.task(task)) {
+      if (call.tool().equals("session_search")) {
+        var input = scopes.contracts.input(call.input());
+        var scope = scopes.require(task);
+        for (String id : input.sessionIds())
+          if (scope.sources().stream().noneMatch(t -> id.equals(s(t, "id"))))
+            throw JdbcSessionScopes.unavailable();
+      } else if (call.tool().equals("session_event_read")) {
+        var input = v4.input(call.input());
+        if (input.sessionId() != null
+            && !input.sessionId().equals(s(task, "id"))
+            && scopes.require(task).sources().stream()
+                .noneMatch(t -> input.sessionId().equals(s(t, "id"))))
+          throw JdbcSessionScopes.unavailable();
+      } else throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+    } else if (call.tool().equals("session_event_trace") && traceTask(task)) {
       var input = trace.input(call.input());
       if (input.sessionId() != null && !input.sessionId().equals(s(task, "id")))
         throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
@@ -1089,19 +1211,327 @@ final class JdbcSessionRecords {
     boolean redacted = false;
     for (var call : calls) {
       String arguments = call.arguments();
-      if (searchTask(task) && call.name().equals("session_event_search")) {
+      if (searchTask(task) && call.name().equals("session_event_search")
+          || JdbcSessionScopes.task(task) && call.name().equals("session_search")) {
         var node =
-            (com.fasterxml.jackson.databind.node.ObjectNode) contracts.strictJson(arguments, 2048);
+            (com.fasterxml.jackson.databind.node.ObjectNode)
+                contracts.strictJson(arguments, JdbcSessionScopes.task(task) ? 4096 : 2048);
         var text = contracts.publicText(node.path("query").textValue(), sensitive());
         redacted |= text.redacted();
         node.put("query", text.content());
         arguments = Payloads.json(node);
-        if (SessionContracts.bytes(arguments) > 2048)
+        if (SessionContracts.bytes(arguments) > (JdbcSessionScopes.task(task) ? 4096 : 2048))
           throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
       }
       projected.add(new DurableAgent.ToolCall(call.id(), call.type(), call.name(), arguments));
     }
     return new PublicCalls(List.copyOf(projected), redacted);
+  }
+
+  private static Map<String, Object> scopeRef(String id, long seq, String digest) {
+    var value = new LinkedHashMap<String, Object>();
+    value.put("session_id", id);
+    value.put("seq", seq);
+    value.put("event_sha256", digest);
+    return value;
+  }
+
+  String normalizedScope(
+      Map<String, Object> task, Map<String, Object> step, String name, String raw) {
+    if (name.equals("session_search")) {
+      var input = scopes.contracts.input(raw);
+      var value = (com.fasterxml.jackson.databind.node.ObjectNode) contracts.strictJson(raw, 4096);
+      value.put("query", input.query());
+      // Freeze only canonical validated inputs; target list/cuts are bound separately.
+      var sorted = new java.util.TreeMap<String, JsonNode>();
+      value.fields().forEachRemaining(e -> sorted.put(e.getKey(), e.getValue()));
+      return Payloads.json(sorted);
+    }
+    var input = v4.input(raw);
+    String target = input.sessionId() == null ? s(task, "id") : input.sessionId();
+    long upper = n(step, "session_upper_seq");
+    var scope = scopes.require(task);
+    if (!target.equals(s(task, "id"))) {
+      var found =
+          java.util.stream.StreamSupport.stream(
+                  scope.authority().path("targets").spliterator(), false)
+              .filter(t -> target.equals(t.path("session_id").asText()))
+              .findFirst()
+              .orElseThrow(JdbcSessionScopes::unavailable);
+      upper = found.path("upper_seq").asLong();
+    }
+    return Payloads.json(
+        Map.of(
+            "target_session_id",
+            target,
+            "seq",
+            input.seq(),
+            "before",
+            input.before(),
+            "after",
+            input.after(),
+            "upper_seq",
+            upper));
+  }
+
+  private void bindScopeCall(
+      Map<String, Object> task, Map<String, Object> step, Map<String, Object> invocation) {
+    var scope = scopes.require(task);
+    String raw =
+        normalizedScope(task, step, s(invocation, "tool"), s(invocation, "input_snapshot"));
+    var cut =
+        one(
+            "SELECT * FROM step_session_scope WHERE tenant_id=? AND step_id=? AND caller_task_id=?",
+            s(task, "tenant_id"),
+            s(step, "id"),
+            s(task, "id"));
+    if (!s(scope.row(), "authority_digest").equals(s(cut, "authority_digest"))
+        || !s(step, "session_context_digest").equals(s(cut, "context_digest"))) throw corrupt();
+    db.update(
+        "INSERT INTO invocation_session_scope_query(tenant_id,invocation_id,caller_task_id,step_id,operation,binding_digest,input_digest,authority_digest,context_digest,normalized_snapshot,normalized_digest,normalized_bytes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+        s(task, "tenant_id"),
+        s(invocation, "id"),
+        s(task, "id"),
+        s(step, "id"),
+        s(invocation, "tool").equals("session_search") ? "SEARCH" : "READ",
+        s(step, "session_binding_digest"),
+        s(invocation, "input_digest"),
+        s(scope.row(), "authority_digest"),
+        s(cut, "context_digest"),
+        raw,
+        Payloads.hash(raw),
+        SessionContracts.bytes(raw));
+    body(task, SessionContracts.bytes(raw));
+  }
+
+  List<JsonNode> scopeReadRefs(Map<String, Object> task, String invocation) {
+    var b =
+        one(
+            "SELECT * FROM invocation_session_scope_query WHERE tenant_id=? AND invocation_id=? AND caller_task_id=?",
+            s(task, "tenant_id"),
+            invocation,
+            s(task, "id"));
+    if (!"READ".equals(s(b, "operation"))
+        || !List.of("SUCCEEDED", "FAILED").contains(s(b, "outcome"))) throw corrupt();
+    String raw = s(b, "read_refs_snapshot");
+    scopes.contracts.refs(raw);
+    if (SessionContracts.bytes(raw) != n(b, "read_refs_bytes")
+        || !Payloads.hash(raw).equals(s(b, "read_refs_digest"))) throw corrupt();
+    var result = new ArrayList<JsonNode>();
+    contracts.json(raw, 2048).forEach(result::add);
+    return List.copyOf(result);
+  }
+
+  Map<String, Object> scopeReceipt(Map<String, Object> b) {
+    var input = contracts.json(s(b, "normalized_snapshot"), 4096);
+    var result = new LinkedHashMap<String, Object>();
+    for (String key : List.of("seq", "before", "after", "upper_seq", "target_session_id"))
+      result.put(key, input.get(key));
+    result.put("outcome", s(b, "outcome"));
+    result.put("code", s(b, "failure_code"));
+    result.put("output_sha256", s(b, "output_digest"));
+    result.put("output_bytes", n(b, "output_bytes"));
+    return result;
+  }
+
+  void validateNormalizedScope(String expected, Map<String, Object> binding) {
+    String stored = s(binding, "normalized_snapshot");
+    // 保留原槽快照及其字节证明；Map.of 的跨 JVM 字段顺序不属于输入语义。
+    if (!contracts.json(expected, 4096).equals(contracts.json(stored, 4096))
+        || !Payloads.hash(stored).equals(s(binding, "normalized_digest"))
+        || SessionContracts.bytes(stored) != n(binding, "normalized_bytes")) throw corrupt();
+  }
+
+  private String verifyScopeRead(
+      Map<String, Object> task, Map<String, Object> event, JsonNode value) {
+    var i =
+        one(
+            "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND step_id=?",
+            s(task, "tenant_id"),
+            s(task, "id"),
+            s(event, "source_invocation_id"),
+            s(event, "source_step_id"));
+    var b =
+        one(
+            "SELECT * FROM invocation_session_scope_query WHERE tenant_id=? AND invocation_id=? AND caller_task_id=? AND step_id=?",
+            s(task, "tenant_id"),
+            s(i, "id"),
+            s(task, "id"),
+            s(i, "step_id"));
+    var step =
+        one(
+            "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=?",
+            s(task, "tenant_id"),
+            s(task, "id"),
+            s(i, "step_id"));
+    validateStep(task, step);
+    var scope = scopes.require(task);
+    var cut =
+        one(
+            "SELECT * FROM step_session_scope WHERE tenant_id=? AND caller_task_id=? AND step_id=?",
+            s(task, "tenant_id"),
+            s(task, "id"),
+            s(i, "step_id"));
+    String normalizedInput =
+        normalizedScope(task, step, "session_event_read", s(i, "input_snapshot"));
+    validateNormalizedScope(normalizedInput, b);
+    if (!"READ".equals(s(b, "operation"))
+        || !"session_event_read".equals(s(i, "tool"))
+        || !Payloads.hash(s(i, "input_snapshot")).equals(s(i, "input_digest"))
+        || !s(scope.row(), "authority_digest").equals(s(b, "authority_digest"))
+        || !s(b, "authority_digest").equals(s(cut, "authority_digest"))
+        || !s(step, "session_context_digest").equals(s(b, "context_digest"))
+        || !s(b, "context_digest").equals(s(cut, "context_digest"))
+        || !Payloads.hash(s(cut, "context_snapshot")).equals(s(cut, "context_digest"))
+        || !s(step, "session_binding_digest").equals(s(b, "binding_digest"))
+        || !s(event, "fact_key").equals("read:" + s(i, "id"))
+        || !value.path("source").path("kind").asText().equals("invocation")
+        || n(b, "native_read_seq") != n(event, "seq")
+        || !s(i, "state").equals(s(b, "outcome"))
+        || !s(i, "input_digest").equals(s(b, "input_digest"))
+        || !Payloads.json(scopeReceipt(b)).equals(Payloads.json(value.path("data")))
+        || !Payloads.json(scopeReadRefs(task, s(i, "id")))
+            .equals(Payloads.json(value.path("source_event_refs")))) throw corrupt();
+    var refs = scopeReadRefs(task, s(i, "id"));
+    if ("SUCCEEDED".equals(s(b, "outcome"))) {
+      String raw = s(i, "output_snapshot");
+      v4.output(raw);
+      if (!Payloads.hash(raw).equals(s(b, "output_digest"))
+          || !s(b, "output_digest").equals(s(i, "output_digest"))
+          || SessionContracts.bytes(raw) != n(b, "output_bytes")) throw corrupt();
+      var output = contracts.json(raw, 32768);
+      var normalized = contracts.json(s(b, "normalized_snapshot"), 4096);
+      long targetSeq = normalized.path("seq").asLong();
+      long from = Math.max(0, targetSeq - normalized.path("before").asInt());
+      long to =
+          Math.min(
+              normalized.path("upper_seq").asLong(), targetSeq + normalized.path("after").asInt());
+      if (!output.path("session_id").asText().equals(normalized.path("target_session_id").asText())
+          || output.path("upper_seq").asLong() != normalized.path("upper_seq").asLong()
+          || output.path("window").path("from_seq").asLong() != from
+          || output.path("window").path("to_seq").asLong() != to
+          || output.path("before").size() != targetSeq - from
+          || output.path("after").size() != to - targetSeq
+          || refs.size() != to - from + 1) throw corrupt();
+      // 只核原切点内的直接端点；收据的来源仍为完整事件摘要，不递归展开旧 read。
+      var endpoints =
+          rows(
+              "SELECT seq,event_snapshot,event_digest,event_bytes FROM session_public_event FORCE INDEX(PRIMARY) WHERE tenant_id=? AND task_id=? AND seq BETWEEN ? AND ? AND content_state='PRESENT' AND event_bytes BETWEEN 1 AND 16384 AND OCTET_LENGTH(event_snapshot)=event_bytes ORDER BY seq LIMIT 9",
+              s(task, "tenant_id"),
+              normalized.path("target_session_id").asText(),
+              from,
+              to);
+      if (endpoints.size() != refs.size()) throw corrupt();
+      for (int index = 0; index < refs.size(); index++) {
+        var ref = refs.get(index);
+        var endpoint = endpoints.get(index);
+        long seq = ref.path("seq").asLong();
+        var projected =
+            seq == targetSeq
+                ? output.path("target")
+                : seq < targetSeq
+                    ? output.path("before").get(index)
+                    : output.path("after").get((int) (seq - targetSeq - 1));
+        if (!ref.path("session_id").asText().equals(output.path("session_id").asText())
+            || seq != from + index
+            || seq != n(endpoint, "seq")) throw corrupt();
+        String endpointRaw = s(endpoint, "event_snapshot");
+        if (SessionContracts.bytes(endpointRaw) != n(endpoint, "event_bytes")
+            || !Payloads.hash(endpointRaw).equals(s(endpoint, "event_digest"))
+            || !s(endpoint, "event_digest").equals(ref.path("event_sha256").asText()))
+          throw corrupt();
+        v4.event(endpointRaw);
+        var sourceEvent = contracts.json(endpointRaw, 16384);
+        if (sourceEvent.path("seq").asLong() != seq
+            || !sourceEvent.path("session_id").asText().equals(ref.path("session_id").asText())
+            || projected == null
+            || !Payloads.json(seq == targetSeq ? sourceEvent : readSummary(sourceEvent))
+                .equals(Payloads.json(projected))) throw corrupt();
+      }
+      var target =
+          refs.stream()
+              .filter(ref -> ref.path("seq").asLong() == normalized.path("seq").asLong())
+              .findFirst()
+              .orElseThrow(JdbcSessionRecords::corrupt);
+      if (!Payloads.hash(Payloads.json(output.path("target")))
+          .equals(target.path("event_sha256").asText())) throw corrupt();
+    } else if (!refs.isEmpty() || i.get("output_snapshot") != null || n(b, "output_bytes") != 0)
+      throw corrupt();
+    return s(i, "input_digest");
+  }
+
+  Search priorSearch(
+      Map<String, Object> task,
+      io.github.lovexiaopeng.jimu.plugin.api.SessionSearchPort.Input input,
+      Runnable deadline) {
+    var scope = scopes.require(task);
+    for (String id : input.sessionIds())
+      if (scope.sources().stream().noneMatch(source -> id.equals(s(source, "id"))))
+        throw JdbcSessionScopes.unavailable();
+    var matcher =
+        new io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionMatcher(
+            input, deadline);
+    var scanned = new ArrayList<Map<String, Object>>();
+    int eventBytes = 0;
+    searchBudget.set(new SearchBudget(deadline, false, 16777216, true));
+    try {
+      for (int sourceIndex = 0; sourceIndex < scope.sources().size(); sourceIndex++) {
+        var source = scope.sources().get(sourceIndex);
+        var target = scope.authority().path("targets").get(sourceIndex);
+        long upper = target.path("upper_seq").asLong();
+        var records =
+            rows(
+                "SELECT * FROM session_public_event FORCE INDEX(PRIMARY) WHERE tenant_id=? AND task_id=? AND seq BETWEEN 0 AND ? AND event_bytes BETWEEN 1 AND 16384 AND OCTET_LENGTH(event_snapshot)=event_bytes ORDER BY seq LIMIT 128",
+                s(task, "tenant_id"),
+                s(source, "id"),
+                upper);
+        if (records.size() != upper + 1) throw corrupt();
+        for (int index = 0; index < records.size(); index++) {
+          deadline.run();
+          var record = records.get(index);
+          if (n(record, "seq") != index || scanned.size() >= 1024) throw corrupt();
+          int bytes = SessionContracts.bytes(s(record, "event_snapshot"));
+          if (bytes > 16384 || bytes != n(record, "event_bytes")) throw corrupt();
+          eventBytes += bytes;
+          if (eventBytes > 4194304) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+          var value = verify(source, record);
+          scanned.add(scopeRef(s(source, "id"), index, s(record, "event_digest")));
+          matcher.accept(value, s(record, "event_digest"), target);
+        }
+      }
+      String output = matcher.output(s(task, "id"), s(scope.row(), "authority_digest"));
+      scopes.contracts.output(output);
+      return new Search(output, Payloads.hash(Payloads.json(scanned)), scanned.size(), eventBytes);
+    } finally {
+      searchBudget.remove();
+    }
+  }
+
+  Read scopeRead(Map<String, Object> caller, String normalized, Runnable deadline) {
+    var scope = scopes.require(caller);
+    var value = contracts.json(normalized, 4096);
+    String id = value.path("target_session_id").asText();
+    var target =
+        id.equals(s(caller, "id"))
+            ? caller
+            : scope.sources().stream()
+                .filter(source -> id.equals(s(source, "id")))
+                .findFirst()
+                .orElseThrow(JdbcSessionScopes::unavailable);
+    searchBudget.set(new SearchBudget(deadline, false, 16777216, true));
+    try {
+      return readRows(
+          target,
+          new SessionEventPort.Input(
+              value.path("seq").asLong(),
+              id,
+              value.path("before").asInt(),
+              value.path("after").asInt()),
+          value.path("upper_seq").asLong(),
+          id.equals(s(caller, "id")) ? "pre-step" : "scoped-admission");
+    } finally {
+      searchBudget.remove();
+    }
   }
 
   record Search(String output, String scanDigest, int rows, int eventBytes) {}
@@ -1168,8 +1598,13 @@ final class JdbcSessionRecords {
             "session_public_event",
             "invocation_session_search",
             "invocation_session_read",
-            "invocation_session_trace")) {
-      String key = table.equals("task") ? "id" : "task_id";
+            "invocation_session_trace",
+            "task_session_scope",
+            "task_session_scope_target",
+            "step_session_scope",
+            "invocation_session_scope_query")) {
+      String key =
+          table.equals("task") ? "id" : table.contains("scope") ? "caller_task_id" : "task_id";
       var entries = new ArrayList<Map<String, Object>>();
       for (var row :
           rows("SELECT * FROM " + table + " WHERE tenant_id=? AND " + key + "=?", tenant, id)) {
@@ -1182,10 +1617,15 @@ final class JdbcSessionRecords {
                     : List.of(
                                 "invocation_session_search",
                                 "invocation_session_trace",
-                                "invocation_session_read")
+                                "invocation_session_read",
+                                "invocation_session_scope_query")
                             .contains(table)
                         ? "invocation_id"
-                        : "id"));
+                        : table.equals("task_session_scope_target")
+                            ? "ordinal"
+                            : table.equals("step_session_scope")
+                                ? "step_id"
+                                : table.equals("task_session_scope") ? "caller_task_id" : "id"));
         for (String field : BODIES)
           if (row.get(field) != null) {
             String raw = s(row, field);
@@ -1195,6 +1635,24 @@ final class JdbcSessionRecords {
         entries.add(item);
       }
       retained.put(table, entries);
+    }
+    if (JdbcSessionScopes.task(task)) {
+      db.update(
+          "UPDATE invocation_session_scope_query SET normalized_snapshot=NULL,read_refs_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND caller_task_id=?",
+          tenant,
+          id);
+      db.update(
+          "UPDATE step_session_scope SET context_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND caller_task_id=?",
+          tenant,
+          id);
+      db.update(
+          "UPDATE task_session_scope_target SET source_task_id=NULL,target_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND caller_task_id=?",
+          tenant,
+          id);
+      db.update(
+          "UPDATE task_session_scope SET authority_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND caller_task_id=?",
+          tenant,
+          id);
     }
     retained.put("version", 1);
     retained.put("original_body_bytes", n(h, "body_bytes"));

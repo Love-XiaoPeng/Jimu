@@ -40,7 +40,9 @@ public final class SessionSearchBodyFilter implements Filter {
       throws IOException, ServletException {
     if (request instanceof jakarta.servlet.http.HttpServletRequest http
         && (http.getRequestURI().endsWith("/session-history/search")
-            || http.getRequestURI().endsWith("/session-history/trace")))
+            || http.getRequestURI().endsWith("/session-history/trace")
+            || http.getRequestURI().endsWith("/session-history/session-search")
+            || http.getRequestURI().equals("/api/session-search/tasks")))
       ((jakarta.servlet.http.HttpServletResponse) response).setHeader("Cache-Control", "no-store");
     chain.doFilter(request, response);
     var value = request.getAttribute(ATTRIBUTE);
@@ -54,7 +56,15 @@ public final class SessionSearchBodyFilter implements Filter {
             search,
             ((jakarta.servlet.http.HttpServletRequest) request).getRequestURI().endsWith("/trace")
                 ? 1024
-                : 2048);
+                : ((jakarta.servlet.http.HttpServletRequest) request)
+                        .getRequestURI()
+                        .equals("/api/session-search/tasks")
+                    ? 16384
+                    : ((jakarta.servlet.http.HttpServletRequest) request)
+                            .getRequestURI()
+                            .endsWith("/session-search")
+                        ? 4096
+                        : 2048);
     request.getAsyncContext().addListener(reader);
     reader.timeout(
         deadlines.schedule(

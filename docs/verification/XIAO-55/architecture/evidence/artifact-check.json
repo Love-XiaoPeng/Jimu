@@ -1,0 +1,9 @@
+{
+  "upstreamBlobs": 48,
+  "unchangedBaselineFiles": 119,
+  "schemaParserChecks": 69,
+  "eightTargetAuthorityBytes": 3070,
+  "nineReadRefsBytes": 1297,
+  "productImplemented": false,
+  "runtimeTestsRun": false
+}

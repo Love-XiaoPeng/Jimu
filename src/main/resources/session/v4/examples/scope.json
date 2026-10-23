@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "caller_session_id": "00000000-0000-4000-8000-000000000055",
+  "tenant_id": "tenant-fixture",
+  "owner_actor_id": "owner-fixture",
+  "caller_binding_sha256": "d62cd6d58b2df08ab046c578324b9ce8f131decf39e2003f6c302e31f5148679",
+  "caller_tools_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "authority_policy": "explicit-terminal-independent-v4",
+  "created_at": "2026-10-23T06:00:00Z",
+  "retain_until": "2026-10-30T05:00:00Z",
+  "targets": [
+    {
+      "session_id": "00000000-0000-4000-8000-000000000051",
+      "history_version": 4,
+      "binding_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "pins_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "upper_seq": 4,
+      "created_at": "2026-10-23T05:00:00Z",
+      "retain_until": "2026-10-30T05:00:00Z"
+    },
+    {
+      "session_id": "00000000-0000-4000-8000-000000000052",
+      "history_version": 4,
+      "binding_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "pins_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "upper_seq": 4,
+      "created_at": "2026-10-23T05:00:00Z",
+      "retain_until": "2026-10-30T05:00:00Z"
+    }
+  ]
+}

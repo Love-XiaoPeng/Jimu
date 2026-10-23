@@ -200,9 +200,14 @@ public final class SessionSearchContracts {
   }
 
   public static String normalize(String raw) {
+    return normalize(raw, () -> {});
+  }
+
+  static String normalize(String raw, Runnable operation) {
     var result = new StringBuilder();
     boolean space = false;
     for (int offset = 0; offset < raw.length(); ) {
+      operation.run();
       int c = raw.codePointAt(offset);
       offset += Character.charCount(c);
       if (white(c)) space = !result.isEmpty();
