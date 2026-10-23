@@ -1,0 +1,1546 @@
+{
+  "status": "proposed; targets relative to Java root; directories/braces describe one-to-many splits expanded in architecture and persistence tables",
+  "baseline": "620d5e0e5bfe7b5da530f10997936466159ba34f",
+  "files": [
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+      "baselineLines": 1236,
+      "action": "split",
+      "targets": [
+        "execution/service/AttemptExecutionService.java",
+        "execution/service/impl/AttemptExecutionServiceImpl.java",
+        "execution/service/HostInvocationGateway.java",
+        "execution/service/impl/HostInvocationGatewayImpl.java",
+        "execution/port/AgentAttemptRunner.java",
+        "adapters/ai/springai/SpringAiAttemptRunner.java",
+        "adapters/ai/springai/SpringAiSession.java",
+        "adapters/codec/CheckpointCodec.java"
+      ],
+      "reason": "拆attempt编排、网关、单advisor适配、快照，保持一次循环及原槽恢复。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/OpenAiProtocol.java",
+      "baselineLines": 385,
+      "action": "retain",
+      "targets": [
+        "adapters/ai/springai/OpenAiProtocol.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/ToolDefinitionMapper.java",
+      "baselineLines": 15,
+      "action": "retain",
+      "targets": [
+        "adapters/ai/springai/ToolDefinitionMapper.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ExecutionScopeBinding.java",
+      "baselineLines": 156,
+      "action": "split",
+      "targets": [
+        "kernel/model/service/ExecutionScopeService.java",
+        "kernel/model/service/impl/ExecutionScopeServiceImpl.java",
+        "adapters/persistence/model/mapper/ExecutionScopeMapper.java"
+      ],
+      "reason": "operator路径也迁Mapper，保持独立账户/一次绑定，启动不调用。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+      "baselineLines": 246,
+      "action": "split",
+      "targets": [
+        "kernel/model/service/impl/",
+        "adapters/persistence/model/MybatisExecutionScopes.java",
+        "adapters/persistence/model/{mapper,entity,projection}/"
+      ],
+      "reason": "业务规则进入Service，显式SQL/结果转换进入Records；旧JDBC删除。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcImageRecords.java",
+      "baselineLines": 262,
+      "action": "split",
+      "targets": [
+        "kernel/media/service/impl/",
+        "adapters/persistence/media/MybatisImageRecords.java",
+        "adapters/persistence/media/{mapper,entity,projection}/"
+      ],
+      "reason": "业务规则进入Service，显式SQL/结果转换进入Records；旧JDBC删除。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "baselineLines": 8828,
+      "action": "split",
+      "targets": [
+        "kernel/task/service/impl/",
+        "kernel/worker/service/impl/",
+        "kernel/execution/service/impl/",
+        "kernel/model/service/impl/",
+        "kernel/invocation/service/impl/",
+        "kernel/artifact/service/impl/",
+        "kernel/session/service/impl/",
+        "kernel/directory/service/impl/",
+        "kernel/todo/service/impl/",
+        "kernel/interaction/service/impl/",
+        "kernel/mcp/service/impl/",
+        "kernel/media/service/impl/",
+        "kernel/search/service/impl/",
+        "adapters/persistence/transaction/SpringLedgerUnitOfWork.java",
+        "adapters/persistence/query/",
+        "adapters/persistence/<business>/{mapper,entity,projection,MybatisRecords}"
+      ],
+      "reason": "按总方案方法锚点/持久化35表矩阵拆分；最终删除旧类，无并行业务JDBC。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcMcpRecords.java",
+      "baselineLines": 122,
+      "action": "split",
+      "targets": [
+        "kernel/mcp/service/impl/",
+        "adapters/persistence/mcp/MybatisMcpRecords.java",
+        "adapters/persistence/mcp/{mapper,entity,projection}/"
+      ],
+      "reason": "业务规则进入Service，显式SQL/结果转换进入Records；旧JDBC删除。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "baselineLines": 1730,
+      "action": "split",
+      "targets": [
+        "kernel/session/service/impl/",
+        "adapters/persistence/session/MybatisSessionRecords.java",
+        "adapters/persistence/session/{mapper,entity,projection}/"
+      ],
+      "reason": "业务规则进入Service，显式SQL/结果转换进入Records；旧JDBC删除。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "baselineLines": 284,
+      "action": "split",
+      "targets": [
+        "kernel/session/service/impl/",
+        "adapters/persistence/session/MybatisSessionScopes.java",
+        "adapters/persistence/session/{mapper,entity,projection}/"
+      ],
+      "reason": "业务规则进入Service，显式SQL/结果转换进入Records；旧JDBC删除。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ModelCosts.java",
+      "baselineLines": 20,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/budget/domain/ModelCosts.java"
+      ],
+      "reason": "纯整数费用规则，与SQL适配层分离。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+      "baselineLines": 90,
+      "action": "split",
+      "targets": [
+        "adapters/codec/SnapshotCodec.java",
+        "kernel/execution/port/SnapshotCodec.java"
+      ],
+      "reason": "保留旧JSON2 mixins/字节；kernel通过窄codec端口，不传播框架类型。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReceipts.java",
+      "baselineLines": 112,
+      "action": "split",
+      "targets": [
+        "kernel/invocation/domain/WebFetchProof.java",
+        "adapters/codec/WebFetchReceiptCodec.java"
+      ],
+      "reason": "证明不变量与JSON解释分离，保持原digest输入和字段。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReconciliation.java",
+      "baselineLines": 76,
+      "action": "split",
+      "targets": [
+        "kernel/model/service/WebFetchAssessmentService.java",
+        "kernel/model/service/impl/WebFetchAssessmentServiceImpl.java",
+        "adapters/persistence/model/mapper/WebFetchAssessmentMapper.java"
+      ],
+      "reason": "只读评估及证明，不产生恢复/结算授权。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/BuiltinManifestLoader.java",
+      "baselineLines": 138,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/contract/BuiltinManifestLoader.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ImageReportComposer.java",
+      "baselineLines": 245,
+      "action": "split",
+      "targets": [
+        "kernel/artifact/domain/ImageReportComposerPolicy.java",
+        "adapters/codec/artifact/ImageReportComposer.java"
+      ],
+      "reason": "报告来源/时间/证明规则进内核，JSON/提示词投影保留适配。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportComposer.java",
+      "baselineLines": 267,
+      "action": "split",
+      "targets": [
+        "kernel/artifact/domain/ReportComposerPolicy.java",
+        "adapters/codec/artifact/ReportComposer.java"
+      ],
+      "reason": "报告来源/时间/证明规则进内核，JSON/提示词投影保留适配。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportPolicy.java",
+      "baselineLines": 120,
+      "action": "split",
+      "targets": [
+        "kernel/artifact/domain/ReportPolicyPolicy.java",
+        "adapters/codec/artifact/ReportPolicy.java"
+      ],
+      "reason": "报告来源/时间/证明规则进内核，JSON/提示词投影保留适配。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/SchemaContract.java",
+      "baselineLines": 49,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/contract/SchemaContract.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceContracts.java",
+      "baselineLines": 153,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/contract/WorkspaceContracts.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceRuntime.java",
+      "baselineLines": 420,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/contract/WorkspaceRuntime.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryCommitUnconfirmed.java",
+      "baselineLines": 4,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/directory/api/DirectoryCommitUnconfirmed.java"
+      ],
+      "reason": "执行边界的明确控制信号，保留unknown/暂停语义。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryContracts.java",
+      "baselineLines": 185,
+      "action": "split",
+      "targets": [
+        "adapters/codec/directory/DirectoryContracts.java",
+        "kernel/directory/domain/DirectoryContractsPolicy.java"
+      ],
+      "reason": "协议Schema解释与纯业务规则分离，不复制资源。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryPaths.java",
+      "baselineLines": 71,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/directory/DirectoryPaths.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryRuntime.java",
+      "baselineLines": 103,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/directory/DirectoryRuntime.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/events/DatabaseEventFeed.java",
+      "baselineLines": 92,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/events/DatabaseEventFeed.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/health/HttpResourceProbe.java",
+      "baselineLines": 56,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/health/HttpResourceProbe.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/health/LedgerProbe.java",
+      "baselineLines": 40,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/health/LedgerProbe.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/http/BoundedHttp.java",
+      "baselineLines": 88,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/http/BoundedHttp.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/http/ProviderHttp.java",
+      "baselineLines": 45,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/http/ProviderHttp.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/identity/SignedIdentity.java",
+      "baselineLines": 59,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/identity/SignedIdentity.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/interaction/QuestionContracts.java",
+      "baselineLines": 225,
+      "action": "split",
+      "targets": [
+        "adapters/codec/interaction/QuestionContracts.java",
+        "kernel/interaction/domain/QuestionContractsPolicy.java"
+      ],
+      "reason": "协议Schema解释与纯业务规则分离，不复制资源。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/interaction/QuestionSuspended.java",
+      "baselineLines": 8,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/interaction/api/QuestionSuspended.java"
+      ],
+      "reason": "执行边界的明确控制信号，保留unknown/暂停语义。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpContracts.java",
+      "baselineLines": 81,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/mcp/McpContracts.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpPolicy.java",
+      "baselineLines": 48,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/mcp/McpPolicy.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpRuntime.java",
+      "baselineLines": 418,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/mcp/McpRuntime.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpSettings.java",
+      "baselineLines": 43,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/mcp/McpSettings.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpWire.java",
+      "baselineLines": 391,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/mcp/McpWire.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageInputs.java",
+      "baselineLines": 51,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/media/ImageInputs.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageMessages.java",
+      "baselineLines": 52,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/media/ImageMessages.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageNormalizer.java",
+      "baselineLines": 435,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/media/ImageNormalizer.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageRuntime.java",
+      "baselineLines": 128,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/media/ImageRuntime.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/BusinessPolicies.java",
+      "baselineLines": 96,
+      "action": "split",
+      "targets": [
+        "bootstrap/properties/BusinessPoliciesProperties.java",
+        "kernel/model/domain/BusinessPolicies.java",
+        "adapters/codec/model/"
+      ],
+      "reason": "配置/纯策略/快照边界按实际职责拆，不改冻结plan/profile。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/EvaluationMaterials.java",
+      "baselineLines": 136,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/model/EvaluationMaterials.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/EvaluationPlans.java",
+      "baselineLines": 217,
+      "action": "split",
+      "targets": [
+        "bootstrap/properties/EvaluationPlansProperties.java",
+        "kernel/model/domain/EvaluationPlans.java",
+        "adapters/codec/model/"
+      ],
+      "reason": "配置/纯策略/快照边界按实际职责拆，不改冻结plan/profile。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ExecutionScopeOperator.java",
+      "baselineLines": 45,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/model/ExecutionScopeOperator.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ExecutionScopes.java",
+      "baselineLines": 106,
+      "action": "split",
+      "targets": [
+        "bootstrap/properties/ExecutionScopesProperties.java",
+        "kernel/model/domain/ExecutionScopes.java",
+        "adapters/codec/model/"
+      ],
+      "reason": "配置/纯策略/快照边界按实际职责拆，不改冻结plan/profile。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelImages.java",
+      "baselineLines": 55,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/model/ModelImages.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelInputBounds.java",
+      "baselineLines": 29,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/model/ModelInputBounds.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelProfiles.java",
+      "baselineLines": 548,
+      "action": "split",
+      "targets": [
+        "bootstrap/properties/ModelProfilesProperties.java",
+        "kernel/model/domain/ModelProfiles.java",
+        "adapters/codec/model/"
+      ],
+      "reason": "配置/纯策略/快照边界按实际职责拆，不改冻结plan/profile。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeProcesses.java",
+      "baselineLines": 100,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/search/NativeProcesses.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeResults.java",
+      "baselineLines": 261,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/search/NativeResults.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeRunner.java",
+      "baselineLines": 332,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/search/NativeRunner.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchQuery.java",
+      "baselineLines": 56,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/search/NativeSearchQuery.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchRuntime.java",
+      "baselineLines": 261,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/search/NativeSearchRuntime.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/SearchFiles.java",
+      "baselineLines": 208,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/search/SearchFiles.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionContracts.java",
+      "baselineLines": 213,
+      "action": "split",
+      "targets": [
+        "adapters/codec/session/PriorSessionContracts.java",
+        "kernel/session/domain/PriorSessionContractsPolicy.java"
+      ],
+      "reason": "Schema/JSON解释留适配层，业务范围/值校验进入纯策略，冻结资源不移动。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionMatcher.java",
+      "baselineLines": 130,
+      "action": "split",
+      "targets": [
+        "kernel/session/domain/PriorSessionMatcher.java",
+        "adapters/codec/session/EventProjectionCodec.java"
+      ],
+      "reason": "排序/字面匹配纯函数，输入类型化；JSON树只留转换边界。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionCommitUnconfirmed.java",
+      "baselineLines": 4,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/session/api/SessionCommitUnconfirmed.java"
+      ],
+      "reason": "执行边界的明确控制信号，保留unknown/暂停语义。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionContracts.java",
+      "baselineLines": 297,
+      "action": "split",
+      "targets": [
+        "adapters/codec/session/SessionContracts.java",
+        "kernel/session/domain/SessionContractsPolicy.java"
+      ],
+      "reason": "Schema/JSON解释留适配层，业务范围/值校验进入纯策略，冻结资源不移动。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionQueryDeadline.java",
+      "baselineLines": 203,
+      "action": "move-or-refactor",
+      "targets": [
+        "adapters/persistence/query/SessionQueryDeadline.java"
+      ],
+      "reason": "驱动socket例外；同步ThreadLocal限此设施，重定位类名同步装配/门禁。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionScopeQueryBudget.java",
+      "baselineLines": 62,
+      "action": "split",
+      "targets": [
+        "kernel/session/api/SessionQueryContext.java",
+        "adapters/persistence/query/SessionResultMeter.java"
+      ],
+      "reason": "预算显式传递，Mapper逐读计量；无新跨线程ThreadLocal。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchBodyFilter.java",
+      "baselineLines": 167,
+      "action": "move-or-refactor",
+      "targets": [
+        "api/common/SessionSearchBodyFilter.java"
+      ],
+      "reason": "仅Servlet有界异步body生命周期，不含授权业务。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchContracts.java",
+      "baselineLines": 236,
+      "action": "split",
+      "targets": [
+        "adapters/codec/session/SessionSearchContracts.java",
+        "kernel/session/domain/SessionSearchContractsPolicy.java"
+      ],
+      "reason": "Schema/JSON解释留适配层，业务范围/值校验进入纯策略，冻结资源不移动。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchMatcher.java",
+      "baselineLines": 112,
+      "action": "split",
+      "targets": [
+        "kernel/session/domain/SessionSearchMatcher.java",
+        "adapters/codec/session/EventProjectionCodec.java"
+      ],
+      "reason": "排序/字面匹配纯函数，输入类型化；JSON树只留转换边界。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionTraceContracts.java",
+      "baselineLines": 115,
+      "action": "split",
+      "targets": [
+        "adapters/codec/session/SessionTraceContracts.java",
+        "kernel/session/domain/SessionTraceContractsPolicy.java"
+      ],
+      "reason": "Schema/JSON解释留适配层，业务范围/值校验进入纯策略，冻结资源不移动。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/todo/TodoCommitUnconfirmed.java",
+      "baselineLines": 8,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/todo/api/TodoCommitUnconfirmed.java"
+      ],
+      "reason": "执行边界的明确控制信号，保留unknown/暂停语义。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/todo/TodoContracts.java",
+      "baselineLines": 189,
+      "action": "split",
+      "targets": [
+        "adapters/codec/todo/TodoContracts.java",
+        "kernel/todo/domain/TodoContractsPolicy.java"
+      ],
+      "reason": "协议Schema解释与纯业务规则分离，不复制资源。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/ConfiguredOriginReader.java",
+      "baselineLines": 111,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/web/ConfiguredOriginReader.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/DisabledSearch.java",
+      "baselineLines": 14,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/web/DisabledSearch.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/FetchRuntime.java",
+      "baselineLines": 102,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/web/FetchRuntime.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PinnedHttpsTransport.java",
+      "baselineLines": 227,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/web/PinnedHttpsTransport.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicPageProjection.java",
+      "baselineLines": 62,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/web/PublicPageProjection.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicWebPolicy.java",
+      "baselineLines": 75,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/web/PublicWebPolicy.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicWebReader.java",
+      "baselineLines": 260,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/web/PublicWebReader.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/WebFetchCancellation.java",
+      "baselineLines": 48,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/web/WebFetchCancellation.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/BoundaryProbe.java",
+      "baselineLines": 34,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/worker/BoundaryProbe.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LedgerMaintenance.java",
+      "baselineLines": 40,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/worker/LedgerMaintenance.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LinuxProcessReceipt.java",
+      "baselineLines": 30,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/worker/LinuxProcessReceipt.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LocalWorkerSupervisor.java",
+      "baselineLines": 163,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/worker/LocalWorkerSupervisor.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/OperationThreads.java",
+      "baselineLines": 47,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/worker/OperationThreads.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/WorkerLoop.java",
+      "baselineLines": 106,
+      "action": "retain",
+      "targets": [
+        "adapters/runtime/worker/WorkerLoop.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/LocalArtifactStore.java",
+      "baselineLines": 117,
+      "action": "retain",
+      "targets": [
+        "adapters/storage/LocalArtifactStore.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureImageStore.java",
+      "baselineLines": 216,
+      "action": "retain",
+      "targets": [
+        "adapters/storage/SecureImageStore.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureWorkspaceStore.java",
+      "baselineLines": 813,
+      "action": "retain",
+      "targets": [
+        "adapters/storage/SecureWorkspaceStore.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/api/ReadinessController.java",
+      "baselineLines": 24,
+      "action": "move-or-refactor",
+      "targets": [
+        "api/readiness/controller/ReadinessController.java"
+      ],
+      "reason": "协议适配；业务规则下沉对应Service，DTO/VO按真实复用拆出。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/api/SessionHistoryController.java",
+      "baselineLines": 167,
+      "action": "move-or-refactor",
+      "targets": [
+        "api/session/controller/SessionHistoryController.java"
+      ],
+      "reason": "协议适配；业务规则下沉对应Service，DTO/VO按真实复用拆出。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/api/SessionSearchController.java",
+      "baselineLines": 116,
+      "action": "move-or-refactor",
+      "targets": [
+        "api/session/controller/SessionSearchController.java"
+      ],
+      "reason": "协议适配；业务规则下沉对应Service，DTO/VO按真实复用拆出。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskController.java",
+      "baselineLines": 287,
+      "action": "move-or-refactor",
+      "targets": [
+        "api/task/controller/TaskController.java"
+      ],
+      "reason": "协议适配；业务规则下沉对应Service，DTO/VO按真实复用拆出。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskErrors.java",
+      "baselineLines": 49,
+      "action": "move-or-refactor",
+      "targets": [
+        "api/common/TaskErrors.java"
+      ],
+      "reason": "保留公开错误形状/安全映射，按真实异常分类。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/api/TodoController.java",
+      "baselineLines": 33,
+      "action": "move-or-refactor",
+      "targets": [
+        "api/todo/controller/TodoController.java"
+      ],
+      "reason": "协议适配；业务规则下沉对应Service，DTO/VO按真实复用拆出。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/api/UserQuestionController.java",
+      "baselineLines": 83,
+      "action": "move-or-refactor",
+      "targets": [
+        "api/interaction/controller/UserQuestionController.java"
+      ],
+      "reason": "协议适配；业务规则下沉对应Service，DTO/VO按真实复用拆出。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/api/WorkingDirectoryController.java",
+      "baselineLines": 39,
+      "action": "move-or-refactor",
+      "targets": [
+        "api/directory/controller/WorkingDirectoryController.java"
+      ],
+      "reason": "协议适配；业务规则下沉对应Service，DTO/VO按真实复用拆出。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java",
+      "baselineLines": 302,
+      "action": "split",
+      "targets": [
+        "bootstrap/config/DurableDataConfiguration.java",
+        "bootstrap/config/WorkerConfiguration.java",
+        "bootstrap/config/IdentityConfiguration.java",
+        "bootstrap/config/ServiceConfiguration.java",
+        "bootstrap/properties/"
+      ],
+      "reason": "按数据/worker/受信身份/业务装配分开；共享文件仅集成人写。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/JimuApplication.java",
+      "baselineLines": 16,
+      "action": "retain",
+      "targets": [
+        "bootstrap/JimuApplication.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java",
+      "baselineLines": 116,
+      "action": "retain",
+      "targets": [
+        "bootstrap/RuntimeConfiguration.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/plugin/api/PluginCatalog.java",
+      "baselineLines": 8,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/plugin/service/PluginCatalogService.java"
+      ],
+      "reason": "已有发现集接口。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/plugin/application/PluginRegistry.java",
+      "baselineLines": 30,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/plugin/service/impl/PluginCatalogServiceImpl.java"
+      ],
+      "reason": "已有去重和不可变规则，不额外加Registry转发层。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/readiness/api/Readiness.java",
+      "baselineLines": 7,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/readiness/service/ReadinessService.java"
+      ],
+      "reason": "已有发布接口语义，非新增空层。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/readiness/application/ReadinessService.java",
+      "baselineLines": 23,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/readiness/service/impl/ReadinessServiceImpl.java"
+      ],
+      "reason": "实际readiness规则，保留失败语义。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/readiness/port/ResourceProbe.java",
+      "baselineLines": 6,
+      "action": "retain",
+      "targets": [
+        "kernel/readiness/port/ResourceProbe.java"
+      ],
+      "reason": "保留真实设施职责；更新必要import/注入、业务值归属及局部规则；不凭行数机械拆分。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/ArtifactStore.java",
+      "baselineLines": 11,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/artifact/port/ArtifactStore.java"
+      ],
+      "reason": "存储端口，Controller不再依赖。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/Authenticator.java",
+      "baselineLines": 5,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/identity/api/Authenticator.java"
+      ],
+      "reason": "受信身份端口，无请求JSON授权。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/EventFeed.java",
+      "baselineLines": 12,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/event/port/EventFeed.java"
+      ],
+      "reason": "订阅能力端口，HTTP生命周期仍由MVC适配。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/ExecutionLedger.java",
+      "baselineLines": 136,
+      "action": "split",
+      "targets": [
+        "kernel/execution/service/ExecutionService.java",
+        "kernel/execution/api/ExecutionContracts.java"
+      ],
+      "reason": "发布方法按worker/model/invocation/artifact归属进一步拆分，见总方案用例表；不可保留巨型接口转发壳。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/ImageLedger.java",
+      "baselineLines": 49,
+      "action": "split",
+      "targets": [
+        "kernel/media/service/ImageService.java",
+        "kernel/media/api/ImageContracts.java"
+      ],
+      "reason": "重用原有接口语义，接口移service，嵌套DTO按需要移api；不改公开协议。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/McpLedger.java",
+      "baselineLines": 78,
+      "action": "split",
+      "targets": [
+        "kernel/mcp/service/McpService.java",
+        "kernel/mcp/api/McpContracts.java"
+      ],
+      "reason": "重用原有接口语义，接口移service，嵌套DTO按需要移api；不改公开协议。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/NativeSearchLedger.java",
+      "baselineLines": 57,
+      "action": "split",
+      "targets": [
+        "kernel/search/service/NativeSearchService.java",
+        "kernel/search/api/NativeSearchContracts.java"
+      ],
+      "reason": "重用原有接口语义，接口移service，嵌套DTO按需要移api；不改公开协议。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/SessionEventLedger.java",
+      "baselineLines": 49,
+      "action": "split",
+      "targets": [
+        "kernel/session/service/SessionHistoryService.java",
+        "kernel/session/api/SessionHistoryContracts.java"
+      ],
+      "reason": "重用原有接口语义，接口移service，嵌套DTO按需要移api；不改公开协议。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/SessionSearchScopeLedger.java",
+      "baselineLines": 35,
+      "action": "split",
+      "targets": [
+        "kernel/session/service/SessionScopeService.java",
+        "kernel/session/api/SessionScopeContracts.java"
+      ],
+      "reason": "重用原有接口语义，接口移service，嵌套DTO按需要移api；不改公开协议。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/TaskFailure.java",
+      "baselineLines": 21,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/shared/api/TaskFailure.java"
+      ],
+      "reason": "稳定安全code与现有status兼容；不新建一套竞争错误协议。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/TaskImages.java",
+      "baselineLines": 70,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/media/api/TaskImages.java"
+      ],
+      "reason": "媒体输入/快照值，不是数据库Entity。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/Tasks.java",
+      "baselineLines": 86,
+      "action": "split",
+      "targets": [
+        "kernel/task/service/TaskService.java",
+        "kernel/task/api/TaskContracts.java"
+      ],
+      "reason": "重用原有接口语义，接口移service，嵌套DTO按需要移api；不改公开协议。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/TodoLedger.java",
+      "baselineLines": 15,
+      "action": "split",
+      "targets": [
+        "kernel/todo/service/TodoService.java",
+        "kernel/todo/api/TodoContracts.java"
+      ],
+      "reason": "重用原有接口语义，接口移service，嵌套DTO按需要移api；不改公开协议。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/UserQuestionLedger.java",
+      "baselineLines": 33,
+      "action": "split",
+      "targets": [
+        "kernel/interaction/service/UserQuestionService.java",
+        "kernel/interaction/api/UserQuestionContracts.java"
+      ],
+      "reason": "重用原有接口语义，接口移service，嵌套DTO按需要移api；不改公开协议。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/WebFetchObservation.java",
+      "baselineLines": 73,
+      "action": "move-or-refactor",
+      "targets": [
+        "kernel/invocation/api/WebFetchObservation.java"
+      ],
+      "reason": "宿主观察收据，保持原事实字段。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/WorkingDirectoryLedger.java",
+      "baselineLines": 42,
+      "action": "split",
+      "targets": [
+        "kernel/directory/service/WorkingDirectoryService.java",
+        "kernel/directory/api/WorkingDirectoryContracts.java"
+      ],
+      "reason": "重用原有接口语义，接口移service，嵌套DTO按需要移api；不改公开协议。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/model/api/ModelSnapshot.java",
+      "baselineLines": 132,
+      "action": "retain",
+      "targets": [
+        "model/api/ModelSnapshot.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/model/api/ModelUsage.java",
+      "baselineLines": 12,
+      "action": "retain",
+      "targets": [
+        "model/api/ModelUsage.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/Cancellation.java",
+      "baselineLines": 6,
+      "action": "retain",
+      "targets": [
+        "plugin/api/Cancellation.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/EditPort.java",
+      "baselineLines": 9,
+      "action": "retain",
+      "targets": [
+        "plugin/api/EditPort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ExecutionContext.java",
+      "baselineLines": 6,
+      "action": "retain",
+      "targets": [
+        "plugin/api/ExecutionContext.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/FileFailure.java",
+      "baselineLines": 20,
+      "action": "retain",
+      "targets": [
+        "plugin/api/FileFailure.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/FilePort.java",
+      "baselineLines": 25,
+      "action": "retain",
+      "targets": [
+        "plugin/api/FilePort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ImagePort.java",
+      "baselineLines": 25,
+      "action": "retain",
+      "targets": [
+        "plugin/api/ImagePort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ImageReportPort.java",
+      "baselineLines": 61,
+      "action": "retain",
+      "targets": [
+        "plugin/api/ImageReportPort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/McpResourcePort.java",
+      "baselineLines": 69,
+      "action": "retain",
+      "targets": [
+        "plugin/api/McpResourcePort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ReportCompositionPort.java",
+      "baselineLines": 42,
+      "action": "retain",
+      "targets": [
+        "plugin/api/ReportCompositionPort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ReportPort.java",
+      "baselineLines": 17,
+      "action": "retain",
+      "targets": [
+        "plugin/api/ReportPort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/SearchPort.java",
+      "baselineLines": 31,
+      "action": "retain",
+      "targets": [
+        "plugin/api/SearchPort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/SessionEventPort.java",
+      "baselineLines": 9,
+      "action": "retain",
+      "targets": [
+        "plugin/api/SessionEventPort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/SessionEventSearchPort.java",
+      "baselineLines": 22,
+      "action": "retain",
+      "targets": [
+        "plugin/api/SessionEventSearchPort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/SessionEventTracePort.java",
+      "baselineLines": 9,
+      "action": "retain",
+      "targets": [
+        "plugin/api/SessionEventTracePort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/SessionSearchPort.java",
+      "baselineLines": 25,
+      "action": "retain",
+      "targets": [
+        "plugin/api/SessionSearchPort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/TodoPort.java",
+      "baselineLines": 19,
+      "action": "retain",
+      "targets": [
+        "plugin/api/TodoPort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ToolDescriptor.java",
+      "baselineLines": 10,
+      "action": "retain",
+      "targets": [
+        "plugin/api/ToolDescriptor.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ToolPlugin.java",
+      "baselineLines": 11,
+      "action": "retain",
+      "targets": [
+        "plugin/api/ToolPlugin.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ToolResult.java",
+      "baselineLines": 4,
+      "action": "retain",
+      "targets": [
+        "plugin/api/ToolResult.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/UserQuestionPort.java",
+      "baselineLines": 17,
+      "action": "retain",
+      "targets": [
+        "plugin/api/UserQuestionPort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/WorkingDirectoryPort.java",
+      "baselineLines": 10,
+      "action": "retain",
+      "targets": [
+        "plugin/api/WorkingDirectoryPort.java"
+      ],
+      "reason": "JDK叶子契约；保持公开边界/字节。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/interaction/AskUserQuestionPlugin.java",
+      "baselineLines": 29,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/interaction/AskUserQuestionPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/mcp/ListMcpResourceTemplatesPlugin.java",
+      "baselineLines": 28,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/mcp/ListMcpResourceTemplatesPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/mcp/ListMcpResourcesPlugin.java",
+      "baselineLines": 28,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/mcp/ListMcpResourcesPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/mcp/ReadMcpResourcePlugin.java",
+      "baselineLines": 28,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/mcp/ReadMcpResourcePlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/session/SessionEventReadPlugin.java",
+      "baselineLines": 38,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/session/SessionEventReadPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/session/SessionEventSearchPlugin.java",
+      "baselineLines": 39,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/session/SessionEventSearchPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/session/SessionEventTracePlugin.java",
+      "baselineLines": 39,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/session/SessionEventTracePlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/session/SessionSearchPlugin.java",
+      "baselineLines": 38,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/session/SessionSearchPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/todo/TodoWritePlugin.java",
+      "baselineLines": 29,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/todo/TodoWritePlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/FetchInput.java",
+      "baselineLines": 3,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/webfetch/FetchInput.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/FetchOutput.java",
+      "baselineLines": 3,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/webfetch/FetchOutput.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/WebFetchPlugin.java",
+      "baselineLines": 40,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/webfetch/WebFetchPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/WebPageReader.java",
+      "baselineLines": 7,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/webfetch/WebPageReader.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/websearch/SearchProvider.java",
+      "baselineLines": 28,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/websearch/SearchProvider.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/ComposeReportPlugin.java",
+      "baselineLines": 81,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/workspace/ComposeReportPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/EditPlugin.java",
+      "baselineLines": 42,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/workspace/EditPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/GlobPlugin.java",
+      "baselineLines": 40,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/workspace/GlobPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/GrepPlugin.java",
+      "baselineLines": 41,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/workspace/GrepPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/PresentPlugin.java",
+      "baselineLines": 54,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/workspace/PresentPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/ReadImagePlugin.java",
+      "baselineLines": 43,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/workspace/ReadImagePlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/ReadPlugin.java",
+      "baselineLines": 41,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/workspace/ReadPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/WorkingDirectoryPlugin.java",
+      "baselineLines": 28,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/workspace/WorkingDirectoryPlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/workspace/WritePlugin.java",
+      "baselineLines": 41,
+      "action": "retain",
+      "targets": [
+        "plugins/builtin/workspace/WritePlugin.java"
+      ],
+      "reason": "薄插件，继续仅依赖公开契约；内部宿主实现不得渗入。"
+    }
+  ]
+}
