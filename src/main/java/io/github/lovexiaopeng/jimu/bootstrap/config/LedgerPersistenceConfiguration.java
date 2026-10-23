@@ -26,6 +26,12 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
     annotationClass = Mapper.class)
 public class LedgerPersistenceConfiguration {
   @Bean
+  io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryInterceptor
+      sessionQueryInterceptor() {
+    return new io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryInterceptor();
+  }
+
+  @Bean
   DataSource ledgerDataSource(Environment env) {
     return SessionQueryDeadline.source(
         new DriverManagerDataSource(

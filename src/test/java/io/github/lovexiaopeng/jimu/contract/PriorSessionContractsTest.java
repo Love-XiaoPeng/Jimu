@@ -8,13 +8,12 @@ import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionContracts;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionMatcher;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;
-import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionScopeQueryBudget;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger.QueryResources;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class PriorSessionContractsTest {
@@ -23,36 +22,23 @@ class PriorSessionContractsTest {
 
   @Test
   void asynchronousOwnerPhasesShareWholeQueryBudgets() {
-    var checks = new java.util.concurrent.atomic.AtomicInteger();
-    QueryResources saved;
-    try (var budget =
-        new SessionScopeQueryBudget(
-            new QueryResources(4095, 100, 2096128), checks::incrementAndGet)) {
-      SessionScopeQueryBudget.charge(List.of(Map.of("id", "one")));
-      SessionScopeQueryBudget.operation(1020);
-      saved = budget.resources();
-    }
-    try (var budget = new SessionScopeQueryBudget(saved, checks::incrementAndGet)) {
-      assertEquals(
-          "SESSION_HISTORY_LIMIT",
-          assertThrows(TaskFailure.class, () -> SessionScopeQueryBudget.charge(List.of())).code());
-    }
-    try (var budget =
-        new SessionScopeQueryBudget(new QueryResources(0, 16777216, 0), checks::incrementAndGet)) {
-      assertEquals(
-          "SESSION_HISTORY_LIMIT",
-          assertThrows(
-                  TaskFailure.class,
-                  () -> SessionScopeQueryBudget.charge(List.of(Map.of("id", "one"))))
-              .code());
-    }
-    try (var budget =
-        new SessionScopeQueryBudget(new QueryResources(0, 0, 2097152), checks::incrementAndGet)) {
-      assertEquals(
-          "SESSION_HISTORY_LIMIT",
-          assertThrows(TaskFailure.class, () -> SessionScopeQueryBudget.operation(1)).code());
-    }
-    assertTrue(checks.get() >= 3);
+    long end = System.nanoTime() + 2_000_000_000L;
+    var first = new SessionQueryContext(end, new QueryResources(4095, 100, 2096128));
+    first.restrictDeadline(end + 1_000_000_000L);
+    assertEquals(end, first.deadlineNanos());
+    var result = first.result();
+    result.row();
+    result.column("id", "one");
+    first.operation(1020);
+    var resumed = new SessionQueryContext(end, first.resources());
+    assertEquals("SESSION_HISTORY_LIMIT", assertThrows(TaskFailure.class, resumed::result).code());
+    var bytes = new SessionQueryContext(end, new QueryResources(0, 16777216, 0));
+    assertEquals(
+        "SESSION_HISTORY_LIMIT",
+        assertThrows(TaskFailure.class, () -> bytes.result().column("id", "one")).code());
+    var ops = new SessionQueryContext(end, new QueryResources(0, 0, 2097152));
+    assertEquals(
+        "SESSION_HISTORY_LIMIT", assertThrows(TaskFailure.class, () -> ops.operation(1)).code());
   }
 
   @Test

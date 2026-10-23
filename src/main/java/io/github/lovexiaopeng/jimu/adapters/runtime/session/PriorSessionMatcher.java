@@ -15,6 +15,7 @@ import java.util.Map;
 public final class PriorSessionMatcher {
   private final SessionSearchPort.Input input;
   private final Runnable deadline;
+  private final java.util.function.LongConsumer queryOperations;
   private final int[] needle, prefix;
   private final Map<String, Hit> best = new java.util.HashMap<>();
   private long comparisons, operations;
@@ -31,6 +32,14 @@ public final class PriorSessionMatcher {
           .thenComparing(Comparator.comparingLong(Hit::seq).reversed());
 
   public PriorSessionMatcher(SessionSearchPort.Input input, Runnable deadline) {
+    this(input, deadline, count -> {});
+  }
+
+  public PriorSessionMatcher(
+      SessionSearchPort.Input input,
+      Runnable deadline,
+      java.util.function.LongConsumer queryOperations) {
+    this.queryOperations = queryOperations;
     this.input = input;
     this.deadline = deadline;
     needle = input.query().codePoints().toArray();
@@ -50,7 +59,7 @@ public final class PriorSessionMatcher {
 
   private void operation(long count) {
     operations += count;
-    SessionScopeQueryBudget.operation(count);
+    queryOperations.accept(count);
     if (operations > 2097152) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
     if ((operations & 1023) == 0 || count > 1023) deadline.run();
   }

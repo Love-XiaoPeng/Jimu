@@ -173,6 +173,7 @@ public final class PersistenceFoundationScenario {
                   .size()
               == 1,
           "composite-full-key-tenant-isolation");
+      QueryAdapterScenario.verify(context);
       jdbc.update(
           "DELETE FROM actor_access WHERE tenant_id IN (?,?)", "b1-commit", "b1-other-tenant");
       jdbc.update(

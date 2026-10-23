@@ -45,6 +45,20 @@ class RefactoringNegativeGatesTest {
     assertTrue(failure.getMessage().contains("SchemaVersionMapper"));
   }
 
+  @Test
+  void businessThreadContextCannotBorrowDriverClassName() throws Exception {
+    compile(
+        "SessionQueryDeadline",
+        "package io.github.lovexiaopeng.jimu.kernel.session.service.impl; public class SessionQueryDeadline { private final ThreadLocal<Long> budget = new ThreadLocal<>(); }");
+    var failure =
+        assertThrows(
+            AssertionError.class,
+            () ->
+                PackageBoundariesTest.BUSINESS_THREAD_CONTEXT.check(
+                    new ClassFileImporter().importPath(directory)));
+    assertTrue(failure.getMessage().contains("ThreadLocal"));
+  }
+
   private void compile(String name, String source) throws Exception {
     Path file = directory.resolve(name + ".java");
     Files.writeString(file, source);

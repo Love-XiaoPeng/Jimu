@@ -1,5 +1,7 @@
 # XIAO-60 B0/B1 基础检查点
 
+> 本页保留 `9dabdbea` 首次基础检查点及其失败记录。接续实现、最新验证和关闭/剩余清单见 [B0/B1 核心业务及显式查询检查点](core-query-checkpoint.md)；不能将本页过去的“未实现”说明或旧测试数量当作新源码结论。全项仍为 in_progress。
+
 本目录记录过渡实现，不是整体重构验收。集成分支 `agent/agent/7aeccb14d7a9`，[草稿 PR #22](https://github.com/Love-XiaoPeng/Jimu/pull/22) 目标 master；继承未合并方案提交 `bcb63c57328d64cbe0efbaeee3575dbbea3d0274`。2026-10-23 独立回读 master 仍为 `620d5e0e5bfe7b5da530f10997936466159ba34f`。ADR-0015 和提案已同步 XIAO-58 产品经理核定引用，没有改写 XIAO-59 原始候选证据。
 
 ## 实际实现

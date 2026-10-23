@@ -28,6 +28,20 @@ def verify(experiment, old_jar):
     (evidence / 'transactions.log').write_text(scenario.stdout + scenario.stderr)
     experiment.assert_that(scenario.returncode == 0 and 'PASS foundation MySQL' in scenario.stdout,
         'real MySQL UoW/BaseMapper probe', exit=scenario.returncode)
+    core = {}
+    for tag, binary in [('accepted', old_jar), ('current', experiment.jar)]:
+        result = subprocess.run([experiment.java,
+            '-Dloader.main=io.github.lovexiaopeng.jimu.adapters.persistence.CoreSettlementScenario',
+            '-Dloader.path=' + str(classes), '-cp', str(binary),
+            'org.springframework.boot.loader.launch.PropertiesLauncher',
+            str(experiment.control['folder'] / 'runtime.properties'), tag], text=True, capture_output=True, timeout=50)
+        (evidence / ('core-' + tag + '.log')).write_text(result.stdout + result.stderr)
+        experiment.assert_that(result.returncode == 0 and 'PASS core settlement differential' in result.stdout,
+            'actual ledger core settlement ' + tag, exit=result.returncode)
+        core[tag] = [line for line in result.stdout.splitlines() if line.startswith('RESULT ')]
+    experiment.assert_that(len(core['accepted']) == 8 and core['accepted'] == core['current'],
+        'eight exact old/new ledger settlement snapshots: tokens/UNKNOWN/proof commit/missing receipt/CAS/fence/recovery/cancel/receipts')
+    (evidence / 'core-differential.json').write_text(json.dumps(core, indent=2))
     current_jar = experiment.jar
     task = experiment.submit('b1-from-new')
     old_current = experiment.http('GET', '/api/tasks/' + task)

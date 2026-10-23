@@ -11,6 +11,14 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class PackageBoundariesTest {
+  static final ArchRule BUSINESS_THREAD_CONTEXT =
+      noClasses()
+          .that()
+          .haveNameNotMatching(
+              "io\\.github\\.lovexiaopeng\\.jimu\\.adapters\\.runtime\\.session\\.SessionQueryDeadline(?:\\$.*)?")
+          .should()
+          .dependOnClassesThat()
+          .haveFullyQualifiedName("java.lang.ThreadLocal");
   static final ArchRule CONTROLLER_STORAGE =
       noClasses()
           .that()
@@ -81,6 +89,7 @@ class PackageBoundariesTest {
         .check(classes);
     CONTROLLER_STORAGE.check(classes);
     KERNEL_MAPPER.check(classes);
+    BUSINESS_THREAD_CONTEXT.check(classes);
     // B1 唯一过渡例外：operator bindOnce 将在 B2 迁 Mapper，不是最终 JDBC 豁免。
     noClasses()
         .that()
@@ -131,6 +140,12 @@ class PackageBoundariesTest {
         .haveFullyQualifiedName("java.lang.ProcessBuilder")
         .check(classes);
     noClasses()
+        .that()
+        .doNotHaveFullyQualifiedName(
+            "io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryResults")
+        .and()
+        .doNotHaveFullyQualifiedName(
+            "io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryInterceptor")
         .should()
         .dependOnClassesThat()
         .resideInAnyPackage("sun..", "jdk.internal..", "java.lang.reflect..")

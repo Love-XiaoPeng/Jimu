@@ -31,6 +31,10 @@ final class JdbcMcpRecords {
     this.settings = settings;
   }
 
+  void copyConfiguration(JdbcMcpRecords original) {
+    settings = original.settings;
+  }
+
   boolean enabled() {
     return settings.enabled();
   }
