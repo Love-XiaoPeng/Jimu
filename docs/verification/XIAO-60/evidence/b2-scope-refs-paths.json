@@ -1,0 +1,32 @@
+{
+  "baseline": "3c0344aa8b987b7f5688da5c4a9aab46bf969a95",
+  "entry": "scope v4 event append and dedicated scope read proof (original two refs reads) -> scopeReadRefs -> SessionScopeReadRefsServiceImpl -> typed SessionScopeReadRefs -> MapperSessionScopeReadRefs -> actual MP selectMaps in original DS/UoW/query/result-meter",
+  "removed": {
+    "staticJdbcCalls": 1,
+    "sql": [
+      "SELECT * FROM invocation_session_scope_query WHERE tenant_id=? AND invocation_id=? AND caller_task_id=?"
+    ],
+    "dynamicJdbc": 0,
+    "sharedStillUsedNotCounted": true
+  },
+  "inventory": {
+    "static": 203,
+    "dynamicScannerItems": 23,
+    "literalBinds": 701,
+    "tables": "35 tables + readonly receipt all OPEN"
+  },
+  "preserved": [
+    "exact tenant/invocation/caller-task predicates and cardinality==1; operation READ then terminal SUCCEEDED/FAILED before contract, bytes, digest and original-node extraction",
+    "original frozen refs Schema (including unique refs, max9, source UUID/seq/digest), 2048-byte boundary and failure codes; original nodes/order retained as immutable list",
+    "original NULL outcome and stored-byte unboxing boundary, unchanged contract exceptions and short circuits; no new sorting or recursive proof",
+    "same DS/UoW, current permission/whole-scope/fence and lock/rejection/proof order; original query/deadline/result-meter and receipt bytes",
+    "no write, retry, dual write, nested transaction, codec/schema22/V1-V22/frozen input change"
+  ],
+  "measurement": "Selected actual scope v4 append/proof/window paths only. SQL/result bytes/operations recorded separately; no universal metric equality. Existing Map.of window order may vary across JVMs.",
+  "remaining": [
+    "shared validateStep/history Service/typed port/MP and corresponding SQL deletion next, then other runtime/admission/module/maintenance",
+    "core UoW final beforeCommit gap, cold/full scope/maintenance/file lock arrangements OPEN",
+    "persisted failed read, large/sparse endpoints, exact CLI, complete native workers, actual v3 trace cleanup, nonempty paid ledger anomalies and real paid vision OPEN",
+    "B2/35 tables+readonly receipt OPEN; B3-B5/juniors/61/62/T48/new features not activated"
+  ]
+}

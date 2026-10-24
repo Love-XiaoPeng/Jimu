@@ -1090,22 +1090,15 @@ final class JdbcSessionRecords {
     body(task, SessionContracts.bytes(raw));
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeReadRefsService
+      scopeReadRefsService =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionScopeReadRefsServiceImpl();
+
   List<JsonNode> scopeReadRefs(Map<String, Object> task, String invocation) {
-    var b =
-        one(
-            "SELECT * FROM invocation_session_scope_query WHERE tenant_id=? AND invocation_id=? AND caller_task_id=?",
-            s(task, "tenant_id"),
-            invocation,
-            s(task, "id"));
-    if (!"READ".equals(s(b, "operation"))
-        || !List.of("SUCCEEDED", "FAILED").contains(s(b, "outcome"))) throw corrupt();
-    String raw = s(b, "read_refs_snapshot");
-    scopes.contracts.refs(raw);
-    if (SessionContracts.bytes(raw) != n(b, "read_refs_bytes")
-        || !Payloads.hash(raw).equals(s(b, "read_refs_digest"))) throw corrupt();
-    var result = new ArrayList<JsonNode>();
-    contracts.json(raw, 2048).forEach(result::add);
-    return List.copyOf(result);
+    var refs = new MapperSessionScopeReadRefs(this, task, invocation);
+    scopeReadRefsService.verify(refs);
+    return refs.nodes();
   }
 
   Map<String, Object> scopeReceipt(Map<String, Object> b) {
