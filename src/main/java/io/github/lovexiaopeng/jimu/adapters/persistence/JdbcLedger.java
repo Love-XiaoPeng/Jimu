@@ -1581,9 +1581,7 @@ public final class JdbcLedger
                 if (sessionScopes.scope(task).get("invalidated_at") != null
                     && "PRESENT".equals(s(sessions.history(task, false), "content_state"))
                     && sessionCleanupSafe(task)) {
-                  sessions.purge(task);
-                  event(task, "session-history-purged", "session_history.content_deleted", null);
-                  sessions.release(task);
+                  historyRetention.purge(historyRetentionRecords.bind(task));
                 } else sessions.account(task, true);
                 return null;
               },
@@ -1613,35 +1611,12 @@ public final class JdbcLedger
     }
   }
 
+  final io.github.lovexiaopeng.jimu.kernel.session.service.SessionHistoryRetentionService
+      historyRetention;
+  final MapperSessionHistoryRetentions historyRetentionRecords;
+
   private void cleanupSessionHistory() {
-    var candidates =
-        rows(
-            """
-        SELECT p.tenant_id,p.task_id FROM task_session_history p JOIN task t ON t.tenant_id=p.tenant_id AND t.id=p.task_id
-        WHERE p.content_state='PRESENT' AND p.retain_until<=CURRENT_TIMESTAMP(6) AND t.state IN ('SUCCEEDED','FAILED','CANCELLED')
-        AND NOT EXISTS(SELECT 1 FROM task_attempt a WHERE a.tenant_id=p.tenant_id AND a.task_id=p.task_id AND a.quiescent=FALSE)
-        AND NOT EXISTS(SELECT 1 FROM invocation i WHERE i.tenant_id=p.tenant_id AND i.task_id=p.task_id AND i.state IN ('RUNNING','OUTCOME_UNKNOWN'))
-        AND NOT EXISTS(SELECT 1 FROM reservation r WHERE r.tenant_id=p.tenant_id AND r.task_id=p.task_id AND (r.state='HELD_UNKNOWN' OR r.usage_quality='UNKNOWN' OR (r.state='RESERVED' AND r.category<>'SESSION_HISTORY_STORAGE')))
-        AND NOT EXISTS(SELECT 1 FROM model_dispatch d WHERE d.tenant_id=p.tenant_id AND d.task_id=p.task_id AND d.state IN ('DISPATCHED','USAGE_UNKNOWN','BOUND_EXCEEDED'))
-        ORDER BY p.retain_until,p.tenant_id,p.task_id LIMIT 16
-        """);
-    for (var candidate : candidates)
-      tx(
-          () -> {
-            String tenant = s(candidate, "tenant_id"), id = s(candidate, "task_id");
-            bucket(tenant);
-            var task = locked(tenant, id);
-            var h = sessions.history(task, false);
-            if (!"PRESENT".equals(s(h, "content_state"))
-                || n(h, "retained") == 1
-                    && (!JdbcSessionScopes.task(task)
-                        || sessionScopes.scope(task).get("invalidated_at") == null)
-                || !sessionCleanupSafe(task)) return null;
-            sessions.purge(task);
-            event(task, "session-history-purged", "session_history.content_deleted", null);
-            sessions.release(task);
-            return null;
-          });
+    historyRetention.cleanup();
   }
 
   private io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore directoryWorkspace;
@@ -3724,6 +3699,10 @@ public final class JdbcLedger
           }
         };
     taskOperationRecords = new MapperTaskOperations(this);
+    historyRetentionRecords = new MapperSessionHistoryRetentions(this);
+    historyRetention =
+        new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+            .SessionHistoryRetentionServiceImpl(historyRetentionRecords, coreWork, Payloads::hash);
     todoRetention =
         new io.github.lovexiaopeng.jimu.kernel.todo.service.impl.TodoRetentionServiceImpl(
             new MapperTodoRetentions(this), coreWork, Payloads::hash);

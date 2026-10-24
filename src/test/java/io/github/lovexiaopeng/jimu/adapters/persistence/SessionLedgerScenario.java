@@ -192,8 +192,7 @@ public final class SessionLedgerScenario {
               new org.springframework.jdbc.datasource.DataSourceTransactionManager(source));
       transaction.execute(
           status -> {
-            records.purge(task);
-            records.release(task);
+            ledger.historyRetention.purge(new MapperSessionHistoryRetentions(ledger).bind(task));
             status.setRollbackOnly();
             return null;
           });

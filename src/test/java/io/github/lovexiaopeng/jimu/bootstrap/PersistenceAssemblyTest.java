@@ -47,7 +47,19 @@ class PersistenceAssemblyTest {
             "io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoStepReadMapper",
             "io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoInvocationReadMapper",
             "io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoDispatchReadMapper",
-            "io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoProjectionReadMapper")) {
+            "io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoProjectionReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryInvocationReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryInvocationSessionReadReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryInvocationSessionScopeQueryReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryInvocationSessionSearchReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryInvocationSessionTraceReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryModelDispatchReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistorySessionPublicEventReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryStepReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryStepSessionScopeReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTaskReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTaskSessionScopeReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTaskSessionScopeTargetReadMapper")) {
       assertTrue(configuration.hasStatement(namespace + ".selectMaps"));
       assertTrue(configuration.hasStatement(namespace + ".delete"));
       assertFalse(configuration.hasStatement(namespace + ".selectById"));
