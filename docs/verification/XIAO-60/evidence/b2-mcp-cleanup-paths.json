@@ -1,0 +1,90 @@
+{
+  "baseline": "289670a9b53760a86ed06c48351c026f6ae7fe5a",
+  "scope": "B2 partial MCP retention; all 35 tables plus external read-only receipt OPEN",
+  "removedJdbcCalls": 7,
+  "removed": [
+    {
+      "originalSql": "SELECT DISTINCT r.tenant_id,r.task_id FROM reservation r JOIN task t ON t.tenant_id=r.tenant_id AND t.id=r.task_id LEFT JOIN mcp_result m ON m.tenant_id=r.tenant_id AND m.task_id=r.task_id AND r.id=CONCAT('mcp:',m.root_invocation_id) WHERE r.category='MCP_RESULT' AND r.state IN ('RESERVED','SETTLED') AND t.state IN ('SUCCEEDED','FAILED','CANCELLED') AND (m.expires_at<CURRENT_TIMESTAMP(6) OR m.root_invocation_id IS NULL AND t.updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY) LIMIT 32",
+      "replacement": "McpRetentionMapper.candidates"
+    },
+    {
+      "originalSql": "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND state='HELD_UNKNOWN'",
+      "replacement": "McpRetentionMapper.unknownHolds"
+    },
+    {
+      "originalSql": "SELECT r.* FROM reservation r LEFT JOIN mcp_result m ON m.tenant_id=r.tenant_id AND m.task_id=r.task_id AND r.id=CONCAT('mcp:',m.root_invocation_id) WHERE r.tenant_id=? AND r.task_id=? AND r.category='MCP_RESULT' AND r.state IN ('RESERVED','SETTLED') AND (m.expires_at<CURRENT_TIMESTAMP(6) OR m.root_invocation_id IS NULL AND ?<CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY) FOR UPDATE",
+      "replacement": "McpRetentionMapper.lockExpiredHolds"
+    },
+    {
+      "originalSql": "DELETE FROM mcp_cursor WHERE tenant_id=? AND task_id=? AND root_invocation_id=?",
+      "replacement": "McpCursorMapper.delete"
+    },
+    {
+      "originalSql": "UPDATE mcp_result SET body=NULL,state='DELETED' WHERE tenant_id=? AND task_id=? AND root_invocation_id=?",
+      "replacement": "McpRetentionMapper.purgeResult"
+    },
+    {
+      "originalSql": "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
+      "replacement": "ArtifactRetentionMapper.releaseStorage"
+    },
+    {
+      "originalSql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=?",
+      "replacement": "ReservationMapper.releaseQueueSlot"
+    }
+  ],
+  "statements": [
+    {
+      "kind": "select",
+      "id": "McpRetentionMapper.candidates",
+      "sql": "SELECT DISTINCT r.tenant_id,r.task_id FROM reservation r JOIN task t ON t.tenant_id=r.tenant_id AND t.id=r.task_id LEFT JOIN mcp_result m ON m.tenant_id=r.tenant_id AND m.task_id=r.task_id AND r.id=CONCAT('mcp:',m.root_invocation_id) WHERE r.category='MCP_RESULT' AND r.state IN ('RESERVED','SETTLED') AND t.state IN ('SUCCEEDED','FAILED','CANCELLED') AND (m.expires_at<CURRENT_TIMESTAMP(6) OR m.root_invocation_id IS NULL AND t.updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY) LIMIT 32"
+    },
+    {
+      "kind": "select",
+      "id": "McpRetentionMapper.unknownHolds",
+      "sql": "SELECT id FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='HELD_UNKNOWN'"
+    },
+    {
+      "kind": "select",
+      "id": "McpRetentionMapper.lockExpiredHolds",
+      "sql": "SELECT r.tenant_id,r.id,r.task_id,r.dispatch_id,r.category,r.amount,r.actual,r.usage_quality,r.cost_quality,r.state,r.record_version FROM reservation r LEFT JOIN mcp_result m ON m.tenant_id=r.tenant_id AND m.task_id=r.task_id AND r.id=CONCAT('mcp:',m.root_invocation_id) WHERE r.tenant_id=#{tenant} AND r.task_id=#{taskId} AND r.category='MCP_RESULT' AND r.state IN ('RESERVED','SETTLED') AND (m.expires_at<CURRENT_TIMESTAMP(6) OR m.root_invocation_id IS NULL AND #{updatedAt}<CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY) FOR UPDATE"
+    },
+    {
+      "kind": "update",
+      "id": "McpRetentionMapper.purgeResult",
+      "sql": "UPDATE mcp_result SET body=NULL,state='DELETED' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND root_invocation_id=#{root}"
+    }
+  ],
+  "ordinaryMp": {
+    "mapper": "McpCursorMapper.delete",
+    "predicates": "tenant_id + task_id + root_invocation_id",
+    "kind": "original root collection delete, not by-id; no fake composite PK",
+    "query": "explicit same-level query + ew"
+  },
+  "paths": [
+    {
+      "entry": "LedgerMaintenance -> ExecutionLedger.cleanupArtifacts -> JdbcLedger.cleanupArtifacts -> cleanupMcp",
+      "service": "McpRetentionServiceImpl.cleanup",
+      "port": "McpRetentions",
+      "adapter": "MapperMcpRetentions",
+      "phases": [
+        "Outside transaction: original DISTINCT tenant/task join over reserved/settled MCP_RESULT holds, terminal task, expired result OR missing result with strictly older than7-day task updated_at, LIMIT32",
+        "Single original UoW: budget -> existing locked(scope-ordered task)/task -> writer probes -> terminal -> any-category HELD_UNKNOWN check; preserve short-circuit order",
+        "Lock expired holds FOR UPDATE: tenant/task/category/state, original LEFT JOIN and time predicates, full11 reservation columns; bind exact original locked task updated_at object, no Java clock/time conversion",
+        "For each authoritative mcp: hold: preserve substring(4) root extraction -> MP cursor collection delete -> SQL result body=NULL/state=DELETED -> storage release actual if nonnull including0 else amount -> release reservation -> original idempotent mcp-cleanup:root event chain",
+        "All result/cursor/ledger/event writes in same UoW including original task event sequence. Exceptions propagate, abort batch and roll back; next cleanup uses retained held facts. No external storage/provider/effect calls"
+      ],
+      "rules": [
+        "No new public authorization/fence/paid scope or lock/CAS policy; original tenant/full-key and internal cross-tenant candidate exception retained",
+        "Reuse same SqlSession/DS/UoW/query and absolute deadline; original invalid-scope post-note/special rejection boundaries inherited through locked/tx",
+        "No dual-write SQL path remains in cleanupMcp. Event policy remains existing shared ledger event -> EventMapper/TaskMapper",
+        "Full projection/result meters are path-specific; MP metadata and total SQL/network round trips not asserted unchanged"
+      ],
+      "verification": "McpRetentionServiceTest, B2McpRetentionIT, same McpRetentionScenario driver on exact old/new JAR; actual local MCP list/read outputs, raw runtime SQL/transaction waits and cleanup receipts"
+    }
+  ],
+  "remaining": [
+    "Other module cleanups, runtime scope/receipt and exact CLI assembly remain OPEN",
+    "Full scope/maintenance lock permutations, nonempty paid-ledger anomaly combinations and real paid visual not closed",
+    "B3-B5/juniors/61/62/independent review/QA/business acceptance/merge not activated"
+  ]
+}

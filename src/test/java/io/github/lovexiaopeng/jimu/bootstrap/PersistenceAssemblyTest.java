@@ -34,8 +34,10 @@ class PersistenceAssemblyTest {
         java.util.List.of(
             "io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskVisibilityMapper",
             "io.github.lovexiaopeng.jimu.adapters.persistence.budget.mapper.ReservationReadMapper",
-            "io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageObjectReadMapper")) {
+            "io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageObjectReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.mcp.mapper.McpCursorMapper")) {
       assertTrue(configuration.hasStatement(namespace + ".selectMaps"));
+      assertTrue(configuration.hasStatement(namespace + ".delete"));
       assertFalse(configuration.hasStatement(namespace + ".selectById"));
     }
     assertSame(source, configuration.getEnvironment().getDataSource());

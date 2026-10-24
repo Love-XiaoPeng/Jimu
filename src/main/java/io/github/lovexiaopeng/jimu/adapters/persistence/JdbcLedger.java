@@ -59,6 +59,7 @@ public final class JdbcLedger
       artifactRetention;
   private final io.github.lovexiaopeng.jimu.kernel.artifact.service.MediaRetentionService
       mediaRetention;
+  private final io.github.lovexiaopeng.jimu.kernel.mcp.service.McpRetentionService mcpRetention;
   private final io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactAccessService
       artifactAccess;
   private final io.github.lovexiaopeng.jimu.kernel.task.service.TaskOperationsService
@@ -4027,55 +4028,7 @@ public final class JdbcLedger
   }
 
   private void cleanupMcp() {
-    for (var candidate :
-        rows(
-            "SELECT DISTINCT r.tenant_id,r.task_id FROM reservation r JOIN task t ON t.tenant_id=r.tenant_id AND t.id=r.task_id LEFT JOIN mcp_result m ON m.tenant_id=r.tenant_id AND m.task_id=r.task_id AND r.id=CONCAT('mcp:',m.root_invocation_id) WHERE r.category='MCP_RESULT' AND r.state IN ('RESERVED','SETTLED') AND t.state IN ('SUCCEEDED','FAILED','CANCELLED') AND (m.expires_at<CURRENT_TIMESTAMP(6) OR m.root_invocation_id IS NULL AND t.updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY) LIMIT 32")) {
-      tx(
-          () -> {
-            String tenant = s(candidate, "tenant_id"), taskId = s(candidate, "task_id");
-            bucket(tenant);
-            var task = locked(tenant, taskId);
-            if (!writersQuiescent(task)
-                || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(task, "state"))
-                || !rows(
-                        "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND state='HELD_UNKNOWN'",
-                        tenant,
-                        taskId)
-                    .isEmpty()) return null;
-            for (var reservation :
-                rows(
-                    "SELECT r.* FROM reservation r LEFT JOIN mcp_result m ON m.tenant_id=r.tenant_id AND m.task_id=r.task_id AND r.id=CONCAT('mcp:',m.root_invocation_id) WHERE r.tenant_id=? AND r.task_id=? AND r.category='MCP_RESULT' AND r.state IN ('RESERVED','SETTLED') AND (m.expires_at<CURRENT_TIMESTAMP(6) OR m.root_invocation_id IS NULL AND ?<CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY) FOR UPDATE",
-                    tenant,
-                    taskId,
-                    task.get("updated_at"))) {
-              String root = s(reservation, "id").substring(4);
-              db.update(
-                  "DELETE FROM mcp_cursor WHERE tenant_id=? AND task_id=? AND root_invocation_id=?",
-                  tenant,
-                  taskId,
-                  root);
-              db.update(
-                  "UPDATE mcp_result SET body=NULL,state='DELETED' WHERE tenant_id=? AND task_id=? AND root_invocation_id=?",
-                  tenant,
-                  taskId,
-                  root);
-              long held =
-                  reservation.get("actual") == null
-                      ? n(reservation, "amount")
-                      : n(reservation, "actual");
-              db.update(
-                  "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
-                  held,
-                  tenant);
-              db.update(
-                  "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=?",
-                  tenant,
-                  reservation.get("id"));
-              event(task, "mcp-cleanup:" + root, "mcp.result_deleted", null);
-            }
-            return null;
-          });
-    }
+    mcpRetention.cleanup();
   }
 
   void accountSession(Map<String, Object> task) {
@@ -4185,6 +4138,9 @@ public final class JdbcLedger
           }
         };
     taskOperationRecords = new MapperTaskOperations(this);
+    mcpRetention =
+        new io.github.lovexiaopeng.jimu.kernel.mcp.service.impl.McpRetentionServiceImpl(
+            new MapperMcpRetentions(this), coreWork);
     taskOperations =
         new io.github.lovexiaopeng.jimu.kernel.task.service.impl.TaskOperationsServiceImpl(
             taskOperationRecords, coreWork);
