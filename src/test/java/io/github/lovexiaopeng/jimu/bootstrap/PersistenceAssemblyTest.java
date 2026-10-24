@@ -67,6 +67,7 @@ class PersistenceAssemblyTest {
             "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryReservationReadMapper",
             "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryAttemptReadMapper",
             "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryNativeReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.NativeReadReceiptMapper",
             "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeSourceReadMapper")) {
       assertTrue(configuration.hasStatement(namespace + ".selectMaps"));
       assertTrue(configuration.hasStatement(namespace + ".delete"));
@@ -76,6 +77,9 @@ class PersistenceAssemblyTest {
     assertTrue(
         configuration.hasStatement(
             "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionContextMapper.account"));
+    assertTrue(
+        configuration.hasStatement(
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionReadMapper.commitRead"));
     var projection =
         com.baomidou.mybatisplus.core.metadata.TableInfoHelper.getTableInfo(
                 io.github.lovexiaopeng.jimu.adapters.persistence.directory.entity

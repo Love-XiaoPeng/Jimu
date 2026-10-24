@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionReadMapper">
+  <select id="lockBinding" resultType="map"><![CDATA[SELECT record_version,task_id,step_id,binding_digest,upper_seq,input_digest,target_seq,before_count,after_count,relation_version,outcome,failure_code,receipt_seq FROM invocation_session_read WHERE tenant_id=#{tenant} AND invocation_id=#{invocation} FOR UPDATE]]></select>
+  <update id="commitRead"><![CDATA[UPDATE invocation_session_read SET outcome=#{commit.outcome},failure_code=#{commit.code},window_start=#{commit.from},window_end=#{commit.to},target_digest=#{commit.targetDigest},output_digest=#{commit.outputDigest},output_bytes=#{commit.outputBytes},receipt_seq=#{commit.receipt},committed_attempt_id=#{attempt},committed_fence=#{fence},committed_at=CURRENT_TIMESTAMP(6),read_sources_snapshot=#{commit.sources},read_sources_digest=#{commit.sourcesDigest},read_sources_bytes=#{commit.sourcesBytes} WHERE tenant_id=#{tenant} AND invocation_id=#{invocation} AND outcome='PENDING']]></update>
+</mapper>

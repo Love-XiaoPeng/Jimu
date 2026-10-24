@@ -45,6 +45,7 @@ public final class JdbcLedger
         io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger {
   final io.github.lovexiaopeng.jimu.kernel.session.service.SessionContextService sessionContexts;
   final MapperSessionContexts contextRecords;
+  final io.github.lovexiaopeng.jimu.kernel.session.service.SessionReadService nativeReads;
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeQueryService
       scopeQueries;
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeRevocationService
@@ -633,183 +634,7 @@ public final class JdbcLedger
   public String readOrResult(Lease lease, String stepId, Call call, String version, String digest) {
     if (query == null)
       return queryView(lease, false).readOrResult(lease, stepId, call, version, digest);
-    AdmissionResult<String> result;
-    try {
-      result =
-          sessionTransaction(
-              () -> {
-                var task = fenced(lease, true);
-                if (!JdbcSessionRecords.task(task))
-                  throw new TaskFailure(403, "SESSION_READ_DISABLED");
-                var i = originalDirectorySlot(lease, stepId, call, version, digest);
-                var input = sessions.contracts.input(call.input());
-                if (!call.tool().equals("session_event_read"))
-                  throw new TaskFailure(409, "INVOCATION_MISMATCH");
-                var h = sessions.history(task, true);
-                var st =
-                    one(
-                        "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=?",
-                        lease.tenant(),
-                        stepId,
-                        lease.taskId());
-                sessions.validateStep(task, st);
-                var b =
-                    one(
-                        "SELECT * FROM invocation_session_read WHERE tenant_id=? AND invocation_id=? FOR UPDATE",
-                        lease.tenant(),
-                        s(i, "id"));
-                if (n(b, "record_version") != 1
-                    || !lease.taskId().equals(s(b, "task_id"))
-                    || !stepId.equals(s(b, "step_id"))
-                    || !s(h, "binding_digest").equals(s(b, "binding_digest"))
-                    || !s(h, "binding_digest").equals(s(st, "session_binding_digest"))
-                    || n(b, "upper_seq") != n(st, "session_upper_seq")
-                    || !Payloads.hash(call.input()).equals(s(b, "input_digest"))
-                    || n(b, "target_seq") != input.seq()
-                    || n(b, "before_count") != input.before()
-                    || n(b, "after_count") != input.after()) throw JdbcSessionRecords.corrupt();
-                if (JdbcSessionRecords.traceTask(task) && n(b, "relation_version") != 1)
-                  throw JdbcSessionRecords.corrupt();
-                if (!"PENDING".equals(s(i, "state"))) {
-                  if (!s(i, "state").equals(s(b, "outcome"))) throw JdbcSessionRecords.corrupt();
-                  var receipt =
-                      one(
-                          "SELECT * FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq=?",
-                          lease.tenant(),
-                          lease.taskId(),
-                          n(b, "receipt_seq"));
-                  sessions.verify(task, receipt);
-                  todoCommitFence(lease);
-                  sessions.account(task, false);
-                  if ("FAILED".equals(s(b, "outcome")))
-                    return new AdmissionResult<String>(
-                        null,
-                        new TaskFailure(
-                            sessionFailureStatus(s(b, "failure_code")), s(b, "failure_code")));
-                  if (!"SUCCEEDED".equals(s(b, "outcome"))) throw JdbcSessionRecords.corrupt();
-                  sessions.contract(task).output(s(i, "output_snapshot"));
-                  return new AdmissionResult<String>(s(i, "output_snapshot"), null);
-                }
-                if (!"PENDING".equals(s(b, "outcome"))) throw JdbcSessionRecords.corrupt();
-                var budget = bucket(lease.tenant());
-                if (n(task, "tools_used") >= n(task, "max_tools")
-                    || n(task, "tools_used") >= 20
-                    || n(budget, "tool_used") >= n(budget, "tool_limit"))
-                  throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
-                JdbcSessionRecords.Read read = null;
-                TaskFailure failure = null;
-                try {
-                  read =
-                      sessions.read(
-                          task, input, n(b, "upper_seq"), "pre-step", this::sessionRemainingMillis);
-                } catch (TaskFailure rejected) {
-                  if (!List.of(
-                          "SESSION_EVENT_NOT_FOUND",
-                          "SESSION_HISTORY_CORRUPT",
-                          "SESSION_HISTORY_VERSION_UNSUPPORTED",
-                          "SESSION_HISTORY_LIMIT")
-                      .contains(rejected.code())) throw rejected;
-                  failure = rejected;
-                }
-                String invocation = s(i, "id"),
-                    output = read == null ? null : read.output(),
-                    code = failure == null ? null : failure.code();
-                if (output != null)
-                  sessions.body(
-                      task,
-                      io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(
-                          output));
-                db.update(
-                    "UPDATE task SET tools_used=tools_used+1 WHERE tenant_id=? AND id=?",
-                    lease.tenant(),
-                    lease.taskId());
-                db.update(
-                    "UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=?",
-                    lease.tenant());
-                reserve(
-                    lease.tenant(),
-                    lease.taskId(),
-                    invocation,
-                    invocation,
-                    "TOOL",
-                    1,
-                    "SETTLED",
-                    "KNOWN");
-                db.update(
-                    "UPDATE reservation SET actual=1 WHERE tenant_id=? AND id=?",
-                    lease.tenant(),
-                    invocation);
-                String outcome = failure == null ? "SUCCEEDED" : "FAILED";
-                db.update(
-                    "UPDATE invocation SET state=?,output_snapshot=?,output_digest=? WHERE tenant_id=? AND id=? AND state='PENDING'",
-                    outcome,
-                    output,
-                    output == null ? null : Payloads.hash(output),
-                    lease.tenant(),
-                    invocation);
-                long receipt = n(sessions.history(task, true), "next_seq");
-                db.update(
-                    "UPDATE invocation_session_read SET outcome=?,failure_code=?,window_start=?,window_end=?,target_digest=?,output_digest=?,output_bytes=?,receipt_seq=?,committed_attempt_id=?,committed_fence=?,committed_at=CURRENT_TIMESTAMP(6),read_sources_snapshot=?,read_sources_digest=?,read_sources_bytes=? WHERE tenant_id=? AND invocation_id=? AND outcome='PENDING'",
-                    outcome,
-                    code,
-                    read == null ? null : read.from(),
-                    read == null ? null : read.to(),
-                    read == null ? null : read.targetDigest(),
-                    output == null ? null : Payloads.hash(output),
-                    output == null
-                        ? 0
-                        : io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts
-                            .bytes(output),
-                    receipt,
-                    lease.attemptId(),
-                    lease.fence(),
-                    JdbcSessionRecords.traceTask(task)
-                        ? (read == null ? "[]" : read.sources())
-                        : null,
-                    JdbcSessionRecords.traceTask(task)
-                        ? Payloads.hash(read == null ? "[]" : read.sources())
-                        : null,
-                    JdbcSessionRecords.traceTask(task)
-                        ? io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts
-                            .bytes(read == null ? "[]" : read.sources())
-                        : null,
-                    lease.tenant(),
-                    invocation);
-                if (JdbcSessionRecords.traceTask(task))
-                  sessions.body(
-                      task,
-                      io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(
-                          read == null ? "[]" : read.sources()));
-                event(task, "intent:" + invocation, "tool.dispatched", null);
-                event(
-                    task,
-                    "result:" + invocation,
-                    failure == null ? "tool.completed" : "tool.failed",
-                    code);
-                var committed =
-                    one(
-                        "SELECT * FROM invocation_session_read WHERE tenant_id=? AND invocation_id=?",
-                        lease.tenant(),
-                        invocation);
-                sessionAppend(
-                    task,
-                    "read:" + invocation,
-                    "session.read",
-                    sessions.source("invocation", stepId, invocation),
-                    sessions.receipt(committed),
-                    false,
-                    s(i, "input_digest"),
-                    lease);
-                todoCommitFence(lease);
-                sessions.account(task, false);
-                return new AdmissionResult<String>(output, failure);
-              });
-    } catch (org.springframework.dao.DataAccessException
-        | org.springframework.transaction.TransactionException unconfirmed) {
-      throw new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionCommitUnconfirmed();
-    }
-    if (result.rejection() != null) throw result.rejection();
-    return result.value();
+    return nativeReads.readOrResult(lease, stepId, call, version, digest);
   }
 
   @Override
@@ -3297,6 +3122,9 @@ public final class JdbcLedger
     scopeRevocations =
         new io.github.lovexiaopeng.jimu.kernel.session.service.impl
             .SessionScopeRevocationServiceImpl(new MapperSessionScopeRevocations(this));
+    nativeReads =
+        new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionReadServiceImpl(
+            new MapperSessionReads(this));
     sessions.scopes = sessionScopes;
     sessionScopes.invalidated = this::invalidateScopeAfterTransaction;
     images = new JdbcImageRecords(db);
