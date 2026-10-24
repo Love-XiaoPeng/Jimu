@@ -1,0 +1,34 @@
+{
+  "baseline": "45374dedf74a7c8399d395c54bb9f5b3e1d75eee",
+  "entry": "v3 event append readSources and native event verifyReadRelation -> SessionReadRelationProofServiceImpl -> typed Sources/Proof -> MapperSessionReadRelationProofs -> three actual MP selectMaps projections in same DS/UoW/query/result-meter",
+  "removed": {
+    "staticJdbcCalls": 3,
+    "sql": [
+      "SELECT * FROM invocation_session_read WHERE tenant_id=? AND task_id=? AND invocation_id=?",
+      "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=? AND (NOT ? OR (OCTET_LENGTH(request_snapshot)<=131072 AND COALESCE(OCTET_LENGTH(response_snapshot),0)<=16384))",
+      "SELECT event_digest FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq=? AND content_state='PRESENT'"
+    ],
+    "dynamicJdbc": 0,
+    "sharedStillUsedNotCounted": true
+  },
+  "inventory": {
+    "static": 204,
+    "dynamicScannerItems": 23,
+    "literalBinds": 704,
+    "tables": "35 tables + readonly receipt all OPEN"
+  },
+  "preserved": [
+    "source snapshot relation version/state/NULL/bytes/digest checks; array up to nine; object/two fields/integral strictly increasing seq0..127 and lowercase SHA256; original JSON nodes retained for event append",
+    "source seqs before step read; original validateStep/history then input/binding, response slot and plugin pin proofs; original NULL unboxing/exception order",
+    "FAILED retains empty sources/NULL output/zero bytes; SUCCEEDED retains shape/window/cut/count and sequential immediate endpoint digest/target hash proof without recursion",
+    "tenant and original task/invocation/step/seq predicates; original prior-snapshot bounds and PRESENT endpoint predicate; same query/meter and transaction/deadline boundary",
+    "no write, dual write, nested transaction, retry, deadline renewal, provider/effect replay, schema or codec change; schema22/V1-V22/frozen inputs unchanged"
+  ],
+  "measurement": "Only affected native v3 append/proof path; event bytes and structural window proof measured separately. Native noncumulative query meters do not prove universal SQL/byte/roundtrip equality.",
+  "remaining": [
+    "scopeReadRefs shared proof Service/typed port/MP and SQL deletion next, then shared validateStep/history and other runtime/admission/module/maintenance",
+    "core UoW final beforeCommit gap, cold-lock and full scope/maintenance/file lock arrangements OPEN",
+    "persisted failed-read, large/sparse endpoint, full scope qualification, exact CLI, complete native workers, actual v3 trace cleanup, nonempty paid ledger anomalies and real paid vision OPEN",
+    "B2/35 tables+readonly receipt OPEN; B3-B5/juniors/61/62/T48/new features not activated"
+  ]
+}

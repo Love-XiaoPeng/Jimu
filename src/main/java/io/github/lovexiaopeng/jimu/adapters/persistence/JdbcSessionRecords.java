@@ -801,126 +801,26 @@ final class JdbcSessionRecords {
     }
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionReadRelationProofService
+      readRelationProofs =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionReadRelationProofServiceImpl();
+
   List<JsonNode> readSources(Map<String, Object> task, String invocation) {
-    var binding =
-        one(
-            "SELECT * FROM invocation_session_read WHERE tenant_id=? AND task_id=? AND invocation_id=?",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            invocation);
-    String raw = s(binding, "read_sources_snapshot");
-    if (n(binding, "relation_version") != 1
-        || !"PRESENT".equals(s(binding, "content_state"))
-        || raw == null
-        || SessionContracts.bytes(raw) > 1024
-        || SessionContracts.bytes(raw) != n(binding, "read_sources_bytes")
-        || !Payloads.hash(raw).equals(s(binding, "read_sources_digest"))) throw corrupt();
-    var sources = contracts.json(raw, 1024);
-    if (!sources.isArray() || sources.size() > 9) throw corrupt();
-    var result = new ArrayList<JsonNode>();
-    long previous = -1;
-    for (var source : sources) {
-      if (!source.isObject()
-          || source.size() != 2
-          || !source.path("seq").isIntegralNumber()
-          || source.path("seq").asLong() <= previous
-          || source.path("seq").asLong() > 127
-          || !source.path("event_sha256").asText().matches("[0-9a-f]{64}")) throw corrupt();
-      previous = source.path("seq").asLong();
-      result.add(source);
-    }
-    return List.copyOf(result);
+    var source = new MapperSessionReadRelationProofs(this, task, invocation);
+    readRelationProofs.sources(source);
+    return source.sourceNodes();
   }
 
-  // Flat proof: check the original slot and immediate endpoints, never verify nested read outputs.
+  // Flat proof: original slot and immediate endpoint digests; never replay nested reads.
   void verifyReadRelation(
       Map<String, Object> task,
-      Map<String, Object> r,
+      Map<String, Object> row,
       JsonNode event,
-      Map<String, Object> i,
-      Map<String, Object> b) {
-    var sources = readSources(task, s(i, "id"));
-    if (!Payloads.json(sources.stream().map(v -> v.path("seq").asLong()).toList())
-        .equals(Payloads.json(event.path("source_event_seqs")))) throw corrupt();
-    var st =
-        one(
-            "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=? AND (NOT ? OR (OCTET_LENGTH(request_snapshot)<=131072 AND COALESCE(OCTET_LENGTH(response_snapshot),0)<=16384))",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            s(i, "step_id"),
-            searchBudget != null && searchBudget.prior);
-    validateStep(task, st);
-    if (!s(history(task, true), "binding_digest").equals(s(b, "binding_digest"))
-        || n(st, "session_upper_seq") != n(b, "upper_seq")
-        || !Payloads.hash(s(i, "input_snapshot")).equals(s(i, "input_digest"))
-        || !s(i, "input_digest").equals(s(b, "input_digest"))
-        || !"session_event_read".equals(s(i, "tool"))) throw corrupt();
-    var input = contract(task).input(s(i, "input_snapshot"));
-    if (input.seq() != n(b, "target_seq")
-        || input.before() != n(b, "before_count")
-        || input.after() != n(b, "after_count")
-        || input.sessionId() != null && !input.sessionId().equals(s(task, "id"))) throw corrupt();
-    if (!Payloads.hash(s(st, "response_snapshot")).equals(s(st, "response_digest")))
-      throw corrupt();
-    var response = Payloads.read(s(st, "response_snapshot"), DurableAgent.Response.class);
-    boolean matched = false;
-    for (int index = 0; index < response.calls().size(); index++) {
-      var call = response.calls().get(index);
-      if ((index + ":" + call.id()).equals(s(i, "slot"))
-          && call.id().equals(s(i, "provider_id"))
-          && call.name().equals(s(i, "tool"))
-          && call.arguments().equals(s(i, "input_snapshot"))) matched = true;
-    }
-    var pins =
-        Payloads.read(
-            s(task, "tools_snapshot"),
-            io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ToolSnapshot.class);
-    var pin = pins.pins().get("session_event_read");
-    if (!matched
-        || response.version() != 2
-        || pin == null
-        || !pin.version().equals(s(i, "plugin_version"))
-        || !pin.digest().equals(s(i, "plugin_digest"))
-        || pin.installationEpoch() != n(i, "installation_epoch")) throw corrupt();
-    if ("FAILED".equals(s(b, "outcome"))) {
-      if (!sources.isEmpty() || i.get("output_snapshot") != null || n(b, "output_bytes") != 0)
-        throw corrupt();
-      return;
-    }
-    if (!"SUCCEEDED".equals(s(b, "outcome")) || sources.isEmpty()) throw corrupt();
-    String raw = s(i, "output_snapshot");
-    contract(task).output(raw);
-    var output = contracts.json(raw, 32768);
-    long from = Math.max(0, input.seq() - input.before()),
-        to = Math.min(n(b, "upper_seq"), input.seq() + input.after());
-    if (sources.size() != to - from + 1
-        || n(b, "window_start") != from
-        || n(b, "window_end") != to
-        || output.path("upper_seq").asLong() != n(b, "upper_seq")
-        || !"pre-step".equals(output.path("boundary").asText())
-        || !s(task, "id").equals(output.path("session_id").asText())
-        || output.path("target").path("seq").asLong() != input.seq()
-        || output.path("window").path("from_seq").asLong() != from
-        || output.path("window").path("to_seq").asLong() != to
-        || output.path("before").size() != input.seq() - from
-        || output.path("after").size() != to - input.seq()) throw corrupt();
-    int index = 0;
-    for (var source : sources) {
-      long seq = source.path("seq").asLong();
-      if (seq != from + index++ || seq > n(b, "upper_seq") || seq >= n(r, "seq")) throw corrupt();
-      var endpoint =
-          one(
-              "SELECT event_digest FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq=? AND content_state='PRESENT'",
-              s(task, "tenant_id"),
-              s(task, "id"),
-              seq);
-      if (!s(endpoint, "event_digest").equals(source.path("event_sha256").asText()))
-        throw corrupt();
-      if (seq == input.seq()
-          && (!s(endpoint, "event_digest").equals(s(b, "target_digest"))
-              || !Payloads.hash(Payloads.json(output.path("target")))
-                  .equals(s(b, "target_digest")))) throw corrupt();
-    }
+      Map<String, Object> invocation,
+      Map<String, Object> binding) {
+    readRelationProofs.verify(
+        new MapperSessionReadRelationProofs(this, task, row, event, invocation, binding));
   }
 
   record Trace(
