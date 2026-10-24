@@ -57,6 +57,8 @@ public final class JdbcLedger
       taskAdmissionService;
   private final io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactRetentionService
       artifactRetention;
+  private final io.github.lovexiaopeng.jimu.kernel.artifact.service.MediaRetentionService
+      mediaRetention;
   private final io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactAccessService
       artifactAccess;
   private final io.github.lovexiaopeng.jimu.kernel.task.service.TaskOperationsService
@@ -4189,6 +4191,17 @@ public final class JdbcLedger
     artifactRetention =
         new io.github.lovexiaopeng.jimu.kernel.artifact.service.impl.ArtifactRetentionServiceImpl(
             new MapperArtifactRetentions(this), coreWork, java.time.Clock.systemUTC());
+    mediaRetention =
+        new io.github.lovexiaopeng.jimu.kernel.artifact.service.impl.MediaRetentionServiceImpl(
+            new MapperMediaRetentions(this),
+            coreWork,
+            Payloads::hash,
+            (snapshot, field) -> {
+              var retained =
+                  Payloads.read(snapshot, com.fasterxml.jackson.databind.node.ObjectNode.class);
+              retained.remove(field);
+              return Payloads.json(retained);
+            });
     artifactAccess =
         new io.github.lovexiaopeng.jimu.kernel.artifact.service.impl.ArtifactAccessServiceImpl(
             new MapperArtifactDownloads(this), coreWork, java.time.Clock.systemUTC());
@@ -6568,108 +6581,6 @@ public final class JdbcLedger
   }
 
   private void cleanupImages() {
-    if (imageStore == null) return;
-    var candidates =
-        rows(
-            "SELECT tenant_id,id FROM task WHERE record_version=3 AND media_cleanup_state='RETAINED' AND state IN ('SUCCEEDED','FAILED','CANCELLED') AND updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY LIMIT 32");
-    for (var candidate : candidates) {
-      String tenant = s(candidate, "tenant_id"), taskId = s(candidate, "id");
-      boolean ready =
-          tx(
-              () -> {
-                bucket(tenant);
-                var task = locked(tenant, taskId);
-                if (!"RETAINED".equals(s(task, "media_cleanup_state"))
-                    || !writersQuiescent(task)
-                    || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(task, "state")))
-                  return false;
-                if (!rows(
-                        "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND state='HELD_UNKNOWN'",
-                        tenant,
-                        taskId)
-                    .isEmpty()) return false;
-                db.update(
-                    "UPDATE task_image_object SET cleanup_state='DELETING' WHERE tenant_id=? AND task_id=? AND cleanup_state='RETAINED'",
-                    tenant,
-                    taskId);
-                return true;
-              });
-      if (!ready) continue;
-      var objects =
-          rows(
-              "SELECT image_id FROM task_image_object WHERE tenant_id=? AND task_id=? AND cleanup_state='DELETING'",
-              tenant,
-              taskId);
-      // Exact host-issued object identities only; no scan of unknown active uploads.
-      for (var object : objects) imageStore.removeUpload(tenant, s(object, "image_id"));
-      tx(
-          () -> {
-            bucket(tenant);
-            var task = locked(tenant, taskId);
-            if ("DELETED".equals(s(task, "media_cleanup_state"))) return null;
-            if (!writersQuiescent(task)
-                || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(task, "state"))
-                || !rows(
-                        "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND state='HELD_UNKNOWN'",
-                        tenant,
-                        taskId)
-                    .isEmpty()) throw new TaskFailure(409, "IMAGE_UNAVAILABLE");
-            for (var checkpoint :
-                rows(
-                    "SELECT id,request_snapshot,request_digest FROM step WHERE tenant_id=? AND task_id=? AND request_cleanup_state='RETAINED' FOR UPDATE",
-                    tenant,
-                    taskId)) {
-              String original = s(checkpoint, "request_snapshot");
-              if (!Payloads.hash(original).equals(s(checkpoint, "request_digest")))
-                throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-              var retained =
-                  Payloads.read(original, com.fasterxml.jackson.databind.node.ObjectNode.class);
-              // Only terminal, proven quiescent checkpoints are no longer replayable.
-              // Keep the original request/body digests and all scoped metadata as audit facts.
-              retained.remove("requestBody");
-              String redacted = Payloads.json(retained);
-              db.update(
-                  "UPDATE step SET request_snapshot=?,request_cleanup_state='MEDIA_PURGED',retained_request_digest=? WHERE tenant_id=? AND id=?",
-                  redacted,
-                  Payloads.hash(redacted),
-                  tenant,
-                  s(checkpoint, "id"));
-            }
-            var held =
-                rows(
-                    "SELECT * FROM reservation WHERE tenant_id=? AND task_id=? AND category IN ('MEDIA_INPUT','MEDIA_STORAGE','MEDIA_CHECKPOINT') AND state IN ('RESERVED','SETTLED') FOR UPDATE",
-                    tenant,
-                    taskId);
-            for (var reservation : held) {
-              long bytes =
-                  reservation.get("actual") == null
-                      ? n(reservation, "amount")
-                      : n(reservation, "actual");
-              db.update(
-                  "MEDIA_CHECKPOINT".equals(s(reservation, "category"))
-                      ? "UPDATE tenant_budget SET media_checkpoint_held=media_checkpoint_held-? WHERE tenant_id=?"
-                      : "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
-                  bytes,
-                  tenant);
-              db.update(
-                  "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=?",
-                  tenant,
-                  s(reservation, "id"));
-            }
-            db.update(
-                "UPDATE task_image_input SET raw_base64=NULL WHERE tenant_id=? AND task_id=?",
-                tenant,
-                taskId);
-            db.update(
-                "UPDATE task_image_object SET cleanup_state='DELETED' WHERE tenant_id=? AND task_id=? AND cleanup_state='DELETING'",
-                tenant,
-                taskId);
-            db.update(
-                "UPDATE task SET media_cleanup_state='DELETED' WHERE tenant_id=? AND id=?",
-                tenant,
-                taskId);
-            return null;
-          });
-    }
+    mediaRetention.cleanup(imageStore);
   }
 }

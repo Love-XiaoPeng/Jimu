@@ -33,7 +33,8 @@ class PersistenceAssemblyTest {
     for (String namespace :
         java.util.List.of(
             "io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskVisibilityMapper",
-            "io.github.lovexiaopeng.jimu.adapters.persistence.budget.mapper.ReservationReadMapper")) {
+            "io.github.lovexiaopeng.jimu.adapters.persistence.budget.mapper.ReservationReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageObjectReadMapper")) {
       assertTrue(configuration.hasStatement(namespace + ".selectMaps"));
       assertFalse(configuration.hasStatement(namespace + ".selectById"));
     }
