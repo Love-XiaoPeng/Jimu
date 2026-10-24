@@ -1,0 +1,44 @@
+{
+  "baseline": "ef8adc6a277b4bcc561d668b117ad5a763fa0093",
+  "entry": "All existing JdbcSessionRecords.history/validateStep callers -> SessionHistoryProofServiceImpl -> typed SessionHistoryProofs -> MapperSessionHistoryProofs -> original SessionHistoryRetentionMapper.history parameterized FOR UPDATE",
+  "removed": {
+    "staticJdbcCalls": 0,
+    "dynamicJdbc": 0,
+    "reason": "history already used the Mapper; validateStep had no SQL. Existing migration is not counted twice.",
+    "sharedStillUsedNotCounted": true
+  },
+  "inventory": {
+    "static": 203,
+    "dynamicScannerItems": 23,
+    "literalBinds": 701,
+    "tables": "35 tables + readonly receipt all OPEN"
+  },
+  "unchangedMapper": {
+    "file": "src/main/resources/mapper/session/SessionHistoryRetentionMapper.xml",
+    "sha256": "0a0c37d42092a6674eadddda673ebaba14521808563404a9e7a13c19950a901e",
+    "byteEqual": true
+  },
+  "actualCallers": [
+    "JdbcLedger owner/task/query/admission/cleanup",
+    "JdbcSessionScopes qualification",
+    "MapperModelWorkflows",
+    "MapperSessionContexts/Reads/Searches/Traces/ScopeQueries/ScopeRecords/ScopeMaintenanceRecords",
+    "MapperSessionReadRelationProofs/ScopeReadProofs",
+    "MapperTaskOperations",
+    "JdbcSessionRecords append/read/search/trace/metadata/history"
+  ],
+  "preserved": [
+    "tenant/task full keys, original FOR UPDATE position, same DS/UoW/query envelope, database time retained test",
+    "unavailable then version/binding then readable state/expiry refusal order",
+    "step version/task/NULL upper, request digest then lazy Checkpoint decode/version/messages",
+    "last content/context schema before role/task/context digest/upper and final history binding; original NULL/decode exceptions",
+    "frozen receipt/event bytes, source order, current permissions/whole-scope/fence, atomic accounting/events, independent invalidation afterCompletion and UNKNOWN recovery",
+    "no new SQL/write/retry/transaction, no deadline renewal, schema22/V1-V22/codec changes"
+  ],
+  "remaining": [
+    "runtime receipt/proof and admission/module/maintenance chains",
+    "core UoW final beforeCommit gap, cold/full scope/maintenance/file locks OPEN",
+    "persisted failed read, large/sparse endpoints and existing coverage limits OPEN",
+    "B2/35 tables+readonly receipt OPEN; B3-B5/juniors/61/62/T48/new features inactive"
+  ]
+}

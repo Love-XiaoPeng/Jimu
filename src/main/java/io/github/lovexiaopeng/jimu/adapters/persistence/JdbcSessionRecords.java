@@ -217,18 +217,15 @@ final class JdbcSessionRecords {
     return new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionHistoryProofService
+      historyProofs =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionHistoryProofServiceImpl();
+
   Map<String, Object> history(Map<String, Object> task, boolean readable) {
-    var found = mapperRows("SessionHistoryRetentionMapper.history", task);
-    if (found.isEmpty()) throw new TaskFailure(409, "SESSION_HISTORY_UNAVAILABLE");
-    var h = found.getFirst();
-    if (n(h, "record_version") != 1
-        || n(h, "history_version") != version(task)
-        || !contract(task).binding().equals(s(h, "binding_snapshot"))
-        || !Payloads.hash(contract(task).binding()).equals(s(h, "binding_digest")))
-      throw new TaskFailure(409, "SESSION_HISTORY_VERSION_UNSUPPORTED");
-    if (readable && (!"PRESENT".equals(s(h, "content_state")) || n(h, "retained") != 1))
-      throw new TaskFailure(410, "SESSION_HISTORY_EXPIRED");
-    return h;
+    var proof = new MapperSessionHistoryProofs(this, task, null);
+    historyProofs.history(proof, readable);
+    return proof.historyRow();
   }
 
   void create(Map<String, Object> task) {
@@ -266,7 +263,7 @@ final class JdbcSessionRecords {
     return mapperSession;
   }
 
-  private List<Map<String, Object>> mapperRows(String operation, Map<String, Object> task) {
+  List<Map<String, Object>> mapperRows(String operation, Map<String, Object> task) {
     var args = new java.util.HashMap<String, Object>();
     args.put("query", query);
     args.put("tenant", s(task, "tenant_id"));
@@ -578,23 +575,7 @@ final class JdbcSessionRecords {
   }
 
   void validateStep(Map<String, Object> task, Map<String, Object> st) {
-    if (n(st, "record_version") != 1
-        || !s(task, "id").equals(s(st, "task_id"))
-        || st.get("session_upper_seq") == null)
-      throw new TaskFailure(409, "SESSION_HISTORY_VERSION_UNSUPPORTED");
-    String request = s(st, "request_snapshot");
-    if (!Payloads.hash(request).equals(s(st, "request_digest"))) throw corrupt();
-    var wire = Payloads.read(request, DurableAgent.Checkpoint.class);
-    if (wire.version() != 2 || wire.messages().isEmpty()) throw corrupt();
-    String context = wire.messages().getLast().content();
-    contract(task).context(context);
-    var value = contracts.json(context, 4096);
-    if (!wire.messages().getLast().role().equals("user")
-        || !s(task, "id").equals(value.path("session_id").asText())
-        || !Payloads.hash(context).equals(s(st, "session_context_digest"))
-        || n(st, "session_upper_seq") != value.path("upper_seq").asLong()
-        || !s(history(task, true), "binding_digest").equals(s(st, "session_binding_digest")))
-      throw corrupt();
+    historyProofs.validateStep(new MapperSessionHistoryProofs(this, task, st));
   }
 
   void response(
