@@ -1,0 +1,43 @@
+{
+  "baseline": "6c095ca32d9dc102a236ee6e1e4780cab8e7e46d",
+  "inventory": {
+    "static": 203,
+    "dynamicScannerItems": 23,
+    "literalBinds": 701
+  },
+  "removedStaticJdbc": 0,
+  "removedDynamicSql": 0,
+  "reason": "validateInput contains no SQL. Existing real MP/parameterized eligibility chain retained; no new query/transaction, no repeated deletion credit.",
+  "entries": [
+    "MapperModelWorkflows.validatePayload -> original admission -> response -> original metadata/slot/function/providerId checks -> shared validateInput -> SessionInputServiceImpl -> StoredSessionInputEligibility original codecs",
+    "same MapperModelWorkflows caller after cancel/deadline/budgets -> same shared Service again (original repeated validation count retained)",
+    "scope require only after search parse, or cross-session read -> original JdbcSessionScopes.require -> SessionScopeEligibilityServiceImpl -> MapperSessionScopeRecords real MP/parameterized Mapper using original DS/UoW/tenant/full keys/query/deadline"
+  ],
+  "unchanged": [
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperModelWorkflows.java",
+      "sha256": "02de9666c7d2f87501adacf545e6cd91fe4174e562b7928963376b010825844b"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sha256": "ee5dd85dda1a799c4ebf049c4843358ba00fb8e92b418e2ea0d2361574bcccf8"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeRecords.java",
+      "sha256": "515414eb23d035ce9e05bea7556905c9f572a475a6aac56acd32247f8bf58ca5"
+    }
+  ],
+  "preserved": [
+    "scope first, original tool/version/target refusals and400/404/scope unavailable",
+    "search parse then one require before any membership, even empty targets; source order/short circuit",
+    "read default/self skips require, cross-session reads exactly once; scope/native codecs and NULL/unchecked boundaries retained",
+    "response metadata/slot/function/providerId before input, then projection/frozen event check; model caller repeated check unchanged",
+    "permission/whole-scope/fence, lock order/query/deadline, atomic accounting/event, special commit/rollback, independent invalidation afterCompletion, UNKNOWN no replay",
+    "schema22/V1-V22/frozen receipt/input/resource bytes unchanged"
+  ],
+  "remaining": [
+    "projectedCalls next concrete slice; runtime/admission/module/maintenance remain queued",
+    "B2 and35 tables+readonly receipt all OPEN; core UoW final beforeCommit, cold/full locks, persisted FAILED read and existing coverage OPEN",
+    "same draft PR/issue in_progress; no CI, deployment, real keys/billing/shared services, daemon/proxy/FRP/runtime reset"
+  ]
+}

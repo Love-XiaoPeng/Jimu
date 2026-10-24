@@ -934,37 +934,13 @@ final class JdbcSessionRecords {
     return values.result();
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionInputService inputs =
+      new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionInputServiceImpl();
+
   void validateInput(
       Map<String, Object> task,
       io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call call) {
-    if (JdbcSessionScopes.task(task)) {
-      if (call.tool().equals("session_search")) {
-        var input = scopes.contracts.input(call.input());
-        var scope = scopes.require(task);
-        for (String id : input.sessionIds())
-          if (scope.sources().stream().noneMatch(t -> id.equals(s(t, "id"))))
-            throw JdbcSessionScopes.unavailable();
-      } else if (call.tool().equals("session_event_read")) {
-        var input = v4.input(call.input());
-        if (input.sessionId() != null
-            && !input.sessionId().equals(s(task, "id"))
-            && scopes.require(task).sources().stream()
-                .noneMatch(t -> input.sessionId().equals(s(t, "id"))))
-          throw JdbcSessionScopes.unavailable();
-      } else throw new TaskFailure(400, "TOOL_INPUT_INVALID");
-    } else if (call.tool().equals("session_event_trace") && traceTask(task)) {
-      var input = trace.input(call.input());
-      if (input.sessionId() != null && !input.sessionId().equals(s(task, "id")))
-        throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
-    } else if (call.tool().equals("session_event_search") && searchTask(task)) {
-      var input = searchContract(task).input(call.input());
-      if (searchTask(task) && input.sessionId() != null && !input.sessionId().equals(s(task, "id")))
-        throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
-    } else if (call.tool().equals(SessionContracts.NAME)) {
-      var input = contracts.input(call.input());
-      if (searchTask(task) && input.sessionId() != null && !input.sessionId().equals(s(task, "id")))
-        throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
-    } else throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+    inputs.validate(new StoredSessionInputEligibility(this, task, call));
   }
 
   record PublicCalls(List<DurableAgent.ToolCall> calls, boolean redacted) {}
