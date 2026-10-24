@@ -4253,7 +4253,11 @@ public final class JdbcLedger
             records.execution(), coreWork, leaseWork, Payloads::hash);
     modelService =
         new io.github.lovexiaopeng.jimu.kernel.model.service.impl.ModelDispatchServiceImpl(
-            records.model(), coreWork, new JdbcModelWorkflows(this, db), leaseWork, Payloads::hash);
+            new MapperModelDispatchRecords(this),
+            coreWork,
+            new MapperModelWorkflows(this),
+            leaseWork,
+            Payloads::hash);
     invocationService =
         new io.github.lovexiaopeng.jimu.kernel.invocation.service.impl.InvocationServiceImpl(
             records.invocation(),
@@ -4523,10 +4527,7 @@ public final class JdbcLedger
                 return new AdmissionResult<T>(directoryTransaction(lease, work), null);
               } catch (TaskFailure rejection) {
                 if (!rejection.code().equals("EVALUATION_MATERIAL_MISMATCH")) throw rejection;
-                db.update(
-                    "UPDATE evaluation_budget b JOIN task t ON t.tenant_id=b.tenant_id AND t.evaluation_run_id=b.id SET b.state='STOPPED' WHERE t.tenant_id=? AND t.id=?",
-                    lease.tenant(),
-                    lease.taskId());
+                mappers.evaluations().stopTaskRun(query, lease.tenant(), lease.taskId());
                 return new AdmissionResult<T>(null, rejection);
               }
             });
@@ -6231,10 +6232,9 @@ public final class JdbcLedger
   // Fixture failures may retry; a paid failed dispatch must retain its original rejection.
   String modelRejection(Map<String, Object> task) {
     var rejected =
-        rows(
-            "SELECT code FROM model_dispatch WHERE tenant_id=? AND task_id=? AND (state IN ('BOUND_EXCEEDED','USAGE_UNKNOWN') OR (state='FAILED' AND currency IS NOT NULL)) ORDER BY started_at,id LIMIT 1",
-            s(task, "tenant_id"),
-            s(task, "id"));
+        mappers
+            .dispatches()
+            .selectTaskRejection(queryContext(), s(task, "tenant_id"), s(task, "id"));
     return rejected.isEmpty() ? null : s(rejected.getFirst(), "code");
   }
 
@@ -6319,8 +6319,10 @@ public final class JdbcLedger
         || n(evaluation, "max_requests") > canonical.maxRequests()
         || n(evaluation, "max_cost_micros") > canonical.maxCostMicros())
       throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
-    if (!rows(
-            "SELECT id FROM task WHERE tenant_id=? AND evaluation_run_id=? AND evaluation_snapshot IS NOT NULL AND (JSON_UNQUOTE(JSON_EXTRACT(evaluation_snapshot,'$.planDigest'))<>? OR (evaluation_phase='B' AND JSON_UNQUOTE(JSON_EXTRACT(evaluation_snapshot,'$.qualificationDigest'))<>COALESCE(?,''))) LIMIT 1",
+    if (!mappers
+        .tasks()
+        .selectConflictingEvaluationBinding(
+            query,
             s(evaluation, "tenant_id"),
             s(evaluation, "id"),
             s(evaluation, "plan_digest"),
@@ -6339,10 +6341,9 @@ public final class JdbcLedger
     // Same validation as profile admission, including the strictly local test seam.
     models.checkEvaluationModel(plan, model);
     boolean initial =
-        rows(
-                "SELECT id FROM task WHERE tenant_id=? AND evaluation_run_id=? AND evaluation_snapshot IS NOT NULL LIMIT 1",
-                s(evaluation, "tenant_id"),
-                s(evaluation, "id"))
+        mappers
+            .tasks()
+            .selectExistingEvaluationTask(query, s(evaluation, "tenant_id"), s(evaluation, "id"))
             .isEmpty();
     if (initial && "OPEN".equals(s(evaluation, "state"))) {
       var tenant = bucket(s(evaluation, "tenant_id"));
@@ -6359,10 +6360,9 @@ public final class JdbcLedger
     String qualification = null;
     if (selection.phase().equals("B")) {
       if (!"OPEN".equals(s(evaluation, "state"))
-          || !rows(
-                  "SELECT r.id FROM reservation r JOIN task t ON t.tenant_id=r.tenant_id AND t.id=r.task_id WHERE t.tenant_id=? AND t.evaluation_run_id=? AND r.state='HELD_UNKNOWN' LIMIT 1",
-                  s(evaluation, "tenant_id"),
-                  s(evaluation, "id"))
+          || !mappers
+              .reservations()
+              .selectEvaluationUnknown(query, s(evaluation, "tenant_id"), s(evaluation, "id"))
               .isEmpty()) throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
       var q =
           EvaluationPlans.qualify(
@@ -6370,10 +6370,9 @@ public final class JdbcLedger
       if (!q.originalRunId().equals(s(evaluation, "id")) || !q.finalists().contains(model.model()))
         throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
       var screening =
-          rows(
-              "SELECT evaluation_model,evaluation_sample,state FROM task WHERE tenant_id=? AND evaluation_run_id=? AND evaluation_phase='A'",
-              s(evaluation, "tenant_id"),
-              s(evaluation, "id"));
+          mappers
+              .tasks()
+              .selectEvaluationScreening(query, s(evaluation, "tenant_id"), s(evaluation, "id"));
       for (String candidate : plan.candidates().keySet())
         for (String sample : List.of("W1", "W2")) {
           var match =
@@ -6389,10 +6388,9 @@ public final class JdbcLedger
                   && !"SUCCEEDED".equals(s(match.getFirst(), "state")))
             throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
         }
-      if (rows(
-              "SELECT id FROM task WHERE tenant_id=? AND evaluation_run_id=? AND evaluation_phase='B' LIMIT 1",
-              s(evaluation, "tenant_id"),
-              s(evaluation, "id"))
+      if (mappers
+          .tasks()
+          .selectPhaseBEvaluationTask(query, s(evaluation, "tenant_id"), s(evaluation, "id"))
           .isEmpty()) {
         long rounds = 12L * q.finalists().size();
         long remainingCost =
@@ -6442,54 +6440,6 @@ public final class JdbcLedger
       throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
   }
 
-  void admitPlanDispatch(
-      Map<String, Object> task, Map<String, Object> evaluation, ModelSnapshot model, long cost) {
-    var plan = plan(evaluation);
-    String phase = s(task, "evaluation_phase"), sample = s(task, "evaluation_sample");
-    var usage =
-        rows(
-            "SELECT t.evaluation_phase,t.evaluation_sample,t.evaluation_model,COUNT(*) AS calls,COALESCE(SUM(COALESCE(d.actual_cost,d.reserved_cost)),0) AS cost FROM model_dispatch d JOIN task t ON t.tenant_id=d.tenant_id AND t.id=d.task_id WHERE t.tenant_id=? AND t.evaluation_run_id=? GROUP BY t.evaluation_phase,t.evaluation_sample,t.evaluation_model",
-            s(task, "tenant_id"),
-            s(evaluation, "id"));
-    long phaseCalls = 0,
-        phaseCost = 0,
-        modelCalls = 0,
-        modelCost = 0,
-        phaseModelCalls = 0,
-        phaseModelCost = 0,
-        sampleCalls = 0;
-    for (var row : usage) {
-      boolean sameModel = model.model().equals(s(row, "evaluation_model"));
-      if (sameModel) {
-        modelCalls += n(row, "calls");
-        modelCost += n(row, "cost");
-      }
-      if (phase.equals(s(row, "evaluation_phase"))) {
-        phaseCalls += n(row, "calls");
-        phaseCost += n(row, "cost");
-        if (sameModel) {
-          phaseModelCalls += n(row, "calls");
-          phaseModelCost += n(row, "cost");
-        }
-      }
-      if (sameModel && sample.equals(s(row, "evaluation_sample"))) sampleCalls += n(row, "calls");
-    }
-    int modelPhaseLimit = phase.equals("A") ? 13 : 12;
-    long phaseLimit = phase.equals("A") ? plan.phaseACostMicros() : plan.phaseBCostMicros();
-    if (phaseCalls >= (phase.equals("A") ? 13 * plan.candidates().size() : 24)
-        || phaseCost + cost > phaseLimit
-        || modelCalls >= 25
-        || modelCost + cost > 25 * cost
-        || phaseModelCalls >= modelPhaseLimit
-        || phaseModelCost + cost > modelPhaseLimit * cost
-        || sampleCalls >= (sample.equals("W1") ? 7 : 6)
-        || !rows(
-                "SELECT d.id FROM model_dispatch d JOIN task t ON t.tenant_id=d.tenant_id AND t.id=d.task_id WHERE t.tenant_id=? AND t.evaluation_run_id=? AND d.state='DISPATCHED' LIMIT 1",
-                s(task, "tenant_id"),
-                s(evaluation, "id"))
-            .isEmpty()) throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
-  }
-
   @Override
   public Step prepare(Lease lease, String request) {
     return executionService.prepare(lease, request);
@@ -6510,143 +6460,6 @@ public final class JdbcLedger
       Integer tokens,
       ModelUsage usage) {
     modelService.responded(lease, stepId, dispatch, response, calls, tokens, usage);
-  }
-
-  ModelSnapshot settlementModel(Lease lease, Map<String, Object> task, String dispatch) {
-    var row =
-        one(
-            "SELECT * FROM model_dispatch WHERE tenant_id=? AND id=? AND task_id=?",
-            lease.tenant(),
-            dispatch,
-            lease.taskId());
-    if (!"DISPATCHED".equals(s(row, "state"))) throw new TaskFailure(409, "DISPATCH_REJECTED");
-    try {
-      var model = historicalSnapshot(task);
-      if (!s(task, "model_digest").equals(s(row, "config_digest"))
-          || !ModelProfiles.digest(model).equals(s(row, "config_digest"))
-          || model.paid()
-              && (model.price() == null
-                  || !model.price().version().equals(s(row, "price_version"))
-                  || !model.price().currency().equals(s(row, "currency"))
-                  || ModelCosts.amount(
-                          model.price(), model.price().inputTokenUpper(), model.maxOutputTokens())
-                      != n(row, "reserved_cost")))
-        throw new IllegalArgumentException("Historical price binding mismatch");
-      return model;
-    } catch (TaskFailure | IllegalArgumentException corrupt) {
-      db.update(
-          "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN',cost_quality='UNKNOWN' WHERE tenant_id=? AND dispatch_id=? AND state='RESERVED'",
-          lease.tenant(),
-          dispatch);
-      if (task.get("evaluation_run_id") != null)
-        db.update(
-            "UPDATE evaluation_budget SET state='STOPPED' WHERE tenant_id=? AND id=?",
-            lease.tenant(),
-            s(task, "evaluation_run_id"));
-      throw new TaskFailure(409, "MODEL_SETTLEMENT_PROOF_INVALID");
-    }
-  }
-
-  boolean settleCost(
-      Lease lease,
-      Map<String, Object> task,
-      Map<String, Object> evaluation,
-      String dispatch,
-      ModelUsage usage) {
-    var model = settlementModel(lease, task, dispatch);
-    if (JdbcSessionRecords.task(task)) {
-      String old =
-          db.queryForObject(
-              "SELECT usage_snapshot FROM model_dispatch WHERE tenant_id=? AND id=?",
-              String.class,
-              lease.tenant(),
-              dispatch);
-      sessions.body(
-          task,
-          io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(
-                  Payloads.json(usage))
-              - (old == null
-                  ? 0
-                  : io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(
-                      old)));
-    }
-    Long actual = null;
-    boolean exceeded = false;
-    boolean unknown = model.paid() && (usage.inputTokens() == null || usage.outputTokens() == null);
-    if (model.paid()) {
-      exceeded =
-          usage.inputTokens() != null && usage.inputTokens() > model.price().inputTokenUpper()
-              || usage.outputTokens() != null && usage.outputTokens() > model.maxOutputTokens()
-              || usage.totalTokens() != null
-                  && java.math.BigInteger.valueOf(usage.totalTokens())
-                          .compareTo(
-                              java.math.BigInteger.valueOf(model.price().inputTokenUpper())
-                                  .add(java.math.BigInteger.valueOf(model.maxOutputTokens())))
-                      > 0;
-      if (usage.inputTokens() != null && usage.outputTokens() != null) {
-        try {
-          actual = ModelCosts.amount(model.price(), usage.inputTokens(), usage.outputTokens());
-        } catch (ArithmeticException invalidProviderCost) {
-          // Retain raw usage; an unrepresentable cost is UNKNOWN, never clamped.
-          exceeded = true;
-        }
-      }
-      long reserved =
-          n(
-              one(
-                  "SELECT reserved_cost FROM model_dispatch WHERE tenant_id=? AND id=?",
-                  lease.tenant(),
-                  dispatch),
-              "reserved_cost");
-      long delta = actual == null ? 0 : actual - reserved;
-      exceeded = exceeded || actual != null && actual > reserved;
-      db.update(
-          "UPDATE evaluation_budget SET cost_held=cost_held+?,state=IF(?,'STOPPED',state) WHERE tenant_id=? AND id=?",
-          delta,
-          exceeded || unknown,
-          lease.tenant(),
-          s(evaluation, "id"));
-      db.update(
-          "UPDATE tenant_budget SET cost_held=cost_held+? WHERE tenant_id=?",
-          delta,
-          lease.tenant());
-      db.update(
-          "UPDATE task SET cost_held=cost_held+? WHERE tenant_id=? AND id=?",
-          delta,
-          lease.tenant(),
-          lease.taskId());
-      if (actual != null)
-        db.update(
-            "UPDATE reservation SET actual=?,state='SETTLED',usage_quality='KNOWN',cost_quality='KNOWN' WHERE tenant_id=? AND id=?",
-            actual,
-            lease.tenant(),
-            dispatch + ":cost");
-      else
-        db.update(
-            "UPDATE reservation SET state='HELD_UNKNOWN' WHERE tenant_id=? AND id=?",
-            lease.tenant(),
-            dispatch + ":cost");
-    }
-    db.update(
-        "UPDATE model_dispatch SET state=?,code=?,ended_at=CURRENT_TIMESTAMP(6),input_tokens=?,output_tokens=?,total_tokens=?,usage_snapshot=?,actual_cost=?,cost_quality=? WHERE tenant_id=? AND id=?",
-        exceeded ? "BOUND_EXCEEDED" : unknown ? "USAGE_UNKNOWN" : "RESPONDED",
-        exceeded ? "MODEL_COST_BOUND_EXCEEDED" : unknown ? "MODEL_USAGE_UNKNOWN" : null,
-        usage.inputTokens(),
-        usage.outputTokens(),
-        usage.totalTokens(),
-        Payloads.json(usage),
-        actual,
-        actual == null ? "UNKNOWN" : "KNOWN",
-        lease.tenant(),
-        dispatch);
-    // Preserve the actual fact and stop subsequent dispatches even if the provider violates its
-    // bound.
-    if (exceeded)
-      db.update(
-          "UPDATE task SET max_models=models_used WHERE tenant_id=? AND id=?",
-          lease.tenant(),
-          lease.taskId());
-    return exceeded || unknown;
   }
 
   @Override

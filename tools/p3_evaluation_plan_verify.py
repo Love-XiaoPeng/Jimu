@@ -131,7 +131,7 @@ class Model(http.server.BaseHTTPRequestHandler):
         self.wfile.write(data)
 
 
-def verify(e, materials_only=False):
+def verify(e, materials_only=False, model_cutover=False):
     server = http.server.ThreadingHTTPServer(("127.0.0.1",0),Model)
     server.daemon_threads = True
     server.origin = "http://127.0.0.1:"+str(server.server_port)
@@ -220,6 +220,7 @@ def verify(e, materials_only=False):
         for sample in ["W1","W2"]:
             kinds=["goal-admission","nonfrozen-url","source-body","frozen-cache","goal-cache","system-cache","schema-cache","description-cache","source-cache","snapshot-cache","missing-snapshot-cache","missing-file-cache"]
             if "--material-smoke" in sys.argv: kinds=["frozen-cache","schema-cache"]
+            if model_cutover: kinds=["source-body"]
             for kind in kinds:
                 run_id="material-"+sample+"-"+kind
                 provision(p,run_id)
@@ -297,6 +298,8 @@ def verify(e, materials_only=False):
                             "recovery material refusal leaves all original model/tool costs intact",sample=sample,case=kind)
                 facts.append({"materialCase":kind,"sample":sample,"task":task,"view":view,"originalBalances":original})
 
+        if model_cutover:
+            return
         # B qualification is a clearly labelled trusted SQL fixture, not measured quality.
         draft_kinds=["bad-draft","missing-draft","frozen-draft-cache","draft-rebind-cache","draft-history-cache"]
         if "--material-smoke" in sys.argv: draft_kinds=["draft-history-cache"]
@@ -480,6 +483,37 @@ def verify(e, materials_only=False):
     try:
         e.sql("UPDATE tenant_budget SET token_limit=1000000000,cost_limit=2000000000,model_limit=1000,running_limit=1 WHERE tenant_id='tenant-a';")
         other = e.sql("SELECT token_limit,cost_limit,model_limit,running_limit FROM tenant_budget WHERE tenant_id='tenant-b';")
+        if model_cutover:
+            p=json.loads((resources/"qwen-main-v1.json").read_text())
+            model="qwen3.8-max-0902"
+            for sample in ["W1","W2"]:
+                run="b2-model-cutover-"+sample
+                provision(p,run)
+                task,view=complete(settings(p,model,sample,run),run,sample)
+                rounds=7 if sample=="W1" else 6
+                e.assert_that(e.sql("SELECT requests_used FROM evaluation_budget WHERE tenant_id='tenant-a' AND id='"+run+"';")==str(rounds),
+                    "actual grouped plan allowance and per-sample dispatch cap",sample=sample)
+                e.assert_that(len(view["artifacts"])==1,"model cutover retains actual plan report",sample=sample)
+                aid=view["artifacts"][0]["artifactId"]
+                e.assert_that(e.http("GET","/api/artifacts/"+aid+"/download")[0]==200,"plan report authorized download",sample=sample)
+            materials()
+            # One changed phase-B binding/dispatch path, not the historical full matrix.
+            run="b2-model-stage-b"
+            digest=provision(p,run)
+            for candidate in p["candidates"]:
+                for sample in ["W1","W2"]:
+                    replace(settings(p,candidate,sample,run))
+                    predecessor=accept(run+"-synthetic-predecessor-"+candidate+sample,sample)
+                    e.sql("UPDATE task SET state='SUCCEEDED' WHERE id='"+predecessor+"';"
+                        "UPDATE reservation SET state='RELEASED' WHERE id='"+predecessor+":queue';"
+                        "UPDATE tenant_budget SET queued=queued-1 WHERE tenant_id='tenant-a';")
+            qualification(p,digest,run,[model])
+            task,view=complete(settings(p,model,"W3",run),run+"-W3","W3")
+            e.assert_that(e.sql("SELECT requests_used FROM evaluation_budget WHERE tenant_id='tenant-a' AND id='"+run+"';")=="6"
+                and len(view["artifacts"])==1,"actual phase-B binding, grouped allowance and report; qualification is synthetic only")
+            facts.append({"sample":"W3","task":task,"view":view,"qualification":"synthetic trusted SQL fixture, not independent grading"})
+            e.assert_that(e.sql("SELECT token_limit,cost_limit,model_limit,running_limit FROM tenant_budget WHERE tenant_id='tenant-b';")==other,"model plan checks preserve other tenant")
+            return
         if "--history-only" in sys.argv:
             history()
             return

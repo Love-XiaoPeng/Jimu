@@ -39,4 +39,61 @@ public interface ReservationMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("reservationId") String reservationId);
+
+  int holdPreviousDispatchUnknown(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("dispatchId") String dispatchId);
+
+  long selectTokenAmountScalar(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("reservationId") String reservationId);
+
+  List<Map<String, Object>> selectTokenAmount(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("reservationId") String reservationId);
+
+  int settleModelTokens(
+      @Param("query") SessionQueryContext query,
+      @Param("actual") long actual,
+      @Param("tenant") String tenant,
+      @Param("reservationId") String reservationId);
+
+  int holdModelUnknown(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("reservationId") String reservationId);
+
+  int holdReservedModelUnknown(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("reservationId") String reservationId);
+
+  int holdFailedModelUnknown(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("dispatchId") String dispatchId);
+
+  List<Map<String, Object>> selectEvaluationUnknown(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("runId") String runId);
+
+  int holdInvalidModelProof(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("dispatchId") String dispatchId);
+
+  int settleActualModelCost(
+      @Param("query") SessionQueryContext query,
+      @Param("actual") long actual,
+      @Param("tenant") String tenant,
+      @Param("reservationId") String reservationId);
+
+  int holdCostUnknown(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("reservationId") String reservationId);
 }

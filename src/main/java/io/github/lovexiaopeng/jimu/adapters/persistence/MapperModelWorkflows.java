@@ -9,19 +9,15 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ToolSnapshot;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
-import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import org.springframework.jdbc.core.JdbcTemplate;
 
-/** Transitional named SQL/module ports; all work joins the original shared DS/UoW. */
-final class JdbcModelWorkflows implements ModelWorkflowRecords {
+/** 模型流程的实际 Mapper/模块端口；沿原调用者 DS/UoW，不直接执行 SQL。 */
+final class MapperModelWorkflows implements ModelWorkflowRecords {
   private final JdbcLedger ledger;
-  private final JdbcTemplate db;
 
-  JdbcModelWorkflows(JdbcLedger ledger, JdbcTemplate db) {
+  MapperModelWorkflows(JdbcLedger ledger) {
     this.ledger = ledger;
-    this.db = db;
   }
 
   @Override
@@ -52,11 +48,11 @@ final class JdbcModelWorkflows implements ModelWorkflowRecords {
     ledger.models.admit(model);
     var budget = ledger.bucket(lease.tenant());
     var step =
-        ledger.one(
-            "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=?",
-            lease.tenant(),
-            stepId,
-            lease.taskId());
+        JdbcLedger.first(
+            ledger
+                .mappers
+                .steps()
+                .selectModelStep(ledger.queryContext(), lease.tenant(), stepId, lease.taskId()));
     return new Admission() {
       public void validateStep() {
         if (JdbcSessionRecords.task(task)) {
@@ -134,9 +130,42 @@ final class JdbcModelWorkflows implements ModelWorkflowRecords {
             ledger.n(task, "max_tokens"));
       }
 
-      public void admitPlan(long cost) {
-        if (task.get("evaluation_snapshot") != null)
-          ledger.admitPlanDispatch(task, evaluation, model, cost);
+      public PlanAllowance planAllowance() {
+        if (task.get("evaluation_snapshot") == null) return null;
+        var plan = ledger.plan(evaluation);
+        var usage =
+            ledger
+                .mappers
+                .dispatches()
+                .selectEvaluationUsage(
+                    ledger.queryContext(), ledger.s(task, "tenant_id"), ledger.s(evaluation, "id"));
+        return new PlanAllowance(
+            ledger.s(task, "evaluation_phase"),
+            ledger.s(task, "evaluation_sample"),
+            model.model(),
+            plan.candidates().size(),
+            "A".equals(ledger.s(task, "evaluation_phase"))
+                ? plan.phaseACostMicros()
+                : plan.phaseBCostMicros(),
+            usage.stream()
+                .map(
+                    row ->
+                        new PlanUsage(
+                            ledger.s(row, "evaluation_phase"),
+                            ledger.s(row, "evaluation_sample"),
+                            ledger.s(row, "evaluation_model"),
+                            ledger.n(row, "calls"),
+                            ledger.n(row, "cost")))
+                .toList());
+      }
+
+      public boolean activePlanDispatch() {
+        return !ledger
+            .mappers
+            .dispatches()
+            .selectActiveEvaluationDispatch(
+                ledger.queryContext(), ledger.s(task, "tenant_id"), ledger.s(evaluation, "id"))
+            .isEmpty();
       }
 
       public void reserveModuleStorage() {
@@ -145,20 +174,16 @@ final class JdbcModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void reserveCost(String dispatch, long cost) {
-        db.update(
-            "UPDATE evaluation_budget SET requests_used=requests_used+1,cost_held=cost_held+? WHERE tenant_id=? AND id=?",
-            cost,
-            lease.tenant(),
-            ledger.s(evaluation, "id"));
-        db.update(
-            "UPDATE tenant_budget SET cost_held=cost_held+? WHERE tenant_id=?",
-            cost,
-            lease.tenant());
-        db.update(
-            "UPDATE task SET cost_held=cost_held+? WHERE tenant_id=? AND id=?",
-            cost,
-            lease.tenant(),
-            lease.taskId());
+        ledger
+            .mappers
+            .evaluations()
+            .reserveModelCost(
+                ledger.queryContext(), cost, lease.tenant(), ledger.s(evaluation, "id"));
+        ledger.mappers.budgets().adjustModelCost(ledger.queryContext(), cost, lease.tenant());
+        ledger
+            .mappers
+            .tasks()
+            .adjustModelCost(ledger.queryContext(), cost, lease.tenant(), lease.taskId());
         ledger.reserve(
             lease.tenant(),
             lease.taskId(),
@@ -171,34 +196,33 @@ final class JdbcModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void insertDispatch(String dispatch, String bodyDigest, long cost) {
-        db.update(
-            "INSERT INTO model_dispatch(tenant_id,id,task_id,step_id,config_digest,request_digest,state,price_version,currency,reserved_cost) VALUES(?,?,?,?,?,?,'DISPATCHED',?,?,?)",
-            lease.tenant(),
-            dispatch,
-            lease.taskId(),
-            stepId,
-            ledger.s(task, "model_digest"),
-            bodyDigest,
-            model.price() == null ? null : model.price().version(),
-            model.paid() ? "CNY" : null,
-            model.paid() ? cost : null);
+        var row =
+            new io.github.lovexiaopeng.jimu.adapters.persistence.model.entity.ModelDispatchEntity();
+        row.setTenantId(lease.tenant());
+        row.setDispatchId(dispatch);
+        row.setTaskId(lease.taskId());
+        row.setStepId(stepId);
+        row.setConfigDigest(ledger.s(task, "model_digest"));
+        row.setRequestDigest(bodyDigest);
+        row.setState("DISPATCHED");
+        row.setPriceVersion(model.price() == null ? null : model.price().version());
+        row.setCurrency(model.paid() ? "CNY" : null);
+        row.setReservedCost(model.paid() ? cost : null);
+        ledger.mappers.insertDispatch(ledger.queryContext(), row);
       }
 
       public void reserveTokens(String dispatch, long upper) {
-        db.update(
-            "UPDATE tenant_budget SET model_used=model_used+1,token_held=token_held+? WHERE tenant_id=?",
-            upper,
-            lease.tenant());
-        db.update(
-            "UPDATE task SET models_used=models_used+1,token_held=token_held+? WHERE tenant_id=? AND id=?",
-            upper,
-            lease.tenant(),
-            lease.taskId());
+        ledger.mappers.budgets().reserveModelTokens(ledger.queryContext(), upper, lease.tenant());
+        ledger
+            .mappers
+            .tasks()
+            .reserveModelTokens(ledger.queryContext(), upper, lease.tenant(), lease.taskId());
         if (step.get("dispatch_id") != null)
-          db.update(
-              "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND dispatch_id=?",
-              lease.tenant(),
-              ledger.s(step, "dispatch_id"));
+          ledger
+              .mappers
+              .reservations()
+              .holdPreviousDispatchUnknown(
+                  ledger.queryContext(), lease.tenant(), ledger.s(step, "dispatch_id"));
         ledger.reserve(
             lease.tenant(),
             lease.taskId(),
@@ -211,11 +235,10 @@ final class JdbcModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void markRunning(String dispatch) {
-        db.update(
-            "UPDATE step SET state='RUNNING',dispatch_id=?,dispatches=dispatches+1 WHERE tenant_id=? AND id=?",
-            dispatch,
-            lease.tenant(),
-            stepId);
+        ledger
+            .mappers
+            .steps()
+            .markModelRunning(ledger.queryContext(), dispatch, lease.tenant(), stepId);
       }
 
       public void dispatched(String dispatch) {
@@ -233,27 +256,28 @@ final class JdbcModelWorkflows implements ModelWorkflowRecords {
     var evaluation = ledger.evaluation(lease, false);
     var task = ledger.fenced(lease, false);
     var step =
-        ledger.one(
-            "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=?",
-            lease.tenant(),
-            stepId,
-            lease.taskId());
+        JdbcLedger.first(
+            ledger
+                .mappers
+                .steps()
+                .selectModelStep(ledger.queryContext(), lease.tenant(), stepId, lease.taskId()));
     return new Response() {
       public boolean originalDispatch() {
         return dispatch.equals(ledger.s(step, "dispatch_id"))
             && step.get("response_snapshot") == null;
       }
 
-      public boolean settleCost(ModelUsage usage) {
-        return ledger.settleCost(lease, task, evaluation, dispatch, usage);
+      public io.github.lovexiaopeng.jimu.kernel.model.port.ModelCostRecords costs() {
+        return new MapperModelCosts(ledger, lease, task, evaluation, dispatch);
       }
 
       public String costRejection() {
         return ledger.s(
-            ledger.one(
-                "SELECT code FROM model_dispatch WHERE tenant_id=? AND id=?",
-                lease.tenant(),
-                dispatch),
+            JdbcLedger.first(
+                ledger
+                    .mappers
+                    .dispatches()
+                    .selectRejection(ledger.queryContext(), lease.tenant(), dispatch)),
             "code");
       }
 
@@ -275,11 +299,10 @@ final class JdbcModelWorkflows implements ModelWorkflowRecords {
         if (ledger.n(task, "within_deadline") != 1) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
         io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.unicode(response);
         long invocations =
-            db.queryForObject(
-                "SELECT COUNT(*) FROM invocation WHERE tenant_id=? AND task_id=?",
-                Long.class,
-                lease.tenant(),
-                lease.taskId());
+            ledger
+                .mappers
+                .invocations()
+                .countTaskInvocationsScalar(ledger.queryContext(), lease.tenant(), lease.taskId());
         if (io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(response) > 65536
             || calls.size() > 4) throw new TaskFailure(409, "MODEL_RESPONSE_TOO_LARGE");
         if (invocations + calls.size() > 20)
@@ -341,58 +364,54 @@ final class JdbcModelWorkflows implements ModelWorkflowRecords {
 
       public long rejectedPayloadUpper() {
         long upper =
-            db.queryForObject(
-                "SELECT amount FROM reservation WHERE tenant_id=? AND id=?",
-                Long.class,
-                lease.tenant(),
-                dispatch);
+            ledger
+                .mappers
+                .reservations()
+                .selectTokenAmountScalar(ledger.queryContext(), lease.tenant(), dispatch);
         return upper;
       }
 
       public long reservedTokens() {
         return ledger.n(
-            ledger.one(
-                "SELECT amount FROM reservation WHERE tenant_id=? AND id=?",
-                lease.tenant(),
-                dispatch),
+            JdbcLedger.first(
+                ledger
+                    .mappers
+                    .reservations()
+                    .selectTokenAmount(ledger.queryContext(), lease.tenant(), dispatch)),
             "amount");
       }
 
       public void settleTokens(long tokens, long released) {
-        db.update(
-            "UPDATE tenant_budget SET token_held=token_held-? WHERE tenant_id=?",
-            released,
-            lease.tenant());
-        db.update(
-            "UPDATE task SET token_held=token_held-? WHERE tenant_id=? AND id=?",
-            released,
-            lease.tenant(),
-            lease.taskId());
-        db.update(
-            "UPDATE reservation SET state='SETTLED',actual=?,usage_quality='KNOWN' WHERE tenant_id=? AND id=?",
-            tokens,
-            lease.tenant(),
-            dispatch);
+        ledger
+            .mappers
+            .budgets()
+            .releaseModelTokens(ledger.queryContext(), released, lease.tenant());
+        ledger
+            .mappers
+            .tasks()
+            .releaseModelTokens(ledger.queryContext(), released, lease.tenant(), lease.taskId());
+        ledger
+            .mappers
+            .reservations()
+            .settleModelTokens(ledger.queryContext(), tokens, lease.tenant(), dispatch);
       }
 
       public void holdUnknown() {
-        db.update(
-            "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND id=?",
-            lease.tenant(),
-            dispatch);
+        ledger
+            .mappers
+            .reservations()
+            .holdModelUnknown(ledger.queryContext(), lease.tenant(), dispatch);
       }
 
       public void rejectStep() {
-        db.update(
-            "UPDATE step SET state='REJECTED' WHERE tenant_id=? AND id=?", lease.tenant(), stepId);
+        ledger.mappers.steps().rejectModelStep(ledger.queryContext(), lease.tenant(), stepId);
       }
 
       public void recordRejection(String code) {
-        db.update(
-            "UPDATE model_dispatch SET code=? WHERE tenant_id=? AND id=?",
-            code,
-            lease.tenant(),
-            dispatch);
+        ledger
+            .mappers
+            .dispatches()
+            .recordRejection(ledger.queryContext(), code, lease.tenant(), dispatch);
       }
 
       public void rejected(String code) {
@@ -404,16 +423,15 @@ final class JdbcModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void rejectOversizedQuestion() {
-        db.update(
-            "UPDATE step SET state='REJECTED' WHERE tenant_id=? AND id=?", lease.tenant(), stepId);
-        db.update(
-            "UPDATE model_dispatch SET state='FAILED',code='MODEL_RESPONSE_TOO_LARGE' WHERE tenant_id=? AND id=?",
-            lease.tenant(),
-            dispatch);
-        db.update(
-            "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND id=? AND state='RESERVED'",
-            lease.tenant(),
-            dispatch);
+        ledger.mappers.steps().rejectModelStep(ledger.queryContext(), lease.tenant(), stepId);
+        ledger
+            .mappers
+            .dispatches()
+            .rejectOversizedResponse(ledger.queryContext(), lease.tenant(), dispatch);
+        ledger
+            .mappers
+            .reservations()
+            .holdReservedModelUnknown(ledger.queryContext(), lease.tenant(), dispatch);
         ledger.event(task, "response:" + stepId, "model.rejected", "MODEL_RESPONSE_TOO_LARGE");
       }
 
@@ -422,12 +440,11 @@ final class JdbcModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void storeResponse(String response) {
-        db.update(
-            "UPDATE step SET state='RESPONDED',response_snapshot=?,response_digest=? WHERE tenant_id=? AND id=?",
-            response,
-            Payloads.hash(response),
-            lease.tenant(),
-            stepId);
+        ledger
+            .mappers
+            .steps()
+            .storeModelResponse(
+                ledger.queryContext(), response, Payloads.hash(response), lease.tenant(), stepId);
       }
 
       public String modelRejection() {
@@ -443,11 +460,11 @@ final class JdbcModelWorkflows implements ModelWorkflowRecords {
       }
 
       public int invocationCount() {
-        return db.queryForObject(
-            "SELECT COUNT(*) FROM invocation WHERE tenant_id=? AND attempt_id=?",
-            Integer.class,
-            lease.tenant(),
-            lease.attemptId());
+        return ledger
+            .mappers
+            .invocations()
+            .countAttemptInvocationsScalar(
+                ledger.queryContext(), lease.tenant(), lease.attemptId());
       }
 
       public long todoRevision() {
@@ -456,31 +473,37 @@ final class JdbcModelWorkflows implements ModelWorkflowRecords {
 
       public void insertCall(Call call, int ordinal, long todoExpected) {
         var plugin = ledger.tools(task).pins().get(call.tool());
-        db.update(
-            "INSERT INTO invocation(tenant_id,id,task_id,step_id,attempt_id,ordinal,slot,provider_id,effect_intent_id,tool,plugin_version,plugin_digest,installation_epoch,input_snapshot,input_digest,state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'PENDING')",
-            lease.tenant(),
-            ledger.id(),
-            lease.taskId(),
-            stepId,
-            lease.attemptId(),
-            ordinal,
-            call.slot(),
-            call.providerId(),
-            ledger.id(),
-            call.tool(),
-            plugin.version(),
-            plugin.digest(),
-            plugin.installationEpoch(),
-            call.input(),
-            Payloads.hash(call.input()));
+        var row =
+            new io.github.lovexiaopeng.jimu.adapters.persistence.invocation.entity
+                .InvocationEntity();
+        row.setTenantId(lease.tenant());
+        row.setInvocationId(ledger.id());
+        row.setTaskId(lease.taskId());
+        row.setStepId(stepId);
+        row.setAttemptId(lease.attemptId());
+        row.setOrdinal(ordinal);
+        row.setSlot(call.slot());
+        row.setProviderId(call.providerId());
+        row.setEffectIntentId(ledger.id());
+        row.setTool(call.tool());
+        row.setPluginVersion(plugin.version());
+        row.setPluginDigest(plugin.digest());
+        row.setInstallationEpoch(plugin.installationEpoch());
+        row.setInputSnapshot(call.input());
+        row.setInputDigest(Payloads.hash(call.input()));
+        row.setState("PENDING");
+        ledger.mappers.insertInvocation(ledger.queryContext(), row);
         if (ledger.todoTask(task))
-          db.update(
-              "UPDATE invocation SET todo_expected_revision=? WHERE tenant_id=? AND task_id=? AND step_id=? AND slot=?",
-              todoExpected,
-              lease.tenant(),
-              lease.taskId(),
-              stepId,
-              call.slot());
+          ledger
+              .mappers
+              .invocations()
+              .bindTodoRevision(
+                  ledger.queryContext(),
+                  todoExpected,
+                  lease.tenant(),
+                  lease.taskId(),
+                  stepId,
+                  call.slot());
       }
 
       public void bindCalls() {
@@ -496,10 +519,11 @@ final class JdbcModelWorkflows implements ModelWorkflowRecords {
   @Override
   public Outcome outcome(Lease lease, String dispatch) {
     var row =
-        ledger.one(
-            "SELECT state,code FROM model_dispatch WHERE tenant_id=? AND id=?",
-            lease.tenant(),
-            dispatch);
+        JdbcLedger.first(
+            ledger
+                .mappers
+                .dispatches()
+                .selectOutcome(ledger.queryContext(), lease.tenant(), dispatch));
     return new Outcome(ledger.s(row, "state"), ledger.s(row, "code"));
   }
 }

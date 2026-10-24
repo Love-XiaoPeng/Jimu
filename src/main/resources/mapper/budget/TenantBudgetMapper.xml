@@ -16,4 +16,13 @@
   <update id="holdMediaCheckpoint">
     <![CDATA[UPDATE tenant_budget SET media_checkpoint_held=media_checkpoint_held+#{bytes} WHERE tenant_id=#{tenant}]]>
   </update>
+  <update id="adjustModelCost">
+    <![CDATA[UPDATE tenant_budget SET cost_held=cost_held+#{cost} WHERE tenant_id=#{tenant}]]>
+  </update>
+  <update id="reserveModelTokens">
+    <![CDATA[UPDATE tenant_budget SET model_used=model_used+1,token_held=token_held+#{tokens} WHERE tenant_id=#{tenant}]]>
+  </update>
+  <update id="releaseModelTokens">
+    <![CDATA[UPDATE tenant_budget SET token_held=token_held-#{tokens} WHERE tenant_id=#{tenant}]]>
+  </update>
 </mapper>

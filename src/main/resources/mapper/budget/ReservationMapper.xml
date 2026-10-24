@@ -16,4 +16,37 @@
   <update id="settleReservedAmount">
     <![CDATA[UPDATE reservation SET actual=amount WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
   </update>
+  <update id="holdPreviousDispatchUnknown">
+    <![CDATA[UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=#{tenant} AND dispatch_id=#{dispatchId}]]>
+  </update>
+  <select id="selectTokenAmountScalar" resultType="long">
+    <![CDATA[SELECT amount FROM reservation WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
+  </select>
+  <select id="selectTokenAmount" resultType="map">
+    <![CDATA[SELECT amount FROM reservation WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
+  </select>
+  <update id="settleModelTokens">
+    <![CDATA[UPDATE reservation SET state='SETTLED',actual=#{actual},usage_quality='KNOWN' WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
+  </update>
+  <update id="holdModelUnknown">
+    <![CDATA[UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
+  </update>
+  <update id="holdReservedModelUnknown">
+    <![CDATA[UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=#{tenant} AND id=#{reservationId} AND state='RESERVED']]>
+  </update>
+  <update id="holdFailedModelUnknown">
+    <![CDATA[UPDATE reservation SET state='HELD_UNKNOWN' WHERE tenant_id=#{tenant} AND dispatch_id=#{dispatchId} AND category='MODEL']]>
+  </update>
+  <select id="selectEvaluationUnknown" resultType="map">
+    <![CDATA[SELECT r.id FROM reservation r JOIN task t ON t.tenant_id=r.tenant_id AND t.id=r.task_id WHERE t.tenant_id=#{tenant} AND t.evaluation_run_id=#{runId} AND r.state='HELD_UNKNOWN' LIMIT 1]]>
+  </select>
+  <update id="holdInvalidModelProof">
+    <![CDATA[UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN',cost_quality='UNKNOWN' WHERE tenant_id=#{tenant} AND dispatch_id=#{dispatchId} AND state='RESERVED']]>
+  </update>
+  <update id="settleActualModelCost">
+    <![CDATA[UPDATE reservation SET actual=#{actual},state='SETTLED',usage_quality='KNOWN',cost_quality='KNOWN' WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
+  </update>
+  <update id="holdCostUnknown">
+    <![CDATA[UPDATE reservation SET state='HELD_UNKNOWN' WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
+  </update>
 </mapper>

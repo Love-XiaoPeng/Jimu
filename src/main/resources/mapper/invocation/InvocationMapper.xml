@@ -13,4 +13,13 @@
   <select id="selectUnfinishedTaskInvocations" resultType="map">
     <![CDATA[SELECT id FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state<>'SUCCEEDED']]>
   </select>
+  <select id="countTaskInvocationsScalar" resultType="long">
+    <![CDATA[SELECT COUNT(*) FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId}]]>
+  </select>
+  <select id="countAttemptInvocationsScalar" resultType="int">
+    <![CDATA[SELECT COUNT(*) FROM invocation WHERE tenant_id=#{tenant} AND attempt_id=#{attemptId}]]>
+  </select>
+<update id="bindTodoRevision">
+    <![CDATA[UPDATE invocation SET todo_expected_revision=#{revision} WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND step_id=#{stepId} AND slot=#{slot}]]>
+  </update>
 </mapper>

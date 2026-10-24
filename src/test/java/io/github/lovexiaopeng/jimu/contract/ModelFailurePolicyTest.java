@@ -6,11 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.lovexiaopeng.jimu.kernel.budget.domain.ModelCosts;
+import io.github.lovexiaopeng.jimu.kernel.model.port.ModelCostRecords;
 import io.github.lovexiaopeng.jimu.kernel.model.port.ModelDispatchRecords;
 import io.github.lovexiaopeng.jimu.kernel.model.service.impl.ModelDispatchServiceImpl;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
+import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -27,6 +30,85 @@ class ModelFailurePolicyTest {
     boolean paid, session, inside, costFailure;
     long reserved = 20, actual = -1, released = -1;
     ModelUsage usage;
+    final ModelCostRecords costs =
+        new ModelCostRecords() {
+          public String state() {
+            return "DISPATCHED";
+          }
+
+          public Proof proof() {
+            if (costFailure) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+            var price = new ModelSnapshot.Price("fixture", "CNY", 100, 100, 0, 100, "fixture");
+            var model =
+                new ModelSnapshot(
+                    2,
+                    "fixture",
+                    1,
+                    "adapter",
+                    "http://localhost",
+                    "model",
+                    "revision",
+                    "none",
+                    null,
+                    0,
+                    "local",
+                    100,
+                    100,
+                    100,
+                    false,
+                    100,
+                    "max",
+                    0,
+                    null,
+                    java.util.Map.of(),
+                    paid,
+                    price,
+                    null);
+            return new Proof(
+                model,
+                "same",
+                "same",
+                "same",
+                "fixture",
+                "CNY",
+                ModelCosts.amount(price, 100, 100));
+          }
+
+          public void invalidateProof() {
+            events.add("invalid-proof");
+          }
+
+          public void accountUsage(ModelUsage value) {
+            assertTrue(inside);
+            usage = value;
+            events.add("cost");
+          }
+
+          public long reservedCost() {
+            return 1;
+          }
+
+          public void adjustCost(long delta, boolean stop) {
+            assertTrue(inside);
+          }
+
+          public void settleActualCost(long actual) {
+            assertTrue(inside);
+          }
+
+          public void holdCostUnknown() {
+            assertTrue(inside);
+          }
+
+          public void recordUsage(
+              ModelUsage value, String state, String code, Long actual, String quality) {
+            assertTrue(inside);
+          }
+
+          public void stopFurtherDispatch() {
+            assertTrue(inside);
+          }
+        };
 
     ModelDispatchServiceImpl service() {
       return new ModelDispatchServiceImpl(
@@ -81,21 +163,13 @@ class ModelFailurePolicyTest {
     }
 
     @Override
-    public boolean paid() {
-      return paid;
+    public ModelCostRecords costs() {
+      return costs;
     }
 
     @Override
     public boolean session() {
       return session;
-    }
-
-    @Override
-    public void settleCost(ModelUsage value) {
-      assertTrue(inside);
-      usage = value;
-      events.add("cost");
-      if (costFailure) throw new TaskFailure(409, "MODEL_SETTLEMENT_PROOF_INVALID");
     }
 
     @Override
@@ -169,7 +243,7 @@ class ModelFailurePolicyTest {
                 TaskFailure.class,
                 () -> f.service().failed(LEASE, "dispatch", "PROVIDER_FAILURE", null))
             .code());
-    assertEquals(List.of("lock", "cost"), f.events);
+    assertEquals(List.of("lock", "invalid-proof"), f.events);
     assertEquals(-1, f.released);
   }
 }

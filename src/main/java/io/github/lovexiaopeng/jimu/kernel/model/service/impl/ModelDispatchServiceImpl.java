@@ -59,9 +59,11 @@ public final class ModelDispatchServiceImpl implements ModelDispatchService {
     work.required(
         () -> {
           var row = records.lockSettlement(lease, dispatch);
-          if (usage != null) row.settleCost(usage);
-          else if (row.paid())
-            row.settleCost(new ModelUsage(null, null, null, null, null, null, null, null));
+          var model = ModelCostSettlement.prove(row.costs());
+          if (usage != null) ModelCostSettlement.settle(row.costs(), usage);
+          else if (model.paid())
+            ModelCostSettlement.settle(
+                row.costs(), new ModelUsage(null, null, null, null, null, null, null, null));
           row.markFailed(code);
           Long tokens = usage == null ? null : usage.totalTokens();
           long reserved = row.reservedTokens();
@@ -110,7 +112,10 @@ public final class ModelDispatchServiceImpl implements ModelDispatchService {
               || b.tenantTokens() + upper > b.upperTenantTokens()
               || b.taskTokens() + upper > b.maxTokens())
             throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
-          row.admitPlan(cost);
+          var plan = row.planAllowance();
+          ModelEvaluationAdmission.check(plan, cost);
+          if (plan != null && row.activePlanDispatch())
+            throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
           row.reserveModuleStorage();
           String dispatch = UUID.randomUUID().toString();
           if (b.paid()) row.reserveCost(dispatch, cost);
@@ -136,7 +141,7 @@ public final class ModelDispatchServiceImpl implements ModelDispatchService {
         () -> {
           var row = workflows.lockResponse(lease, step, dispatch);
           if (!row.originalDispatch()) throw new TaskFailure(409, "DISPATCH_REJECTED");
-          if (row.settleCost(usage)) {
+          if (ModelCostSettlement.settle(row.costs(), usage)) {
             String code = row.costRejection();
             row.rejectStep();
             row.rejected(code);

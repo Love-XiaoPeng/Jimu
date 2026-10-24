@@ -78,6 +78,15 @@ class PersistencePathTrackingTest {
       assertTrue(accepted.contains(statement.path("sql").asText()), statement.toString());
       checked++;
     }
+    var modelCutover =
+        Payloads.read(
+            Files.readString(
+                Path.of("docs/verification/XIAO-60/evidence/b2-model-removed-sql.json")),
+            JsonNode.class);
+    for (var statement : modelCutover.path("removed")) {
+      assertTrue(accepted.contains(statement.path("originalSql").asText()), statement.toString());
+      checked++;
+    }
     assertTrue(checked > 40, "Real extracted SQL inventory is required");
   }
 }

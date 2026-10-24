@@ -23,4 +23,19 @@ public interface TenantBudgetMapper {
       @Param("query") SessionQueryContext query,
       @Param("bytes") long bytes,
       @Param("tenant") String tenant);
+
+  int adjustModelCost(
+      @Param("query") SessionQueryContext query,
+      @Param("cost") long cost,
+      @Param("tenant") String tenant);
+
+  int reserveModelTokens(
+      @Param("query") SessionQueryContext query,
+      @Param("tokens") long tokens,
+      @Param("tenant") String tenant);
+
+  int releaseModelTokens(
+      @Param("query") SessionQueryContext query,
+      @Param("tokens") long tokens,
+      @Param("tenant") String tenant);
 }

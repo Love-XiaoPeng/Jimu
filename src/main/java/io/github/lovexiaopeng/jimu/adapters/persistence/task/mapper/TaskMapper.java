@@ -73,4 +73,49 @@ public interface TaskMapper {
       @Param("summary") String summary,
       @Param("tenant") String tenant,
       @Param("taskId") String taskId);
+
+  int adjustModelCost(
+      @Param("query") SessionQueryContext query,
+      @Param("cost") long cost,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  int reserveModelTokens(
+      @Param("query") SessionQueryContext query,
+      @Param("tokens") long tokens,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  int releaseModelTokens(
+      @Param("query") SessionQueryContext query,
+      @Param("tokens") long tokens,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  List<Map<String, Object>> selectConflictingEvaluationBinding(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("runId") String runId,
+      @Param("planDigest") String planDigest,
+      @Param("qualificationDigest") String qualificationDigest);
+
+  List<Map<String, Object>> selectExistingEvaluationTask(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("runId") String runId);
+
+  List<Map<String, Object>> selectEvaluationScreening(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("runId") String runId);
+
+  List<Map<String, Object>> selectPhaseBEvaluationTask(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("runId") String runId);
+
+  int stopFurtherModelDispatch(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
 }

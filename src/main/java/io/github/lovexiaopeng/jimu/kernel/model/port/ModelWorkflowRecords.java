@@ -4,7 +4,6 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ToolSnapshot;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
-import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import java.util.List;
 
 /** 调用者原事务内的类型化模型事实和具名写入；不建立第二套账本。 */
@@ -50,6 +49,20 @@ public interface ModelWorkflowRecords {
 
   record Outcome(String state, String code) {}
 
+  record PlanUsage(String phase, String sample, String model, long calls, long cost) {}
+
+  record PlanAllowance(
+      String phase,
+      String sample,
+      String model,
+      int candidates,
+      long phaseCostLimit,
+      List<PlanUsage> usage) {
+    public PlanAllowance {
+      usage = List.copyOf(usage);
+    }
+  }
+
   interface Admission {
     void validateStep();
 
@@ -65,7 +78,9 @@ public interface ModelWorkflowRecords {
 
     Limits limits();
 
-    void admitPlan(long cost);
+    PlanAllowance planAllowance();
+
+    boolean activePlanDispatch();
 
     void reserveModuleStorage();
 
@@ -85,7 +100,7 @@ public interface ModelWorkflowRecords {
   interface Response {
     boolean originalDispatch();
 
-    boolean settleCost(ModelUsage usage);
+    ModelCostRecords costs();
 
     String costRejection();
 

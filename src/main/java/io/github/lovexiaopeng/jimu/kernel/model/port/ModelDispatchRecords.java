@@ -1,15 +1,12 @@
 package io.github.lovexiaopeng.jimu.kernel.model.port;
 
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
-import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 
 public interface ModelDispatchRecords {
   interface Dispatch {
-    boolean paid();
+    ModelCostRecords costs();
 
     boolean session();
-
-    void settleCost(ModelUsage usage);
 
     void markFailed(String code);
 

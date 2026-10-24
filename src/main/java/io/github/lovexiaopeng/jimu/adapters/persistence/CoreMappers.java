@@ -15,7 +15,39 @@ record CoreMappers(
     io.github.lovexiaopeng.jimu.adapters.persistence.invocation.mapper.InvocationMapper invocations,
     io.github.lovexiaopeng.jimu.adapters.persistence.event.mapper.EventMapper events,
     io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper steps,
-    io.github.lovexiaopeng.jimu.adapters.persistence.artifact.mapper.ArtifactMapper artifacts) {
+    io.github.lovexiaopeng.jimu.adapters.persistence.artifact.mapper.ArtifactMapper artifacts,
+    io.github.lovexiaopeng.jimu.adapters.persistence.model.mapper.ModelDispatchMapper dispatches) {
+  // MP insert 的映射以实体字段为根参数；显式 query 同级传入，复用已有截止/实计插件。
+  // 固定两个 statement ID；不接收外部 SQL、表名或 namespace。
+  int insertDispatch(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      io.github.lovexiaopeng.jimu.adapters.persistence.model.entity.ModelDispatchEntity entity) {
+    return session.insert(
+        io.github.lovexiaopeng.jimu.adapters.persistence.model.mapper.ModelDispatchMapper.class
+                .getName()
+            + ".insert",
+        writeParameters(entity, query));
+  }
+
+  int insertInvocation(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      io.github.lovexiaopeng.jimu.adapters.persistence.invocation.entity.InvocationEntity entity) {
+    return session.insert(
+        io.github.lovexiaopeng.jimu.adapters.persistence.invocation.mapper.InvocationMapper.class
+                .getName()
+            + ".insert",
+        writeParameters(entity, query));
+  }
+
+  private static java.util.Map<String, Object> writeParameters(
+      Object entity, io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    var meta = org.apache.ibatis.reflection.SystemMetaObject.forObject(entity);
+    var parameters = new java.util.HashMap<String, Object>();
+    for (String property : meta.getGetterNames()) parameters.put(property, meta.getValue(property));
+    parameters.put("query", query);
+    return parameters;
+  }
+
   static CoreMappers from(SqlSessionTemplate session) {
     return new CoreMappers(
         session,
@@ -43,6 +75,9 @@ record CoreMappers(
         session.getMapper(
             io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper.class),
         session.getMapper(
-            io.github.lovexiaopeng.jimu.adapters.persistence.artifact.mapper.ArtifactMapper.class));
+            io.github.lovexiaopeng.jimu.adapters.persistence.artifact.mapper.ArtifactMapper.class),
+        session.getMapper(
+            io.github.lovexiaopeng.jimu.adapters.persistence.model.mapper.ModelDispatchMapper
+                .class));
   }
 }

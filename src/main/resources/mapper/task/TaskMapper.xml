@@ -37,4 +37,28 @@
   <update id="finishSummary">
     <![CDATA[UPDATE task SET summary=#{summary} WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
   </update>
+  <update id="adjustModelCost">
+    <![CDATA[UPDATE task SET cost_held=cost_held+#{cost} WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
+  </update>
+  <update id="reserveModelTokens">
+    <![CDATA[UPDATE task SET models_used=models_used+1,token_held=token_held+#{tokens} WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
+  </update>
+  <update id="releaseModelTokens">
+    <![CDATA[UPDATE task SET token_held=token_held-#{tokens} WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
+  </update>
+  <select id="selectConflictingEvaluationBinding" resultType="map">
+    <![CDATA[SELECT id FROM task WHERE tenant_id=#{tenant} AND evaluation_run_id=#{runId} AND evaluation_snapshot IS NOT NULL AND (JSON_UNQUOTE(JSON_EXTRACT(evaluation_snapshot,'$.planDigest'))<>#{planDigest} OR (evaluation_phase='B' AND JSON_UNQUOTE(JSON_EXTRACT(evaluation_snapshot,'$.qualificationDigest'))<>COALESCE(#{qualificationDigest},''))) LIMIT 1]]>
+  </select>
+  <select id="selectExistingEvaluationTask" resultType="map">
+    <![CDATA[SELECT id FROM task WHERE tenant_id=#{tenant} AND evaluation_run_id=#{runId} AND evaluation_snapshot IS NOT NULL LIMIT 1]]>
+  </select>
+  <select id="selectEvaluationScreening" resultType="map">
+    <![CDATA[SELECT evaluation_model,evaluation_sample,state FROM task WHERE tenant_id=#{tenant} AND evaluation_run_id=#{runId} AND evaluation_phase='A']]>
+  </select>
+  <select id="selectPhaseBEvaluationTask" resultType="map">
+    <![CDATA[SELECT id FROM task WHERE tenant_id=#{tenant} AND evaluation_run_id=#{runId} AND evaluation_phase='B' LIMIT 1]]>
+  </select>
+  <update id="stopFurtherModelDispatch">
+    <![CDATA[UPDATE task SET max_models=models_used WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
+  </update>
 </mapper>

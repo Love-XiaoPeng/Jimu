@@ -37,4 +37,28 @@ public interface StepMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("taskId") String taskId);
+
+  List<Map<String, Object>> selectModelStep(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("stepId") String stepId,
+      @Param("taskId") String taskId);
+
+  int markModelRunning(
+      @Param("query") SessionQueryContext query,
+      @Param("dispatchId") String dispatchId,
+      @Param("tenant") String tenant,
+      @Param("stepId") String stepId);
+
+  int rejectModelStep(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("stepId") String stepId);
+
+  int storeModelResponse(
+      @Param("query") SessionQueryContext query,
+      @Param("response") String response,
+      @Param("digest") String digest,
+      @Param("tenant") String tenant,
+      @Param("stepId") String stepId);
 }
