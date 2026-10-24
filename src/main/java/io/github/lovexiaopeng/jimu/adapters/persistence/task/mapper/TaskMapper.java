@@ -118,4 +118,17 @@ public interface TaskMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("taskId") String taskId);
+
+  int reserveToolUnit(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  int commitLiveFence(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId,
+      @Param("revision") long revision,
+      @Param("attemptId") String attemptId,
+      @Param("fence") long fence);
 }

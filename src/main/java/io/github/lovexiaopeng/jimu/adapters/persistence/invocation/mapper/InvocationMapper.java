@@ -48,4 +48,64 @@ public interface InvocationMapper
       @Param("taskId") String taskId,
       @Param("stepId") String stepId,
       @Param("slot") String slot);
+
+  List<Map<String, Object>> selectOriginalSlot(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("stepId") String stepId,
+      @Param("slot") String slot,
+      @Param("taskId") String taskId);
+
+  List<Map<String, Object>> selectSuccessfulRead(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  int markAdmittedRunning(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("invocationId") String invocationId);
+
+  List<Map<String, Object>> selectTaskInvocation(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId,
+      @Param("invocationId") String invocationId);
+
+  int succeedRunning(
+      @Param("query") SessionQueryContext query,
+      @Param("output") String output,
+      @Param("digest") String digest,
+      @Param("tenant") String tenant,
+      @Param("invocationId") String invocationId,
+      @Param("taskId") String taskId);
+
+  int failRunning(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("invocationId") String invocationId,
+      @Param("taskId") String taskId);
+
+  int markInvocationUnknown(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("invocationId") String invocationId,
+      @Param("taskId") String taskId);
+
+  List<Map<String, Object>> selectMaterialSources(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  List<Map<String, Object>> selectMaterialFileHistory(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  List<Map<String, Object>> selectProtectedInvocation(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId,
+      @Param("invocationId") String invocationId,
+      @Param("tool") String tool);
 }

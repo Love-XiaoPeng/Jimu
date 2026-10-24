@@ -61,4 +61,6 @@
   <update id="stopFurtherModelDispatch">
     <![CDATA[UPDATE task SET max_models=models_used WHERE tenant_id=#{tenant} AND id=#{taskId}]]>
   </update>
+  <update id="reserveToolUnit"><![CDATA[UPDATE task SET tools_used=tools_used+1 WHERE tenant_id=#{tenant} AND id=#{taskId}]]></update>
+  <update id="commitLiveFence"><![CDATA[UPDATE task SET revision=revision+1,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{taskId} AND revision=#{revision} AND current_attempt_id=#{attemptId} AND fence=#{fence} AND lease_until>CURRENT_TIMESTAMP(6)]]></update>
 </mapper>

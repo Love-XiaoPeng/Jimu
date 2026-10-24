@@ -1,21 +1,17 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
-import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationMaterials;
 import io.github.lovexiaopeng.jimu.kernel.invocation.port.InvocationWorkflowRecords;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Named SQL and module-proof operations, sharing the original transaction and fence. */
-final class JdbcInvocationWorkflows implements InvocationWorkflowRecords {
+final class MapperInvocationWorkflows implements InvocationWorkflowRecords {
   private final JdbcLedger ledger;
-  private final JdbcTemplate db;
 
-  JdbcInvocationWorkflows(JdbcLedger ledger, JdbcTemplate db) {
+  MapperInvocationWorkflows(JdbcLedger ledger) {
     this.ledger = ledger;
-    this.db = db;
   }
 
   @Override
@@ -24,12 +20,12 @@ final class JdbcInvocationWorkflows implements InvocationWorkflowRecords {
     var task = ledger.fenced(lease, true);
     var budget = ledger.bucket(lease.tenant());
     var initial =
-        ledger.one(
-            "SELECT * FROM invocation WHERE tenant_id=? AND step_id=? AND slot=? AND task_id=?",
-            lease.tenant(),
-            stepId,
-            call.slot(),
-            lease.taskId());
+        JdbcLedger.first(
+            ledger
+                .mappers
+                .invocations()
+                .selectOriginalSlot(
+                    ledger.queryContext(), lease.tenant(), stepId, call.slot(), lease.taskId()));
     return new Admission() {
       private java.util.Map<String, Object> invocation = initial;
 
@@ -53,37 +49,39 @@ final class JdbcInvocationWorkflows implements InvocationWorkflowRecords {
         }
       }
 
-      public void validateMaterial() {
+      public MaterialUse materialUse() {
         var material = ledger.material(task);
         if (material != null) {
           ledger.initialFile(task);
           var input = Payloads.read(call.input(), com.fasterxml.jackson.databind.JsonNode.class);
-          if (call.tool().equals("web_fetch"))
-            EvaluationMaterials.require(material.sources().containsKey(input.path("url").asText()));
-          if (call.tool().equals("write"))
-            EvaluationMaterials.require(
-                !ledger
-                    .rows(
-                        "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND tool='read' AND state='SUCCEEDED' LIMIT 1",
-                        lease.tenant(),
-                        lease.taskId())
-                    .isEmpty());
-          if (call.tool().equals("read") || call.tool().equals("write"))
-            EvaluationMaterials.require(material.target().equals(input.path("file_path").asText()));
-          if (call.tool().equals("present"))
-            EvaluationMaterials.require(
-                input.path("files").size() == 1
-                    && material.target().equals(input.path("files").get(0).path("path").asText()));
+          var files = input.path("files");
+          return new MaterialUse(
+              material.sources().keySet(),
+              material.target(),
+              input.path("url").asText(),
+              input.path("file_path").asText(),
+              files.size(),
+              call.tool().equals("present") && files.size() == 1
+                  ? files.get(0).path("path").asText()
+                  : null);
         }
+        return null;
+      }
+
+      public boolean hasSuccessfulRead() {
+        return !ledger
+            .mappers
+            .invocations()
+            .selectSuccessfulRead(ledger.queryContext(), lease.tenant(), lease.taskId())
+            .isEmpty();
       }
 
       public Pin pin() {
         var pinned = ledger.tools(task).pins().get(call.tool());
         var installation =
-            ledger.one(
-                "SELECT * FROM installation WHERE tenant_id=? AND plugin_id=?",
-                lease.tenant(),
-                call.tool());
+            JdbcLedger.first(
+                ledger.mappers.selectInstallation(
+                    ledger.queryContext(), lease.tenant(), call.tool()));
         return new Pin(
             ledger.s(invocation, "plugin_version"),
             ledger.s(invocation, "plugin_digest"),
@@ -113,12 +111,11 @@ final class JdbcInvocationWorkflows implements InvocationWorkflowRecords {
 
       public void reserveUnit() {
         String invocationId = ledger.s(invocation, "id");
-        db.update(
-            "UPDATE task SET tools_used=tools_used+1 WHERE tenant_id=? AND id=?",
-            lease.tenant(),
-            lease.taskId());
-        db.update(
-            "UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=?", lease.tenant());
+        ledger
+            .mappers
+            .tasks()
+            .reserveToolUnit(ledger.queryContext(), lease.tenant(), lease.taskId());
+        ledger.mappers.budgets().reserveToolUnit(ledger.queryContext(), lease.tenant());
         ledger.reserve(
             lease.tenant(),
             lease.taskId(),
@@ -131,10 +128,10 @@ final class JdbcInvocationWorkflows implements InvocationWorkflowRecords {
       }
 
       public void markRunning() {
-        db.update(
-            "UPDATE invocation SET state='RUNNING' WHERE tenant_id=? AND id=?",
-            lease.tenant(),
-            ledger.s(invocation, "id"));
+        ledger
+            .mappers
+            .invocations()
+            .markAdmittedRunning(ledger.queryContext(), lease.tenant(), ledger.s(invocation, "id"));
       }
 
       public void dispatched() {
@@ -158,66 +155,87 @@ final class JdbcInvocationWorkflows implements InvocationWorkflowRecords {
           task, output.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
     }
     var producer =
-        ledger.one(
-            "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
-            lease.tenant(),
-            lease.taskId(),
-            invocationId);
+        JdbcLedger.first(
+            ledger
+                .mappers
+                .invocations()
+                .selectTaskInvocation(
+                    ledger.queryContext(), lease.tenant(), lease.taskId(), invocationId));
     return new Success() {
+      private java.util.Map<String, Object> proofStep;
+
       public String tool() {
         return ledger.s(producer, "tool");
       }
 
-      public void validateResultProof() {
+      public ImageProof imageProof() {
         if ("read_image".equals(ledger.s(producer, "tool"))) {
           var committed =
-              ledger.rows(
-                  "SELECT image_id FROM task_image_object WHERE tenant_id=? AND task_id=? AND producer_invocation=? AND phase='COMMITTED'",
-                  lease.tenant(),
-                  lease.taskId(),
-                  invocationId);
+              ledger
+                  .mappers
+                  .imageObjects()
+                  .selectCommittedProducer(
+                      ledger.queryContext(), lease.tenant(), lease.taskId(), invocationId);
           var image =
               Payloads.read(output, io.github.lovexiaopeng.jimu.plugin.api.ImagePort.Result.class);
-          if (committed.size() != 1
-              || !committed.getFirst().get("image_id").equals(image.image().imageId()))
-            throw new TaskFailure(409, "IMAGE_COMMIT_REQUIRED");
+          return new ImageProof(
+              committed.stream().map(row -> (String) row.get("image_id")).toList(),
+              image.image().imageId());
         }
+        return null;
+      }
+
+      public WebProof webProof() {
         var receipts =
-            ledger.rows(
-                "SELECT code FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
-                lease.tenant(),
-                lease.taskId(),
-                "web-result:" + invocationId);
+            ledger
+                .mappers
+                .events()
+                .selectFactCode(
+                    ledger.queryContext(),
+                    lease.tenant(),
+                    lease.taskId(),
+                    "web-result:" + invocationId);
         if (!receipts.isEmpty()) {
-          var step =
-              ledger.one(
-                  "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=?",
-                  lease.tenant(),
-                  lease.taskId(),
-                  producer.get("step_id"));
-          if (!output.equals(producer.get("output_snapshot"))
-              || !Payloads.hash(output).equals(producer.get("output_digest"))
-              || !WebFetchReceipts.digest(task, step, producer, output)
-                  .equals(receipts.getFirst().get("code")))
-            throw new TaskFailure(409, "WEB_RESULT_PROOF_INVALID");
+          proofStep =
+              JdbcLedger.first(
+                  ledger
+                      .mappers
+                      .steps()
+                      .selectInvocationStep(
+                          ledger.queryContext(),
+                          lease.tenant(),
+                          lease.taskId(),
+                          ledger.s(producer, "step_id")));
+          return new WebProof(
+              ledger.s(producer, "output_snapshot"),
+              ledger.s(producer, "output_digest"),
+              (String) receipts.getFirst().get("code"));
         }
+        return null;
+      }
+
+      public String webProofDigest() {
+        return WebFetchReceipts.digest(task, proofStep, producer, output);
       }
 
       public int succeed() {
-        return db.update(
-            "UPDATE invocation SET state='SUCCEEDED',output_snapshot=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND task_id=? AND state='RUNNING'",
-            output,
-            Payloads.hash(output),
-            lease.tenant(),
-            invocationId,
-            lease.taskId());
+        return ledger
+            .mappers
+            .invocations()
+            .succeedRunning(
+                ledger.queryContext(),
+                output,
+                Payloads.hash(output),
+                lease.tenant(),
+                invocationId,
+                lease.taskId());
       }
 
       public void settleUnit() {
-        db.update(
-            "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=? AND id=?",
-            lease.tenant(),
-            invocationId);
+        ledger
+            .mappers
+            .reservations()
+            .settleToolUnit(ledger.queryContext(), lease.tenant(), invocationId);
       }
 
       public void succeeded() {
@@ -233,10 +251,10 @@ final class JdbcInvocationWorkflows implements InvocationWorkflowRecords {
       }
 
       public void stopEvaluationRun() {
-        db.update(
-            "UPDATE evaluation_budget SET state='STOPPED' WHERE tenant_id=? AND id=?",
-            lease.tenant(),
-            ledger.s(task, "evaluation_run_id"));
+        ledger
+            .mappers
+            .evaluations()
+            .stopRun(ledger.queryContext(), lease.tenant(), ledger.s(task, "evaluation_run_id"));
       }
     };
   }

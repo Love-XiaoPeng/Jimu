@@ -5,6 +5,18 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 
 /** 调用者原事务内的原槽、安装pin、证明与具名写入；不暴露SQL或另建账本。 */
 public interface InvocationWorkflowRecords {
+  record MaterialUse(
+      java.util.Set<String> sources,
+      String target,
+      String url,
+      String filePath,
+      int fileCount,
+      String presentedPath) {}
+
+  record ImageProof(java.util.List<String> committedIds, String outputId) {}
+
+  record WebProof(String storedOutput, String storedDigest, String receipt) {}
+
   record Slot(
       String id,
       String effect,
@@ -30,7 +42,9 @@ public interface InvocationWorkflowRecords {
 
     void freezeDirectory();
 
-    void validateMaterial();
+    MaterialUse materialUse();
+
+    boolean hasSuccessfulRead();
 
     Pin pin();
 
@@ -54,7 +68,11 @@ public interface InvocationWorkflowRecords {
   interface Success {
     String tool();
 
-    void validateResultProof();
+    ImageProof imageProof();
+
+    WebProof webProof();
+
+    String webProofDigest();
 
     int succeed();
 

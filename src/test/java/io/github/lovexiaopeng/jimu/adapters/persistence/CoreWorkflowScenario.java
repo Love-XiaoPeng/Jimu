@@ -49,29 +49,31 @@ public final class CoreWorkflowScenario {
     db = new JdbcTemplate(source);
     tag = args[1];
     for (var mode :
-        List.of(
-            "checkpoint-empty",
-            "prepare-replay",
-            "prepare-incomplete",
-            "checkpoint-corrupt",
-            "checkpoint-purged",
-            "dispatch-corrupt",
-            "dispatch-limit",
-            "responded-known",
-            "responded-unknown",
-            "responded-invalid",
-            "responded-cancel",
-            "admit-binding",
-            "admit-pin",
-            "admit-pending",
-            "admit-replay",
-            "success-duplicate",
-            "finish-unresolved",
-            "finish-success",
-            "cross-tenant",
-            "prepare-race",
-            "dispatch-race",
-            "success-race")) run(mode);
+        args.length > 2
+            ? List.of(args[2].split(","))
+            : List.of(
+                "checkpoint-empty",
+                "prepare-replay",
+                "prepare-incomplete",
+                "checkpoint-corrupt",
+                "checkpoint-purged",
+                "dispatch-corrupt",
+                "dispatch-limit",
+                "responded-known",
+                "responded-unknown",
+                "responded-invalid",
+                "responded-cancel",
+                "admit-binding",
+                "admit-pin",
+                "admit-pending",
+                "admit-replay",
+                "success-duplicate",
+                "finish-unresolved",
+                "finish-success",
+                "cross-tenant",
+                "prepare-race",
+                "dispatch-race",
+                "success-race")) run(mode);
     System.out.println("PASS core workflow differential " + tag);
   }
 

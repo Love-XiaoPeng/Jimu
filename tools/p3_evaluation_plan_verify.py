@@ -131,7 +131,7 @@ class Model(http.server.BaseHTTPRequestHandler):
         self.wfile.write(data)
 
 
-def verify(e, materials_only=False, model_cutover=False, binding_cutover=False):
+def verify(e, materials_only=False, model_cutover=False, binding_cutover=False, invocation_cutover=False):
     server = http.server.ThreadingHTTPServer(("127.0.0.1",0),Model)
     server.daemon_threads = True
     server.origin = "http://127.0.0.1:"+str(server.server_port)
@@ -235,6 +235,7 @@ def verify(e, materials_only=False, model_cutover=False, binding_cutover=False):
             kinds=["goal-admission","nonfrozen-url","source-body","frozen-cache","goal-cache","system-cache","schema-cache","description-cache","source-cache","snapshot-cache","missing-snapshot-cache","missing-file-cache"]
             if "--material-smoke" in sys.argv: kinds=["frozen-cache","schema-cache"]
             if model_cutover: kinds=["source-body"]
+            if invocation_cutover: kinds=["nonfrozen-url","source-body"]
             for kind in kinds:
                 run_id="material-"+sample+"-"+kind
                 provision(p,run_id)
@@ -312,7 +313,7 @@ def verify(e, materials_only=False, model_cutover=False, binding_cutover=False):
                             "recovery material refusal leaves all original model/tool costs intact",sample=sample,case=kind)
                 facts.append({"materialCase":kind,"sample":sample,"task":task,"view":view,"originalBalances":original})
 
-        if model_cutover:
+        if model_cutover or invocation_cutover:
             return
         # B qualification is a clearly labelled trusted SQL fixture, not measured quality.
         draft_kinds=["bad-draft","missing-draft","frozen-draft-cache","draft-rebind-cache","draft-history-cache"]
@@ -497,6 +498,9 @@ def verify(e, materials_only=False, model_cutover=False, binding_cutover=False):
     try:
         e.sql("UPDATE tenant_budget SET token_limit=1000000000,cost_limit=2000000000,model_limit=1000,running_limit=1 WHERE tenant_id='tenant-a';")
         other = e.sql("SELECT token_limit,cost_limit,model_limit,running_limit FROM tenant_budget WHERE tenant_id='tenant-b';")
+        if invocation_cutover:
+            materials()
+            return
         if model_cutover or binding_cutover:
             p=json.loads((resources/"qwen-main-v1.json").read_text())
             model="qwen3.8-max-0902"

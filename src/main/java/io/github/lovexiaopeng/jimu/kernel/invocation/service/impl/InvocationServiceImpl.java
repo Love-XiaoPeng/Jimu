@@ -39,7 +39,7 @@ public final class InvocationServiceImpl implements InvocationService {
         () -> {
           var row = records.lockSettlement(lease, invocation);
           if (row.session()) {
-            records.requireOrdinaryCommit(lease, invocation);
+            requireOrdinaryCommit(lease, invocation);
             throw new TaskFailure(409, "SESSION_READ_COMMIT_REQUIRED");
           }
           if (row.failRunning() != 1) throw new TaskFailure(409, "INVOCATION_STATE");
@@ -51,7 +51,7 @@ public final class InvocationServiceImpl implements InvocationService {
 
   @Override
   public void uncertain(Lease lease, String invocation) {
-    records.requireOrdinaryCommit(lease, invocation);
+    requireOrdinaryCommit(lease, invocation);
     work.required(
         () -> {
           var row = records.lockSettlement(lease, invocation);
@@ -89,7 +89,7 @@ public final class InvocationServiceImpl implements InvocationService {
               || !call.providerId().equals(slot.provider()))
             throw new TaskFailure(409, "INVOCATION_MISMATCH");
           row.freezeDirectory();
-          row.validateMaterial();
+          validateMaterial(row, call);
           slot = row.slot();
           var pin = row.pin();
           if (!pluginVersion.equals(pin.version())
@@ -118,8 +118,24 @@ public final class InvocationServiceImpl implements InvocationService {
 
   @Override
   public void succeeded(Lease lease, String invocation, String output) {
-    records.requireOrdinaryCommit(lease, invocation);
+    requireOrdinaryCommit(lease, invocation);
     commit(lease, invocation, output, false);
+  }
+
+  private void requireOrdinaryCommit(Lease lease, String invocation) {
+    if (lease.capabilities().contains("session_search"))
+      throw new TaskFailure(409, "SESSION_SCOPE_COMMIT_REQUIRED");
+    // 保留原五次惰性查询和拒绝优先级；不以一次预加载改变计量或错误次序。
+    if (records.protectedInvocation(lease, invocation, "session_event_trace"))
+      throw new TaskFailure(409, "SESSION_TRACE_COMMIT_REQUIRED");
+    if (records.protectedInvocation(lease, invocation, "session_event_search"))
+      throw new TaskFailure(409, "SESSION_SEARCH_COMMIT_REQUIRED");
+    if (records.protectedInvocation(lease, invocation, "session_event_read"))
+      throw new TaskFailure(409, "SESSION_READ_COMMIT_REQUIRED");
+    if (records.protectedInvocation(lease, invocation, "working_directory"))
+      throw new TaskFailure(409, "DIRECTORY_COMMIT_REQUIRED");
+    if (records.protectedInvocation(lease, invocation, "todo_write"))
+      throw new TaskFailure(409, "TODO_COMMIT_REQUIRED");
   }
 
   @Override
@@ -135,7 +151,7 @@ public final class InvocationServiceImpl implements InvocationService {
                         throw new TaskFailure(409, "MCP_COMMIT_REQUIRED");
                       if ("present".equals(row.tool()))
                         throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
-                      row.validateResultProof();
+                      validateResultProof(row, output);
                       if (row.succeed() != 1) throw new TaskFailure(409, "INVOCATION_STATE");
                       row.settleUnit();
                       row.succeeded();
@@ -151,5 +167,34 @@ public final class InvocationServiceImpl implements InvocationService {
                     }));
     // 成功、计账和STOPPED已提交，随后通知调用者材料不再匹配。
     if (rejected) throw new TaskFailure(409, "EVALUATION_MATERIAL_MISMATCH");
+  }
+
+  private static void validateMaterial(InvocationWorkflowRecords.Admission row, Call call) {
+    var use = row.materialUse();
+    if (use == null) return;
+    if (call.tool().equals("web_fetch")) requireMaterial(use.sources().contains(use.url()));
+    if (call.tool().equals("write")) requireMaterial(row.hasSuccessfulRead());
+    if (call.tool().equals("read") || call.tool().equals("write"))
+      requireMaterial(use.target().equals(use.filePath()));
+    if (call.tool().equals("present"))
+      requireMaterial(use.fileCount() == 1 && use.target().equals(use.presentedPath()));
+  }
+
+  private static void requireMaterial(boolean matches) {
+    if (!matches) throw new TaskFailure(409, "EVALUATION_MATERIAL_MISMATCH");
+  }
+
+  private void validateResultProof(InvocationWorkflowRecords.Success row, String output) {
+    var image = row.imageProof();
+    if (image != null
+        && (image.committedIds().size() != 1
+            || !image.committedIds().getFirst().equals(image.outputId())))
+      throw new TaskFailure(409, "IMAGE_COMMIT_REQUIRED");
+    var web = row.webProof();
+    if (web != null
+        && (!output.equals(web.storedOutput())
+            || !digest.hash(output).equals(web.storedDigest())
+            || !row.webProofDigest().equals(web.receipt())))
+      throw new TaskFailure(409, "WEB_RESULT_PROOF_INVALID");
   }
 }

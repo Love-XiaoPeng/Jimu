@@ -8,4 +8,5 @@
     <![CDATA[INSERT INTO event(tenant_id,task_id,seq,event_id,fact_id,type,code,status,artifact_id) VALUES(#{tenant},#{taskId},#{sequence},#{eventId},#{factId},#{type},#{code},#{status},#{artifactId})]]>
   </insert>
   <select id="selectFactSequenceValue" resultType="long">SELECT seq FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND fact_id=#{factId}</select>
+  <select id="selectFactCode" resultType="map"><![CDATA[SELECT code FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND fact_id=#{factId}]]></select>
 </mapper>

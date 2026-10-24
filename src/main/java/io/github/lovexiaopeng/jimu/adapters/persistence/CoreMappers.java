@@ -17,6 +17,50 @@ record CoreMappers(
     io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper steps,
     io.github.lovexiaopeng.jimu.adapters.persistence.artifact.mapper.ArtifactMapper artifacts,
     io.github.lovexiaopeng.jimu.adapters.persistence.model.mapper.ModelDispatchMapper dispatches) {
+  io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageObjectMapper imageObjects() {
+    return session.getMapper(
+        io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageObjectMapper.class);
+  }
+
+  java.util.List<java.util.Map<String, Object>> selectInstallation(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      String tenant,
+      String plugin) {
+    var wrapper =
+        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+            io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity>();
+    wrapper
+        .select(
+            io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity
+                ::getTenantId,
+            io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity
+                ::getPluginId,
+            io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity
+                ::getEnabled,
+            io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity
+                ::getEpoch,
+            io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity
+                ::getPluginVersion,
+            io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity
+                ::getPluginDigest)
+        .eq(
+            io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity
+                ::getTenantId,
+            tenant)
+        .eq(
+            io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity
+                ::getPluginId,
+            plugin);
+    var parameters = new java.util.HashMap<String, Object>();
+    parameters.put("ew", wrapper);
+    parameters.put("query", query);
+    return session.selectList(
+        io.github.lovexiaopeng.jimu.adapters.persistence.plugin.mapper.InstallationMapper.class
+                .getName()
+            + ".selectMaps",
+        parameters);
+  }
+
   // MP insert 的映射以实体字段为根参数；显式 query 同级传入，复用已有截止/实计插件。
   // 固定两个 statement ID；不接收外部 SQL、表名或 namespace。
   int insertDispatch(

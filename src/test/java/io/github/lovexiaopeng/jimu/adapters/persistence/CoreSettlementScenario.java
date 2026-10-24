@@ -46,15 +46,17 @@ public final class CoreSettlementScenario {
     ledger = new JdbcLedger(source, new ModelProfiles(env));
     tag = args[1];
     for (String mode :
-        List.of(
-            "model-null",
-            "model-known",
-            "model-corrupt",
-            "model-missing",
-            "tool-failed",
-            "tool-unknown",
-            "claim-recovery",
-            "stop-cancel")) run(mode);
+        args.length > 2
+            ? List.of(args[2].split(","))
+            : List.of(
+                "model-null",
+                "model-known",
+                "model-corrupt",
+                "model-missing",
+                "tool-failed",
+                "tool-unknown",
+                "claim-recovery",
+                "stop-cancel")) run(mode);
     ledger.processStopped(worker);
     check(
         db.queryForObject("SELECT stopped FROM worker_process WHERE id=?", Boolean.class, worker),

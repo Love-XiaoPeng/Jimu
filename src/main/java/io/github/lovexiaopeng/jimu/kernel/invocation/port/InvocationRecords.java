@@ -19,7 +19,7 @@ public interface InvocationRecords {
     void reconciliationRequired();
   }
 
-  void requireOrdinaryCommit(Lease lease, String invocation);
+  boolean protectedInvocation(Lease lease, String invocation, String tool);
 
   Invocation lockSettlement(Lease lease, String invocation);
 }

@@ -25,4 +25,5 @@
   <update id="releaseModelTokens">
     <![CDATA[UPDATE tenant_budget SET token_held=token_held-#{tokens} WHERE tenant_id=#{tenant}]]>
   </update>
+  <update id="reserveToolUnit"><![CDATA[UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=#{tenant}]]></update>
 </mapper>

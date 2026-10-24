@@ -96,4 +96,9 @@ public interface ReservationMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("reservationId") String reservationId);
+
+  int settleToolUnit(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("reservationId") String reservationId);
 }

@@ -38,4 +38,6 @@ public interface TenantBudgetMapper {
       @Param("query") SessionQueryContext query,
       @Param("tokens") long tokens,
       @Param("tenant") String tenant);
+
+  int reserveToolUnit(@Param("query") SessionQueryContext query, @Param("tenant") String tenant);
 }

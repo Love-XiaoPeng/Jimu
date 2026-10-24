@@ -15,6 +15,77 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 /** 将已删除的 JDBC 语句逐条与实际加载的 XML/绑定顺序对照，列展开另有真实 schema22 断言。 */
 class B2MapperContractsTest {
   @Test
+  void invocationCutoverPreservesPredicatesBindingAndCompositeMpRead() throws Exception {
+    var inventory =
+        Payloads.read(
+            Files.readString(
+                Path.of("docs/verification/XIAO-60/evidence/b2-invocation-removed-sql.json")),
+            JsonNode.class);
+    var configuration =
+        LedgerMapperSessions.create(
+                new DriverManagerDataSource(
+                    "jdbc:mysql://127.0.0.1:1/unused", "unused", "synthetic"))
+            .getConfiguration();
+    assertEquals(25, inventory.path("removed").size());
+    for (var site : inventory.path("removed")) {
+      String namespace =
+          "io.github.lovexiaopeng.jimu.adapters.persistence."
+              + site.path("module").asText()
+              + ".mapper."
+              + site.path("mapper").asText();
+      if (site.has("replacement")) {
+        assertTrue(!configuration.hasStatement(namespace + ".selectById"));
+        var wrapper =
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+                io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity
+                    .InstallationEntity>();
+        wrapper
+            .select(
+                io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity
+                    ::getTenantId,
+                io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity
+                    ::getPluginId)
+            .eq(
+                io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity
+                    ::getTenantId,
+                "t")
+            .eq(
+                io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity
+                    ::getPluginId,
+                "p");
+        String sql =
+            configuration
+                .getMappedStatement(namespace + ".selectMaps")
+                .getBoundSql(Map.of("ew", wrapper))
+                .getSql()
+                .replaceAll("\\s+", " ");
+        assertTrue(sql.contains("tenant_id = ?") && sql.contains("plugin_id = ?"), sql);
+        assertTrue(!sql.contains("*"), sql);
+        continue;
+      }
+      var bound =
+          configuration
+              .getMappedStatement(namespace + "." + site.path("method").asText())
+              .getBoundSql(Map.of());
+      String expected = site.path("originalSql").asText();
+      if (expected.contains("SELECT *")) {
+        String table = expected.substring(expected.indexOf(" FROM ") + 6).split(" ")[0];
+        var columns = new java.util.ArrayList<String>();
+        inventory.path("columns").path(table).forEach(c -> columns.add(c.asText()));
+        expected = expected.replace("SELECT *", "SELECT " + String.join(",", columns));
+      }
+      if (site.has("fixedTool"))
+        expected = expected.replace("tool='" + site.path("fixedTool").asText() + "'", "tool=?");
+      assertEquals(expected, bound.getSql().trim());
+      assertEquals(site.path("parameters").size(), bound.getParameterMappings().size());
+      for (int i = 0; i < bound.getParameterMappings().size(); i++)
+        assertEquals(
+            site.path("parameters").get(i).path("name").asText(),
+            bound.getParameterMappings().get(i).getProperty());
+    }
+  }
+
+  @Test
   void modelCutoverLoadsFixedPredicatesAndOrdinaryCompositeInsert() throws Exception {
     var inventory =
         Payloads.read(

@@ -2905,42 +2905,6 @@ public final class JdbcLedger
     }
   }
 
-  void rejectTodoBypass(Lease lease, String invocation) {
-    if (lease.capabilities().contains("session_search"))
-      throw new TaskFailure(409, "SESSION_SCOPE_COMMIT_REQUIRED");
-
-    if (!rows(
-            "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND tool='session_event_trace'",
-            lease.tenant(),
-            lease.taskId(),
-            invocation)
-        .isEmpty()) throw new TaskFailure(409, "SESSION_TRACE_COMMIT_REQUIRED");
-    if (!rows(
-            "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND tool='session_event_search'",
-            lease.tenant(),
-            lease.taskId(),
-            invocation)
-        .isEmpty()) throw new TaskFailure(409, "SESSION_SEARCH_COMMIT_REQUIRED");
-    if (!rows(
-            "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND tool='session_event_read'",
-            lease.tenant(),
-            lease.taskId(),
-            invocation)
-        .isEmpty()) throw new TaskFailure(409, "SESSION_READ_COMMIT_REQUIRED");
-    if (!rows(
-            "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND tool='working_directory'",
-            lease.tenant(),
-            lease.taskId(),
-            invocation)
-        .isEmpty()) throw new TaskFailure(409, "DIRECTORY_COMMIT_REQUIRED");
-    if (!rows(
-            "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND tool='todo_write'",
-            lease.tenant(),
-            lease.taskId(),
-            invocation)
-        .isEmpty()) throw new TaskFailure(409, "TODO_COMMIT_REQUIRED");
-  }
-
   private void releaseQuestionTask(Map<String, Object> task) {
     if (!questionTask(task)) return;
     int count =
@@ -4265,9 +4229,9 @@ public final class JdbcLedger
             Payloads::hash);
     invocationService =
         new io.github.lovexiaopeng.jimu.kernel.invocation.service.impl.InvocationServiceImpl(
-            records.invocation(),
+            new MapperInvocationRecords(this),
             coreWork,
-            new JdbcInvocationWorkflows(this, db),
+            new MapperInvocationWorkflows(this),
             leaseWork,
             Payloads::hash);
   }
@@ -5869,13 +5833,15 @@ public final class JdbcLedger
       if (task.get("cancel_requested_at") != null) throw new TaskFailure(409, "CANCEL_REQUESTED");
       if (n(task, "within_deadline") != 1) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
     }
-    if (db.update(
-            "UPDATE task SET revision=revision+1,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND revision=? AND current_attempt_id=? AND fence=? AND lease_until>CURRENT_TIMESTAMP(6)",
-            lease.tenant(),
-            lease.taskId(),
-            n(task, "revision"),
-            lease.attemptId(),
-            lease.fence())
+    if (mappers
+            .tasks()
+            .commitLiveFence(
+                query,
+                lease.tenant(),
+                lease.taskId(),
+                n(task, "revision"),
+                lease.attemptId(),
+                lease.fence())
         != 1) throw new TaskFailure(409, "FENCE_REJECTED");
     if (JdbcSessionRecords.task(task)
         && Long.toString(n(task, "revision")).length()
@@ -5907,10 +5873,7 @@ public final class JdbcLedger
     var material = material(task);
     if (material == null) return;
     for (var invocation :
-        rows(
-            "SELECT input_snapshot,output_snapshot,output_digest FROM invocation WHERE tenant_id=? AND task_id=? AND tool='web_fetch' AND state='SUCCEEDED'",
-            s(task, "tenant_id"),
-            s(task, "id"))) {
+        mappers.invocations().selectMaterialSources(query, s(task, "tenant_id"), s(task, "id"))) {
       String output = s(invocation, "output_snapshot");
       EvaluationMaterials.require(
           output != null && Payloads.hash(output).equals(s(invocation, "output_digest")));
@@ -5923,10 +5886,9 @@ public final class JdbcLedger
       var initial = initialFile(task);
       boolean written = false;
       for (var invocation :
-          rows(
-              "SELECT i.tool,i.output_snapshot,i.output_digest FROM invocation i JOIN step s ON s.tenant_id=i.tenant_id AND s.id=i.step_id WHERE i.tenant_id=? AND i.task_id=? AND i.state='SUCCEEDED' AND i.tool IN ('read','write') ORDER BY s.ordinal,i.slot",
-              s(task, "tenant_id"),
-              s(task, "id"))) {
+          mappers
+              .invocations()
+              .selectMaterialFileHistory(query, s(task, "tenant_id"), s(task, "id"))) {
         if (s(invocation, "tool").equals("write")) {
           written = true;
           continue;

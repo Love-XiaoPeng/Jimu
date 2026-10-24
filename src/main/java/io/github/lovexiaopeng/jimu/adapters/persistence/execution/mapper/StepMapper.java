@@ -61,4 +61,10 @@ public interface StepMapper {
       @Param("digest") String digest,
       @Param("tenant") String tenant,
       @Param("stepId") String stepId);
+
+  List<Map<String, Object>> selectInvocationStep(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId,
+      @Param("stepId") String stepId);
 }

@@ -32,4 +32,10 @@ public interface EventMapper {
       @Param("code") String code,
       @Param("status") String status,
       @Param("artifactId") String artifactId);
+
+  List<Map<String, Object>> selectFactCode(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId,
+      @Param("factId") String factId);
 }

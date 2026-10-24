@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageObjectMapper">
+  <select id="selectCommittedProducer" resultType="map"><![CDATA[SELECT image_id FROM task_image_object WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND producer_invocation=#{invocationId} AND phase='COMMITTED']]></select>
+</mapper>
