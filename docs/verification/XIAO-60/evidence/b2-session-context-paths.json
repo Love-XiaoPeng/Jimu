@@ -1,0 +1,38 @@
+{
+  "baseline": "eac8c702997506e931a9aaaed185d0e3d4473371",
+  "entry": "SessionEventLedger.sessionContext -> JdbcLedger.queryView -> SessionContextServiceImpl -> typed SessionContexts -> MapperSessionContexts -> shared fence/qualification + MP recent + Mapper history/metadata/account",
+  "sharedContext": "JdbcSessionRecords.context -> same SessionContextServiceImpl.snapshot; checkpoint proof uses exactly same codec/rules",
+  "removed": {
+    "staticJdbcCalls": 5,
+    "dynamicJdbcScans": 1,
+    "sql": [
+      "SELECT *,retain_until>CURRENT_TIMESTAMP(6) AS retained FROM task_session_history WHERE tenant_id=? AND task_id=? FOR UPDATE",
+      "SELECT COLUMN_NAME FROM information_schema.columns WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? ORDER BY ORDINAL_POSITION",
+      "SELECT metadata_bytes FROM task_session_history WHERE tenant_id=? AND task_id=?",
+      "UPDATE task_session_history SET metadata_bytes=?,held_bytes=IF(content_state='PURGED',?,held_bytes) WHERE tenant_id=? AND task_id=?",
+      "SELECT seq,type FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq BETWEEN ? AND ? ORDER BY seq LIMIT 8"
+    ],
+    "dynamic": "metadata fixed-projection row scan; information_schema column preflight removed; existing SessionHistoryRetentionMapper metadata16 reused"
+  },
+  "inventory": {
+    "static": 247,
+    "dynamic": 21,
+    "literalBinds": 868,
+    "tables": "35 tables + readonly receipt all OPEN"
+  },
+  "preserved": [
+    "same DS/session/transaction with explicit query and inherited SessionQueryTransaction final/beforeCommit checks",
+    "original fence/current permissions/whole-scope and original lock/refusal order via shared qualification chain",
+    "history version/binding/content/retention checks; recent <=8 ordered full-key MP projection",
+    "same context/receipt codec bytes and target order; original metadata exclusions/NULL/fixed-point/headroom rules",
+    "single shared accounting writer with parameterized precise update; no dual writes",
+    "schema22/V1-V22/frozen resource bytes"
+  ],
+  "measurement": "Removal of schema metadata preflight changes reads/bytes/operations; only measured paths compared, not all SQL/network invariance",
+  "remaining": [
+    "runtime scope/receipt and admission writes/module/maintenance migration",
+    "core UoW final beforeCommit deadline gap remains OPEN independently of session transaction",
+    "native v2/v3 complete worker paths, actual v3 trace cleanup, exact CLI assembly, full scope/maintenance/file lock permutations, nonempty paid-ledger anomalies and real paid vision OPEN",
+    "B3-B5/61/62/junior work not activated"
+  ]
+}

@@ -14,7 +14,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Native public history records. All mutations run under the owning ledger's budget/task locks. */
@@ -132,28 +131,8 @@ final class JdbcSessionRecords {
   }
 
   private List<String> sensitive;
-  private final Map<String, List<String>> metadataColumns =
-      new java.util.concurrent.ConcurrentHashMap<>();
   private static final DateTimeFormatter UTC =
       DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
-  private static final Set<String> BODIES =
-      Set.of(
-          "request_snapshot",
-          "goal",
-          "summary",
-          "response_snapshot",
-          "input_snapshot",
-          "output_snapshot",
-          "usage_snapshot",
-          "event_snapshot",
-          "normalized_query_snapshot",
-          "read_sources_snapshot",
-          "authority_snapshot",
-          "target_snapshot",
-          "source_task_id",
-          "context_snapshot",
-          "normalized_snapshot",
-          "read_refs_snapshot");
   private static final List<String> TABLES =
       List.of(
           "task",
@@ -179,8 +158,19 @@ final class JdbcSessionRecords {
 
   JdbcSessionRecords(
       JdbcTemplate db, io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    this(db, query, null);
+  }
+
+  private org.mybatis.spring.SqlSessionTemplate mapperSession;
+  java.util.function.Function<Map<String, Object>, String> context;
+
+  JdbcSessionRecords(
+      JdbcTemplate db,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      org.mybatis.spring.SqlSessionTemplate mapperSession) {
     this.db = db;
     this.query = query;
+    this.mapperSession = mapperSession;
   }
 
   void copyConfiguration(JdbcSessionRecords original) {
@@ -229,11 +219,7 @@ final class JdbcSessionRecords {
   }
 
   Map<String, Object> history(Map<String, Object> task, boolean readable) {
-    var found =
-        rows(
-            "SELECT *,retain_until>CURRENT_TIMESTAMP(6) AS retained FROM task_session_history WHERE tenant_id=? AND task_id=? FOR UPDATE",
-            s(task, "tenant_id"),
-            s(task, "id"));
+    var found = mapperRows("SessionHistoryRetentionMapper.history", task);
     if (found.isEmpty()) throw new TaskFailure(409, "SESSION_HISTORY_UNAVAILABLE");
     var h = found.getFirst();
     if (n(h, "record_version") != 1
@@ -273,18 +259,24 @@ final class JdbcSessionRecords {
         != 1) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
   }
 
-  private List<String> columns(String table) {
-    return metadataColumns.computeIfAbsent(
-        table,
-        t ->
-            db
-                .queryForList(
-                    "SELECT COLUMN_NAME FROM information_schema.columns WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? ORDER BY ORDINAL_POSITION",
-                    String.class,
-                    t)
-                .stream()
-                .filter(c -> !BODIES.contains(c))
-                .toList());
+  private org.mybatis.spring.SqlSessionTemplate mapperSession() {
+    if (mapperSession == null)
+      mapperSession =
+          io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure.LedgerMapperSessions
+              .create(java.util.Objects.requireNonNull(db.getDataSource()));
+    return mapperSession;
+  }
+
+  private List<Map<String, Object>> mapperRows(String operation, Map<String, Object> task) {
+    var args = new java.util.HashMap<String, Object>();
+    args.put("query", query);
+    args.put("tenant", s(task, "tenant_id"));
+    args.put("taskId", s(task, "id"));
+    try (var ignored = query == null ? null : query.meter(searchBudget)) {
+      return mapperSession()
+          .selectList(
+              "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper." + operation, args);
+    }
   }
 
   long metadata(Map<String, Object> task, boolean closing) {
@@ -295,19 +287,12 @@ final class JdbcSessionRecords {
     long total = 0;
     long cleanupHeadroom = 1024;
     for (String table : TABLES) {
-      String key =
-          table.equals("task") ? "id" : table.contains("scope") ? "caller_task_id" : "task_id";
-      for (var row :
-          rows(
-              "SELECT "
-                  + String.join(",", columns(table))
-                  + " FROM "
-                  + table
-                  + " WHERE tenant_id=? AND "
-                  + key
-                  + "=?",
-              s(task, "tenant_id"),
-              s(task, "id"))) {
+      String operation =
+          "SessionHistoryRetentionMapper.metadata"
+              + java.util.Arrays.stream(table.split("_"))
+                  .map(p -> Character.toUpperCase(p.charAt(0)) + p.substring(1))
+                  .collect(java.util.stream.Collectors.joining());
+      for (var row : mapperRows(operation, task)) {
         cleanupHeadroom +=
             switch (table) {
               case "task" -> 768;
@@ -339,18 +324,13 @@ final class JdbcSessionRecords {
     for (int i = 0; i < 4; i++) {
       long bytes = metadata(task, closing);
       long old =
-          db.queryForObject(
-              "SELECT metadata_bytes FROM task_session_history WHERE tenant_id=? AND task_id=?",
-              Long.class,
-              s(task, "tenant_id"),
-              s(task, "id"));
+          n(mapperRows("SessionContextMapper.metadataBytes", task).getFirst(), "metadata_bytes");
       if (old == bytes) return;
-      db.update(
-          "UPDATE task_session_history SET metadata_bytes=?,held_bytes=IF(content_state='PURGED',?,held_bytes) WHERE tenant_id=? AND task_id=?",
-          bytes,
-          bytes,
-          s(task, "tenant_id"),
-          s(task, "id"));
+      mapperSession()
+          .getMapper(
+              io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionContextMapper
+                  .class)
+          .account(query, bytes, s(task, "tenant_id"), s(task, "id"));
     }
     throw corrupt();
   }
@@ -438,50 +418,55 @@ final class JdbcSessionRecords {
   }
 
   List<Map<String, Object>> recent(Map<String, Object> task, long upper) {
-    var result = new ArrayList<Map<String, Object>>();
-    for (var r :
-        rows(
-            "SELECT seq,type FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq BETWEEN ? AND ? ORDER BY seq LIMIT 8",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            Math.max(0, upper - 7),
-            upper)) result.add(Map.of("seq", n(r, "seq"), "type", s(r, "type")));
+    var wrapper =
+        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                    .ScopeQueryNativeEntity>()
+            .select(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getSeq,
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getType)
+            .eq(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getTenantId,
+                s(task, "tenant_id"))
+            .eq(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getTaskId,
+                s(task, "id"))
+            .between(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getSeq,
+                Math.max(0, upper - 7),
+                upper)
+            .orderByAsc(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getSeq)
+            .last("LIMIT 8");
+    var args = new java.util.HashMap<String, Object>();
+    args.put("query", query);
+    args.put("ew", wrapper);
+    List<Map<String, Object>> result;
+    try (var ignored = query == null ? null : query.meter(searchBudget)) {
+      result =
+          mapperSession()
+              .selectList(
+                  "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryNativeReadMapper.selectMaps",
+                  args);
+    }
     if (result.size() != Math.min(8, upper + 1)) throw corrupt();
     return result;
   }
 
   String context(Map<String, Object> task) {
-    long upper = n(history(task, true), "next_seq") - 1;
-    String raw =
-        Payloads.json(
-            Map.of(
-                "kind",
-                "session_event_context",
-                "version",
-                version(task),
-                "session_id",
-                s(task, "id"),
-                "upper_seq",
-                upper,
-                "user_message_seq",
-                0,
-                "recent",
-                recent(task, upper)));
-    if (JdbcSessionScopes.task(task)) {
-      var scope = scopes.require(task);
-      var node = (com.fasterxml.jackson.databind.node.ObjectNode) contracts.json(raw, 4096);
-      node.put("scope_sha256", s(scope.row(), "authority_digest"));
-      node.put("retain_until", scope.authority().path("retain_until").asText());
-      var prior = node.putArray("prior_sessions");
-      for (var target : scope.authority().path("targets"))
-        prior
-            .addObject()
-            .put("session_id", target.path("session_id").asText())
-            .put("upper_seq", target.path("upper_seq").asLong());
-      raw = Payloads.json(node);
-    }
-    contract(task).context(raw);
-    return raw;
+    return context.apply(task);
   }
 
   void prepare(Map<String, Object> task, String request, String step) {

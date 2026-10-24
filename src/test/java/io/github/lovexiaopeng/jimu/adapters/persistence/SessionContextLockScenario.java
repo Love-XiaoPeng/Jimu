@@ -45,6 +45,10 @@ public final class SessionContextLockScenario {
     var ledger = new JdbcLedger(source, new ModelProfiles(env));
     ledger.sessionReadEnabled(true, java.util.List.of());
     ledger.priorSessionSearchEnabled(true);
+    if (args.length > 3 && args[3].equals("warm")) {
+      ledger.sessionContext(lease);
+      System.out.println("PASS same lease uncontended context before contention measurement");
+    }
     try (var holder = source.getConnection()) {
       holder.setAutoCommit(false);
       try {

@@ -73,6 +73,9 @@ class PersistenceAssemblyTest {
       assertFalse(configuration.hasStatement(namespace + ".selectById"));
     }
     assertSame(source, configuration.getEnvironment().getDataSource());
+    assertTrue(
+        configuration.hasStatement(
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionContextMapper.account"));
     var projection =
         com.baomidou.mybatisplus.core.metadata.TableInfoHelper.getTableInfo(
                 io.github.lovexiaopeng.jimu.adapters.persistence.directory.entity

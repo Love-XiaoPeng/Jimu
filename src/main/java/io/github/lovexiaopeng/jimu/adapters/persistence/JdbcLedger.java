@@ -43,6 +43,8 @@ public final class JdbcLedger
         io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger {
+  final io.github.lovexiaopeng.jimu.kernel.session.service.SessionContextService sessionContexts;
+  final MapperSessionContexts contextRecords;
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeQueryService
       scopeQueries;
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeRevocationService
@@ -364,14 +366,7 @@ public final class JdbcLedger
   public String sessionContext(Lease lease) {
     if (query == null)
       return queryView(System.nanoTime() + 2_000_000_000L, null).sessionContext(lease);
-    // Context acquisition has the same bounded/sanitized failure contract as public reads.
-    return sessionOwnerRead(
-        () -> {
-          var task = fenced(lease, true);
-          String context = sessions.context(task);
-          sessions.account(task, false);
-          return context;
-        });
+    return sessionContexts.context(lease);
   }
 
   private Map<String, Object> sessionOwner(Identity identity, String taskId) {
@@ -393,7 +388,7 @@ public final class JdbcLedger
     return task;
   }
 
-  private <T> T sessionOwnerRead(java.util.function.Supplier<T> work) {
+  <T> T sessionOwnerRead(java.util.function.Supplier<T> work) {
     long started = System.nanoTime();
     try {
       return sessionTransaction(work);
@@ -3289,7 +3284,12 @@ public final class JdbcLedger
             ? new JdbcTemplate(source)
             : new io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionJdbcTemplate(
                 source, query);
-    sessions = new JdbcSessionRecords(db, query);
+    sessions = new JdbcSessionRecords(db, query, mappers.session());
+    contextRecords = new MapperSessionContexts(this);
+    sessionContexts =
+        new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionContextServiceImpl(
+            contextRecords);
+    sessions.context = task -> sessionContexts.snapshot(contextRecords.bind(task));
     sessionScopes = new JdbcSessionScopes(this, db, sessions);
     scopeQueries =
         new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionScopeQueryServiceImpl(
