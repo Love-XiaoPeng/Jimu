@@ -499,79 +499,13 @@ final class JdbcSessionRecords {
     body(task, SessionContracts.bytes(request));
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionCallBindingService
+      callBindings =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionCallBindingServiceImpl();
+
   void bindCalls(Map<String, Object> task, String step) {
-    var h = history(task, true);
-    var st =
-        one(
-            "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=? AND (NOT ? OR (OCTET_LENGTH(request_snapshot)<=131072 AND COALESCE(OCTET_LENGTH(response_snapshot),0)<=16384))",
-            s(task, "tenant_id"),
-            step,
-            s(task, "id"),
-            searchBudget != null && searchBudget.prior);
-    if (st.get("session_upper_seq") == null
-        || !s(h, "binding_digest").equals(s(st, "session_binding_digest"))) throw corrupt();
-    for (var i :
-        rows(
-            "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND step_id=? AND (NOT ? OR (OCTET_LENGTH(input_snapshot)<=4096 AND COALESCE(OCTET_LENGTH(output_snapshot),0)<=32768)) ORDER BY ordinal",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            step,
-            searchBudget != null && searchBudget.prior)) {
-      if (JdbcSessionScopes.task(task)) {
-        bindScopeCall(task, st, i);
-        continue;
-      }
-      if (s(i, "tool").equals("session_event_trace")) {
-        if (!traceTask(task)) throw corrupt();
-        var input = trace.input(s(i, "input_snapshot"));
-        db.update(
-            "INSERT INTO invocation_session_trace(tenant_id,invocation_id,task_id,step_id,binding_digest,input_digest,upper_seq,target_seq,relation_policy) VALUES(?,?,?,?,?,?,?,?,?)",
-            s(task, "tenant_id"),
-            s(i, "id"),
-            s(task, "id"),
-            step,
-            s(h, "binding_digest"),
-            s(i, "input_digest"),
-            n(st, "session_upper_seq"),
-            input.seq(),
-            io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTraceContracts.POLICY);
-        continue;
-      }
-      if (s(i, "tool").equals("session_event_search")) {
-        if (!searchTask(task)) throw corrupt();
-        var input = searchContract(task).input(s(i, "input_snapshot"));
-        String normalized =
-            searchContract(task).normalized(input, s(task, "id"), n(st, "session_upper_seq"));
-        body(task, SessionContracts.bytes(normalized));
-        db.update(
-            "INSERT INTO invocation_session_search(tenant_id,invocation_id,task_id,step_id,binding_digest,input_digest,upper_seq,normalized_query_snapshot,normalized_query_digest,normalized_query_bytes) VALUES(?,?,?,?,?,?,?,?,?,?)",
-            s(task, "tenant_id"),
-            s(i, "id"),
-            s(task, "id"),
-            step,
-            s(h, "binding_digest"),
-            s(i, "input_digest"),
-            n(st, "session_upper_seq"),
-            normalized,
-            Payloads.hash(normalized),
-            SessionContracts.bytes(normalized));
-        continue;
-      }
-      var input = contracts.input(s(i, "input_snapshot"));
-      db.update(
-          "INSERT INTO invocation_session_read(tenant_id,invocation_id,task_id,step_id,binding_digest,input_digest,upper_seq,target_seq,before_count,after_count,relation_version) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-          s(task, "tenant_id"),
-          s(i, "id"),
-          s(task, "id"),
-          step,
-          s(h, "binding_digest"),
-          s(i, "input_digest"),
-          n(st, "session_upper_seq"),
-          input.seq(),
-          input.before(),
-          input.after(),
-          traceTask(task) ? 1 : 0);
-    }
+    callBindings.bind(new MapperSessionCallBindings(this, task, step));
   }
 
   void validateStep(Map<String, Object> task, Map<String, Object> st) {
@@ -780,6 +714,25 @@ final class JdbcSessionRecords {
       if (rows.size() != 1) throw corrupt();
       return rows.getFirst();
     }
+  }
+
+  List<Map<String, Object>> bindingRows(Class<?> mapper, Object wrapper) {
+    if (searchBudget != null && query == null)
+      throw new IllegalStateException("Session search requires an explicit query context");
+    var args = new java.util.HashMap<String, Object>();
+    args.put("query", query);
+    args.put("ew", wrapper);
+    try (var ignored = query == null ? null : query.meter(searchBudget)) {
+      return mapperSession().selectList(mapper.getName() + ".selectMaps", args);
+    }
+  }
+
+  void insertBinding(Class<?> mapper, Object entity) {
+    var args = new java.util.HashMap<String, Object>();
+    var meta = org.apache.ibatis.reflection.SystemMetaObject.forObject(entity);
+    for (String field : meta.getGetterNames()) args.put(field, meta.getValue(field));
+    args.put("query", query);
+    mapperSession().insert(mapper.getName() + ".insert", args);
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionReadRelationProofService
@@ -1000,36 +953,6 @@ final class JdbcSessionRecords {
             input.after(),
             "upper_seq",
             upper));
-  }
-
-  private void bindScopeCall(
-      Map<String, Object> task, Map<String, Object> step, Map<String, Object> invocation) {
-    var scope = scopes.require(task);
-    String raw =
-        normalizedScope(task, step, s(invocation, "tool"), s(invocation, "input_snapshot"));
-    var cut =
-        one(
-            "SELECT * FROM step_session_scope WHERE tenant_id=? AND step_id=? AND caller_task_id=?",
-            s(task, "tenant_id"),
-            s(step, "id"),
-            s(task, "id"));
-    if (!s(scope.row(), "authority_digest").equals(s(cut, "authority_digest"))
-        || !s(step, "session_context_digest").equals(s(cut, "context_digest"))) throw corrupt();
-    db.update(
-        "INSERT INTO invocation_session_scope_query(tenant_id,invocation_id,caller_task_id,step_id,operation,binding_digest,input_digest,authority_digest,context_digest,normalized_snapshot,normalized_digest,normalized_bytes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-        s(task, "tenant_id"),
-        s(invocation, "id"),
-        s(task, "id"),
-        s(step, "id"),
-        s(invocation, "tool").equals("session_search") ? "SEARCH" : "READ",
-        s(step, "session_binding_digest"),
-        s(invocation, "input_digest"),
-        s(scope.row(), "authority_digest"),
-        s(cut, "context_digest"),
-        raw,
-        Payloads.hash(raw),
-        SessionContracts.bytes(raw));
-    body(task, SessionContracts.bytes(raw));
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeReadRefsService

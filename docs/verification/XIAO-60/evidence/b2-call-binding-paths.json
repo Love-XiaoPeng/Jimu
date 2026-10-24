@@ -1,0 +1,49 @@
+{
+  "baseline": "77c8b04f97863c84c2246b484757ef6a02a56d78",
+  "inventory": {
+    "static": 196,
+    "dynamicScannerItems": 23,
+    "literalBinds": 648
+  },
+  "removedStaticJdbc": 7,
+  "removedDynamicSql": 0,
+  "unchanged": [
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sha256": "d713918eb5e16e78e52bf2e3170bf35beb2f123f85b96d8d3c24e3e6966c262f"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperModelWorkflows.java",
+      "sha256": "02de9666c7d2f87501adacf545e6cd91fe4174e562b7928963376b010825844b"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sha256": "ee5dd85dda1a799c4ebf049c4843358ba00fb8e92b418e2ea0d2361574bcccf8"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeRecords.java",
+      "sha256": "515414eb23d035ce9e05bea7556905c9f572a475a6aac56acd32247f8bf58ca5"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/service/impl/ModelDispatchServiceImpl.java",
+      "sha256": "4595258331ff97106f4782fb5ba60f7c37821db1f08cd48fd5642f7bd0f60892"
+    }
+  ],
+  "unchangedResources": 404,
+  "entries": [
+    "DurableAgent M1_RESPONSE -> JdbcLedger.modelResponded -> ModelDispatchServiceImpl.responded -> MapperModelWorkflows.Response.bindCalls -> JdbcSessionRecords.bindCalls -> SessionCallBindingServiceImpl -> MapperSessionCallBindings",
+    "history original SessionHistoryRetentionMapper.history FOR UPDATE -> MP ScopeQueryStepReadMapper.selectMaps -> MP HistoryInvocationReadMapper.selectMaps ORDER BY ordinal -> scope MP ScopeQueryCutReadMapper.selectMaps",
+    "four actual BaseMapper.insert mappings with explicit root query/full fields, same mapper session/DS/UoW; defaults DB-owned; no dual write"
+  ],
+  "preserved": [
+    "scope first; history lock/full keys/prior guard/ordinal and lazy getter/NULL/cast/refusal order",
+    "trace version before codec; native search charge before INSERT; scope require-normalize-cut-authority/context-INSERT-charge; read relation_version evaluated last",
+    "normalizedScope exact bytes unchanged including repeated require and Map.of serialization; four new XMLs only register namespaces",
+    "same query envelope/result metering, absolute2sec deadline, whole-scope/fence, special commit/rollback, atomic response/accounting/slots/events, UNKNOWN and afterCompletion metadata fixed point"
+  ],
+  "remaining": [
+    "B2/35 tables+readonly receipt OPEN",
+    "core UoW final beforeCommit gap/cold/full lock arrangements/persisted FAILED read and historical coverage OPEN",
+    "next shared runtime reader/producer and admission/module/maintenance under PM queue; no new task claimed"
+  ]
+}
