@@ -80,6 +80,9 @@ class PersistenceAssemblyTest {
     assertTrue(
         configuration.hasStatement(
             "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionReadMapper.commitRead"));
+    assertTrue(
+        configuration.hasStatement(
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionSearchMapper.commitSearch"));
     var projection =
         com.baomidou.mybatisplus.core.metadata.TableInfoHelper.getTableInfo(
                 io.github.lovexiaopeng.jimu.adapters.persistence.directory.entity

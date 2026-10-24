@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionSearchMapper">
+<select id="lockBinding" resultType="map"><![CDATA[SELECT record_version,task_id,step_id,binding_digest,upper_seq,input_digest,content_state,normalized_query_snapshot,normalized_query_digest,normalized_query_bytes,outcome,failure_code,output_digest,output_bytes,receipt_event_seq,committed_attempt_id,committed_fence FROM invocation_session_search WHERE tenant_id=#{tenant} AND invocation_id=#{invocation} FOR UPDATE]]></select>
+<update id="commitSearch"><![CDATA[UPDATE invocation_session_search SET outcome=#{commit.outcome},failure_code=#{commit.code},scan_digest=#{commit.scanDigest},scan_rows=#{commit.rows},scan_event_bytes=#{commit.eventBytes},output_digest=#{commit.outputDigest},output_bytes=#{commit.outputBytes},receipt_event_seq=#{commit.receipt},committed_attempt_id=#{attempt},committed_fence=#{fence},committed_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND invocation_id=#{invocation} AND outcome='PENDING']]></update>
+</mapper>

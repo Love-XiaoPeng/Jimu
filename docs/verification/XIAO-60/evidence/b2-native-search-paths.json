@@ -1,0 +1,43 @@
+{
+  "baseline": "b257556a9821552f62662d92507123692afd1b07",
+  "entry": "SessionEventLedger.searchOrResult -> original queryView(lease,false) -> SessionSearchServiceImpl -> typed SessionSearches -> MapperSessionSearches -> real MP projections + parameterized SessionSearchMapper lock/CAS + shared settlement Mapper",
+  "removed": {
+    "staticJdbcCalls": 10,
+    "sql": [
+      "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=?",
+      "SELECT * FROM invocation_session_search WHERE tenant_id=? AND invocation_id=? FOR UPDATE",
+      "SELECT * FROM event WHERE tenant_id=? AND task_id=? AND seq=?",
+      "SELECT * FROM reservation WHERE tenant_id=? AND task_id=? AND id=?",
+      "SELECT id FROM task_attempt WHERE tenant_id=? AND task_id=? AND id=? AND fence=?",
+      "UPDATE task SET tools_used=tools_used+1 WHERE tenant_id=? AND id=?",
+      "UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=?",
+      "UPDATE reservation SET actual=1 WHERE tenant_id=? AND id=?",
+      "UPDATE invocation SET state=?,output_snapshot=?,output_digest=? WHERE tenant_id=? AND id=? AND state='PENDING'",
+      "UPDATE invocation_session_search SET outcome=?,failure_code=?,scan_digest=?,scan_rows=?,scan_event_bytes=?,output_digest=?,output_bytes=?,receipt_event_seq=?,committed_attempt_id=?,committed_fence=?,committed_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND invocation_id=? AND outcome='PENDING'"
+    ],
+    "dynamicJdbc": 0,
+    "sharedStillUsedNotCounted": true
+  },
+  "inventory": {
+    "static": 228,
+    "dynamicScannerItems": 23,
+    "literalBinds": 796,
+    "tables": "35 tables + readonly receipt all OPEN"
+  },
+  "dynamicNote": "Raw expression/forwarder inventory changes 21 ->23: original found.rows() accessor moved from JdbcLedger to MapperSessionSearches; two new Input.query() value accessors also match the scanner lexical SQL-name heuristic. No new dynamic SQL permission or JDBC call.",
+  "preserved": [
+    "tool mismatch before input parsing; history lock -> validated step -> search-binding lock -> normalized binding proof",
+    "reliable event receipt -> TOOL/SETTLED/actual1 -> committed attempt/fence -> output proof; replay has no new tool charge",
+    "same DS/UoW, original explicit unmetered query, inherited lease and absolute 2s deadline, original pending final check and SessionQueryTransaction beforeCommit check",
+    "known corrupt/version/limit search rejects commit FAILED and one TOOL unit before throw; unexpected failures roll back; failed scan metadata remains NULL",
+    "intent/result reliable events precede binding receipt CAS; existing task/tenant/reservation/invocation Mapper called once, no dual write",
+    "schema22/V1-V22/frozen bytes unchanged"
+  ],
+  "measurement": "Unmetered native envelope counters remain zero; actual SQL logs include assertions and rollback attempts. MP/Mapper narrower projections do not imply all SQL bytes/roundtrips equal.",
+  "remaining": [
+    "native traceOrResult, shared runtime receipt/proof SQL, admission writes and module/maintenance",
+    "core UoW final beforeCommit deadline gap and cold-lock/full scope/maintenance/file lock arrangements OPEN",
+    "complete native v2/v3 workers, exact CLI assembly, actual v3 trace cleanup, nonempty paid ledger anomalies, real paid vision OPEN",
+    "B2/all35 tables+readonly receipt OPEN; B3-B5/juniors/61/62/T48/new features not activated"
+  ]
+}
