@@ -16,6 +16,8 @@ import java.util.Objects;
 /** 回放先证明、PENDING才结算；特殊拒绝通过返回值跨过原事务提交。 */
 public final class SessionScopeQueryServiceImpl implements SessionScopeQueryService {
   private final SessionScopeQueries records;
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeNormalizationService
+      normalization = new SessionScopeNormalizationServiceImpl();
 
   public SessionScopeQueryServiceImpl(SessionScopeQueries records) {
     this.records = records;
@@ -44,9 +46,11 @@ public final class SessionScopeQueryServiceImpl implements SessionScopeQueryServ
     var cut = task.cut(step);
     var binding = task.lockBinding(invocation.id());
     String normalized = task.normalized(call);
-    if (!records.sameJson(normalized, binding.normalized())
-        || !records.hash(binding.normalized()).equals(binding.normalizedDigest())
-        || records.bytes(binding.normalized()) != binding.normalizedBytes()) throw corrupt();
+    normalization.verify(
+        normalized,
+        new io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeNormalization.Stored(
+            binding.normalized(), binding::normalizedDigest, binding::normalizedBytes),
+        records);
     boolean read = call.tool().equals("session_event_read");
     if (binding.version() != 1
         || !lease.taskId().equals(binding.caller())

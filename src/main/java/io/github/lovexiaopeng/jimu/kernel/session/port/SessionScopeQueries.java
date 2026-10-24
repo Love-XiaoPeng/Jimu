@@ -5,7 +5,7 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import java.util.function.Supplier;
 
 /** 每次调用的锁内事实与具名结算；行和JSON留在适配器，不缓存授权。 */
-public interface SessionScopeQueries {
+public interface SessionScopeQueries extends SessionScopeNormalization.Proof {
   <T> T required(long deadlineNanos, Supplier<T> work);
 
   Task lock(Lease lease);

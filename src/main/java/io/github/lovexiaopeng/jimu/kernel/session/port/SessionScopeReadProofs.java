@@ -53,7 +53,7 @@ public interface SessionScopeReadProofs {
 
   record Source(String session, long seq, String canonical) {}
 
-  interface Proof {
+  interface Proof extends SessionScopeNormalization.Proof {
     Event event();
 
     Invocation invocation();
@@ -71,6 +71,10 @@ public interface SessionScopeReadProofs {
     String normalizedInput();
 
     boolean sameJson(String left, String right, int limit);
+
+    default boolean sameJson(String left, String right) {
+      return sameJson(left, right, 4096);
+    }
 
     String hash(String raw);
 

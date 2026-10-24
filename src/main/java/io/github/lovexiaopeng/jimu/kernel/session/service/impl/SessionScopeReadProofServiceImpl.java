@@ -6,6 +6,9 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 
 /** 保留原槽/step/scope/切点顺序、两次refs读取及失败传播，不重放provider。 */
 public final class SessionScopeReadProofServiceImpl implements SessionScopeReadProofService {
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeNormalizationService
+      normalization = new SessionScopeNormalizationServiceImpl();
+
   public String verify(Proof proof) {
     var i = proof.invocation();
     var b = proof.binding();
@@ -14,9 +17,11 @@ public final class SessionScopeReadProofServiceImpl implements SessionScopeReadP
     String authority = proof.authority();
     var cut = proof.cut();
     String normalizedInput = proof.normalizedInput();
-    if (!proof.sameJson(normalizedInput, b.normalized(), 4096)
-        || !proof.hash(b.normalized()).equals(b.normalizedDigest())
-        || proof.bytes(b.normalized()) != b.normalizedBytes()) throw corrupt();
+    normalization.verify(
+        normalizedInput,
+        new io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeNormalization.Stored(
+            b.normalized(), b::normalizedDigest, b::normalizedBytes),
+        proof);
     var event = proof.event();
     if (!"READ".equals(b.operation())
         || !"session_event_read".equals(i.tool())

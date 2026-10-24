@@ -1,0 +1,60 @@
+{
+  "baseline": "b272c08cf1d603698e0645cb4979b63cc78583a9",
+  "inventory": {
+    "static": 196,
+    "dynamicScannerItems": 23,
+    "literalBinds": 648
+  },
+  "removedStaticJdbc": 0,
+  "removedDynamicSql": 0,
+  "unchanged": [
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sha256": "d713918eb5e16e78e52bf2e3170bf35beb2f123f85b96d8d3c24e3e6966c262f"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperModelWorkflows.java",
+      "sha256": "02de9666c7d2f87501adacf545e6cd91fe4174e562b7928963376b010825844b"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sha256": "ee5dd85dda1a799c4ebf049c4843358ba00fb8e92b418e2ea0d2361574bcccf8"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeRecords.java",
+      "sha256": "515414eb23d035ce9e05bea7556905c9f572a475a6aac56acd32247f8bf58ca5"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionCallBindings.java",
+      "sha256": "e78619287f658918ce882047f8c5e54e571d72a85fb8457f37479a0b7d61a9c6"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeQueries.java",
+      "sha256": "ac1b22517184b2b2a4445c5aae2124903697f016238cd732ecc607f8f47db8b9"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeReadProofs.java",
+      "sha256": "8b73c7ae046289186e052e9b08a5c6694214716734ebe41e012e0ea17115a9c8"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionCallBindingServiceImpl.java",
+      "sha256": "cca0b9cf7be57c24a462b92227abadec7b8e9347d425ad7c60437bd330812905"
+    }
+  ],
+  "unchangedResources": 407,
+  "entries": [
+    "ModelDispatchService -> MapperModelWorkflows -> SessionCallBindingService -> MapperSessionCallBindings.normalizeScope -> JdbcSessionRecords.normalizedScope -> SessionScopeNormalizationService -> StoredSessionScopeNormalization -> original MP scope qualification",
+    "SessionScopeQueryService normalizes through original Task.normalized and verifies once via shared normalization Service before binding/outcome branches",
+    "SessionScopeReadProofService normalizes through original Proof.normalizedInput and verifies once via shared Service before event/receipt/endpoints",
+    "JdbcSessionRecords.validateNormalizedScope remains test-only; delegates lazy raw digest/length access to same Service"
+  ],
+  "preserved": [
+    "search codec/strictJson4096/query-only rewrite/original JsonNodes/TreeMap",
+    "read codec/default/step upper/require/self comparison/cross authority targets/Map.of serialization",
+    "normalized self always requires; validateInput self shortcut separate",
+    "expected then stored JSON; original stored hash then lazy digest getter; original stored bytes then lazy numeric getter",
+    "existing actual persistence/transactions/query context/lock/refusal/proof order; no extra query or transaction",
+    "all resources/schema22/V1–V22/frozen bytes unchanged"
+  ],
+  "boundary": "Partial B2 only;35 tables plus readonly receipt OPEN. No all-physical-SQL/byte/roundtrip equivalence claim. Core final-beforeCommit/cold/full locks and historical limits OPEN."
+}

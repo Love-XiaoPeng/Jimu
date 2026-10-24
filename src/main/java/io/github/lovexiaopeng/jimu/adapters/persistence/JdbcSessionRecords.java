@@ -919,41 +919,14 @@ final class JdbcSessionRecords {
 
   String normalizedScope(
       Map<String, Object> task, Map<String, Object> step, String name, String raw) {
-    if (name.equals("session_search")) {
-      var input = scopes.contracts.input(raw);
-      var value = (com.fasterxml.jackson.databind.node.ObjectNode) contracts.strictJson(raw, 4096);
-      value.put("query", input.query());
-      // Freeze only canonical validated inputs; target list/cuts are bound separately.
-      var sorted = new java.util.TreeMap<String, JsonNode>();
-      value.fields().forEachRemaining(e -> sorted.put(e.getKey(), e.getValue()));
-      return Payloads.json(sorted);
-    }
-    var input = v4.input(raw);
-    String target = input.sessionId() == null ? s(task, "id") : input.sessionId();
-    long upper = n(step, "session_upper_seq");
-    var scope = scopes.require(task);
-    if (!target.equals(s(task, "id"))) {
-      var found =
-          java.util.stream.StreamSupport.stream(
-                  scope.authority().path("targets").spliterator(), false)
-              .filter(t -> target.equals(t.path("session_id").asText()))
-              .findFirst()
-              .orElseThrow(JdbcSessionScopes::unavailable);
-      upper = found.path("upper_seq").asLong();
-    }
-    return Payloads.json(
-        Map.of(
-            "target_session_id",
-            target,
-            "seq",
-            input.seq(),
-            "before",
-            input.before(),
-            "after",
-            input.after(),
-            "upper_seq",
-            upper));
+    return scopeNormalization.normalize(
+        new StoredSessionScopeNormalization(this, task, step, name, raw));
   }
+
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeNormalizationService
+      scopeNormalization =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionScopeNormalizationServiceImpl();
 
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeReadRefsService
       scopeReadRefsService =
@@ -974,10 +947,23 @@ final class JdbcSessionRecords {
 
   void validateNormalizedScope(String expected, Map<String, Object> binding) {
     String stored = s(binding, "normalized_snapshot");
-    // 保留原槽快照及其字节证明；Map.of 的跨 JVM 字段顺序不属于输入语义。
-    if (!contracts.json(expected, 4096).equals(contracts.json(stored, 4096))
-        || !Payloads.hash(stored).equals(s(binding, "normalized_digest"))
-        || SessionContracts.bytes(stored) != n(binding, "normalized_bytes")) throw corrupt();
+    scopeNormalization.verify(
+        expected,
+        new io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeNormalization.Stored(
+            stored, () -> s(binding, "normalized_digest"), () -> n(binding, "normalized_bytes")),
+        new io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeNormalization.Proof() {
+          public boolean sameJson(String left, String right) {
+            return contracts.json(left, 4096).equals(contracts.json(right, 4096));
+          }
+
+          public String hash(String raw) {
+            return Payloads.hash(raw);
+          }
+
+          public int bytes(String raw) {
+            return SessionContracts.bytes(raw);
+          }
+        });
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeReadProofService
