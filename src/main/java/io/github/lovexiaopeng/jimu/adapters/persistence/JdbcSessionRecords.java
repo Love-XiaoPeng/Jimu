@@ -1015,52 +1015,36 @@ final class JdbcSessionRecords {
 
   record Search(String output, String scanDigest, int rows, int eventBytes) {}
 
+  io.github.lovexiaopeng.jimu.kernel.session.port.SessionNativeSearchExecution.Budget
+      nativeSearchBudget(Runnable deadline) {
+    searchBudget = new SearchBudget(deadline);
+    return () -> searchBudget = null;
+  }
+
+  List<Map<String, Object>> nativeSearchScan(String tenant, String session, long upper) {
+    if (searchBudget != null && query == null)
+      throw new IllegalStateException("Session search requires an explicit query context");
+    try (var ignored = query == null ? null : query.meter(searchBudget)) {
+      return mapperSession()
+          .getMapper(
+              io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper
+                  .SessionNativeSearchScanMapper.class)
+          .scan(query, tenant, session, upper);
+    }
+  }
+
   Search search(
       Map<String, Object> task,
       io.github.lovexiaopeng.jimu.plugin.api.SessionEventSearchPort.Input input,
       long upper,
       String boundary,
       Runnable deadline) {
-    var h = history(task, true);
-    if (!searchTask(task)) throw new TaskFailure(409, "SESSION_SEARCH_UNAVAILABLE");
-    searchContract(task).normalized(input, s(task, "id"), upper);
-    var matcher =
-        new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchMatcher(
-            input, deadline);
-    var scanned = new ArrayList<Map<String, Object>>();
-    int eventBytes = 0;
-    var budget = new SearchBudget(deadline);
-    searchBudget = budget;
-    try {
-      if ((input.seqFrom() == null ? 0 : input.seqFrom())
-          <= Math.min(upper, input.seqTo() == null ? upper : input.seqTo())) {
-        if (upper < 0 || upper >= 128 || upper >= n(h, "next_seq")) throw corrupt();
-        var records =
-            rows(
-                "SELECT * FROM session_public_event FORCE INDEX (PRIMARY) WHERE tenant_id=? AND task_id=? AND seq BETWEEN 0 AND ? ORDER BY seq LIMIT 128",
-                s(task, "tenant_id"),
-                s(task, "id"),
-                upper);
-        if (records.size() != upper + 1) throw corrupt();
-        for (int index = 0; index < records.size(); index++) {
-          deadline.run();
-          var record = records.get(index);
-          if (n(record, "seq") != index) throw corrupt();
-          var value = verify(task, record);
-          eventBytes += SessionContracts.bytes(s(record, "event_snapshot"));
-          if (eventBytes > 2097152) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-          var scan = new LinkedHashMap<String, Object>();
-          scan.put("seq", index);
-          scan.put("event_sha256", s(record, "event_digest"));
-          scanned.add(scan);
-          matcher.accept(value, s(record, "event_digest"), upper);
-        }
-      }
-      String output = matcher.output(s(task, "id"), upper, boundary, version(task));
-      searchContract(task).output(output);
-      return new Search(output, Payloads.hash(Payloads.json(scanned)), scanned.size(), eventBytes);
-    } finally {
-      searchBudget = null;
-    }
+    var result =
+        new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+                .SessionNativeSearchExecutionServiceImpl()
+            .search(
+                new MapperSessionNativeSearchExecution(
+                    this, task, input, upper, boundary, deadline));
+    return new Search(result.output(), result.scanDigest(), result.count(), result.eventBytes());
   }
 }

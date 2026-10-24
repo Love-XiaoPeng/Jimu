@@ -101,6 +101,18 @@ class PersistenceAssemblyTest {
     assertTrue(
         configuration.hasStatement(
             "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionTraceMapper.commitTrace"));
+    var nativeScan =
+        configuration
+            .getMappedStatement(
+                "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionNativeSearchScanMapper.scan")
+            .getBoundSql(Map.of("tenant", "t", "session", "s", "upper", 2))
+            .getSql();
+    assertTrue(nativeScan.contains("FORCE INDEX (PRIMARY)"));
+    assertTrue(
+        nativeScan.contains(
+            "tenant_id=? AND task_id=? AND seq BETWEEN 0 AND ? ORDER BY seq LIMIT 128"));
+    assertFalse(nativeScan.contains("OCTET_LENGTH"));
+    assertFalse(nativeScan.contains("event_bytes BETWEEN"));
     var projection =
         com.baomidou.mybatisplus.core.metadata.TableInfoHelper.getTableInfo(
                 io.github.lovexiaopeng.jimu.adapters.persistence.directory.entity

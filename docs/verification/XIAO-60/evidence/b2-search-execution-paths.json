@@ -1,0 +1,55 @@
+{
+  "baseline": "34a8d772e8d711e4eb81a2d129547f656651e351",
+  "inventory": {
+    "static": 193,
+    "dynamicScannerItems": 24,
+    "literalBinds": 638
+  },
+  "removedStaticJdbc": 1,
+  "removedDynamicSql": 0,
+  "unchanged": [
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sha256": "d713918eb5e16e78e52bf2e3170bf35beb2f123f85b96d8d3c24e3e6966c262f"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionSearches.java",
+      "sha256": "e24c99cf43feab7a044eca7d26cdabd76e0471aaa2d3be4a6a8f29a5e0ea8044"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchMatcher.java",
+      "sha256": "309e6b802fe8dae459579536efd496c1689c4b38249d9058fef973d31938db95"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchContracts.java",
+      "sha256": "1f6b3e93874682ae42f08151aafef11591dfe783c3ee72a4158abccf5b7ab921"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionSearchServiceImpl.java",
+      "sha256": "bc6d410b3b3bfb308df4eec23a2880f2444b2a5d4d3070fc74a071631ddbc217"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeExecution.java",
+      "sha256": "f61fc55b111a5b00fdf380edecb9c4783cc86e82ac307634775ff9d56bc93dae"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeExecutionServiceImpl.java",
+      "sha256": "d410cc8ce7b45be600c0c703127088277dd6d2b44e63183967922c2ad0514c5d"
+    }
+  ],
+  "unchangedResources": 408,
+  "entries": [
+    "MapperSessionSearches.Record.search -> JdbcSessionRecords.search -> SessionNativeSearchExecutionService -> typed adapter -> bounded SessionNativeSearchScanMapper",
+    "JdbcLedger.sessionSearch -> original owner/history/body/deadline/input -> same execution Service"
+  ],
+  "persistence": "Same DS/UoW; history FOR UPDATE remains original Mapper; bounded native scan full tenant/task key, original PRIMARY/0..upper/order/LIMIT128, explicit18 original columns, no prior filters. No new query/transaction/dual write.",
+  "preserved": [
+    "history lock -> availability -> normalized -> matcher -> budget",
+    "empty range skips upper/next/scan; next_seq remains lazy behind original upper short circuit",
+    "deadline -> seq -> proof -> snapshot bytes ->2MiB -> ordered integer seq/digest scan -> original matcher",
+    "output version/boundary/contract and original scan digest",
+    "original8MiB query and scratch budget class exact bytes, finally budget cleared",
+    "all existing resources and frozen inputs exact bytes"
+  ],
+  "boundary": "Partial B2;35 tables+readonly receipt OPEN. Developer audit only. Historical scope-slice third-round read original-slot timeout not retried/reclassified; cold/full locks/core beforeCommit/503/next dispatch/persisted FAILED read and all other coverage limits OPEN."
+}
