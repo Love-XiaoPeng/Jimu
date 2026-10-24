@@ -55,6 +55,8 @@ public final class JdbcLedger
       invocationService;
   private final io.github.lovexiaopeng.jimu.kernel.task.service.TaskAdmissionService
       taskAdmissionService;
+  private final io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactRetentionService
+      artifactRetention;
   private final io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactAccessService
       artifactAccess;
   private final io.github.lovexiaopeng.jimu.kernel.task.service.TaskOperationsService
@@ -4184,6 +4186,9 @@ public final class JdbcLedger
     taskOperations =
         new io.github.lovexiaopeng.jimu.kernel.task.service.impl.TaskOperationsServiceImpl(
             taskOperationRecords, coreWork);
+    artifactRetention =
+        new io.github.lovexiaopeng.jimu.kernel.artifact.service.impl.ArtifactRetentionServiceImpl(
+            new MapperArtifactRetentions(this), coreWork, java.time.Clock.systemUTC());
     artifactAccess =
         new io.github.lovexiaopeng.jimu.kernel.artifact.service.impl.ArtifactAccessServiceImpl(
             new MapperArtifactDownloads(this), coreWork, java.time.Clock.systemUTC());
@@ -6559,62 +6564,7 @@ public final class JdbcLedger
     cleanupDirectories();
     cleanupMcp();
     cleanupImages();
-    var candidates =
-        rows(
-            "SELECT a.tenant_id,a.id,a.task_id,a.upload_id FROM artifact a JOIN task t ON t.tenant_id=a.tenant_id AND t.id=a.task_id JOIN reservation r ON r.tenant_id=a.tenant_id AND r.id=a.id WHERE r.state<>'RELEASED' AND ((a.state IN ('STAGING','VERIFIED','ABANDONED') AND a.updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 1 HOUR AND t.state IN ('FAILED','CANCELLED')) OR (a.state IN ('PUBLISHED','EXPIRED') AND a.expires_at<CURRENT_TIMESTAMP(6))) LIMIT 64");
-    for (var candidate : candidates) {
-      String tenant = s(candidate, "tenant_id"),
-          artifact = s(candidate, "id"),
-          taskId = s(candidate, "task_id");
-      boolean ready =
-          tx(
-              () -> {
-                bucket(tenant);
-                var task = locked(tenant, taskId);
-                var a =
-                    one(
-                        "SELECT * FROM artifact WHERE tenant_id=? AND id=? FOR UPDATE",
-                        tenant,
-                        artifact);
-                boolean expired = time(a, "expires_at").isBefore(Instant.now());
-                // A RUNNING task may still claim a new attempt after this transaction.
-                // Quiescence of existing writers alone cannot make that cleanup safe.
-                if (expired
-                    && !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(task, "state")))
-                  return false;
-                if (!expired && !List.of("FAILED", "CANCELLED").contains(s(task, "state")))
-                  return false;
-                if (!writersQuiescent(task)) return false;
-                db.update(
-                    "UPDATE artifact SET state=? WHERE tenant_id=? AND id=?",
-                    expired ? "EXPIRED" : "ABANDONED",
-                    tenant,
-                    artifact);
-                return true;
-              });
-      if (!ready) continue;
-      // Filesystem operations are outside every database transaction. Failed deletion is retried by
-      // state.
-      store.removeUpload(tenant, s(candidate, "upload_id"));
-      tx(
-          () -> {
-            bucket(tenant);
-            locked(tenant, taskId);
-            var reservation =
-                one("SELECT * FROM reservation WHERE tenant_id=? AND id=?", tenant, artifact);
-            if (!"RELEASED".equals(s(reservation, "state"))) {
-              db.update(
-                  "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
-                  n(reservation, "amount"),
-                  tenant);
-              db.update(
-                  "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=?",
-                  tenant,
-                  artifact);
-            }
-            return null;
-          });
-    }
+    artifactRetention.cleanup(store);
   }
 
   private void cleanupImages() {
