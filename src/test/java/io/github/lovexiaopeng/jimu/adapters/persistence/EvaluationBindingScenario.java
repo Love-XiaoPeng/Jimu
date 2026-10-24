@@ -62,28 +62,30 @@ public final class EvaluationBindingScenario {
             db.queryForMap(
                 "SELECT model_used,token_held,cost_held FROM tenant_budget WHERE tenant_id='tenant-b'"));
     for (String mode :
-        List.of(
-            "normal",
-            "plan-digest",
-            "noncanonical",
-            "initial-cost",
-            "initial-request",
-            "tenant-cost",
-            "tenant-token",
-            "tenant-model",
-            "snapshot-digest",
-            "column-drift",
-            "conflict",
-            "selection-drift",
-            "b-missing",
-            "b-grades",
-            "b-screening",
-            "b-finalist",
-            "b-short",
-            "b-unknown",
-            "b-normal",
-            "b-snapshot",
-            "race")) {
+        args.length > 2
+            ? List.of(args[2].split(","))
+            : List.of(
+                "normal",
+                "plan-digest",
+                "noncanonical",
+                "initial-cost",
+                "initial-request",
+                "tenant-cost",
+                "tenant-token",
+                "tenant-model",
+                "snapshot-digest",
+                "column-drift",
+                "conflict",
+                "selection-drift",
+                "b-missing",
+                "b-grades",
+                "b-screening",
+                "b-finalist",
+                "b-short",
+                "b-unknown",
+                "b-normal",
+                "b-snapshot",
+                "race")) {
       run = "binding-" + args[1] + "-" + mode;
       db.update(
           "INSERT INTO evaluation_budget(tenant_id,id,policy_version,max_requests,max_cost_micros,plan_snapshot,plan_digest) VALUES('tenant-a',?,2,?,?,?,?)",
@@ -192,6 +194,24 @@ public final class EvaluationBindingScenario {
                 "b-snapshot")
             .contains(mode),
         "unexpected acceptance " + mode);
+    if (mode.equals("normal"))
+      check(
+          ledger
+              .submit(
+                  OWNER,
+                  db.queryForObject(
+                      "SELECT idempotency_key FROM task WHERE tenant_id='tenant-a' AND id=?",
+                      String.class,
+                      task),
+                  Payloads.read(
+                      db.queryForObject(
+                          "SELECT request_snapshot FROM task WHERE tenant_id='tenant-a' AND id=?",
+                          String.class,
+                          task),
+                      Tasks.Request.class))
+              .taskId()
+              .equals(task),
+          "paid retry retains original evaluation parent and binding");
     if (mode.equals("normal"))
       System.out.println(
           "FROZEN binding "

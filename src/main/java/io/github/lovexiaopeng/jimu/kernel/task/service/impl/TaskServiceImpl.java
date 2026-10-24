@@ -8,7 +8,7 @@ import io.github.lovexiaopeng.jimu.kernel.task.service.TaskService;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-/** 普通受理策略所有者；B1 期间事务账本仍经现有 Tasks 端口，禁止双写。 */
+/** HTTP受理规范化与任务查询入口；持久受理由同一 TaskAdmissionService 负责，禁止双写。 */
 public final class TaskServiceImpl implements TaskService {
   private final Tasks tasks;
 

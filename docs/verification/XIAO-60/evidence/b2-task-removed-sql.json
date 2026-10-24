@@ -1,0 +1,517 @@
+{
+  "baseline": "dbcf58df28304fbc3a6d83c883da4b59f1360fbd",
+  "removed": [
+    {
+      "name": "selectScopeTargets",
+      "old": "SELECT source_task_id FROM task_session_scope_target FORCE INDEX(PRIMARY) WHERE tenant_id=? AND caller_task_id=? ORDER BY ordinal LIMIT 9",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "caller"
+        }
+      ],
+      "statement": "SELECT source_task_id FROM task_session_scope_target FORCE INDEX(PRIMARY) WHERE tenant_id=#{tenant} AND caller_task_id=#{caller} ORDER BY ordinal LIMIT 9"
+    },
+    {
+      "name": "lockIdempotency",
+      "old": "SELECT * FROM task WHERE tenant_id=? AND owner_actor_id=? AND idempotency_key=? FOR UPDATE",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "actor"
+        },
+        {
+          "type": "String",
+          "name": "key"
+        }
+      ],
+      "statement": "SELECT tenant_id,id,owner_actor_id,idempotency_key,request_digest,request_snapshot,goal,capabilities,installation_epoch,policy_version,record_version,state,revision,created_at,updated_at,deadline,ready_at,cancel_requested_at,current_attempt_id,worker_id,fence,lease_until,next_event_seq,max_models,max_tools,models_used,tools_used,token_held,max_tokens,code,summary,model_snapshot,model_digest,evaluation_run_id,cost_held,max_cost_micros,tools_snapshot,tools_digest,report_time,evaluation_snapshot,evaluation_digest,evaluation_phase,evaluation_sample,evaluation_model,material_snapshot,material_digest,material_system_digest,material_file_snapshot,material_file_digest,execution_scope_digest,business_policy_snapshot,business_policy_digest,media_snapshot,media_digest,media_cleanup_state,mcp_snapshot,mcp_digest,question_binding,question_binding_digest,waiting_question_id,question_continuation_step_id,question_cleanup_state,question_retained_digests FROM task WHERE tenant_id=#{tenant} AND owner_actor_id=#{actor} AND idempotency_key=#{key} FOR UPDATE"
+    },
+    {
+      "name": "maxPacket",
+      "old": "SELECT @@max_allowed_packet",
+      "parameters": [],
+      "statement": "SELECT @@max_allowed_packet"
+    },
+    {
+      "name": "sampleBound",
+      "old": "SELECT id FROM task WHERE tenant_id=? AND evaluation_run_id=? AND evaluation_model=? AND evaluation_sample=? LIMIT 1",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "run"
+        },
+        {
+          "type": "String",
+          "name": "model"
+        },
+        {
+          "type": "String",
+          "name": "sample"
+        }
+      ],
+      "statement": "SELECT id FROM task WHERE tenant_id=#{tenant} AND evaluation_run_id=#{run} AND evaluation_model=#{model} AND evaluation_sample=#{sample} LIMIT 1"
+    },
+    {
+      "name": "insertAccepted",
+      "old": "INSERT INTO task(tenant_id,id,owner_actor_id,idempotency_key,request_digest,request_snapshot,goal,capabilities,installation_epoch,state,deadline,max_models,max_tools) VALUES(?,?,?,?,?,?,?,?,?,'QUEUED',TIMESTAMPADD(SECOND,?,CURRENT_TIMESTAMP(6)),?,?)",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "task"
+        },
+        {
+          "type": "String",
+          "name": "actor"
+        },
+        {
+          "type": "String",
+          "name": "key"
+        },
+        {
+          "type": "String",
+          "name": "digest"
+        },
+        {
+          "type": "String",
+          "name": "snapshot"
+        },
+        {
+          "type": "String",
+          "name": "goal"
+        },
+        {
+          "type": "String",
+          "name": "capabilities"
+        },
+        {
+          "type": "long",
+          "name": "epoch"
+        },
+        {
+          "type": "int",
+          "name": "deadline"
+        },
+        {
+          "type": "int",
+          "name": "models"
+        },
+        {
+          "type": "int",
+          "name": "tools"
+        }
+      ],
+      "statement": "INSERT INTO task(tenant_id,id,owner_actor_id,idempotency_key,request_digest,request_snapshot,goal,capabilities,installation_epoch,state,deadline,max_models,max_tools) VALUES(#{tenant},#{task},#{actor},#{key},#{digest},#{snapshot},#{goal},#{capabilities},#{epoch},'QUEUED',TIMESTAMPADD(SECOND,#{deadline},CURRENT_TIMESTAMP(6)),#{models},#{tools})"
+    },
+    {
+      "name": "bindSnapshots",
+      "old": "UPDATE task SET model_snapshot=?,model_digest=?,evaluation_run_id=?,max_cost_micros=?,tools_snapshot=?,tools_digest=?,execution_scope_digest=?,report_time=UTC_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "modelSnapshot"
+        },
+        {
+          "type": "String",
+          "name": "modelDigest"
+        },
+        {
+          "type": "String",
+          "name": "run"
+        },
+        {
+          "type": "long",
+          "name": "cost"
+        },
+        {
+          "type": "String",
+          "name": "toolsSnapshot"
+        },
+        {
+          "type": "String",
+          "name": "toolsDigest"
+        },
+        {
+          "type": "String",
+          "name": "scope"
+        },
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "task"
+        }
+      ],
+      "statement": "UPDATE task SET model_snapshot=#{modelSnapshot},model_digest=#{modelDigest},evaluation_run_id=#{run},max_cost_micros=#{cost},tools_snapshot=#{toolsSnapshot},tools_digest=#{toolsDigest},execution_scope_digest=#{scope},report_time=UTC_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{task}"
+    },
+    {
+      "name": "holdHistory",
+      "old": "UPDATE tenant_budget SET history_storage_held=history_storage_held+8388608 WHERE tenant_id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "tenant"
+        }
+      ],
+      "statement": "UPDATE tenant_budget SET history_storage_held=history_storage_held+8388608 WHERE tenant_id=#{tenant}"
+    },
+    {
+      "name": "insertDirectory",
+      "old": "INSERT INTO task_directory(tenant_id,task_id,binding_snapshot,binding_digest,namespace_digest,cwd,retain_until) SELECT tenant_id,id,?,?,?,'/',TIMESTAMPADD(SECOND,604800,created_at) FROM task WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "binding"
+        },
+        {
+          "type": "String",
+          "name": "digest"
+        },
+        {
+          "type": "String",
+          "name": "namespace"
+        },
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "task"
+        }
+      ],
+      "statement": "INSERT INTO task_directory(tenant_id,task_id,binding_snapshot,binding_digest,namespace_digest,cwd,retain_until) SELECT tenant_id,id,#{binding},#{digest},#{namespace},'/',TIMESTAMPADD(SECOND,604800,created_at) FROM task WHERE tenant_id=#{tenant} AND id=#{task}"
+    },
+    {
+      "name": "holdDirectory",
+      "old": "UPDATE tenant_budget SET directory_storage_held=directory_storage_held+8388608 WHERE tenant_id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "tenant"
+        }
+      ],
+      "statement": "UPDATE tenant_budget SET directory_storage_held=directory_storage_held+8388608 WHERE tenant_id=#{tenant}"
+    },
+    {
+      "name": "insertTodo",
+      "old": "INSERT INTO task_todo_projection(tenant_id,task_id,binding_snapshot,binding_digest,retain_until) SELECT tenant_id,id,?,?,TIMESTAMPADD(SECOND,604800,created_at) FROM task WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "binding"
+        },
+        {
+          "type": "String",
+          "name": "digest"
+        },
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "task"
+        }
+      ],
+      "statement": "INSERT INTO task_todo_projection(tenant_id,task_id,binding_snapshot,binding_digest,retain_until) SELECT tenant_id,id,#{binding},#{digest},TIMESTAMPADD(SECOND,604800,created_at) FROM task WHERE tenant_id=#{tenant} AND id=#{task}"
+    },
+    {
+      "name": "holdTodo",
+      "old": "UPDATE tenant_budget SET todo_storage_held=todo_storage_held+2097152 WHERE tenant_id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "tenant"
+        }
+      ],
+      "statement": "UPDATE tenant_budget SET todo_storage_held=todo_storage_held+2097152 WHERE tenant_id=#{tenant}"
+    },
+    {
+      "name": "bindQuestion",
+      "old": "UPDATE task SET question_binding=?,question_binding_digest=?,question_cleanup_state='RETAINED' WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "binding"
+        },
+        {
+          "type": "String",
+          "name": "digest"
+        },
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "task"
+        }
+      ],
+      "statement": "UPDATE task SET question_binding=#{binding},question_binding_digest=#{digest},question_cleanup_state='RETAINED' WHERE tenant_id=#{tenant} AND id=#{task}"
+    },
+    {
+      "name": "holdQuestion",
+      "old": "UPDATE tenant_budget SET question_tasks_held=question_tasks_held+1,storage_held=storage_held+2097152 WHERE tenant_id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "tenant"
+        }
+      ],
+      "statement": "UPDATE tenant_budget SET question_tasks_held=question_tasks_held+1,storage_held=storage_held+2097152 WHERE tenant_id=#{tenant}"
+    },
+    {
+      "name": "bindMcp",
+      "old": "UPDATE task SET mcp_snapshot=?,mcp_digest=? WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "snapshot"
+        },
+        {
+          "type": "String",
+          "name": "digest"
+        },
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "task"
+        }
+      ],
+      "statement": "UPDATE task SET mcp_snapshot=#{snapshot},mcp_digest=#{digest} WHERE tenant_id=#{tenant} AND id=#{task}"
+    },
+    {
+      "name": "bindPolicy",
+      "old": "UPDATE task SET record_version=2,business_policy_snapshot=?,business_policy_digest=?,max_tokens=? WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "snapshot"
+        },
+        {
+          "type": "String",
+          "name": "digest"
+        },
+        {
+          "type": "long",
+          "name": "tokens"
+        },
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "task"
+        }
+      ],
+      "statement": "UPDATE task SET record_version=2,business_policy_snapshot=#{snapshot},business_policy_digest=#{digest},max_tokens=#{tokens} WHERE tenant_id=#{tenant} AND id=#{task}"
+    },
+    {
+      "name": "holdImages",
+      "old": "UPDATE tenant_budget SET storage_held=storage_held+? WHERE tenant_id=?",
+      "parameters": [
+        {
+          "type": "long",
+          "name": "amount"
+        },
+        {
+          "type": "String",
+          "name": "tenant"
+        }
+      ],
+      "statement": "UPDATE tenant_budget SET storage_held=storage_held+#{amount} WHERE tenant_id=#{tenant}"
+    },
+    {
+      "name": "settleImages",
+      "old": "UPDATE reservation SET actual=amount WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "reservation"
+        }
+      ],
+      "statement": "UPDATE reservation SET actual=amount WHERE tenant_id=#{tenant} AND id=#{reservation}"
+    },
+    {
+      "name": "bindEvaluation",
+      "old": "UPDATE task SET evaluation_snapshot=?,evaluation_digest=?,evaluation_phase=?,evaluation_sample=?,evaluation_model=?,max_models=LEAST(max_models,?),max_tokens=?,max_cost_micros=LEAST(max_cost_micros,?) WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "snapshot"
+        },
+        {
+          "type": "String",
+          "name": "digest"
+        },
+        {
+          "type": "String",
+          "name": "phase"
+        },
+        {
+          "type": "String",
+          "name": "sample"
+        },
+        {
+          "type": "String",
+          "name": "model"
+        },
+        {
+          "type": "int",
+          "name": "maxModels"
+        },
+        {
+          "type": "long",
+          "name": "tokens"
+        },
+        {
+          "type": "long",
+          "name": "cost"
+        },
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "task"
+        }
+      ],
+      "statement": "UPDATE task SET evaluation_snapshot=#{snapshot},evaluation_digest=#{digest},evaluation_phase=#{phase},evaluation_sample=#{sample},evaluation_model=#{model},max_models=LEAST(max_models,#{maxModels}),max_tokens=#{tokens},max_cost_micros=LEAST(max_cost_micros,#{cost}) WHERE tenant_id=#{tenant} AND id=#{task}"
+    },
+    {
+      "name": "bindMaterial",
+      "old": "UPDATE task SET material_snapshot=?,material_digest=?,material_system_digest=? WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "snapshot"
+        },
+        {
+          "type": "String",
+          "name": "digest"
+        },
+        {
+          "type": "String",
+          "name": "systemDigest"
+        },
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "task"
+        }
+      ],
+      "statement": "UPDATE task SET material_snapshot=#{snapshot},material_digest=#{digest},material_system_digest=#{systemDigest} WHERE tenant_id=#{tenant} AND id=#{task}"
+    },
+    {
+      "name": "setTaskCost",
+      "old": "UPDATE task SET max_cost_micros=? WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "type": "long",
+          "name": "cost"
+        },
+        {
+          "type": "String",
+          "name": "tenant"
+        },
+        {
+          "type": "String",
+          "name": "task"
+        }
+      ],
+      "statement": "UPDATE task SET max_cost_micros=#{cost} WHERE tenant_id=#{tenant} AND id=#{task}"
+    },
+    {
+      "name": "holdQueue",
+      "old": "UPDATE tenant_budget SET queued=queued+1 WHERE tenant_id=?",
+      "parameters": [
+        {
+          "type": "String",
+          "name": "tenant"
+        }
+      ],
+      "statement": "UPDATE tenant_budget SET queued=queued+1 WHERE tenant_id=#{tenant}"
+    },
+    {
+      "name": "selectBinding",
+      "old": "SELECT evaluation_run_id FROM task WHERE tenant_id=? AND owner_actor_id=? AND idempotency_key=?",
+      "mp": true,
+      "replacement": "TaskLookupMapper.selectMaps: tenant/actor/idempotency; id,evaluation_run_id"
+    },
+    {
+      "name": "selectPrevious",
+      "old": "SELECT id FROM task WHERE tenant_id=? AND owner_actor_id=? AND idempotency_key=?",
+      "mp": true,
+      "replacement": "TaskLookupMapper.selectMaps: tenant/actor/idempotency; id,evaluation_run_id"
+    },
+    {
+      "name": "selectPin",
+      "old": "SELECT * FROM installation WHERE tenant_id=? AND plugin_id=?",
+      "mp": true,
+      "replacement": "InstallationMapper.selectMaps: tenant/plugin; fixed 6 columns"
+    },
+    {
+      "name": "lockActor",
+      "old": "SELECT enabled FROM actor_access WHERE tenant_id=? AND actor_id=? FOR SHARE",
+      "statement": "SELECT enabled FROM actor_access WHERE tenant_id=#{tenant} AND actor_id=#{actor} FOR SHARE",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "actor",
+          "type": "String"
+        }
+      ],
+      "shared": true
+    },
+    {
+      "name": "lockInstallation",
+      "old": "SELECT * FROM installation WHERE tenant_id=? AND plugin_id=? FOR SHARE",
+      "statement": "SELECT tenant_id,plugin_id,enabled,epoch,plugin_version,plugin_digest FROM installation WHERE tenant_id=#{tenant} AND plugin_id=#{plugin} FOR SHARE",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "plugin",
+          "type": "String"
+        }
+      ],
+      "shared": true
+    }
+  ]
+}

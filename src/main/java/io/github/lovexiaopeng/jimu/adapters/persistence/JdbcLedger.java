@@ -6,7 +6,6 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationMaterials;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationPlans;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionQueryDeadline;
-import io.github.lovexiaopeng.jimu.kernel.budget.domain.ModelCosts;
 import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
@@ -54,6 +53,8 @@ public final class JdbcLedger
               new io.github.lovexiaopeng.jimu.adapters.runtime.model.RuntimeEvaluationPlanCodec());
   private final io.github.lovexiaopeng.jimu.kernel.invocation.service.InvocationService
       invocationService;
+  private final io.github.lovexiaopeng.jimu.kernel.task.service.TaskAdmissionService
+      taskAdmissionService;
   private final JdbcTemplate db;
   final CoreMappers mappers;
   private final DataSource source;
@@ -64,22 +65,22 @@ public final class JdbcLedger
   private final io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork unitOfWork;
   private final Runnable schemaCheck;
   final ModelProfiles models;
-  private final JdbcExecutionScopes executionScopes;
-  private java.util.function.BooleanSupplier searchAvailable = () -> false;
-  private final JdbcImageRecords images;
-  private final JdbcMcpRecords mcp;
+  final JdbcExecutionScopes executionScopes;
+  java.util.function.BooleanSupplier searchAvailable = () -> false;
+  final JdbcImageRecords images;
+  final JdbcMcpRecords mcp;
   private ArtifactStore imageStore;
-  private final io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts
-      questions = new io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts();
-  private boolean questionsEnabled;
+  final io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts questions =
+      new io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts();
+  boolean questionsEnabled;
   boolean todosEnabled;
   final io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts todos =
       new io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts();
 
-  private boolean directoryEnabled;
-  private boolean sessionReadEnabled;
-  private boolean sessionSearchEnabled;
-  private boolean sessionTraceEnabled;
+  boolean directoryEnabled;
+  boolean sessionReadEnabled;
+  boolean sessionSearchEnabled;
+  boolean sessionTraceEnabled;
 
   public void sessionTraceEnabled(boolean enabled) {
     sessionTraceEnabled = enabled;
@@ -90,8 +91,8 @@ public final class JdbcLedger
   }
 
   final JdbcSessionRecords sessions;
-  private final JdbcSessionScopes sessionScopes;
-  private boolean priorSessionSearchEnabled;
+  final JdbcSessionScopes sessionScopes;
+  boolean priorSessionSearchEnabled;
 
   public void priorSessionSearchEnabled(boolean enabled) {
     priorSessionSearchEnabled = enabled;
@@ -4112,7 +4113,7 @@ public final class JdbcLedger
     sessions.account(task, false);
   }
 
-  private boolean imagesAvailable() {
+  boolean imagesAvailable() {
     if (imageStore == null) return false;
     try {
       imageStore.check();
@@ -4205,7 +4206,7 @@ public final class JdbcLedger
           }
         };
     var leaseWork =
-        new io.github.lovexiaopeng.jimu.kernel.transaction.port.LeaseUnitOfWork() {
+        new io.github.lovexiaopeng.jimu.kernel.task.api.LeaseUnitOfWork() {
           public <T> T admission(Lease lease, Supplier<T> work) {
             return leaseTx(lease, work);
           }
@@ -4214,6 +4215,9 @@ public final class JdbcLedger
             return directoryTransaction(lease, work);
           }
         };
+    taskAdmissionService =
+        new io.github.lovexiaopeng.jimu.kernel.task.service.impl.TaskAdmissionServiceImpl(
+            new MapperTaskAdmissions(this), coreWork);
     workerService =
         new io.github.lovexiaopeng.jimu.kernel.worker.service.impl.WorkerServiceImpl(
             new MapperWorkerRecords(this), coreWork);
@@ -4573,25 +4577,29 @@ public final class JdbcLedger
     return first(mappers.budgets().selectBudgetForUpdate(query, tenant));
   }
 
-  private void identity(Identity identity) {
+  void identity(Identity identity) {
     var result =
-        rows(
-            "SELECT enabled FROM actor_access WHERE tenant_id=? AND actor_id=? FOR SHARE",
-            identity.tenant(),
-            identity.actor());
+        mappers
+            .session()
+            .getMapper(
+                io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskAdmissionMapper
+                    .class)
+            .lockActor(query, identity.tenant(), identity.actor());
     if (result.isEmpty() || !Boolean.TRUE.equals(result.getFirst().get("enabled")))
       throw new TaskFailure(403, "ACCESS_REVOKED");
   }
 
-  private long epoch(Identity identity, List<String> capabilities) {
+  long epoch(Identity identity, List<String> capabilities) {
     identity(identity);
     long epoch = 0;
     for (String capability : capabilities.stream().sorted().toList()) {
       var installed =
-          rows(
-              "SELECT * FROM installation WHERE tenant_id=? AND plugin_id=? FOR SHARE",
-              identity.tenant(),
-              capability);
+          mappers
+              .session()
+              .getMapper(
+                  io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskAdmissionMapper
+                      .class)
+              .lockInstallation(query, identity.tenant(), capability);
       if (installed.isEmpty() || !Boolean.TRUE.equals(installed.getFirst().get("enabled")))
         throw new TaskFailure(403, "CAPABILITY_REVOKED");
       // Each enabled capability has its own version; sum is monotonic because epochs never
@@ -4665,579 +4673,7 @@ public final class JdbcLedger
       List<io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages.Input> input,
       List<String> historySources,
       String callerId) {
-    var descriptors =
-        input.isEmpty()
-            ? null
-            : io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageInputs.describe(input);
-    boolean prior = historySources != null;
-    var request =
-        new Request(
-            original.goal(),
-            original.capabilityIds(),
-            original.resourceIds(),
-            original.budget(),
-            descriptors);
-    if (!prior && request.capabilityIds().contains("session_search"))
-      throw new TaskFailure(400, "INVALID_CAPABILITIES");
-    boolean sessionTrace = request.capabilityIds().contains("session_event_trace");
-    boolean sessionSearch = request.capabilityIds().contains("session_event_search");
-    boolean sessionRead =
-        request.capabilityIds().contains("session_event_read") || sessionSearch || sessionTrace;
-    if (sessionRead
-        && (!(prior
-                ? request.capabilityIds().equals(List.of("session_event_read", "session_search"))
-                : sessionTrace
-                    ? request
-                        .capabilityIds()
-                        .equals(
-                            List.of(
-                                "session_event_read",
-                                "session_event_search",
-                                "session_event_trace"))
-                    : sessionSearch
-                        ? request
-                            .capabilityIds()
-                            .equals(List.of("session_event_read", "session_event_search"))
-                        : request.capabilityIds().equals(List.of("session_event_read")))
-            || !request.resourceIds().isEmpty()
-            || original.images() != null)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
-    boolean directory = request.capabilityIds().contains("working_directory");
-    if (directory
-        && (!new java.util.HashSet<>(request.capabilityIds())
-                .equals(java.util.Set.of("working_directory", "read", "write", "edit"))
-            || request.capabilityIds().size() != 4
-            || !request.resourceIds().isEmpty()
-            || original.images() != null)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
-    boolean todo = request.capabilityIds().contains("todo_write");
-    if (todo
-        && (!request.capabilityIds().equals(List.of("todo_write"))
-            || !request.resourceIds().isEmpty()
-            || original.images() != null)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
-    boolean ask = request.capabilityIds().contains("ask_user_question");
-    if (ask
-        && (!request.capabilityIds().equals(List.of("ask_user_question"))
-            || !request.resourceIds().isEmpty()
-            || descriptors != null)) throw new TaskFailure(400, "INVALID_CAPABILITIES");
-    if (ask && !questionsEnabled) throw new TaskFailure(403, "QUESTION_NOT_AUTHORIZED");
-    boolean media = request.capabilityIds().contains("read_image");
-    boolean mcpTask =
-        request.capabilityIds().stream()
-            .anyMatch(io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES::contains);
-    if (mcpTask
-        && (!io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES.containsAll(
-                request.capabilityIds())
-            || !request.resourceIds().isEmpty()))
-      throw new TaskFailure(400, "INVALID_CAPABILITIES");
-    if (mcpTask && !mcp.enabled()) throw new TaskFailure(503, "MCP_NOT_CONFIGURED");
-    if (descriptors != null && !media) throw new TaskFailure(400, "INVALID_IMAGE_INPUT");
-    return tx(
-        () -> {
-          // InnoDB also locks the evaluation parent while checking task's FK. Acquire that
-          // parent before tenant_budget, including acceptance and idempotent retries.
-          var binding =
-              rows(
-                  "SELECT evaluation_run_id FROM task WHERE tenant_id=? AND owner_actor_id=? AND idempotency_key=?",
-                  identity.tenant(),
-                  identity.actor(),
-                  key);
-          String run;
-          if (binding.isEmpty()) {
-            run = executionScopes.targetRun(identity.tenant(), null);
-            if (run == null) {
-              var candidate = models.selected(identity.tenant());
-              run = candidate.paid() ? models.evaluationRunId() : null;
-            }
-          } else run = s(binding.getFirst(), "evaluation_run_id");
-          var evaluation = evaluation(identity.tenant(), run);
-          var budget = bucket(identity.tenant());
-          if (prior) {
-            var ids = new java.util.ArrayList<>(historySources);
-            ids.add(callerId);
-            var existing =
-                rows(
-                    "SELECT id FROM task WHERE tenant_id=? AND owner_actor_id=? AND idempotency_key=?",
-                    identity.tenant(),
-                    identity.actor(),
-                    key);
-            if (!existing.isEmpty()) {
-              String previous = s(existing.getFirst(), "id");
-              ids.add(previous);
-              var targets =
-                  rows(
-                      "SELECT source_task_id FROM task_session_scope_target FORCE INDEX(PRIMARY) WHERE tenant_id=? AND caller_task_id=? ORDER BY ordinal LIMIT 9",
-                      identity.tenant(),
-                      previous);
-              if (targets.size() > 8) throw JdbcSessionRecords.corrupt();
-              for (var target : targets)
-                if (target.get("source_task_id") != null) ids.add(s(target, "source_task_id"));
-            }
-            sessionScopes.lock(identity.tenant(), ids);
-          }
-          identity(identity);
-          String
-              snapshot =
-                  prior
-                      ? Payloads.json(
-                          Map.of("request", request, "history_session_ids", historySources))
-                      : Payloads.json(request),
-              digest = Payloads.hash(snapshot);
-          var old =
-              rows(
-                  "SELECT * FROM task WHERE tenant_id=? AND owner_actor_id=? AND idempotency_key=? FOR UPDATE",
-                  identity.tenant(),
-                  identity.actor(),
-                  key);
-          if (!old.isEmpty()) {
-            if (JdbcSessionRecords.task(old.getFirst())) {
-              access(old.getFirst());
-              sessionAdmission(old.getFirst());
-            }
-            if (directoryTask(old.getFirst())) {
-              access(old.getFirst());
-              if (!"PRESENT".equals(s(directoryProjection(old.getFirst()), "content_state")))
-                throw new TaskFailure(410, "DIRECTORY_CONTENT_EXPIRED");
-            }
-            if (todoTask(old.getFirst())) {
-              access(old.getFirst());
-              if ("PURGED".equals(s(todoProjection(old.getFirst()), "content_state")))
-                throw new TaskFailure(410, "TODO_CONTENT_EXPIRED");
-            }
-            if (ask) access(old.getFirst());
-            if (!Payloads.hash(s(old.getFirst(), "request_snapshot"))
-                .equals(s(old.getFirst(), "request_digest")))
-              throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-            if (prior
-                ? !snapshot.equals(s(old.getFirst(), "request_snapshot"))
-                : !Payloads.read(s(old.getFirst(), "request_snapshot"), Request.class)
-                    .equals(request)) throw new TaskFailure(409, "IDEMPOTENCY_CONFLICT");
-            if (mcpTask || ask) access(old.getFirst());
-            return view(old.getFirst());
-          }
-          if (media) {
-            io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelImages.require(
-                models.selected(identity.tenant()));
-            if (!imagesAvailable()
-                || db.queryForObject("SELECT @@max_allowed_packet", Long.class) < 16777216)
-              throw new TaskFailure(503, "IMAGE_STORE_UNAVAILABLE");
-            if (request.capabilityIds().contains("write")
-                || request.capabilityIds().contains("present")
-                    && !request.capabilityIds().contains("compose_report"))
-              throw new TaskFailure(400, "INVALID_CAPABILITIES");
-          }
-          long installationEpoch = epoch(identity, request.capabilityIds());
-          var mcpBinding = mcpTask ? mcp.bind(identity.tenant(), identity.actor()) : null;
-          if (request.capabilityIds().stream()
-                  .anyMatch(name -> List.of("glob", "grep").contains(name))
-              && !searchAvailable.getAsBoolean())
-            throw new TaskFailure(503, "SEARCH_NOT_CONFIGURED");
-          var pins = new java.util.LinkedHashMap<String, PluginPin>();
-          for (String capability : request.capabilityIds()) {
-            var installed =
-                one(
-                    "SELECT * FROM installation WHERE tenant_id=? AND plugin_id=?",
-                    identity.tenant(),
-                    capability);
-            pins.put(
-                capability,
-                new PluginPin(
-                    s(installed, "plugin_version"),
-                    s(installed, "plugin_digest"),
-                    n(installed, "epoch")));
-          }
-          String toolSnapshot =
-              prior
-                  ? Payloads.json(
-                      new java.util.TreeMap<>(
-                          Map.of("schemaVersion", 1, "pins", new java.util.TreeMap<>(pins))))
-                  : Payloads.json(new ToolSnapshot(1, pins));
-          if (pins.containsKey("compose_report")
-              && media != pins.get("compose_report").version().equals("0.2.0"))
-            throw new TaskFailure(503, "PLUGIN_PIN_MISMATCH");
-          var model = models.selected(identity.tenant());
-          String scopeDigest = requireScope(identity.tenant(), evaluation, null, model);
-          var businessPolicy = models.businessPolicy();
-          if (ask
-              && (model.paid()
-                  || businessPolicy != null
-                  || evaluation != null
-                  || !(models.fixture() || models.localEvaluation(model))))
-            throw new TaskFailure(403, "QUESTION_NOT_AUTHORIZED");
-          if (sessionRead) {
-            if (!sessionReadEnabled) throw new TaskFailure(403, "SESSION_READ_DISABLED");
-            if (prior) {
-              if (!priorSessionSearchEnabled) throw new TaskFailure(403, "SESSION_SEARCH_DISABLED");
-              models.requireSessionSearch(model);
-            } else if (sessionTrace) {
-              if (!sessionTraceEnabled || !sessionSearchEnabled)
-                throw new TaskFailure(403, "SESSION_TRACE_DISABLED");
-              models.requireSessionTrace(model);
-            } else if (sessionSearch) {
-              if (!sessionSearchEnabled) throw new TaskFailure(403, "SESSION_SEARCH_DISABLED");
-              models.requireSessionSearch(model);
-            } else models.requireSessionRead(model);
-            if (evaluation != null || businessPolicy != null || models.scopeRequirement() != null)
-              throw new TaskFailure(403, "SESSION_READ_DISABLED");
-            for (String name : request.capabilityIds()) {
-              var descriptor =
-                  name.equals("session_event_read")
-                      ? (prior
-                              ? sessions.v4
-                              : sessionTrace
-                                  ? sessions.v3
-                                  : sessionSearch ? sessions.v2 : sessions.contracts)
-                          .descriptor()
-                      : name.equals("session_search")
-                          ? sessionScopes.contracts.descriptor()
-                          : name.equals("session_event_search")
-                              ? (sessionTrace ? sessions.searchV3 : sessions.search).descriptor()
-                              : sessions.trace.descriptor();
-              var pin = pins.get(name);
-              if (!pin.version().equals(descriptor.version())
-                  || !pin.digest().equals(descriptor.outputSha256()))
-                throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
-            }
-            if (n(budget, "history_storage_limit") - n(budget, "history_storage_held") < 8388608)
-              throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-            if (request.budget().maxModelRequests() > 8
-                || request.budget().maxToolInvocations() > 20
-                || request.budget().deadlineSeconds() > 180)
-              throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-          }
-          if (directory) {
-            if (!directoryEnabled) throw new TaskFailure(403, "DIRECTORY_NOT_AUTHORIZED");
-            models.requireDirectory(model);
-            if (evaluation != null || businessPolicy != null || models.scopeRequirement() != null)
-              throw new TaskFailure(403, "DIRECTORY_NOT_AUTHORIZED");
-            for (String name : request.capabilityIds()) {
-              var descriptor =
-                  name.equals("working_directory")
-                      ? directories.descriptor()
-                      : directoryFileContract(name).descriptor();
-              if (!pins.get(name).version().equals(descriptor.version())
-                  || !pins.get(name).digest().equals(descriptor.outputSha256()))
-                throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
-            }
-            if (n(budget, "directory_storage_limit") - n(budget, "directory_storage_held")
-                < 8388608) throw new TaskFailure(429, "DIRECTORY_STORAGE_LIMIT");
-            if (request.budget().maxModelRequests() > 8
-                || request.budget().maxToolInvocations() > 20
-                || request.budget().deadlineSeconds() > 180)
-              throw new TaskFailure(429, "DIRECTORY_EXECUTION_LIMIT");
-          }
-          if (todo) {
-            if (!todosEnabled) throw new TaskFailure(403, "TODO_NOT_AUTHORIZED");
-            models.requireTodo(model);
-            if (evaluation != null || businessPolicy != null || models.scopeRequirement() != null)
-              throw new TaskFailure(403, "TODO_NOT_AUTHORIZED");
-            if (!pins.get("todo_write").version().equals(todos.descriptor().version())
-                || !pins.get("todo_write").digest().equals(todos.descriptor().outputSha256()))
-              throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
-            if (n(budget, "todo_storage_limit") - n(budget, "todo_storage_held") < 2097152)
-              throw new TaskFailure(429, "TODO_STORAGE_LIMIT");
-            if (request.budget().maxModelRequests() > 8
-                || request.budget().maxToolInvocations() > 20)
-              throw new TaskFailure(429, "TODO_EXECUTION_LIMIT");
-          }
-          String questionBinding =
-              ask ? questions.binding(pins.get("ask_user_question").version()) : null;
-          if (ask
-              && !pins.get("ask_user_question")
-                  .digest()
-                  .equals(
-                      questions
-                          .contract(pins.get("ask_user_question").version())
-                          .descriptor()
-                          .outputSha256())) throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
-          if (ask && n(budget, "question_tasks_held") >= n(budget, "question_tasks_limit"))
-            throw new TaskFailure(429, "QUESTION_TASK_LIMIT");
-          if (ask && 2097152 > n(budget, "storage_limit") - storageHeld(budget))
-            throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
-          if (mcpTask
-              && (model.paid()
-                  || businessPolicy != null
-                  || !(models.fixture() || models.localEvaluation(model))))
-            throw new TaskFailure(503, "MCP_NOT_CONFIGURED");
-          if (request.capabilityIds().contains("compose_report")
-              && request.capabilityIds().contains("write"))
-            throw new TaskFailure(400, "INVALID_CAPABILITIES");
-          if (businessPolicy != null
-              && businessPolicy.version() == 1
-              && request.capabilityIds().contains("present")
-              && !request.capabilityIds().stream()
-                  .filter(name -> !List.of("edit", "glob", "grep").contains(name))
-                  .toList()
-                  .equals(List.of("web_fetch", "read", "compose_report", "present")))
-            throw new TaskFailure(400, "INVALID_CAPABILITIES");
-          if (businessPolicy != null
-              && businessPolicy.version() == 2
-              && (!media
-                  || !request
-                      .capabilityIds()
-                      .containsAll(List.of("read", "read_image", "compose_report", "present"))
-                  || request.capabilityIds().stream()
-                      .anyMatch(c -> List.of("write", "web_search").contains(c))))
-            throw new TaskFailure(400, "INVALID_CAPABILITIES");
-          Long explicitCost = request.budget().maxCostMicros();
-          if (explicitCost != null
-              && (explicitCost < 1 || businessPolicy == null && explicitCost > 1000000))
-            throw new TaskFailure(400, "INVALID_BUDGET");
-          if (request.budget().maxCostMicros() != null && !model.paid())
-            throw new TaskFailure(400, "CURRENCY_BUDGET_NOT_CONFIGURED");
-          models.admit(model);
-          long taskCost = explicitCost == null ? 1000000 : explicitCost;
-          long taskTokens = 65536;
-          if (businessPolicy != null) {
-            long singleCost;
-            long hostCost;
-            try {
-              long singleTokens =
-                  Math.addExact(model.price().inputTokenUpper(), model.maxOutputTokens());
-              singleCost =
-                  ModelCosts.amount(
-                      model.price(), model.price().inputTokenUpper(), model.maxOutputTokens());
-              taskTokens = Math.multiplyExact(singleTokens, request.budget().maxModelRequests());
-              hostCost =
-                  Math.min(
-                      Math.multiplyExact(singleCost, request.budget().maxModelRequests()),
-                      n(evaluation, "max_cost_micros"));
-            } catch (ArithmeticException unrepresentable) {
-              throw new TaskFailure(503, "MODEL_COST_BOUND_UNAVAILABLE");
-            }
-            if (explicitCost != null && explicitCost > hostCost)
-              throw new TaskFailure(400, "INVALID_BUDGET");
-            taskCost = explicitCost == null ? hostCost : explicitCost;
-            if (taskCost < singleCost) throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
-          }
-          var evaluationBinding = businessPolicy == null ? bindEvaluation(evaluation, model) : null;
-          var material =
-              evaluationBinding == null
-                  ? null
-                  : EvaluationMaterials.load(
-                      models.evaluationSelection().plan(), evaluationBinding.sample());
-          if (material != null) EvaluationMaterials.require(request.goal().equals(material.goal()));
-          if (evaluationBinding != null
-              && !request.capabilityIds().equals(List.of("web_fetch", "read", "write", "present")))
-            throw new TaskFailure(400, "INVALID_CAPABILITIES");
-          if (evaluationBinding != null
-              && !rows(
-                      "SELECT id FROM task WHERE tenant_id=? AND evaluation_run_id=? AND evaluation_model=? AND evaluation_sample=? LIMIT 1",
-                      identity.tenant(),
-                      run,
-                      model.model(),
-                      evaluationBinding.sample())
-                  .isEmpty()) throw new TaskFailure(409, "EVALUATION_SAMPLE_ALREADY_BOUND");
-          String modelSnapshot = Payloads.json(model);
-          if (n(budget, "queued") >= n(budget, "queue_limit"))
-            throw new TaskFailure(429, "QUEUE_LIMIT");
-          String task = prior ? callerId : id();
-          db.update(
-              "INSERT INTO task(tenant_id,id,owner_actor_id,idempotency_key,request_digest,request_snapshot,goal,capabilities,installation_epoch,state,deadline,max_models,max_tools) VALUES(?,?,?,?,?,?,?,?,?,'QUEUED',TIMESTAMPADD(SECOND,?,CURRENT_TIMESTAMP(6)),?,?)",
-              identity.tenant(),
-              task,
-              identity.actor(),
-              key,
-              digest,
-              snapshot,
-              request.goal(),
-              String.join(",", request.capabilityIds()),
-              installationEpoch,
-              request.budget().deadlineSeconds(),
-              request.budget().maxModelRequests(),
-              request.budget().maxToolInvocations());
-          db.update(
-              "UPDATE task SET model_snapshot=?,model_digest=?,evaluation_run_id=?,max_cost_micros=?,tools_snapshot=?,tools_digest=?,execution_scope_digest=?,report_time=UTC_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
-              modelSnapshot,
-              Payloads.hash(modelSnapshot),
-              model.paid() ? run : null,
-              taskCost,
-              toolSnapshot,
-              Payloads.hash(toolSnapshot),
-              scopeDigest,
-              identity.tenant(),
-              task);
-          if (sessionRead) {
-            var accepted = locked(identity.tenant(), task);
-            sessions.create(accepted);
-            if (prior) sessionScopes.create(accepted, historySources);
-            db.update(
-                "UPDATE tenant_budget SET history_storage_held=history_storage_held+8388608 WHERE tenant_id=?",
-                identity.tenant());
-            reserve(
-                identity.tenant(),
-                task,
-                task + ":session-history",
-                null,
-                "SESSION_HISTORY_STORAGE",
-                8388608,
-                "RESERVED",
-                "KNOWN");
-          }
-          if (directory) {
-            String namespace = Payloads.hash(identity.tenant() + ":" + task),
-                directoryBinding = directories.binding(namespace);
-            db.update(
-                "INSERT INTO task_directory(tenant_id,task_id,binding_snapshot,binding_digest,namespace_digest,cwd,retain_until) SELECT tenant_id,id,?,?,?,'/',TIMESTAMPADD(SECOND,604800,created_at) FROM task WHERE tenant_id=? AND id=?",
-                directoryBinding,
-                Payloads.hash(directoryBinding),
-                namespace,
-                identity.tenant(),
-                task);
-            db.update(
-                "UPDATE tenant_budget SET directory_storage_held=directory_storage_held+8388608 WHERE tenant_id=?",
-                identity.tenant());
-            reserve(
-                identity.tenant(),
-                task,
-                task + ":directory-storage",
-                null,
-                "DIRECTORY_STORAGE",
-                8388608,
-                "RESERVED",
-                "KNOWN");
-            directoryStorage(locked(identity.tenant(), task), 0);
-          }
-          if (todo) {
-            db.update(
-                "INSERT INTO task_todo_projection(tenant_id,task_id,binding_snapshot,binding_digest,retain_until) SELECT tenant_id,id,?,?,TIMESTAMPADD(SECOND,604800,created_at) FROM task WHERE tenant_id=? AND id=?",
-                todos.binding(),
-                Payloads.hash(todos.binding()),
-                identity.tenant(),
-                task);
-            db.update(
-                "UPDATE tenant_budget SET todo_storage_held=todo_storage_held+2097152 WHERE tenant_id=?",
-                identity.tenant());
-            reserve(
-                identity.tenant(),
-                task,
-                task + ":todo-storage",
-                null,
-                "TODO_STORAGE",
-                2097152,
-                "RESERVED",
-                "KNOWN");
-            todoStorage(locked(identity.tenant(), task), 0);
-          }
-          if (ask) {
-            db.update(
-                "UPDATE task SET question_binding=?,question_binding_digest=?,question_cleanup_state='RETAINED' WHERE tenant_id=? AND id=?",
-                questionBinding,
-                Payloads.hash(questionBinding),
-                identity.tenant(),
-                task);
-            db.update(
-                "UPDATE tenant_budget SET question_tasks_held=question_tasks_held+1,storage_held=storage_held+2097152 WHERE tenant_id=?",
-                identity.tenant());
-            reserve(
-                identity.tenant(),
-                task,
-                task + ":question-task",
-                null,
-                "QUESTION_TASK",
-                1,
-                "RESERVED",
-                "KNOWN");
-            reserve(
-                identity.tenant(),
-                task,
-                task + ":question-storage",
-                null,
-                "QUESTION_STORAGE",
-                2097152,
-                "RESERVED",
-                "KNOWN");
-          }
-          if (mcpBinding != null) {
-            String mcpSnapshot = Payloads.json(mcpBinding);
-            db.update(
-                "UPDATE task SET mcp_snapshot=?,mcp_digest=? WHERE tenant_id=? AND id=?",
-                mcpSnapshot,
-                Payloads.hash(mcpSnapshot),
-                identity.tenant(),
-                task);
-          }
-          if (businessPolicy != null) {
-            String policyJson = BusinessPolicies.canonical(businessPolicy);
-            db.update(
-                "UPDATE task SET record_version=2,business_policy_snapshot=?,business_policy_digest=?,max_tokens=? WHERE tenant_id=? AND id=?",
-                policyJson,
-                Payloads.hash(policyJson),
-                taskTokens,
-                identity.tenant(),
-                task);
-          }
-          if (media) {
-            long held = input.stream().mapToLong(i -> i.dataBase64().length()).sum();
-            if (held > n(budget, "storage_limit") - storageHeld(budget))
-              throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
-            images.insert(identity, task, input, descriptors == null ? List.of() : descriptors);
-            if (held > 0) {
-              db.update(
-                  "UPDATE tenant_budget SET storage_held=storage_held+? WHERE tenant_id=?",
-                  held,
-                  identity.tenant());
-              reserve(
-                  identity.tenant(),
-                  task,
-                  task + ":media-input",
-                  null,
-                  "MEDIA_INPUT",
-                  held,
-                  "SETTLED",
-                  "KNOWN");
-              db.update(
-                  "UPDATE reservation SET actual=amount WHERE tenant_id=? AND id=?",
-                  identity.tenant(),
-                  task + ":media-input");
-            }
-          }
-          if (evaluationBinding != null) {
-            var selection = models.evaluationSelection();
-            var plan = selection.plan();
-            String bindingSnapshot = Payloads.json(evaluationBinding);
-            db.update(
-                "UPDATE task SET evaluation_snapshot=?,evaluation_digest=?,evaluation_phase=?,evaluation_sample=?,evaluation_model=?,max_models=LEAST(max_models,?),max_tokens=?,max_cost_micros=LEAST(max_cost_micros,?) WHERE tenant_id=? AND id=?",
-                bindingSnapshot,
-                Payloads.hash(bindingSnapshot),
-                selection.phase(),
-                selection.sample(),
-                model.model(),
-                selection.sample().equals("W1") ? 7 : 6,
-                (selection.sample().equals("W1") ? 7L : 6L) * 1004096,
-                request.budget().maxCostMicros() == null
-                    ? EvaluationPlans.taskCost(plan, model.model(), selection.sample())
-                    : Math.min(
-                        request.budget().maxCostMicros(),
-                        EvaluationPlans.taskCost(plan, model.model(), selection.sample())),
-                identity.tenant(),
-                task);
-            String materialSnapshot = Payloads.json(material);
-            var accepted = locked(identity.tenant(), task);
-            String system =
-                material
-                    .systemTemplate()
-                    .replace("{{HOST_REPORT_TIME}}", time(accepted, "report_time").toString());
-            db.update(
-                "UPDATE task SET material_snapshot=?,material_digest=?,material_system_digest=? WHERE tenant_id=? AND id=?",
-                materialSnapshot,
-                Payloads.hash(materialSnapshot),
-                Payloads.hash(system),
-                identity.tenant(),
-                task);
-            // The HTTP budget only tightens this host-selected private task ceiling.
-            if (request.budget().maxCostMicros() == null)
-              db.update(
-                  "UPDATE task SET max_cost_micros=? WHERE tenant_id=? AND id=?",
-                  EvaluationPlans.taskCost(plan, model.model(), selection.sample()),
-                  identity.tenant(),
-                  task);
-          }
-          db.update(
-              "UPDATE tenant_budget SET queued=queued+1 WHERE tenant_id=?", identity.tenant());
-          reserve(identity.tenant(), task, task + ":queue", null, "QUEUE", 1, "RESERVED", "KNOWN");
-          var row = locked(identity.tenant(), task);
-          event(row, "accepted", "task.accepted", null);
-          return view(locked(identity.tenant(), task));
-        });
+    return taskAdmissionService.submit(identity, key, original, input, historySources, callerId);
   }
 
   Map<String, Object> locked(String tenant, String task) {
@@ -5399,7 +4835,7 @@ public final class JdbcLedger
         });
   }
 
-  private View view(Map<String, Object> row) {
+  View view(Map<String, Object> row) {
     var artifacts =
         rows(
                 "SELECT * FROM artifact WHERE tenant_id=? AND task_id=? AND state='PUBLISHED' ORDER BY id",
@@ -6278,8 +5714,7 @@ public final class JdbcLedger
     return evaluationBindings.plan(new MapperEvaluationBindings(this, evaluation));
   }
 
-  private EvaluationPlan.Binding bindEvaluation(
-      Map<String, Object> evaluation, ModelSnapshot model) {
+  EvaluationPlan.Binding bindEvaluation(Map<String, Object> evaluation, ModelSnapshot model) {
     return evaluationBindings.bind(new MapperEvaluationBindings(this, evaluation), model);
   }
 

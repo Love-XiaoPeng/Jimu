@@ -7,9 +7,9 @@ import io.github.lovexiaopeng.jimu.kernel.snapshot.api.SnapshotDigest;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Invocation;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
+import io.github.lovexiaopeng.jimu.kernel.task.api.LeaseUnitOfWork;
 import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
-import io.github.lovexiaopeng.jimu.kernel.transaction.port.LeaseUnitOfWork;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
 
 /** 原槽效果准入和一次结算；未知效果不重放，已确认成功不因材料后验拒绝而消失。 */

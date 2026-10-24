@@ -140,7 +140,7 @@ class ModelFailurePolicyTest {
               throw new AssertionError("not a failure path");
             }
           },
-          new io.github.lovexiaopeng.jimu.kernel.transaction.port.LeaseUnitOfWork() {
+          new io.github.lovexiaopeng.jimu.kernel.task.api.LeaseUnitOfWork() {
             public <T> T admission(Lease lease, Supplier<T> work) {
               throw new AssertionError("not a failure path");
             }
