@@ -1,0 +1,51 @@
+{
+  "baseline": "128cad0dae535f6206e1d38b3c51fef063a74a37",
+  "entries": [
+    "native MP receipt row -> MapperSessionReads.appendRead -> receipt -> SessionReceiptServiceImpl.nativeReceipt -> typed SessionReceipts.Native -> StoredSessionReceipts -> original Map/long/string values -> sessionAppend",
+    "native event replay -> MapperSessionEventProofs.readReceipt -> same shared receipt chain -> original frozen JSON equality",
+    "scope MP binding row -> MapperSessionScopeQueries.appendRead -> scopeReceipt -> SessionReceiptServiceImpl.scopeReceipt -> typed SessionReceipts.Scope -> StoredSessionReceipts -> original normalized JSON nodes -> sessionAppend",
+    "scope replay -> MapperSessionScopeReadProofs.receipt -> same scope receipt chain -> original frozen JSON equality"
+  ],
+  "removed": {
+    "staticJdbcCalls": 0,
+    "dynamicJdbc": 0,
+    "reason": "Neither constructor had SQL. Existing MP/parameterized persistence chains are unchanged; no invented deletion or query/transaction."
+  },
+  "inventory": {
+    "static": 203,
+    "dynamicScannerItems": 23,
+    "literalBinds": 701,
+    "tables": "35 tables + readonly receipt all OPEN"
+  },
+  "unchangedCallers": [
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionReads.java",
+      "sha256": "4858e158318417179545d2af612344173b7af539085459052f139c9289c4668c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionEventProofs.java",
+      "sha256": "179d34852b9d8c54bf562a4168c2b422d1b65ed8d0194748d4860025b8a30b79"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeQueries.java",
+      "sha256": "ac1b22517184b2b2a4445c5aae2124903697f016238cd732ecc607f8f47db8b9"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeReadProofs.java",
+      "sha256": "8b73c7ae046289186e052e9b08a5c6694214716734ebe41e012e0ea17115a9c8"
+    }
+  ],
+  "preserved": [
+    "native target/before/after/upper use original Number.longValue in original lazy order; output_bytes long last; explicit null string keys",
+    "scope normalized parse max4096 before values; original JsonNode.get nodes/types, Java null for missing versus NullNode for explicit null; no normalization/reencoding",
+    "LinkedHashMap frozen field insertion order and fresh mutable maps; original NULL/unboxing/class-cast/parser exceptions",
+    "original slot bytes/normalized semantics/digest/byte proof unchanged, four persistence callers byte-identical",
+    "tenant/full keys/DS/UoW, permission/whole-scope/fence, locks/refusal/proof/query/deadline, atomic accounting/events, special commit/rollback, UNKNOWN recovery and independent invalidation afterCompletion unchanged",
+    "schema22/V1-V22/frozen input resources unchanged"
+  ],
+  "remaining": [
+    "runtime proof/admission/module/maintenance chains",
+    "core UoW final beforeCommit gap, cold/full scope/maintenance/file locks, persisted failed read and existing coverage limitations OPEN",
+    "B2 and35 tables+readonly receipt OPEN; B3-B5/juniors/61/62/T48/new features inactive"
+  ]
+}

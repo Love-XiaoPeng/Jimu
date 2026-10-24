@@ -925,17 +925,13 @@ final class JdbcSessionRecords {
     }
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionReceiptService receipts =
+      new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionReceiptServiceImpl();
+
   Map<String, Object> receipt(Map<String, Object> b) {
-    var value = new LinkedHashMap<String, Object>();
-    value.put("seq", n(b, "target_seq"));
-    value.put("before", n(b, "before_count"));
-    value.put("after", n(b, "after_count"));
-    value.put("upper_seq", n(b, "upper_seq"));
-    value.put("outcome", s(b, "outcome"));
-    value.put("code", s(b, "failure_code"));
-    value.put("output_sha256", s(b, "output_digest"));
-    value.put("output_bytes", n(b, "output_bytes"));
-    return value;
+    var values = new StoredSessionReceipts(this, b);
+    receipts.nativeReceipt(values);
+    return values.result();
   }
 
   void validateInput(
@@ -1083,15 +1079,9 @@ final class JdbcSessionRecords {
   }
 
   Map<String, Object> scopeReceipt(Map<String, Object> b) {
-    var input = contracts.json(s(b, "normalized_snapshot"), 4096);
-    var result = new LinkedHashMap<String, Object>();
-    for (String key : List.of("seq", "before", "after", "upper_seq", "target_session_id"))
-      result.put(key, input.get(key));
-    result.put("outcome", s(b, "outcome"));
-    result.put("code", s(b, "failure_code"));
-    result.put("output_sha256", s(b, "output_digest"));
-    result.put("output_bytes", n(b, "output_bytes"));
-    return result;
+    var values = new StoredSessionReceipts(this, b);
+    receipts.scopeReceipt(values);
+    return values.result();
   }
 
   void validateNormalizedScope(String expected, Map<String, Object> binding) {
