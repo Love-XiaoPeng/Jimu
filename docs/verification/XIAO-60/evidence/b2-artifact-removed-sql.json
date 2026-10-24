@@ -1,0 +1,21 @@
+{
+  "baseline": "c5aeb1cf8fa2b383190e158e7464dda0f545e52c",
+  "removedCount": 3,
+  "removed": [
+    {
+      "method": "JdbcLedger.download",
+      "originalSql": "SELECT a.* FROM artifact a JOIN task t ON a.tenant_id=t.tenant_id AND a.task_id=t.id WHERE a.tenant_id=? AND a.id=? AND t.owner_actor_id=? AND a.state IN ('PUBLISHED','EXPIRED')",
+      "replacement": "ArtifactMapper.selectOwnedRetained"
+    },
+    {
+      "method": "JdbcLedger.visible shared helper",
+      "originalSql": "SELECT tenant_id,id,capabilities FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=?",
+      "replacement": "TaskVisibilityMapper.selectMaps authority-loss hint"
+    },
+    {
+      "method": "JdbcLedger.visible shared helper",
+      "originalSql": "SELECT * FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=?",
+      "replacement": "TaskVisibilityMapper.selectMaps owner-visible task"
+    }
+  ]
+}

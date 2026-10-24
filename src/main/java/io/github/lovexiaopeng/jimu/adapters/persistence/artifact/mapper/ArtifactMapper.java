@@ -9,6 +9,12 @@ import org.apache.ibatis.annotations.Param;
 /** B2 固定参数持久操作；事务、锁调用顺序及行数判定由原用例持有。 */
 @Mapper
 public interface ArtifactMapper {
+  List<Map<String, Object>> selectOwnedRetained(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("artifactId") String artifactId,
+      @Param("actor") String actor);
+
   List<Map<String, Object>> selectPublishedReport(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,

@@ -55,6 +55,8 @@ public final class JdbcLedger
       invocationService;
   private final io.github.lovexiaopeng.jimu.kernel.task.service.TaskAdmissionService
       taskAdmissionService;
+  private final io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactAccessService
+      artifactAccess;
   private final JdbcTemplate db;
   final CoreMappers mappers;
   private final DataSource source;
@@ -4215,6 +4217,9 @@ public final class JdbcLedger
             return directoryTransaction(lease, work);
           }
         };
+    artifactAccess =
+        new io.github.lovexiaopeng.jimu.kernel.artifact.service.impl.ArtifactAccessServiceImpl(
+            new MapperArtifactDownloads(this), coreWork, java.time.Clock.systemUTC());
     taskAdmissionService =
         new io.github.lovexiaopeng.jimu.kernel.task.service.impl.TaskAdmissionServiceImpl(
             new MapperTaskAdmissions(this), coreWork);
@@ -4681,26 +4686,17 @@ public final class JdbcLedger
     return first(mappers.tasks().selectTaskForUpdate(query, tenant, task));
   }
 
-  private Map<String, Object> visible(Identity identity, String task) {
+  Map<String, Object> visible(Identity identity, String task) {
     sessionScopes.lock(identity.tenant(), task);
     try {
       identity(identity);
     } catch (TaskFailure failure) {
-      var found =
-          rows(
-              "SELECT tenant_id,id,capabilities FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=?",
-              identity.tenant(),
-              task,
-              identity.actor());
+      var found = new MapperTaskVisibility(mappers.session()).select(query, identity, task, true);
       if (found.size() == 1 && JdbcSessionScopes.task(found.getFirst()))
         invalidateScopeAfterTransaction(found.getFirst());
       throw failure;
     }
-    return one(
-        "SELECT * FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=?",
-        identity.tenant(),
-        task,
-        identity.actor());
+    return first(new MapperTaskVisibility(mappers.session()).select(query, identity, task, false));
   }
 
   List<String> caps(Map<String, Object> row) {
@@ -4953,20 +4949,12 @@ public final class JdbcLedger
 
   @Override
   public Download download(Identity identity, String artifactId) {
-    return tx(
-        () -> {
-          identity(identity);
-          var row =
-              one(
-                  "SELECT a.* FROM artifact a JOIN task t ON a.tenant_id=t.tenant_id AND a.task_id=t.id WHERE a.tenant_id=? AND a.id=? AND t.owner_actor_id=? AND a.state IN ('PUBLISHED','EXPIRED')",
-                  identity.tenant(),
-                  artifactId,
-                  identity.actor());
-          access(visible(identity, s(row, "task_id")));
-          if (time(row, "expires_at").isBefore(Instant.now()))
-            throw new TaskFailure(410, "ARTIFACT_EXPIRED");
-          return new Download(artifact(row), identity.tenant(), s(row, "snapshot_key"));
-        });
+    return artifactAccess.authorize(identity, artifactId);
+  }
+
+  public io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactAccessService
+      artifactAccess() {
+    return artifactAccess;
   }
 
   long storageHeld(Map<String, Object> budget) {

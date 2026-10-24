@@ -138,8 +138,8 @@ public class DurableConfiguration {
   }
 
   @Bean
-  ArtifactService artifactService(Tasks tasks, ArtifactStore store) {
-    return new ArtifactServiceImpl(tasks, store);
+  ArtifactService artifactService(JdbcLedger ledger, ArtifactStore store) {
+    return new ArtifactServiceImpl(ledger.artifactAccess(), store);
   }
 
   @Bean

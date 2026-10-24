@@ -22,6 +22,22 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 /** 产品 Bean 装配校验，不用不可连接 DS 冒充真实数据库验证。 */
 class PersistenceAssemblyTest {
   @Test
+  void standaloneQueryFactoryRegistersVisibilityMpWithoutInventingById() {
+    var source =
+        new org.springframework.jdbc.datasource.DriverManagerDataSource(
+            "jdbc:mysql://127.0.0.1:1/unused", "unused", "synthetic");
+    var session =
+        io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure.LedgerMapperSessions.create(
+            source);
+    var configuration = session.getSqlSessionFactory().getConfiguration();
+    String namespace =
+        "io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskVisibilityMapper";
+    assertTrue(configuration.hasStatement(namespace + ".selectMaps"));
+    assertFalse(configuration.hasStatement(namespace + ".selectById"));
+    assertSame(source, configuration.getEnvironment().getDataSource());
+  }
+
+  @Test
   void defaultApplicationCreatesNoDatabaseOrSqlSession() {
     try (var context =
         new SpringApplicationBuilder(JimuApplication.class)

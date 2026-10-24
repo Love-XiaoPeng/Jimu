@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 独立账本/显式query工厂通过XML namespace注册MP生成语句，Spring扫描不是唯一入口。 -->
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskVisibilityMapper"/>
