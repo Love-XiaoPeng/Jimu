@@ -35,12 +35,24 @@ class PersistenceAssemblyTest {
             "io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskVisibilityMapper",
             "io.github.lovexiaopeng.jimu.adapters.persistence.budget.mapper.ReservationReadMapper",
             "io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageObjectReadMapper",
-            "io.github.lovexiaopeng.jimu.adapters.persistence.mcp.mapper.McpCursorMapper")) {
+            "io.github.lovexiaopeng.jimu.adapters.persistence.mcp.mapper.McpCursorMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.TaskDirectoryReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.DirectoryStepReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.DirectoryInvocationReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.DirectoryPathReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.DirectoryDispatchReadMapper")) {
       assertTrue(configuration.hasStatement(namespace + ".selectMaps"));
       assertTrue(configuration.hasStatement(namespace + ".delete"));
       assertFalse(configuration.hasStatement(namespace + ".selectById"));
     }
     assertSame(source, configuration.getEnvironment().getDataSource());
+    var projection =
+        com.baomidou.mybatisplus.core.metadata.TableInfoHelper.getTableInfo(
+                io.github.lovexiaopeng.jimu.adapters.persistence.directory.entity
+                    .DirectoryStepReadEntity.class)
+            .getAllSqlSelect();
+    System.out.println("DIRECTORY_STEP_MP_PROJECTION=" + projection);
+    assertTrue(projection.contains("id AS rowId"));
   }
 
   @Test

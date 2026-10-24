@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.DirectoryRetentionMapper">
+  <select id="unsafeReservations" resultType="map"><![CDATA[SELECT id FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN' OR (state='RESERVED' AND category<>'DIRECTORY_STORAGE')) LIMIT 1]]></select>
+  <select id="activeInvocations" resultType="map"><![CDATA[SELECT id FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state IN ('RUNNING','OUTCOME_UNKNOWN') LIMIT 1]]></select>
+  <select id="dispatchedModels" resultType="map"><![CDATA[SELECT id FROM model_dispatch WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='DISPATCHED' LIMIT 1]]></select>
+  <select id="candidates" resultType="map"><![CDATA[SELECT p.tenant_id,p.task_id FROM task_directory p JOIN task t ON t.tenant_id=p.tenant_id AND t.id=p.task_id
+      WHERE p.content_state<>'PURGED' AND p.retain_until<=CURRENT_TIMESTAMP(6) AND t.state IN ('SUCCEEDED','FAILED','CANCELLED')
+      AND NOT EXISTS(SELECT 1 FROM native_search_run n WHERE n.tenant_id=p.tenant_id AND n.task_id=p.task_id AND n.phase<>'STOPPED')
+      AND NOT EXISTS(SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.tenant_id=p.tenant_id AND a.task_id=p.task_id AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE))
+      AND NOT EXISTS(SELECT 1 FROM reservation r WHERE r.tenant_id=p.tenant_id AND r.task_id=p.task_id AND (r.state='HELD_UNKNOWN' OR r.usage_quality='UNKNOWN' OR (r.state='RESERVED' AND r.category<>'DIRECTORY_STORAGE')))
+      AND NOT EXISTS(SELECT 1 FROM invocation i WHERE i.tenant_id=p.tenant_id AND i.task_id=p.task_id AND i.state IN ('RUNNING','OUTCOME_UNKNOWN'))
+      AND NOT EXISTS(SELECT 1 FROM model_dispatch d WHERE d.tenant_id=p.tenant_id AND d.task_id=p.task_id AND d.state='DISPATCHED')
+      ORDER BY p.retain_until,p.tenant_id,p.task_id LIMIT 32]]></select>
+  <update id="purgeStep"><![CDATA[UPDATE step SET request_snapshot=#{tombstone},response_snapshot=IF(response_snapshot IS NULL,NULL,#{tombstone}),request_cleanup_state='DIRECTORY_PURGED',retained_request_digest=request_digest,directory_cwd=NULL WHERE tenant_id=#{tenant} AND id=#{id}]]></update>
+  <update id="purgeInvocation"><![CDATA[UPDATE invocation SET input_snapshot=#{tombstone},output_snapshot=IF(output_snapshot IS NULL,NULL,#{tombstone}) WHERE tenant_id=#{tenant} AND id=#{id}]]></update>
+  <update id="purgePath"><![CDATA[UPDATE invocation_path_binding SET base_cwd=NULL,target_cwd=NULL,canonical_paths_snapshot=NULL,directory_evidence_snapshot=NULL,content_state='PURGED' WHERE tenant_id=#{tenant} AND invocation_id=#{id}]]></update>
+  <update id="purgeDispatch"><![CDATA[UPDATE model_dispatch SET usage_snapshot=IF(usage_snapshot IS NULL,NULL,#{tombstone}) WHERE tenant_id=#{tenant} AND id=#{id}]]></update>
+  <update id="purgeTask"><![CDATA[UPDATE task SET request_snapshot=#{tombstone},goal=#{tombstone},summary=IF(summary IS NULL,NULL,#{tombstone}) WHERE tenant_id=#{tenant} AND id=#{taskId}]]></update>
+  <update id="markPurging"><![CDATA[UPDATE task_directory SET content_state='PURGING',cwd=NULL,retained_digests=#{retained},cleanup_generation=#{generation} WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND content_state='PRESENT']]></update>
+  <update id="storeReceipt"><![CDATA[UPDATE task_directory SET filesystem_receipt=#{receipt} WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND filesystem_receipt IS NULL]]></update>
+  <update id="markPurged"><![CDATA[UPDATE task_directory SET content_state='PURGED',workspace_state='PURGED' WHERE tenant_id=#{tenant} AND task_id=#{taskId}]]></update>
+  <update id="releaseHold"><![CDATA[UPDATE reservation SET state='RELEASED' WHERE tenant_id=#{tenant} AND id=#{holdId} AND category='DIRECTORY_STORAGE' AND state='RESERVED']]></update>
+  <update id="releaseBudget"><![CDATA[UPDATE tenant_budget SET directory_storage_held=directory_storage_held-8388608 WHERE tenant_id=#{tenant}]]></update>
+  <select id="storageBytes" resultType="java.lang.Long"><![CDATA[SELECT COALESCE(OCTET_LENGTH(t.request_snapshot),0)+COALESCE(OCTET_LENGTH(t.goal),0)+COALESCE(OCTET_LENGTH(t.summary),0)
+        +COALESCE(OCTET_LENGTH(t.model_snapshot),0)+COALESCE(OCTET_LENGTH(t.tools_snapshot),0)
+        +(SELECT OCTET_LENGTH(binding_snapshot)+COALESCE(OCTET_LENGTH(cwd),0)+COALESCE(OCTET_LENGTH(retained_digests),0)+COALESCE(OCTET_LENGTH(filesystem_receipt),0) FROM task_directory WHERE tenant_id=t.tenant_id AND task_id=t.id)
+        +(SELECT COALESCE(SUM(OCTET_LENGTH(request_snapshot)+COALESCE(OCTET_LENGTH(response_snapshot),0)+COALESCE(OCTET_LENGTH(directory_cwd),0)),0) FROM step WHERE tenant_id=t.tenant_id AND task_id=t.id)
+        +(SELECT COALESCE(SUM(OCTET_LENGTH(input_snapshot)+COALESCE(OCTET_LENGTH(output_snapshot),0)),0) FROM invocation WHERE tenant_id=t.tenant_id AND task_id=t.id)
+        +(SELECT COALESCE(SUM(COALESCE(OCTET_LENGTH(usage_snapshot),0)),0) FROM model_dispatch WHERE tenant_id=t.tenant_id AND task_id=t.id)
+        +(SELECT COALESCE(SUM(COALESCE(OCTET_LENGTH(base_cwd),0)+COALESCE(OCTET_LENGTH(target_cwd),0)+COALESCE(OCTET_LENGTH(canonical_paths_snapshot),0)+COALESCE(OCTET_LENGTH(directory_evidence_snapshot),0)),0) FROM invocation_path_binding WHERE tenant_id=t.tenant_id AND task_id=t.id)
+      FROM task t WHERE tenant_id=#{tenant} AND id=#{taskId}]]></select>
+  <select id="now" resultType="java.time.LocalDateTime"><![CDATA[SELECT CURRENT_TIMESTAMP(6)]]></select>
+</mapper>

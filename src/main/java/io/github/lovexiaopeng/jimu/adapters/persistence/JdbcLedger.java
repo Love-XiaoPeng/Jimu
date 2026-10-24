@@ -1645,200 +1645,17 @@ public final class JdbcLedger
   }
 
   private io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore directoryWorkspace;
+  private final MapperDirectoryRetentions directoryRetentionRecords;
+  private final io.github.lovexiaopeng.jimu.kernel.directory.service.DirectoryRetentionService
+      directoryRetention;
 
   public void directoryWorkspace(
       io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore workspace) {
     directoryWorkspace = workspace;
   }
 
-  private boolean directoryCleanupSafe(Map<String, Object> task) {
-    String tenant = s(task, "tenant_id"), id = s(task, "id");
-    return List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(task, "state"))
-        && writersQuiescent(task)
-        && rows(
-                "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN' OR (state='RESERVED' AND category<>'DIRECTORY_STORAGE')) LIMIT 1",
-                tenant,
-                id)
-            .isEmpty()
-        && rows(
-                "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN') LIMIT 1",
-                tenant,
-                id)
-            .isEmpty()
-        && rows(
-                "SELECT id FROM model_dispatch WHERE tenant_id=? AND task_id=? AND state='DISPATCHED' LIMIT 1",
-                tenant,
-                id)
-            .isEmpty();
-  }
-
   private void cleanupDirectories() {
-    if (directoryWorkspace == null) return;
-    for (var candidate :
-        rows(
-            """
-      SELECT p.tenant_id,p.task_id FROM task_directory p JOIN task t ON t.tenant_id=p.tenant_id AND t.id=p.task_id
-      WHERE p.content_state<>'PURGED' AND p.retain_until<=CURRENT_TIMESTAMP(6) AND t.state IN ('SUCCEEDED','FAILED','CANCELLED')
-      AND NOT EXISTS(SELECT 1 FROM native_search_run n WHERE n.tenant_id=p.tenant_id AND n.task_id=p.task_id AND n.phase<>'STOPPED')
-      AND NOT EXISTS(SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.tenant_id=p.tenant_id AND a.task_id=p.task_id AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE))
-      AND NOT EXISTS(SELECT 1 FROM reservation r WHERE r.tenant_id=p.tenant_id AND r.task_id=p.task_id AND (r.state='HELD_UNKNOWN' OR r.usage_quality='UNKNOWN' OR (r.state='RESERVED' AND r.category<>'DIRECTORY_STORAGE')))
-      AND NOT EXISTS(SELECT 1 FROM invocation i WHERE i.tenant_id=p.tenant_id AND i.task_id=p.task_id AND i.state IN ('RUNNING','OUTCOME_UNKNOWN'))
-      AND NOT EXISTS(SELECT 1 FROM model_dispatch d WHERE d.tenant_id=p.tenant_id AND d.task_id=p.task_id AND d.state='DISPATCHED')
-      ORDER BY p.retain_until,p.tenant_id,p.task_id LIMIT 32
-      """)) {
-      String tenant = s(candidate, "tenant_id"), taskId = s(candidate, "task_id");
-      var purge =
-          tx(
-              () -> {
-                bucket(tenant);
-                var task = locked(tenant, taskId);
-                var p = directoryProjection(task);
-                if ("PURGED".equals(s(p, "content_state"))
-                    || time(p, "retain_until").isAfter(questionNow())
-                    || !directoryCleanupSafe(task)) return null;
-                if ("PURGING".equals(s(p, "content_state"))) return p;
-                var retained = new java.util.LinkedHashMap<String, Object>();
-                for (String field : List.of("request_snapshot", "goal", "summary"))
-                  retainQuestionBody(retained, "task:" + field, s(task, field));
-                String tombstone = "{\"version\":1,\"state\":\"DIRECTORY_PURGED\"}";
-                for (var step :
-                    rows("SELECT * FROM step WHERE tenant_id=? AND task_id=?", tenant, taskId)) {
-                  for (String field :
-                      List.of("request_snapshot", "response_snapshot", "directory_cwd"))
-                    retainQuestionBody(
-                        retained, "step:" + s(step, "id") + ":" + field, s(step, field));
-                  db.update(
-                      "UPDATE step SET request_snapshot=?,response_snapshot=IF(response_snapshot IS NULL,NULL,?),request_cleanup_state='DIRECTORY_PURGED',retained_request_digest=request_digest,directory_cwd=NULL WHERE tenant_id=? AND id=?",
-                      tombstone,
-                      tombstone,
-                      tenant,
-                      s(step, "id"));
-                }
-                for (var i :
-                    rows(
-                        "SELECT * FROM invocation WHERE tenant_id=? AND task_id=?",
-                        tenant,
-                        taskId)) {
-                  for (String field : List.of("input_snapshot", "output_snapshot"))
-                    retainQuestionBody(
-                        retained, "invocation:" + s(i, "id") + ":" + field, s(i, field));
-                  db.update(
-                      "UPDATE invocation SET input_snapshot=?,output_snapshot=IF(output_snapshot IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
-                      tombstone,
-                      tombstone,
-                      tenant,
-                      s(i, "id"));
-                }
-                for (var f :
-                    rows(
-                        "SELECT * FROM invocation_path_binding WHERE tenant_id=? AND task_id=?",
-                        tenant,
-                        taskId)) {
-                  for (String field :
-                      List.of(
-                          "base_cwd",
-                          "target_cwd",
-                          "canonical_paths_snapshot",
-                          "directory_evidence_snapshot"))
-                    retainQuestionBody(
-                        retained, "path:" + s(f, "invocation_id") + ":" + field, s(f, field));
-                  db.update(
-                      "UPDATE invocation_path_binding SET base_cwd=NULL,target_cwd=NULL,canonical_paths_snapshot=NULL,directory_evidence_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND invocation_id=?",
-                      tenant,
-                      s(f, "invocation_id"));
-                }
-                for (var d :
-                    rows(
-                        "SELECT * FROM model_dispatch WHERE tenant_id=? AND task_id=?",
-                        tenant,
-                        taskId)) {
-                  retainQuestionBody(
-                      retained,
-                      "dispatch:" + s(d, "id") + ":usage_snapshot",
-                      s(d, "usage_snapshot"));
-                  db.update(
-                      "UPDATE model_dispatch SET usage_snapshot=IF(usage_snapshot IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
-                      tombstone,
-                      tenant,
-                      s(d, "id"));
-                }
-                retainQuestionBody(retained, "directory:cwd", s(p, "cwd"));
-                String digests = Payloads.json(retained);
-                directoryStorage(
-                    task, digests.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
-                db.update(
-                    "UPDATE task SET request_snapshot=?,goal=?,summary=IF(summary IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
-                    tombstone,
-                    tombstone,
-                    tombstone,
-                    tenant,
-                    taskId);
-                db.update(
-                    "UPDATE task_directory SET content_state='PURGING',cwd=NULL,retained_digests=?,cleanup_generation=? WHERE tenant_id=? AND task_id=? AND content_state='PRESENT'",
-                    digests,
-                    id(),
-                    tenant,
-                    taskId);
-                return directoryProjection(task);
-              });
-      if (purge == null) continue;
-      String generation = s(purge, "cleanup_generation");
-      String receipt = s(purge, "filesystem_receipt");
-      if (receipt == null) {
-        String planned = Payloads.json(directoryWorkspace.planPurge(tenant, taskId, () -> {}));
-        receipt =
-            tx(
-                () -> {
-                  bucket(tenant);
-                  var task = locked(tenant, taskId);
-                  var p = directoryProjection(task);
-                  if (!"PURGING".equals(s(p, "content_state"))
-                      || !generation.equals(s(p, "cleanup_generation"))
-                      || !directoryCleanupSafe(task))
-                    throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-                  if (p.get("filesystem_receipt") != null) return s(p, "filesystem_receipt");
-                  directoryStorage(
-                      task, planned.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
-                  db.update(
-                      "UPDATE task_directory SET filesystem_receipt=? WHERE tenant_id=? AND task_id=? AND filesystem_receipt IS NULL",
-                      planned,
-                      tenant,
-                      taskId);
-                  return planned;
-                });
-      }
-      var plan =
-          Payloads.read(
-              receipt,
-              io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore.PurgePlan.class);
-      directoryWorkspace.purge(tenant, taskId, plan, () -> {});
-      String confirmed = receipt;
-      tx(
-          () -> {
-            bucket(tenant);
-            var task = locked(tenant, taskId);
-            var p = directoryProjection(task);
-            if ("PURGED".equals(s(p, "content_state"))) return null;
-            if (!"PURGING".equals(s(p, "content_state"))
-                || !generation.equals(s(p, "cleanup_generation"))
-                || !confirmed.equals(s(p, "filesystem_receipt"))
-                || !directoryCleanupSafe(task)) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-            db.update(
-                "UPDATE task_directory SET content_state='PURGED',workspace_state='PURGED' WHERE tenant_id=? AND task_id=?",
-                tenant,
-                taskId);
-            event(task, "directory-purged", "working_directory.content_deleted", null);
-            if (db.update(
-                    "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND category='DIRECTORY_STORAGE' AND state='RESERVED'",
-                    tenant,
-                    taskId + ":directory-storage")
-                != 1) throw new TaskFailure(409, "RESERVATION_STATE");
-            db.update(
-                "UPDATE tenant_budget SET directory_storage_held=directory_storage_held-8388608 WHERE tenant_id=?",
-                tenant);
-            return null;
-          });
-    }
+    directoryRetention.cleanup();
   }
 
   final io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryContracts directories =
@@ -1853,11 +1670,7 @@ public final class JdbcLedger
   }
 
   Map<String, Object> directoryProjection(Map<String, Object> task) {
-    var p =
-        one(
-            "SELECT * FROM task_directory WHERE tenant_id=? AND task_id=?",
-            s(task, "tenant_id"),
-            s(task, "id"));
+    var p = directoryRetentionRecords.projectionRow(s(task, "tenant_id"), s(task, "id"));
     if (n(p, "record_version") != 1
         || n(p, "directory_version") != 1
         || n(p, "path_policy_version") != 1)
@@ -1918,22 +1731,8 @@ public final class JdbcLedger
 
   void directoryStorage(Map<String, Object> task, long additional) {
     if (!directoryTask(task)) return;
-    long bytes =
-        db.queryForObject(
-            """
-      SELECT COALESCE(OCTET_LENGTH(t.request_snapshot),0)+COALESCE(OCTET_LENGTH(t.goal),0)+COALESCE(OCTET_LENGTH(t.summary),0)
-        +COALESCE(OCTET_LENGTH(t.model_snapshot),0)+COALESCE(OCTET_LENGTH(t.tools_snapshot),0)
-        +(SELECT OCTET_LENGTH(binding_snapshot)+COALESCE(OCTET_LENGTH(cwd),0)+COALESCE(OCTET_LENGTH(retained_digests),0)+COALESCE(OCTET_LENGTH(filesystem_receipt),0) FROM task_directory WHERE tenant_id=t.tenant_id AND task_id=t.id)
-        +(SELECT COALESCE(SUM(OCTET_LENGTH(request_snapshot)+COALESCE(OCTET_LENGTH(response_snapshot),0)+COALESCE(OCTET_LENGTH(directory_cwd),0)),0) FROM step WHERE tenant_id=t.tenant_id AND task_id=t.id)
-        +(SELECT COALESCE(SUM(OCTET_LENGTH(input_snapshot)+COALESCE(OCTET_LENGTH(output_snapshot),0)),0) FROM invocation WHERE tenant_id=t.tenant_id AND task_id=t.id)
-        +(SELECT COALESCE(SUM(COALESCE(OCTET_LENGTH(usage_snapshot),0)),0) FROM model_dispatch WHERE tenant_id=t.tenant_id AND task_id=t.id)
-        +(SELECT COALESCE(SUM(COALESCE(OCTET_LENGTH(base_cwd),0)+COALESCE(OCTET_LENGTH(target_cwd),0)+COALESCE(OCTET_LENGTH(canonical_paths_snapshot),0)+COALESCE(OCTET_LENGTH(directory_evidence_snapshot),0)),0) FROM invocation_path_binding WHERE tenant_id=t.tenant_id AND task_id=t.id)
-      FROM task t WHERE tenant_id=? AND id=?
-      """,
-            Long.class,
-            s(task, "tenant_id"),
-            s(task, "id"));
-    if (bytes + additional + 65536 > 2097152) throw new TaskFailure(429, "DIRECTORY_STORAGE_LIMIT");
+    io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryStorageLimit.check(
+        directoryRetentionRecords.storageBytes(s(task, "tenant_id"), s(task, "id")), additional);
   }
 
   @Override
@@ -4138,6 +3937,13 @@ public final class JdbcLedger
           }
         };
     taskOperationRecords = new MapperTaskOperations(this);
+    directoryRetentionRecords = new MapperDirectoryRetentions(this);
+    directoryRetention =
+        new io.github.lovexiaopeng.jimu.kernel.directory.service.impl.DirectoryRetentionServiceImpl(
+            directoryRetentionRecords,
+            new WorkspaceDirectoryRetentions(() -> directoryWorkspace),
+            coreWork,
+            Payloads::hash);
     mcpRetention =
         new io.github.lovexiaopeng.jimu.kernel.mcp.service.impl.McpRetentionServiceImpl(
             new MapperMcpRetentions(this), coreWork);
