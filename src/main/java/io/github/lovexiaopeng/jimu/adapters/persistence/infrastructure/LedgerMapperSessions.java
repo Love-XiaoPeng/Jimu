@@ -23,9 +23,24 @@ public final class LedgerMapperSessions {
   }
 
   public static SqlSessionTemplate create(DataSource source) {
+    return create(source, false);
+  }
+
+  /** 受信独立operator的stdout是JSON；MP装配诊断不进入协议输出。 */
+  public static SqlSessionTemplate createOperator(DataSource source) {
+    return create(source, true);
+  }
+
+  private static SqlSessionTemplate create(DataSource source, boolean operator) {
     var configuration = new MybatisConfiguration();
     configure(configuration);
+    if (operator) configuration.setLogImpl(org.apache.ibatis.logging.nologging.NoLoggingImpl.class);
     var factory = new MybatisSqlSessionFactoryBean();
+    if (operator) {
+      var global = new com.baomidou.mybatisplus.core.config.GlobalConfig();
+      global.setBanner(false);
+      factory.setGlobalConfig(global);
+    }
     factory.setDataSource(source);
     factory.setConfiguration(configuration);
     factory.setPlugins(new SessionQueryInterceptor());

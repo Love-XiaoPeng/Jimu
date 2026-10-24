@@ -1,0 +1,101 @@
+{
+  "baseline": "ea57cd8b4e51d7843848f3872985cdfba90ba294",
+  "removedSql": {
+    "bindingSites": 14,
+    "assessmentSites": 4,
+    "uniqueBindingBodies": 13,
+    "uniqueAssessmentBodies": 4
+  },
+  "paths": [
+    {
+      "entry": "ExecutionScopeOperator.main / ExecutionScopeBinding.bindOnce",
+      "service": "ExecutionScopeServiceImpl.bindOnce",
+      "ports": [
+        "ScopeBindingRecords",
+        "ScopeBindingCodec",
+        "LedgerUnitOfWork"
+      ],
+      "mp": "ExecutionScopeMapper.selectMaps; tenant_id + run_id",
+      "xml": "OperatorMapper.lockRun/lockBudget/dispatchCount/accountedCost/invalidTasks/tenantCost/tenantModels/invalidReservations/insert/tasks/dispatches/reservations/receiptTable/receiptColumns/receipts/serverUuid/schema",
+      "lockOrder": "evaluation_budget tenant+id FOR UPDATE, qualification, scope ordinary read; first bind then tenant_budget tenant FOR UPDATE; all ledger checks before unique scope insert",
+      "transactions": "same DS; Spring REQUIRED, default isolation, 10 seconds; explicit query/deadline; qualification and state checked before idempotency",
+      "state": "USE_CASE_MIGRATED_TABLES_OPEN"
+    },
+    {
+      "entry": "WebFetchReconciliation.assess",
+      "service": "WebResultAssessmentServiceImpl.assess",
+      "ports": [
+        "WebResultRecords",
+        "WebResultProofCodec",
+        "LedgerUnitOfWork"
+      ],
+      "mp": "OperatorTask/Invocation/Event/StepMapper.selectMaps",
+      "predicates": "task tenant+id; invocation tenant+task_id+id; event tenant+task_id+fact_id+fixed type; step tenant+task_id+id",
+      "transactions": "same DS; read-only REPEATABLE_READ 10 seconds; no write/replay/settlement port",
+      "refusalOrder": [
+        "NOT_FOUND",
+        "WEB_RESULT_PROOF_MISSING",
+        "WEB_RESULT_PROOF_INVALID"
+      ],
+      "state": "USE_CASE_MIGRATED_TABLES_OPEN"
+    }
+  ],
+  "unchanged": "schema22, public CLI input/output keys, fixed plan/model validators, full tenant keys, current permission/fence/settlement/media order in other runtime paths",
+  "receipt": "external, read only; table absence/0/1/multiple and optional record_version; metadata adds queries; runtime JdbcExecutionScopes still OPEN",
+  "allTableStates": "35 tables + read-only receipt OPEN",
+  "next": "task.get/cancel/events full Service/typed port/Mapper path; then remaining B2 modules/cleanup",
+  "limits": [
+    "static source review complements but does not replace runtime differential evidence",
+    "nonempty paid-ledger anomalies, all scope combinations and maintenance permutations not fully covered",
+    "runtime precise CLI persistence assembly exception remains"
+  ],
+  "changedFiles": [
+    "docs/verification/XIAO-60/b2-operator-checkpoint.md",
+    "docs/verification/XIAO-60/evidence/b2-operator-paths.json",
+    "docs/verification/XIAO-60/evidence/b2-operator-removed-sql.json",
+    "docs/verification/XIAO-60/evidence/b2-table-status.csv",
+    "docs/verification/XIAO-60/evidence/path-tracking.json.gz",
+    "docs/verification/XIAO-60/evidence/reviewed-entries.csv",
+    "docs/verification/XIAO-60/evidence/reviewed-paths.json.gz",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ExecutionScopeBinding.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionScopes.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperScopeBindingRecords.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperWebResultRecords.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/OperatorScopeCodec.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/OperatorTransactions.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/OperatorWebResultCodec.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReconciliation.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/infrastructure/LedgerMapperSessions.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/operator/entity/ExecutionScopeEntity.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/operator/entity/OperatorEventEntity.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/operator/entity/OperatorInvocationEntity.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/operator/entity/OperatorStepEntity.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/operator/entity/OperatorTaskEntity.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/operator/mapper/ExecutionScopeMapper.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/operator/mapper/OperatorEventMapper.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/operator/mapper/OperatorInvocationMapper.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/operator/mapper/OperatorMapper.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/operator/mapper/OperatorStepMapper.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/operator/mapper/OperatorTaskMapper.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/api/OperatorScopes.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/port/ScopeBindingCodec.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/port/ScopeBindingRecords.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/port/WebResultProofCodec.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/port/WebResultRecords.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/service/ExecutionScopeService.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/service/WebResultAssessmentService.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/service/impl/ExecutionScopeServiceImpl.java",
+    "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/service/impl/WebResultAssessmentServiceImpl.java",
+    "src/main/resources/mapper/operator/ExecutionScopeMapper.xml",
+    "src/main/resources/mapper/operator/OperatorEventMapper.xml",
+    "src/main/resources/mapper/operator/OperatorInvocationMapper.xml",
+    "src/main/resources/mapper/operator/OperatorMapper.xml",
+    "src/main/resources/mapper/operator/OperatorStepMapper.xml",
+    "src/main/resources/mapper/operator/OperatorTaskMapper.xml",
+    "src/test/java/io/github/lovexiaopeng/jimu/adapters/persistence/OperatorBindingLockScenario.java",
+    "src/test/java/io/github/lovexiaopeng/jimu/adapters/persistence/OperatorQueryScenario.java",
+    "src/test/java/io/github/lovexiaopeng/jimu/contract/OperatorServicesTest.java",
+    "src/test/java/io/github/lovexiaopeng/jimu/integration/B2OperatorIT.java",
+    "tools/xiao60_b2_operator_verify.py"
+  ]
+}

@@ -6,7 +6,6 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.model.ExecutionScopes;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
-import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -15,18 +14,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 final class JdbcExecutionScopes {
   private final JdbcTemplate db;
   private final ModelProfiles models;
-  private final ExecutionScopes.Requirement bindingRequirement;
 
   JdbcExecutionScopes(JdbcTemplate db, ModelProfiles models) {
     this.db = db;
     this.models = models;
-    this.bindingRequirement = null;
-  }
-
-  JdbcExecutionScopes(JdbcTemplate db, ExecutionScopes.Requirement requirement) {
-    this.db = db;
-    this.models = null;
-    this.bindingRequirement = requirement;
   }
 
   private Map<String, Object> receipt(String tenant) {
@@ -79,7 +70,7 @@ final class JdbcExecutionScopes {
 
   ExecutionScopes.Requirement requirement(String tenant) {
     var r = receipt(tenant);
-    var req = models == null ? bindingRequirement : models.scopeRequirement();
+    var req = models.scopeRequirement();
     if (r == null
         || req == null
         || req.version() != 1
@@ -194,54 +185,5 @@ final class JdbcExecutionScopes {
         && r.tenantId().equals(s.tenantId())
         && r.runId().equals(s.runId())
         && r.approvalDigest().equals(s.approvalDigest());
-  }
-
-  void verifyBinding(
-      ExecutionScopes.Scope scope,
-      Map<String, ModelSnapshot> profiles,
-      ExecutionScopes.AccountEvidence evidence,
-      Map<String, Object> run) {
-    var req = requirement(scope.tenantId());
-    var r = receipt(scope.tenantId());
-    if (!matches(req, scope)
-        || !scope.planDigest().equals(run.get("plan_digest"))
-        || !scope.planDigest().equals(r.get("plan_digest"))
-        || !scope.materialsDigest().equals(r.get("materials_digest"))
-        || !scope.profilePins().keySet().equals(profiles.keySet())
-        || evidence == null
-        || !ExecutionScopes.digest(evidence.evidenceDigest())
-        || !scope.accountEvidenceDigest().equals(Payloads.hash(Payloads.json(evidence)))
-        || evidence.region() == null
-        || evidence.region().isBlank()
-        || evidence.billingScope() == null
-        || evidence.billingScope().isBlank()
-        || !evidence.exactModelAuthorized()
-        || !evidence.egressVerified()) fail("EVALUATION_SCOPE_NOT_ALLOWED");
-    var plan = EvaluationPlans.plan("qwen-main-v1");
-    if (!scope.planDigest().equals(EvaluationPlans.digest(plan))
-        || !scope.sourcePlanSha256().equals(plan.sourcePlanSha256())
-        || !scope.materialsDigest().equals(plan.materialsDigest())
-        || !Payloads.json(plan).equals(run.get("plan_snapshot")))
-      fail("EVALUATION_SCOPE_NOT_ALLOWED");
-    for (var entry : profiles.entrySet()) {
-      var p = entry.getValue();
-      if (p == null) fail("EVALUATION_SCOPE_NOT_ALLOWED");
-      var pin = scope.profilePins().get(entry.getKey());
-      ModelProfiles.validateStructure(plan, p, scope.localOnly());
-      EvaluationPlans.validateModel(plan, p, scope.localOnly());
-      if (!scope.allowedModel().equals(p.model())
-          || !p.model().equals(p.revision())
-          || !entry.getKey().equals(p.profile())
-          || !pin.modelSnapshotDigest().equals(ModelProfiles.digest(p))
-          || pin.configVersion() != p.configVersion()
-          || pin.stream() != p.stream()
-          || !URI.create(p.baseUrl()).getHost().equals(evidence.apiHost())
-          || scope.localOnly() != (models != null && models.localEvaluation(p)))
-        fail("EVALUATION_SCOPE_NOT_ALLOWED");
-    }
-    if (!scope.localOnly()
-        && (!"cn-beijing".equals(evidence.region())
-            || !"modelstudio-payg-cny".equals(evidence.billingScope())))
-      fail("EVALUATION_SCOPE_NOT_ALLOWED");
   }
 }
