@@ -43,6 +43,8 @@ public final class JdbcLedger
         io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger {
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeRevocationService
+      scopeRevocations;
   private final io.github.lovexiaopeng.jimu.kernel.worker.service.WorkerService workerService;
   private final io.github.lovexiaopeng.jimu.kernel.execution.service.ExecutionService
       executionService;
@@ -341,36 +343,7 @@ public final class JdbcLedger
           .revokeSessionSearchScope(identity, caller, validRequest, deadlineNanos);
       return;
     }
-    sessionSearchOwnerRead(
-        () -> {
-          bucket(identity.tenant());
-          sessionScopes.lock(identity.tenant(), caller);
-          var found =
-              rows(
-                  "SELECT * FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=? FOR UPDATE",
-                  identity.tenant(),
-                  caller,
-                  identity.actor());
-          if (found.size() != 1 || !JdbcSessionScopes.task(found.getFirst()))
-            throw JdbcSessionScopes.unavailable();
-          var task = found.getFirst();
-          try {
-            identity(identity);
-          } catch (TaskFailure failure) {
-            invalidateScopeAfterTransaction(task);
-            throw JdbcSessionScopes.unavailable();
-          }
-          if (!validRequest) throw new TaskFailure(400, "TOOL_INPUT_INVALID");
-          db.update(
-              "UPDATE task_session_scope SET grant_state='REVOKED',revoked_at=COALESCE(revoked_at,CURRENT_TIMESTAMP(6)),invalidated_at=COALESCE(invalidated_at,CURRENT_TIMESTAMP(6)),next_validation_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND caller_task_id=? AND grant_state='ACTIVE'",
-              identity.tenant(),
-              caller);
-          if (!List.of("SUCCEEDED", "FAILED", "CANCELLED", "NEEDS_RECONCILIATION")
-              .contains(s(task, "state"))) cancel(identity, caller);
-          sessions.account(task, true);
-          return null;
-        },
-        deadlineNanos);
+    scopeRevocations.revoke(identity, caller, validRequest, deadlineNanos);
   }
 
   @Override
@@ -798,7 +771,7 @@ public final class JdbcLedger
         deadlineNanos);
   }
 
-  private <T> T sessionSearchOwnerRead(Supplier<T> work, long deadlineNanos) {
+  <T> T sessionSearchOwnerRead(Supplier<T> work, long deadlineNanos) {
     try {
       return sessionTransaction(work, deadlineNanos);
     } catch (org.springframework.dao.QueryTimeoutException
@@ -3575,6 +3548,9 @@ public final class JdbcLedger
                 source, query);
     sessions = new JdbcSessionRecords(db, query);
     sessionScopes = new JdbcSessionScopes(this, db, sessions);
+    scopeRevocations =
+        new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+            .SessionScopeRevocationServiceImpl(new MapperSessionScopeRevocations(this));
     sessions.scopes = sessionScopes;
     sessionScopes.invalidated = this::invalidateScopeAfterTransaction;
     images = new JdbcImageRecords(db);
@@ -4168,7 +4144,7 @@ public final class JdbcLedger
     return queryTransactions.requiresNew(query, work);
   }
 
-  private void invalidateScopeAfterTransaction(Map<String, Object> task) {
+  void invalidateScopeAfterTransaction(Map<String, Object> task) {
     String tenant = s(task, "tenant_id"), caller = s(task, "id");
     if (!org.springframework.transaction.support.TransactionSynchronizationManager
         .isSynchronizationActive())
