@@ -1,0 +1,103 @@
+package io.github.lovexiaopeng.jimu.kernel.session.port;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/** 当前whole-scope资格所需事实；JSON解码和数据库行留在适配器。 */
+public interface SessionScopeRecords {
+  record Caller(
+      String tenant,
+      String id,
+      String owner,
+      String capabilities,
+      String tools,
+      long epoch,
+      String state,
+      LocalDateTime created,
+      String requestDigest) {}
+
+  record Scope(
+      long recordVersion,
+      long authorityVersion,
+      String owner,
+      String binding,
+      String tools,
+      String raw,
+      String digest,
+      long bytes,
+      long count,
+      String grant,
+      LocalDateTime created,
+      LocalDateTime retain,
+      LocalDateTime invalidated,
+      LocalDateTime revoked,
+      LocalDateTime nextValidation,
+      String content,
+      boolean retained) {}
+
+  record Target(
+      long version,
+      long ordinal,
+      String source,
+      String raw,
+      String digest,
+      long bytes,
+      String content) {}
+
+  record History(long nextSeq, String binding, LocalDateTime retain) {}
+
+  record AuthorityTarget(
+      String id,
+      String pins,
+      String binding,
+      long upperSeq,
+      String created,
+      String retain,
+      String canonical) {}
+
+  record Authority(
+      String tenant,
+      String caller,
+      String owner,
+      String tools,
+      String binding,
+      String created,
+      String retain,
+      List<AuthorityTarget> targets) {}
+
+  record Validated(Scope scope, Authority authority, List<Caller> sources) {}
+
+  List<String> callerCapabilities(String tenant, String caller);
+
+  List<String> lockTargets(String tenant, String caller);
+
+  void lockTask(String tenant, String id);
+
+  Scope scope(Caller caller);
+
+  List<Target> targets(Caller caller);
+
+  Caller source(Caller caller, String id);
+
+  boolean hasTargets(Caller caller);
+
+  boolean admissionRetention(Caller caller);
+
+  boolean writersQuiescent(Caller caller);
+
+  boolean activeInvocations(Caller caller);
+
+  boolean unsafeReservations(Caller caller);
+
+  boolean dispatchedModels(Caller caller);
+
+  History history(Caller caller);
+
+  String expectedBinding();
+
+  void validateAuthority(String raw);
+
+  Authority decodeAuthority(String raw);
+
+  void invalidateAfterTransaction(Caller caller);
+}

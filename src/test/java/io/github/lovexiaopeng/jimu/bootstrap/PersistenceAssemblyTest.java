@@ -59,7 +59,8 @@ class PersistenceAssemblyTest {
             "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryStepSessionScopeReadMapper",
             "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTaskReadMapper",
             "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTaskSessionScopeReadMapper",
-            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTaskSessionScopeTargetReadMapper")) {
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTaskSessionScopeTargetReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeSourceReadMapper")) {
       assertTrue(configuration.hasStatement(namespace + ".selectMaps"));
       assertTrue(configuration.hasStatement(namespace + ".delete"));
       assertFalse(configuration.hasStatement(namespace + ".selectById"));

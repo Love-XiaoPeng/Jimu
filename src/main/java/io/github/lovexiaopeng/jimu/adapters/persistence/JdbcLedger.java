@@ -224,7 +224,7 @@ public final class JdbcLedger
     return sessionTransaction(work, System.nanoTime() + 2_000_000_000L);
   }
 
-  private <T> T sessionTransaction(java.util.function.Supplier<T> work, long end) {
+  <T> T sessionTransaction(java.util.function.Supplier<T> work, long end) {
     if (query == null) throw new IllegalStateException("Explicit session query context required");
     query.restrictDeadline(end);
     return queryTransactions.required(query, work);
@@ -1511,104 +1511,18 @@ public final class JdbcLedger
   }
 
   private boolean sessionCleanupSafe(Map<String, Object> task) {
-    return List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(task, "state"))
-        && writersQuiescent(task)
-        && rows(
-                "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN') LIMIT 1",
-                s(task, "tenant_id"),
-                s(task, "id"))
-            .isEmpty()
-        && rows(
-                "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN' OR (state='RESERVED' AND category<>'SESSION_HISTORY_STORAGE')) LIMIT 1",
-                s(task, "tenant_id"),
-                s(task, "id"))
-            .isEmpty()
-        && rows(
-                "SELECT id FROM model_dispatch WHERE tenant_id=? AND task_id=? AND state IN ('DISPATCHED','USAGE_UNKNOWN','BOUND_EXCEEDED') LIMIT 1",
-                s(task, "tenant_id"),
-                s(task, "id"))
-            .isEmpty();
+    return sessionScopes.eligibility.cleanupSafe(MapperSessionScopeRecords.caller(task));
   }
+
+  final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeMaintenanceService
+      scopeMaintenance;
 
   private void validateSessionScopes() {
     if (query == null) {
       queryView(System.nanoTime() + 2_000_000_000L, null).validateSessionScopes();
       return;
     }
-    long end = System.nanoTime() + 2_000_000_000L;
-    try {
-      var candidates =
-          sessionTransaction(
-              () ->
-                  rows(
-                      "SELECT tenant_id,caller_task_id FROM ((SELECT tenant_id,caller_task_id,next_validation_at FROM task_session_scope FORCE INDEX(scope_validation) WHERE content_state='PRESENT' AND grant_state='ACTIVE' AND next_validation_at<=CURRENT_TIMESTAMP(6) ORDER BY next_validation_at,tenant_id,caller_task_id LIMIT 8) UNION ALL (SELECT tenant_id,caller_task_id,next_validation_at FROM task_session_scope FORCE INDEX(scope_validation) WHERE content_state='PRESENT' AND grant_state='REVOKED' AND next_validation_at<=CURRENT_TIMESTAMP(6) ORDER BY next_validation_at,tenant_id,caller_task_id LIMIT 8)) bounded ORDER BY next_validation_at,tenant_id,caller_task_id LIMIT 8"),
-              end);
-      for (var candidate : candidates) {
-        if (System.nanoTime() >= end) break;
-        String tenant = s(candidate, "tenant_id"), caller = s(candidate, "caller_task_id");
-        try {
-          // Persist scheduling before validation, so a timed-out source cannot starve later rows.
-          sessionTransaction(
-              () -> {
-                bucket(tenant);
-                var task = locked(tenant, caller);
-                db.update(
-                    "UPDATE task_session_scope SET next_validation_at=TIMESTAMPADD(SECOND,60,CURRENT_TIMESTAMP(6)) WHERE tenant_id=? AND caller_task_id=?",
-                    tenant,
-                    caller);
-                sessions.account(task, true);
-                return null;
-              },
-              end);
-          sessionTransaction(
-              () -> {
-                bucket(tenant);
-                var task = locked(tenant, caller);
-                try {
-                  access(task);
-                } catch (TaskFailure failure) {
-                  if (!List.of(
-                          "SESSION_SCOPE_UNAVAILABLE",
-                          "CAPABILITY_REVOKED",
-                          "ACTOR_REVOKED",
-                          "SESSION_HISTORY_EXPIRED")
-                      .contains(failure.code())) throw failure;
-                  db.update(
-                      "UPDATE task_session_scope SET invalidated_at=COALESCE(invalidated_at,CURRENT_TIMESTAMP(6)) WHERE tenant_id=? AND caller_task_id=?",
-                      tenant,
-                      caller);
-                }
-                if (sessionScopes.scope(task).get("invalidated_at") != null
-                    && "PRESENT".equals(s(sessions.history(task, false), "content_state"))
-                    && sessionCleanupSafe(task)) {
-                  historyRetention.purge(historyRetentionRecords.bind(task));
-                } else sessions.account(task, true);
-                return null;
-              },
-              end);
-        } catch (org.springframework.dao.DataAccessException
-            | org.springframework.transaction.TransactionException failure) {
-          System.getLogger(JdbcLedger.class.getName())
-              .log(
-                  System.Logger.Level.WARNING,
-                  "Session scope validation deferred: " + failure.getClass().getSimpleName());
-        } catch (TaskFailure failure) {
-          System.getLogger(JdbcLedger.class.getName())
-              .log(
-                  System.Logger.Level.WARNING,
-                  "Session scope validation deferred: " + failure.code());
-        }
-      }
-    } catch (org.springframework.dao.DataAccessException
-        | org.springframework.transaction.TransactionException failure) {
-      // A bounded maintenance attempt may fail; public gates continue checking synchronously.
-      System.getLogger(JdbcLedger.class.getName())
-          .log(
-              System.Logger.Level.WARNING,
-              "Session scope validation scan deferred: " + failure.getClass().getSimpleName());
-    } catch (TaskFailure failure) {
-      if (!failure.code().equals("SESSION_QUERY_TIMEOUT")) throw failure;
-    }
+    scopeMaintenance.validate();
   }
 
   final io.github.lovexiaopeng.jimu.kernel.session.service.SessionHistoryRetentionService
@@ -3660,7 +3574,7 @@ public final class JdbcLedger
             : new io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionJdbcTemplate(
                 source, query);
     sessions = new JdbcSessionRecords(db, query);
-    sessionScopes = new JdbcSessionScopes(db, sessions, this::sessionCleanupSafe);
+    sessionScopes = new JdbcSessionScopes(this, db, sessions);
     sessions.scopes = sessionScopes;
     sessionScopes.invalidated = this::invalidateScopeAfterTransaction;
     images = new JdbcImageRecords(db);
@@ -3699,6 +3613,9 @@ public final class JdbcLedger
           }
         };
     taskOperationRecords = new MapperTaskOperations(this);
+    scopeMaintenance =
+        new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+            .SessionScopeMaintenanceServiceImpl(new MapperSessionScopeMaintenanceRecords(this));
     historyRetentionRecords = new MapperSessionHistoryRetentions(this);
     historyRetention =
         new io.github.lovexiaopeng.jimu.kernel.session.service.impl
@@ -4244,19 +4161,11 @@ public final class JdbcLedger
   }
 
   private void persistScopeInvalidation(String tenant, String caller) {
-    queryTransactions.requiresNew(
-        query,
-        () -> {
-          bucket(tenant);
-          var task = locked(tenant, caller);
-          db.update(
-              "UPDATE task_session_scope SET invalidated_at=COALESCE(invalidated_at,CURRENT_TIMESTAMP(6)),next_validation_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND caller_task_id=? AND content_state='PRESENT'",
-              tenant,
-              caller);
-          sessions.account(task, true);
-          sessionRemainingMillis();
-          return null;
-        });
+    scopeMaintenance.persistInvalidation(tenant, caller);
+  }
+
+  <T> T scopeRequiresNew(java.util.function.Supplier<T> work) {
+    return queryTransactions.requiresNew(query, work);
   }
 
   private void invalidateScopeAfterTransaction(Map<String, Object> task) {
