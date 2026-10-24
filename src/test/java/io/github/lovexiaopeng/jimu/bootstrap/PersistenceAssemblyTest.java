@@ -74,6 +74,18 @@ class PersistenceAssemblyTest {
       assertFalse(configuration.hasStatement(namespace + ".selectById"));
     }
     assertSame(source, configuration.getEnvironment().getDataSource());
+    var priorScan =
+        configuration
+            .getMappedStatement(
+                "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionPriorScanMapper.scan")
+            .getBoundSql(java.util.Map.of("tenant", "tenant-a", "session", "source", "upper", 127))
+            .getSql();
+    assertTrue(priorScan.contains("FORCE INDEX(PRIMARY)"));
+    assertTrue(priorScan.contains("tenant_id=? AND task_id=? AND seq BETWEEN 0 AND ?"));
+    assertTrue(
+        priorScan.contains(
+            "event_bytes BETWEEN 1 AND 16384 AND OCTET_LENGTH(event_snapshot)=event_bytes ORDER BY seq LIMIT 128"));
+    assertFalse(priorScan.contains("SELECT *"));
     assertTrue(
         configuration.hasStatement(
             "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionContextMapper.account"));

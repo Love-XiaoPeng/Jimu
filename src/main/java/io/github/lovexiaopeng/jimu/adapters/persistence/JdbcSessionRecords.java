@@ -604,70 +604,17 @@ final class JdbcSessionRecords {
 
   private Read readRows(
       Map<String, Object> task, SessionEventPort.Input input, long upper, String boundary) {
-    history(task, true);
-    if (input.sessionId() != null && !input.sessionId().equals(s(task, "id"))
-        || input.seq() > upper) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
-    long from = Math.max(0, input.seq() - input.before()),
-        to = Math.min(upper, input.seq() + input.after());
-    var records =
-        rows(
-            "SELECT * FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq BETWEEN ? AND ? ORDER BY seq LIMIT 9",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            from,
-            to);
-    if (records.size() != to - from + 1) throw corrupt();
-    var before = new ArrayList<Map<String, Object>>();
-    var after = new ArrayList<Map<String, Object>>();
-    JsonNode target = null;
-    String targetDigest = null;
-    var sources = new ArrayList<Map<String, Object>>();
-    for (int index = 0; index < records.size(); index++) {
-      var r = records.get(index);
-      if (n(r, "seq") != from + index) throw corrupt();
-      var value = verify(task, r);
-      sources.add(
-          JdbcSessionScopes.task(task)
-              ? scopeRef(s(task, "id"), n(r, "seq"), s(r, "event_digest"))
-              : Map.of("seq", n(r, "seq"), "event_sha256", s(r, "event_digest")));
-      if (n(r, "seq") == input.seq()) {
-        target = value;
-        targetDigest = s(r, "event_digest");
-      } else {
-        (n(r, "seq") < input.seq() ? before : after).add(readSummary(value));
-      }
-    }
-    if (target == null) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
-    var value = new LinkedHashMap<String, Object>();
-    value.put("version", 1);
-    value.put("session_id", s(task, "id"));
-    value.put("history_version", version(task));
-    value.put("content_policy", "public-v1");
-    value.put("boundary", boundary);
-    value.put("upper_seq", upper);
-    value.put(
-        "window",
-        Map.of(
-            "from_seq",
-            from,
-            "to_seq",
-            to,
-            "before_requested",
-            input.before(),
-            "after_requested",
-            input.after()));
-    value.put("target", target);
-    value.put("before", before);
-    value.put("after", after);
-    String raw = Payloads.json(value);
-    contract(task).output(raw);
+    var result =
+        scopeExecution.window(
+            new MapperSessionScopeExecution(this, task, () -> {})
+                .window(task, input, upper, boundary));
     return new Read(
-        raw,
-        from,
-        to,
-        targetDigest,
-        Payloads.json(sources),
-        records.stream().mapToInt(r -> Math.toIntExact(n(r, "event_bytes"))).sum());
+        result.output(),
+        result.from(),
+        result.to(),
+        result.targetDigest(),
+        result.sources(),
+        result.eventBytes());
   }
 
   static Map<String, Object> readSummary(JsonNode value) {
@@ -987,78 +934,83 @@ final class JdbcSessionRecords {
     }
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeExecutionService
+      scopeExecution =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionScopeExecutionServiceImpl();
+
+  java.util.function.LongConsumer queryOperations() {
+    return query == null ? count -> {} : query::operation;
+  }
+
+  io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeExecution.Budget priorBudget(
+      Runnable deadline) {
+    searchBudget = new SearchBudget(deadline, false, 16777216, true);
+    return () -> searchBudget = null;
+  }
+
+  List<Map<String, Object>> priorScan(String tenant, String session, long upper) {
+    if (searchBudget != null && query == null)
+      throw new IllegalStateException("Session search requires an explicit query context");
+    try (var ignored = query == null ? null : query.meter(searchBudget)) {
+      return mapperSession()
+          .getMapper(
+              io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionPriorScanMapper
+                  .class)
+          .scan(query, tenant, session, upper);
+    }
+  }
+
+  List<Map<String, Object>> windowRows(Map<String, Object> task, long from, long to) {
+    return bindingRows(
+        io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryNativeReadMapper
+            .class,
+        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                    .ScopeQueryNativeEntity>()
+            .eq(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getTenantId,
+                s(task, "tenant_id"))
+            .eq(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getTaskId,
+                s(task, "id"))
+            .between(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getSeq,
+                from,
+                to)
+            .orderByAsc(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getSeq)
+            .last("LIMIT 9"));
+  }
+
   Search priorSearch(
       Map<String, Object> task,
       io.github.lovexiaopeng.jimu.plugin.api.SessionSearchPort.Input input,
       Runnable deadline) {
-    var scope = scopes.require(task);
-    for (String id : input.sessionIds())
-      if (scope.sources().stream().noneMatch(source -> id.equals(s(source, "id"))))
-        throw JdbcSessionScopes.unavailable();
-    var matcher =
-        new io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionMatcher(
-            input, deadline, query == null ? count -> {} : query::operation);
-    var scanned = new ArrayList<Map<String, Object>>();
-    int eventBytes = 0;
-    searchBudget = new SearchBudget(deadline, false, 16777216, true);
-    try {
-      for (int sourceIndex = 0; sourceIndex < scope.sources().size(); sourceIndex++) {
-        var source = scope.sources().get(sourceIndex);
-        var target = scope.authority().path("targets").get(sourceIndex);
-        long upper = target.path("upper_seq").asLong();
-        var records =
-            rows(
-                "SELECT * FROM session_public_event FORCE INDEX(PRIMARY) WHERE tenant_id=? AND task_id=? AND seq BETWEEN 0 AND ? AND event_bytes BETWEEN 1 AND 16384 AND OCTET_LENGTH(event_snapshot)=event_bytes ORDER BY seq LIMIT 128",
-                s(task, "tenant_id"),
-                s(source, "id"),
-                upper);
-        if (records.size() != upper + 1) throw corrupt();
-        for (int index = 0; index < records.size(); index++) {
-          deadline.run();
-          var record = records.get(index);
-          if (n(record, "seq") != index || scanned.size() >= 1024) throw corrupt();
-          int bytes = SessionContracts.bytes(s(record, "event_snapshot"));
-          if (bytes > 16384 || bytes != n(record, "event_bytes")) throw corrupt();
-          eventBytes += bytes;
-          if (eventBytes > 4194304) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-          var value = verify(source, record);
-          scanned.add(scopeRef(s(source, "id"), index, s(record, "event_digest")));
-          matcher.accept(value, s(record, "event_digest"), target);
-        }
-      }
-      String output = matcher.output(s(task, "id"), s(scope.row(), "authority_digest"));
-      scopes.contracts.output(output);
-      return new Search(output, Payloads.hash(Payloads.json(scanned)), scanned.size(), eventBytes);
-    } finally {
-      searchBudget = null;
-    }
+    var result =
+        scopeExecution.prior(new MapperSessionScopeExecution(this, task, deadline).prior(input));
+    return new Search(result.output(), result.scanDigest(), result.rows(), result.eventBytes());
   }
 
   Read scopeRead(Map<String, Object> caller, String normalized, Runnable deadline) {
-    var scope = scopes.require(caller);
-    var value = contracts.json(normalized, 4096);
-    String id = value.path("target_session_id").asText();
-    var target =
-        id.equals(s(caller, "id"))
-            ? caller
-            : scope.sources().stream()
-                .filter(source -> id.equals(s(source, "id")))
-                .findFirst()
-                .orElseThrow(JdbcSessionScopes::unavailable);
-    searchBudget = new SearchBudget(deadline, false, 16777216, true);
-    try {
-      return readRows(
-          target,
-          new SessionEventPort.Input(
-              value.path("seq").asLong(),
-              id,
-              value.path("before").asInt(),
-              value.path("after").asInt()),
-          value.path("upper_seq").asLong(),
-          id.equals(s(caller, "id")) ? "pre-step" : "scoped-admission");
-    } finally {
-      searchBudget = null;
-    }
+    var result =
+        scopeExecution.read(
+            new MapperSessionScopeExecution(this, caller, deadline).read(normalized));
+    return new Read(
+        result.output(),
+        result.from(),
+        result.to(),
+        result.targetDigest(),
+        result.sources(),
+        result.eventBytes());
   }
 
   record Search(String output, String scanDigest, int rows, int eventBytes) {}

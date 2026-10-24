@@ -1,0 +1,69 @@
+{
+  "baseline": "d6e2e97479704f3964a2c6ae8a39070d2b7945f6",
+  "inventory": {
+    "static": 194,
+    "dynamicScannerItems": 24,
+    "literalBinds": 641
+  },
+  "removedStaticJdbc": 2,
+  "removedDynamicSql": 0,
+  "dynamicNetAddition": "SessionScopeExecution.SearchResult.rows() value accessor, not SQL execution",
+  "unchanged": [
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sha256": "d713918eb5e16e78e52bf2e3170bf35beb2f123f85b96d8d3c24e3e6966c262f"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeQueries.java",
+      "sha256": "ac1b22517184b2b2a4445c5aae2124903697f016238cd732ecc607f8f47db8b9"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sha256": "ee5dd85dda1a799c4ebf049c4843358ba00fb8e92b418e2ea0d2361574bcccf8"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeRecords.java",
+      "sha256": "515414eb23d035ce9e05bea7556905c9f572a475a6aac56acd32247f8bf58ca5"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionMatcher.java",
+      "sha256": "d13598ea7b5716e2f9d240efaae568b37726ff4d3c56b8225f584fd1d8057262"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionCallBindings.java",
+      "sha256": "e78619287f658918ce882047f8c5e54e571d72a85fb8457f37479a0b7d61a9c6"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/StoredSessionScopeNormalization.java",
+      "sha256": "a346cc16147f807e1392af63004c10288e747cd1ea8ba9dbc887c446b7d96b44"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeQueryServiceImpl.java",
+      "sha256": "282d6581fb0a106cef56c6f3e5ed82384ef6b01f89a37707ebc5e6a76f37a646"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeReadProofServiceImpl.java",
+      "sha256": "2c7dce9d5a055136162e9e405efecd190fd232e5aaeb0f1936d8742f651edabe"
+    }
+  ],
+  "unchangedResources": 407,
+  "entries": [
+    "MapperSessionScopeQueries.Record.search/read -> JdbcSessionRecords.priorSearch/scopeRead -> SessionScopeExecutionService -> MapperSessionScopeExecution -> original MP qualification + bounded Mapper scan/MP window",
+    "JdbcLedger.priorSessionSearch keeps owner/input/deadline/priorSearch/repeated require/final deadline order and enters same Service",
+    "Native read -> JdbcSessionRecords.read -> readRows -> shared window Service -> history FOR UPDATE Mapper -> actual MP selectMaps"
+  ],
+  "persistence": {
+    "scan": "SessionPriorScanMapper.scan; full tenant/session key, original FORCE INDEX/filters/order/LIMIT128, explicit original18-column projection",
+    "window": "ScopeQueryNativeReadMapper.selectMaps with actual LambdaQueryWrapper, tenant/task/between/order/LIMIT9",
+    "noDualWrite": true
+  },
+  "preserved": [
+    "require/input-source/matcher/budget ordering and source/cut index",
+    "deadline/seq/bytes/proof/refs/matcher ordering;16384/1024/4MiB and16MiB prior meter/finally cleanup",
+    "scope require before JSON/self or sources/original normalized upper and boundary",
+    "shared history lock before404/window scan/continuity/proof/summary/contract validation/final byte sum",
+    "original outer repeated require and deadline/query actuals",
+    "all existing resources/schema22/V1–V22/frozen bytes"
+  ],
+  "boundary": "Partial B2 only;35 tables+readonly receipt OPEN; developer source audit, not independent review. No all SQL/byte/roundtrip invariance. Historical503/dispatch timeout/cold/full locks/core beforeCommit and other limits OPEN."
+}

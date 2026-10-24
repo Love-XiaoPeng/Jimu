@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionPriorScanMapper">
+  <select id="scan" resultType="map"><![CDATA[SELECT tenant_id,task_id,seq,record_version,event_version,fact_key,type,occurred_at,event_snapshot,event_digest,event_bytes,source_digest,source_step_id,source_invocation_id,committed_attempt_id,committed_fence,reliable_event_seq,content_state FROM session_public_event FORCE INDEX(PRIMARY) WHERE tenant_id=#{tenant} AND task_id=#{session} AND seq BETWEEN 0 AND #{upper} AND event_bytes BETWEEN 1 AND 16384 AND OCTET_LENGTH(event_snapshot)=event_bytes ORDER BY seq LIMIT 128]]></select>
+</mapper>
