@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation;
 import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation.Failure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation.Phase;

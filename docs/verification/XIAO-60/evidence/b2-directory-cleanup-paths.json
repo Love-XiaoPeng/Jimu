@@ -1,0 +1,256 @@
+{
+  "baseline": "4b9679a38024842a8f508d74d11e46177842a921",
+  "scope": "B2 partial directory retention; 35 tables plus external read-only receipt all OPEN",
+  "removedJdbcCalls": 20,
+  "removed": [
+    {
+      "name": "unsafeReservations",
+      "originalSql": "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN' OR (state='RESERVED' AND category<>'DIRECTORY_STORAGE')) LIMIT 1",
+      "replacement": "DirectoryRetentionMapper.unsafeReservations"
+    },
+    {
+      "name": "activeInvocations",
+      "originalSql": "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN') LIMIT 1",
+      "replacement": "DirectoryRetentionMapper.activeInvocations"
+    },
+    {
+      "name": "dispatchedModels",
+      "originalSql": "SELECT id FROM model_dispatch WHERE tenant_id=? AND task_id=? AND state='DISPATCHED' LIMIT 1",
+      "replacement": "DirectoryRetentionMapper.dispatchedModels"
+    },
+    {
+      "name": "candidates",
+      "originalSql": "SELECT p.tenant_id,p.task_id FROM task_directory p JOIN task t ON t.tenant_id=p.tenant_id AND t.id=p.task_id\n      WHERE p.content_state<>'PURGED' AND p.retain_until<=CURRENT_TIMESTAMP(6) AND t.state IN ('SUCCEEDED','FAILED','CANCELLED')\n      AND NOT EXISTS(SELECT 1 FROM native_search_run n WHERE n.tenant_id=p.tenant_id AND n.task_id=p.task_id AND n.phase<>'STOPPED')\n      AND NOT EXISTS(SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.tenant_id=p.tenant_id AND a.task_id=p.task_id AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE))\n      AND NOT EXISTS(SELECT 1 FROM reservation r WHERE r.tenant_id=p.tenant_id AND r.task_id=p.task_id AND (r.state='HELD_UNKNOWN' OR r.usage_quality='UNKNOWN' OR (r.state='RESERVED' AND r.category<>'DIRECTORY_STORAGE')))\n      AND NOT EXISTS(SELECT 1 FROM invocation i WHERE i.tenant_id=p.tenant_id AND i.task_id=p.task_id AND i.state IN ('RUNNING','OUTCOME_UNKNOWN'))\n      AND NOT EXISTS(SELECT 1 FROM model_dispatch d WHERE d.tenant_id=p.tenant_id AND d.task_id=p.task_id AND d.state='DISPATCHED')\n      ORDER BY p.retain_until,p.tenant_id,p.task_id LIMIT 32",
+      "replacement": "DirectoryRetentionMapper.candidates"
+    },
+    {
+      "name": "steps",
+      "originalSql": "SELECT * FROM step WHERE tenant_id=? AND task_id=?",
+      "replacement": "DirectoryStepReadMapper.selectMaps"
+    },
+    {
+      "name": "purgeStep",
+      "originalSql": "UPDATE step SET request_snapshot=?,response_snapshot=IF(response_snapshot IS NULL,NULL,?),request_cleanup_state='DIRECTORY_PURGED',retained_request_digest=request_digest,directory_cwd=NULL WHERE tenant_id=? AND id=?",
+      "replacement": "DirectoryRetentionMapper.purgeStep"
+    },
+    {
+      "name": "invocations",
+      "originalSql": "SELECT * FROM invocation WHERE tenant_id=? AND task_id=?",
+      "replacement": "DirectoryInvocationReadMapper.selectMaps"
+    },
+    {
+      "name": "purgeInvocation",
+      "originalSql": "UPDATE invocation SET input_snapshot=?,output_snapshot=IF(output_snapshot IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
+      "replacement": "DirectoryRetentionMapper.purgeInvocation"
+    },
+    {
+      "name": "paths",
+      "originalSql": "SELECT * FROM invocation_path_binding WHERE tenant_id=? AND task_id=?",
+      "replacement": "DirectoryPathReadMapper.selectMaps"
+    },
+    {
+      "name": "purgePath",
+      "originalSql": "UPDATE invocation_path_binding SET base_cwd=NULL,target_cwd=NULL,canonical_paths_snapshot=NULL,directory_evidence_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND invocation_id=?",
+      "replacement": "DirectoryRetentionMapper.purgePath"
+    },
+    {
+      "name": "dispatches",
+      "originalSql": "SELECT * FROM model_dispatch WHERE tenant_id=? AND task_id=?",
+      "replacement": "DirectoryDispatchReadMapper.selectMaps"
+    },
+    {
+      "name": "purgeDispatch",
+      "originalSql": "UPDATE model_dispatch SET usage_snapshot=IF(usage_snapshot IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
+      "replacement": "DirectoryRetentionMapper.purgeDispatch"
+    },
+    {
+      "name": "purgeTask",
+      "originalSql": "UPDATE task SET request_snapshot=?,goal=?,summary=IF(summary IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
+      "replacement": "DirectoryRetentionMapper.purgeTask"
+    },
+    {
+      "name": "markPurging",
+      "originalSql": "UPDATE task_directory SET content_state='PURGING',cwd=NULL,retained_digests=?,cleanup_generation=? WHERE tenant_id=? AND task_id=? AND content_state='PRESENT'",
+      "replacement": "DirectoryRetentionMapper.markPurging"
+    },
+    {
+      "name": "storeReceipt",
+      "originalSql": "UPDATE task_directory SET filesystem_receipt=? WHERE tenant_id=? AND task_id=? AND filesystem_receipt IS NULL",
+      "replacement": "DirectoryRetentionMapper.storeReceipt"
+    },
+    {
+      "name": "markPurged",
+      "originalSql": "UPDATE task_directory SET content_state='PURGED',workspace_state='PURGED' WHERE tenant_id=? AND task_id=?",
+      "replacement": "DirectoryRetentionMapper.markPurged"
+    },
+    {
+      "name": "releaseHold",
+      "originalSql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND category='DIRECTORY_STORAGE' AND state='RESERVED'",
+      "replacement": "DirectoryRetentionMapper.releaseHold"
+    },
+    {
+      "name": "releaseBudget",
+      "originalSql": "UPDATE tenant_budget SET directory_storage_held=directory_storage_held-8388608 WHERE tenant_id=?",
+      "replacement": "DirectoryRetentionMapper.releaseBudget"
+    },
+    {
+      "name": "projection",
+      "originalSql": "SELECT * FROM task_directory WHERE tenant_id=? AND task_id=?",
+      "replacement": "TaskDirectoryReadMapper.selectMaps"
+    },
+    {
+      "name": "storageBytes",
+      "originalSql": "SELECT COALESCE(OCTET_LENGTH(t.request_snapshot),0)+COALESCE(OCTET_LENGTH(t.goal),0)+COALESCE(OCTET_LENGTH(t.summary),0)\n        +COALESCE(OCTET_LENGTH(t.model_snapshot),0)+COALESCE(OCTET_LENGTH(t.tools_snapshot),0)\n        +(SELECT OCTET_LENGTH(binding_snapshot)+COALESCE(OCTET_LENGTH(cwd),0)+COALESCE(OCTET_LENGTH(retained_digests),0)+COALESCE(OCTET_LENGTH(filesystem_receipt),0) FROM task_directory WHERE tenant_id=t.tenant_id AND task_id=t.id)\n        +(SELECT COALESCE(SUM(OCTET_LENGTH(request_snapshot)+COALESCE(OCTET_LENGTH(response_snapshot),0)+COALESCE(OCTET_LENGTH(directory_cwd),0)),0) FROM step WHERE tenant_id=t.tenant_id AND task_id=t.id)\n        +(SELECT COALESCE(SUM(OCTET_LENGTH(input_snapshot)+COALESCE(OCTET_LENGTH(output_snapshot),0)),0) FROM invocation WHERE tenant_id=t.tenant_id AND task_id=t.id)\n        +(SELECT COALESCE(SUM(COALESCE(OCTET_LENGTH(usage_snapshot),0)),0) FROM model_dispatch WHERE tenant_id=t.tenant_id AND task_id=t.id)\n        +(SELECT COALESCE(SUM(COALESCE(OCTET_LENGTH(base_cwd),0)+COALESCE(OCTET_LENGTH(target_cwd),0)+COALESCE(OCTET_LENGTH(canonical_paths_snapshot),0)+COALESCE(OCTET_LENGTH(directory_evidence_snapshot),0)),0) FROM invocation_path_binding WHERE tenant_id=t.tenant_id AND task_id=t.id)\n      FROM task t WHERE tenant_id=? AND id=?",
+      "replacement": "DirectoryRetentionMapper.storageBytes"
+    }
+  ],
+  "statements": [
+    {
+      "kind": "select",
+      "id": "DirectoryRetentionMapper.unsafeReservations",
+      "sql": "SELECT id FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN' OR (state='RESERVED' AND category<>'DIRECTORY_STORAGE')) LIMIT 1"
+    },
+    {
+      "kind": "select",
+      "id": "DirectoryRetentionMapper.activeInvocations",
+      "sql": "SELECT id FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state IN ('RUNNING','OUTCOME_UNKNOWN') LIMIT 1"
+    },
+    {
+      "kind": "select",
+      "id": "DirectoryRetentionMapper.dispatchedModels",
+      "sql": "SELECT id FROM model_dispatch WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='DISPATCHED' LIMIT 1"
+    },
+    {
+      "kind": "select",
+      "id": "DirectoryRetentionMapper.candidates",
+      "sql": "SELECT p.tenant_id,p.task_id FROM task_directory p JOIN task t ON t.tenant_id=p.tenant_id AND t.id=p.task_id\n      WHERE p.content_state<>'PURGED' AND p.retain_until<=CURRENT_TIMESTAMP(6) AND t.state IN ('SUCCEEDED','FAILED','CANCELLED')\n      AND NOT EXISTS(SELECT 1 FROM native_search_run n WHERE n.tenant_id=p.tenant_id AND n.task_id=p.task_id AND n.phase<>'STOPPED')\n      AND NOT EXISTS(SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.tenant_id=p.tenant_id AND a.task_id=p.task_id AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE))\n      AND NOT EXISTS(SELECT 1 FROM reservation r WHERE r.tenant_id=p.tenant_id AND r.task_id=p.task_id AND (r.state='HELD_UNKNOWN' OR r.usage_quality='UNKNOWN' OR (r.state='RESERVED' AND r.category<>'DIRECTORY_STORAGE')))\n      AND NOT EXISTS(SELECT 1 FROM invocation i WHERE i.tenant_id=p.tenant_id AND i.task_id=p.task_id AND i.state IN ('RUNNING','OUTCOME_UNKNOWN'))\n      AND NOT EXISTS(SELECT 1 FROM model_dispatch d WHERE d.tenant_id=p.tenant_id AND d.task_id=p.task_id AND d.state='DISPATCHED')\n      ORDER BY p.retain_until,p.tenant_id,p.task_id LIMIT 32"
+    },
+    {
+      "kind": "update",
+      "id": "DirectoryRetentionMapper.purgeStep",
+      "sql": "UPDATE step SET request_snapshot=#{tombstone},response_snapshot=IF(response_snapshot IS NULL,NULL,#{tombstone}),request_cleanup_state='DIRECTORY_PURGED',retained_request_digest=request_digest,directory_cwd=NULL WHERE tenant_id=#{tenant} AND id=#{id}"
+    },
+    {
+      "kind": "update",
+      "id": "DirectoryRetentionMapper.purgeInvocation",
+      "sql": "UPDATE invocation SET input_snapshot=#{tombstone},output_snapshot=IF(output_snapshot IS NULL,NULL,#{tombstone}) WHERE tenant_id=#{tenant} AND id=#{id}"
+    },
+    {
+      "kind": "update",
+      "id": "DirectoryRetentionMapper.purgePath",
+      "sql": "UPDATE invocation_path_binding SET base_cwd=NULL,target_cwd=NULL,canonical_paths_snapshot=NULL,directory_evidence_snapshot=NULL,content_state='PURGED' WHERE tenant_id=#{tenant} AND invocation_id=#{id}"
+    },
+    {
+      "kind": "update",
+      "id": "DirectoryRetentionMapper.purgeDispatch",
+      "sql": "UPDATE model_dispatch SET usage_snapshot=IF(usage_snapshot IS NULL,NULL,#{tombstone}) WHERE tenant_id=#{tenant} AND id=#{id}"
+    },
+    {
+      "kind": "update",
+      "id": "DirectoryRetentionMapper.purgeTask",
+      "sql": "UPDATE task SET request_snapshot=#{tombstone},goal=#{tombstone},summary=IF(summary IS NULL,NULL,#{tombstone}) WHERE tenant_id=#{tenant} AND id=#{taskId}"
+    },
+    {
+      "kind": "update",
+      "id": "DirectoryRetentionMapper.markPurging",
+      "sql": "UPDATE task_directory SET content_state='PURGING',cwd=NULL,retained_digests=#{retained},cleanup_generation=#{generation} WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND content_state='PRESENT'"
+    },
+    {
+      "kind": "update",
+      "id": "DirectoryRetentionMapper.storeReceipt",
+      "sql": "UPDATE task_directory SET filesystem_receipt=#{receipt} WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND filesystem_receipt IS NULL"
+    },
+    {
+      "kind": "update",
+      "id": "DirectoryRetentionMapper.markPurged",
+      "sql": "UPDATE task_directory SET content_state='PURGED',workspace_state='PURGED' WHERE tenant_id=#{tenant} AND task_id=#{taskId}"
+    },
+    {
+      "kind": "update",
+      "id": "DirectoryRetentionMapper.releaseHold",
+      "sql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=#{tenant} AND id=#{holdId} AND category='DIRECTORY_STORAGE' AND state='RESERVED'"
+    },
+    {
+      "kind": "update",
+      "id": "DirectoryRetentionMapper.releaseBudget",
+      "sql": "UPDATE tenant_budget SET directory_storage_held=directory_storage_held-8388608 WHERE tenant_id=#{tenant}"
+    },
+    {
+      "kind": "select",
+      "id": "DirectoryRetentionMapper.storageBytes",
+      "sql": "SELECT COALESCE(OCTET_LENGTH(t.request_snapshot),0)+COALESCE(OCTET_LENGTH(t.goal),0)+COALESCE(OCTET_LENGTH(t.summary),0)\n        +COALESCE(OCTET_LENGTH(t.model_snapshot),0)+COALESCE(OCTET_LENGTH(t.tools_snapshot),0)\n        +(SELECT OCTET_LENGTH(binding_snapshot)+COALESCE(OCTET_LENGTH(cwd),0)+COALESCE(OCTET_LENGTH(retained_digests),0)+COALESCE(OCTET_LENGTH(filesystem_receipt),0) FROM task_directory WHERE tenant_id=t.tenant_id AND task_id=t.id)\n        +(SELECT COALESCE(SUM(OCTET_LENGTH(request_snapshot)+COALESCE(OCTET_LENGTH(response_snapshot),0)+COALESCE(OCTET_LENGTH(directory_cwd),0)),0) FROM step WHERE tenant_id=t.tenant_id AND task_id=t.id)\n        +(SELECT COALESCE(SUM(OCTET_LENGTH(input_snapshot)+COALESCE(OCTET_LENGTH(output_snapshot),0)),0) FROM invocation WHERE tenant_id=t.tenant_id AND task_id=t.id)\n        +(SELECT COALESCE(SUM(COALESCE(OCTET_LENGTH(usage_snapshot),0)),0) FROM model_dispatch WHERE tenant_id=t.tenant_id AND task_id=t.id)\n        +(SELECT COALESCE(SUM(COALESCE(OCTET_LENGTH(base_cwd),0)+COALESCE(OCTET_LENGTH(target_cwd),0)+COALESCE(OCTET_LENGTH(canonical_paths_snapshot),0)+COALESCE(OCTET_LENGTH(directory_evidence_snapshot),0)),0) FROM invocation_path_binding WHERE tenant_id=t.tenant_id AND task_id=t.id)\n      FROM task t WHERE tenant_id=#{tenant} AND id=#{taskId}"
+    },
+    {
+      "kind": "select",
+      "id": "DirectoryRetentionMapper.now",
+      "sql": "SELECT CURRENT_TIMESTAMP(6)"
+    }
+  ],
+  "mp": [
+    {
+      "name": "steps",
+      "mapper": "DirectoryStepReadMapper.selectMaps",
+      "predicates": "tenant_id + task_id; projection contains all original 19 columns; content collections project only original consumed body/key fields",
+      "compositeKey": "No by-id methods; rowId aliases SQL id in three body entities; updates use original tenant + id/invocation_id schema primary key"
+    },
+    {
+      "name": "invocations",
+      "mapper": "DirectoryInvocationReadMapper.selectMaps",
+      "predicates": "tenant_id + task_id; projection contains all original 19 columns; content collections project only original consumed body/key fields",
+      "compositeKey": "No by-id methods; rowId aliases SQL id in three body entities; updates use original tenant + id/invocation_id schema primary key"
+    },
+    {
+      "name": "paths",
+      "mapper": "DirectoryPathReadMapper.selectMaps",
+      "predicates": "tenant_id + task_id; projection contains all original 19 columns; content collections project only original consumed body/key fields",
+      "compositeKey": "No by-id methods; rowId aliases SQL id in three body entities; updates use original tenant + id/invocation_id schema primary key"
+    },
+    {
+      "name": "dispatches",
+      "mapper": "DirectoryDispatchReadMapper.selectMaps",
+      "predicates": "tenant_id + task_id; projection contains all original 19 columns; content collections project only original consumed body/key fields",
+      "compositeKey": "No by-id methods; rowId aliases SQL id in three body entities; updates use original tenant + id/invocation_id schema primary key"
+    },
+    {
+      "name": "projection",
+      "mapper": "TaskDirectoryReadMapper.selectMaps",
+      "predicates": "tenant_id + task_id; projection contains all original 19 columns; content collections project only original consumed body/key fields",
+      "compositeKey": "No by-id methods; rowId aliases SQL id in three body entities; updates use original tenant + id/invocation_id schema primary key"
+    }
+  ],
+  "paths": [
+    {
+      "entry": "LedgerMaintenance -> ExecutionLedger.cleanupArtifacts -> JdbcLedger.cleanupArtifacts -> cleanupDirectories",
+      "service": "DirectoryRetentionServiceImpl.cleanup",
+      "ports": [
+        "DirectoryRetentions",
+        "DirectoryRetentions.Workspace",
+        "LedgerUnitOfWork"
+      ],
+      "adapters": [
+        "MapperDirectoryRetentions",
+        "WorkspaceDirectoryRetentions"
+      ],
+      "phases": [
+        "Candidate read outside transaction: bounded32 cross-tenant task_directory/task join, original expiration/terminal/writer/UNKNOWN/native/invocation/model exclusions and ordering",
+        "First same-DS UoW: tenant_budget -> original locked(scope source tasks sorted)/task -> full directory projection -> PURGED/retain time -> terminal -> writer -> reservation -> invocation -> dispatched model short circuit. Existing PURGING returns original generation/receipt. Otherwise retain exact body hash/UTF8 bytes, tombstone bodies, original storage ceiling and metadata, mark PURGING with original random generation",
+        "Outside transaction: original SecureWorkspaceStore.planPurge and unchanged Payloads codec, only when receipt absent",
+        "Second same-DS UoW: same budget/task scope locks -> PURGING + same generation + safety. Prefer existing receipt if raced; original storage check then store receipt only if NULL",
+        "Outside transaction: SecureWorkspaceStore.purge with persisted receipt and original POSIX/inventory validation; errors propagate and leave durable PURGING for retry",
+        "Third same-DS UoW: same budget/task locks -> already PURGED idempotent return, otherwise verify PURGING/generation/exact receipt/safety -> mark PURGED -> original idempotent directory event + task sequence/revision -> release full-key DIRECTORY_STORAGE RESERVED hold exactly one row -> release original8388608 directory budget"
+      ],
+      "rules": [
+        "Original candidate/writer/UNKNOWN/terminal/time/refusal order, complete tenant/schema keys, invalid-scope post-note, permission/fence and media lock order inherited. No new public admission/paid scope or evaluation lock",
+        "All SQL receives explicit query context, same SqlSession/DataSource/UoW and absolute deadline. Actual MP collection reads; explicit NULL updates and original rowcount failure propagate. No dual-write old SQL remains in migrated path",
+        "Shared directory projection and storage aggregation now use MP/XML in other directory callers too; full projection validation and frozen storage rule remain. New DirectoryStorageLimit is the single original policy for old/new callers",
+        "Narrowed content projections change metering; do not claim identical SQL/network round trips. Original questionNow remains for other modules; new now XML replaces a call from this migrated use case, not an additional deleted literal site"
+      ],
+      "verification": "DirectoryRetentionServiceTest, WorkingDirectoryContractTest, PersistenceAssemblyTest and B2DirectoryRetentionIT; identical driver on exact old/new JAR, private MySQL actual workspace write/cd/read/edit tasks, SQL/transaction locks and cleanup receipts"
+    }
+  ],
+  "remaining": [
+    "B2 other modules/runtime scope/receipt and legacy cleanups; next concrete slice cleanupQuestions",
+    "B3 directory business batch not activated or completed by this retention slice",
+    "Full scope/maintenance/filesystem lock permutations, nonempty paid-ledger anomalies, exact CLI assembly, real paid visual and independent review/QA remain OPEN"
+  ]
+}

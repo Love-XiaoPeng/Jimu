@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
@@ -191,8 +192,7 @@ public final class SessionLedgerScenario {
               new org.springframework.jdbc.datasource.DataSourceTransactionManager(source));
       transaction.execute(
           status -> {
-            records.purge(task);
-            records.release(task);
+            ledger.historyRetention.purge(new MapperSessionHistoryRetentions(ledger).bind(task));
             status.setRollbackOnly();
             return null;
           });

@@ -1,0 +1,159 @@
+{
+  "baseline": "68767c03e04afddd9e9883cd887d104d6fb3e36f",
+  "scope": "B2 partial media retention, all 35 tables plus external read-only receipt OPEN",
+  "oldJdbcCalls": 13,
+  "removedLiteralBodies": 14,
+  "distinctOldBodies": 13,
+  "inventoryLiteralSitesRemoved": 12,
+  "dynamicCallsRemoved": 1,
+  "counting": "Two fixed budget UPDATE literals belong to one ternary dynamic db.update call; unknownHold literal appears at two call sites. Static inventory excludes both literals nested in the ternary. Do not conflate body occurrences, calls and statically resolved literal sites.",
+  "removed": [
+    {
+      "originalSql": "SELECT tenant_id,id FROM task WHERE record_version=3 AND media_cleanup_state='RETAINED' AND state IN ('SUCCEEDED','FAILED','CANCELLED') AND updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY LIMIT 32",
+      "replacement": "MediaRetentionMapper.candidates"
+    },
+    {
+      "originalSql": "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND state='HELD_UNKNOWN'",
+      "replacement": "MediaRetentionMapper.unknownHolds"
+    },
+    {
+      "originalSql": "UPDATE task_image_object SET cleanup_state='DELETING' WHERE tenant_id=? AND task_id=? AND cleanup_state='RETAINED'",
+      "replacement": "MediaRetentionMapper.markDeleting"
+    },
+    {
+      "originalSql": "SELECT image_id FROM task_image_object WHERE tenant_id=? AND task_id=? AND cleanup_state='DELETING'",
+      "replacement": "ImageObjectReadMapper.selectMaps"
+    },
+    {
+      "originalSql": "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND state='HELD_UNKNOWN'",
+      "replacement": "MediaRetentionMapper.unknownHolds"
+    },
+    {
+      "originalSql": "SELECT id,request_snapshot,request_digest FROM step WHERE tenant_id=? AND task_id=? AND request_cleanup_state='RETAINED' FOR UPDATE",
+      "replacement": "MediaRetentionMapper.lockCheckpoints"
+    },
+    {
+      "originalSql": "UPDATE step SET request_snapshot=?,request_cleanup_state='MEDIA_PURGED',retained_request_digest=? WHERE tenant_id=? AND id=?",
+      "replacement": "MediaRetentionMapper.purgeCheckpoint"
+    },
+    {
+      "originalSql": "SELECT * FROM reservation WHERE tenant_id=? AND task_id=? AND category IN ('MEDIA_INPUT','MEDIA_STORAGE','MEDIA_CHECKPOINT') AND state IN ('RESERVED','SETTLED') FOR UPDATE",
+      "replacement": "MediaRetentionMapper.lockHolds"
+    },
+    {
+      "originalSql": "UPDATE tenant_budget SET media_checkpoint_held=media_checkpoint_held-? WHERE tenant_id=?",
+      "replacement": "MediaRetentionMapper.releaseCheckpointBytes"
+    },
+    {
+      "originalSql": "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
+      "replacement": "ArtifactRetentionMapper.releaseStorage"
+    },
+    {
+      "originalSql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=?",
+      "replacement": "ReservationMapper.releaseQueueSlot"
+    },
+    {
+      "originalSql": "UPDATE task_image_input SET raw_base64=NULL WHERE tenant_id=? AND task_id=?",
+      "replacement": "MediaRetentionMapper.purgeInputs"
+    },
+    {
+      "originalSql": "UPDATE task_image_object SET cleanup_state='DELETED' WHERE tenant_id=? AND task_id=? AND cleanup_state='DELETING'",
+      "replacement": "MediaRetentionMapper.markObjectsDeleted"
+    },
+    {
+      "originalSql": "UPDATE task SET media_cleanup_state='DELETED' WHERE tenant_id=? AND id=?",
+      "replacement": "MediaRetentionMapper.markTaskDeleted"
+    }
+  ],
+  "statements": [
+    {
+      "kind": "select",
+      "id": "MediaRetentionMapper.candidates",
+      "sql": "SELECT tenant_id,id FROM task WHERE record_version=3 AND media_cleanup_state='RETAINED' AND state IN ('SUCCEEDED','FAILED','CANCELLED') AND updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY LIMIT 32"
+    },
+    {
+      "kind": "select",
+      "id": "MediaRetentionMapper.unknownHolds",
+      "sql": "SELECT id FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='HELD_UNKNOWN'"
+    },
+    {
+      "kind": "update",
+      "id": "MediaRetentionMapper.markDeleting",
+      "sql": "UPDATE task_image_object SET cleanup_state='DELETING' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND cleanup_state='RETAINED'"
+    },
+    {
+      "kind": "select",
+      "id": "MediaRetentionMapper.lockCheckpoints",
+      "sql": "SELECT id,request_snapshot,request_digest FROM step WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND request_cleanup_state='RETAINED' FOR UPDATE"
+    },
+    {
+      "kind": "update",
+      "id": "MediaRetentionMapper.purgeCheckpoint",
+      "sql": "UPDATE step SET request_snapshot=#{snapshot},request_cleanup_state='MEDIA_PURGED',retained_request_digest=#{digest} WHERE tenant_id=#{tenant} AND id=#{stepId}"
+    },
+    {
+      "kind": "select",
+      "id": "MediaRetentionMapper.lockHolds",
+      "sql": "SELECT tenant_id,id,task_id,dispatch_id,category,amount,actual,usage_quality,cost_quality,state,record_version FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND category IN ('MEDIA_INPUT','MEDIA_STORAGE','MEDIA_CHECKPOINT') AND state IN ('RESERVED','SETTLED') FOR UPDATE"
+    },
+    {
+      "kind": "update",
+      "id": "MediaRetentionMapper.releaseCheckpointBytes",
+      "sql": "UPDATE tenant_budget SET media_checkpoint_held=media_checkpoint_held-#{bytes} WHERE tenant_id=#{tenant}"
+    },
+    {
+      "kind": "update",
+      "id": "MediaRetentionMapper.purgeInputs",
+      "sql": "UPDATE task_image_input SET raw_base64=NULL WHERE tenant_id=#{tenant} AND task_id=#{taskId}"
+    },
+    {
+      "kind": "update",
+      "id": "MediaRetentionMapper.markObjectsDeleted",
+      "sql": "UPDATE task_image_object SET cleanup_state='DELETED' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND cleanup_state='DELETING'"
+    },
+    {
+      "kind": "update",
+      "id": "MediaRetentionMapper.markTaskDeleted",
+      "sql": "UPDATE task SET media_cleanup_state='DELETED' WHERE tenant_id=#{tenant} AND id=#{taskId}"
+    }
+  ],
+  "ordinaryMp": {
+    "mapper": "ImageObjectReadMapper.selectMaps",
+    "predicates": "tenant_id + task_id + cleanup_state='DELETING'",
+    "columns": [
+      "image_id"
+    ],
+    "query": "explicit same-level query + ew; no fake primary key/by-id"
+  },
+  "paths": [
+    {
+      "entry": "LedgerMaintenance -> ExecutionLedger.cleanupArtifacts -> JdbcLedger.cleanupArtifacts -> cleanupImages",
+      "service": "MediaRetentionServiceImpl.cleanup",
+      "port": "MediaRetentions",
+      "adapter": "MapperMediaRetentions",
+      "codec": "SnapshotObjectCodec -> original Payloads ObjectNode encoding",
+      "phases": [
+        "No imageStore: return before records/DB. Outside tx global version3 RETAINED terminal task scan, 7-day cutoff, LIMIT32 unchanged",
+        "UoW1: budget -> original locked(scope-ordered task)/task -> writer probes -> HELD_UNKNOWN check -> mark RETAINED objects DELETING; original short-circuit order",
+        "Outside tx: actual MP image_id-only select by tenant/task/state; SecureImageStore.removeUpload(exact persisted tenant/imageId). Failure propagates and aborts batch",
+        "UoW2: budget -> same locked task; DELETED returns before probes. Recheck quiescence/terminal/HELD_UNKNOWN, reject IMAGE_UNAVAILABLE on mismatch",
+        "step tenant/task RETAINED FOR UPDATE -> verify original request_digest BEFORE decode -> remove only requestBody -> retained digest; original audit digests untouched",
+        "reservation tenant/task + original 3 categories + RESERVED/SETTLED FOR UPDATE, full11 columns -> actual if nonnull (including zero) else amount; category-specific byte subtraction + RELEASED",
+        "same transaction NULL raw_base64 -> DELETING objects DELETED -> task DELETED; no catches, extra writes or physical delete inside transaction"
+      ],
+      "rules": [
+        "Uses existing DS/SqlSession/UoW/query; no new evaluation lock/permission/fence/scope policy or retention recheck",
+        "Candidate enumeration is intentionally cross-tenant internal maintenance; every per-candidate read/write preserves original tenant and full scoped identity",
+        "Original locked() scope ordering and post-invalidity bookkeeping retained; no rejection-commit policy changes",
+        "Late failure rolls back all phase2 database mutations while committed mark/external unlink remain retryable; no provider/effect replay"
+      ],
+      "verification": "MediaRetentionServiceTest; same MediaRetentionScenario on exact old/new JAR, B2MediaRetentionIT + xiao60_b2_media_cleanup_verify.py; raw SQL/transactions/lock waits/cleanup receipts"
+    }
+  ],
+  "remaining": [
+    "Other module cleanup and runtime scope/receipt plus exact CLI assembly remain OPEN",
+    "Full scope/maintenance lock permutations, nonempty paid-ledger anomaly combinations and real paid vision remain OPEN",
+    "Two finalizer fixture serializes actual unlink only; native filesystem list/delete race unchanged",
+    "This is developer verification; independent review/QA/business acceptance/merge and B3-B5 not activated"
+  ]
+}

@@ -6,7 +6,7 @@ import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.plugin.api.Cancellation;
 import io.github.lovexiaopeng.jimu.plugin.api.EditPort;
 import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;

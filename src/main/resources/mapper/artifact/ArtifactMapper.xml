@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.artifact.mapper.ArtifactMapper">
+  <select id="selectOwnedRetained" resultType="map">
+    <![CDATA[SELECT a.tenant_id,a.id,a.task_id,a.producer_invocation,a.upload_id,a.production_fence,a.state,a.snapshot_key,a.sha256,a.size,a.media_type,a.created_at,a.updated_at,a.expires_at,a.record_version,a.file_receipt,a.receipt_digest FROM artifact a JOIN task t ON a.tenant_id=t.tenant_id AND a.task_id=t.id WHERE a.tenant_id=#{tenant} AND a.id=#{artifactId} AND t.owner_actor_id=#{actor} AND a.state IN ('PUBLISHED','EXPIRED')]]>
+  </select>
+  <select id="selectPublishedReport" resultType="map">
+    <![CDATA[SELECT a.id FROM artifact a JOIN invocation i ON i.tenant_id=a.tenant_id AND i.id=a.producer_invocation AND i.task_id=a.task_id WHERE a.tenant_id=#{tenant} AND a.task_id=#{taskId} AND a.state='PUBLISHED' AND a.file_receipt IS NOT NULL AND i.tool='present' AND i.state='SUCCEEDED']]>
+  </select>
+  <select id="selectUnpublishedArtifacts" resultType="map">
+    <![CDATA[SELECT id FROM artifact WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state<>'PUBLISHED']]>
+  </select>
+</mapper>

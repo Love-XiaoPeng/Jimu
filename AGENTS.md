@@ -2,6 +2,8 @@
 
 先读 `README.md`、`CONTRIBUTING.md`、`docs/baseline/README.md` 和工程规范 0.2，再修改相关代码。
 
+XIAO-58重构另读 `docs/refactoring/XIAO-58/README.md`、`docs/engineering.md` 和 ADR-0015；XIAO-58产品经理于2026-10-23核定方案，按XIAO-60正文授权逐阶段实施。B0/B1过渡检查点不表示总重构完成。
+
 - 仅修改当前任务必需内容，保护已有工作，沿用现有语言、目录、返回和异常约定；不批量生成空模块或推测功能。
 - 历史证据保持原字节；项目现名、包名及插件命名映射通过新说明/ADR记录，不篡改固定上游证据或已发布契约。
 - 遵循 `docs/architecture.md` 引用的三份 accepted ADR：命名、候选依赖与包边界已明确，后端统一入库后实现骨架；按实际构建证据固定门禁版本，不把候选视为兼容验收通过。

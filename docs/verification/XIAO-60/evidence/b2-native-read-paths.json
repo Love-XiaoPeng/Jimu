@@ -1,0 +1,42 @@
+{
+  "baseline": "5715fdfab8559f6a258ac7cac272030e27c46fbc",
+  "entry": "SessionEventLedger.readOrResult -> original queryView(lease,false) -> SessionReadServiceImpl -> typed SessionReads -> MapperSessionReads -> real MP ordinary projections + parameterized SessionReadMapper lock/CAS + shared settlement Mapper",
+  "removed": {
+    "staticJdbcCalls": 9,
+    "sql": [
+      "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=?",
+      "SELECT * FROM invocation_session_read WHERE tenant_id=? AND invocation_id=? FOR UPDATE",
+      "SELECT * FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq=?",
+      "UPDATE task SET tools_used=tools_used+1 WHERE tenant_id=? AND id=?",
+      "UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=?",
+      "UPDATE reservation SET actual=1 WHERE tenant_id=? AND id=?",
+      "UPDATE invocation SET state=?,output_snapshot=?,output_digest=? WHERE tenant_id=? AND id=? AND state='PENDING'",
+      "UPDATE invocation_session_read SET outcome=?,failure_code=?,window_start=?,window_end=?,target_digest=?,output_digest=?,output_bytes=?,receipt_seq=?,committed_attempt_id=?,committed_fence=?,committed_at=CURRENT_TIMESTAMP(6),read_sources_snapshot=?,read_sources_digest=?,read_sources_bytes=? WHERE tenant_id=? AND invocation_id=? AND outcome='PENDING'",
+      "SELECT * FROM invocation_session_read WHERE tenant_id=? AND invocation_id=?"
+    ],
+    "dynamic": 0,
+    "sharedStillUsedNotCounted": true
+  },
+  "inventory": {
+    "static": 238,
+    "dynamic": 21,
+    "literalBinds": 833,
+    "tables": "35 tables + readonly receipt all OPEN"
+  },
+  "preserved": [
+    "original slot and input before tool mismatch; history lock before validated step and read-binding lock",
+    "native v1/v2/v3 binding and receipt proofs; shared proof SQL still OPEN for later migration",
+    "same explicit query with original unmetered envelope; inherited lease absolute deadline and SessionQueryTransaction last/beforeCommit checks",
+    "same DS/UoW, original fence and lock/refusal ordering; failed known read commits exactly one settled TOOL before throw; unexpected errors roll back",
+    "NULL native sources versus trace []/sources digest and bytes, original receipt codec and output validation order",
+    "shared consume task/tenant, reservation actual and invocation CAS use existing Mapper once; no dual writes",
+    "schema22/V1-V22 and frozen resource bytes"
+  ],
+  "measurement": "Entry has no cumulative query counters, as before; real runtime SQL logs preserved. Projection narrows rows; no claim all SQL bytes/network roundtrips unchanged.",
+  "remaining": [
+    "runtime native searchOrResult/traceOrResult, shared receipt/read proof SQL, admission writes/module/maintenance",
+    "core UoW final beforeCommit deadline gap OPEN; stronger session transaction not conflated",
+    "cold lock and full scope/maintenance/file lock permutations, exact CLI assembly, actual v3 trace cleanup, nonempty paid ledger anomalies and real paid vision OPEN",
+    "B2 and all35 tables + readonly receipt OPEN; B3-B5/61/62/juniors not activated"
+  ]
+}

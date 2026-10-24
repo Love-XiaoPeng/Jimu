@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.TaskAttemptMapper">
+  <select id="selectWorkerTasks" resultType="map">
+    <![CDATA[SELECT DISTINCT tenant_id,task_id AS id FROM task_attempt WHERE worker_id=#{worker}]]>
+  </select>
+  <select id="selectActiveNativeAttempt" resultType="map">
+    <![CDATA[SELECT root_invocation FROM native_search_run WHERE tenant_id=#{tenant} AND attempt_id=#{attemptId} AND phase<>'STOPPED' LIMIT 1]]>
+  </select>
+  <update id="markOwnedAttemptQuiescent">
+    <![CDATA[UPDATE task_attempt SET quiescent=TRUE WHERE tenant_id=#{tenant} AND id=#{attemptId} AND worker_id=#{worker} AND fence=#{fence}]]>
+  </update>
+  <update id="markWorkerTaskAttemptsQuiescent">
+    <![CDATA[UPDATE task_attempt SET quiescent=TRUE WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND worker_id=#{worker}]]>
+  </update>
+  <update id="expireActiveAttempt">
+    <![CDATA[UPDATE task_attempt SET state='EXPIRED',ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{attemptId} AND state='ACTIVE']]>
+  </update>
+  <select id="countTaskAttempts" resultType="long">
+    <![CDATA[SELECT COUNT(*) FROM task_attempt WHERE tenant_id=#{tenant} AND task_id=#{taskId}]]>
+  </select>
+  <insert id="insertActiveAttempt">
+    <![CDATA[INSERT INTO task_attempt(tenant_id,id,task_id,worker_id,fence,state) VALUES(#{tenant},#{attemptId},#{taskId},#{worker},#{fence},'ACTIVE')]]>
+  </insert>
+  <select id="selectUnobservedWriters" resultType="map">
+    <![CDATA[SELECT a.id FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.tenant_id=#{tenant} AND a.task_id=#{taskId} AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE)]]>
+  </select>
+  <select id="selectActiveNativeTask" resultType="map">
+    <![CDATA[SELECT root_invocation FROM native_search_run WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND phase<>'STOPPED' LIMIT 1]]>
+  </select>
+</mapper>

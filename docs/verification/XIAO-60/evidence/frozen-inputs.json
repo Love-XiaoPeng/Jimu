@@ -1,0 +1,4626 @@
+{
+  "source": "620d5e0e5bfe7b5da530f10997936466159ba34f",
+  "tree": "ef29f391b8355a7d693a48cefdcc379e35c32929",
+  "files": [
+    {
+      "path": "docs/adr/0001-jimu-naming.md",
+      "bytes": 5681,
+      "sha256": "7aa1515876c369d2691bd8c0af67f8fca5c78d6c4f16473db7f0d542d6a8ba74"
+    },
+    {
+      "path": "docs/adr/0002-dependency-baseline.md",
+      "bytes": 5544,
+      "sha256": "27593a28480308bf1d978f0c7f6180bdbb9bcb2980ecf5fa56b5568911c2ad23"
+    },
+    {
+      "path": "docs/adr/0003-package-boundaries.md",
+      "bytes": 6829,
+      "sha256": "45a482a1cef2c69e69c870ed2779c12a67a25806263fe164d918570b2e70937a"
+    },
+    {
+      "path": "docs/adr/0004-p2-durable-execution.md",
+      "bytes": 23026,
+      "sha256": "09730bf54d87c44b0420579f71adbeb3588daab6eb6c2f4b508b3fc002f790c7"
+    },
+    {
+      "path": "docs/adr/0005-workspace-edit-native-search.md",
+      "bytes": 1416,
+      "sha256": "12f2568f32c77e5c1d5cf00c417bca9d9ebca1c7b081b148e54bad1413f87e49"
+    },
+    {
+      "path": "docs/adr/0006-task-image-input.md",
+      "bytes": 2962,
+      "sha256": "d9c04889e835c916cad95a526fbce388f0237c557cb242eb993314544f025922"
+    },
+    {
+      "path": "docs/adr/0007-mcp-readonly-same-host.md",
+      "bytes": 9544,
+      "sha256": "b2cb9cd5652e8a0d97cbeb43239cbe9dc081b997e2e83658932686916b529fa5"
+    },
+    {
+      "path": "docs/adr/0008-durable-user-questions.md",
+      "bytes": 6781,
+      "sha256": "f7845c1c34466de1e40591d910dc422c156c0f339d97be8271ee299502ab63e4"
+    },
+    {
+      "path": "docs/adr/0009-task-todo-projection.md",
+      "bytes": 6337,
+      "sha256": "e86c20bcee171191e7598f92ccc8f9ddb0bc3f31511ec2355eb6ec685b7de6eb"
+    },
+    {
+      "path": "docs/adr/0011-authorized-session-event-read.md",
+      "bytes": 5618,
+      "sha256": "9a113c57955d555b88cd42b8002624d211c4a3e3703720188634bc0ee76c2c0c"
+    },
+    {
+      "path": "docs/adr/0012-bounded-session-event-search.md",
+      "bytes": 5652,
+      "sha256": "d1ab0613a8cdaa7710c2fc15be8ee881367f7b72960068e66d55e75a3a3dd4bf"
+    },
+    {
+      "path": "docs/adr/0013-captured-session-event-read-provenance.md",
+      "bytes": 4229,
+      "sha256": "b7e58c1b775d8f1a34e003bc44e321760d394a115dbc2808916e2c92ee9f76bd"
+    },
+    {
+      "path": "docs/adr/0014-explicit-prior-session-search-scope.md",
+      "bytes": 4863,
+      "sha256": "9648316ae244b1763e85240bdf7ab6be58ed75280fb891639929ca23592f92c1"
+    },
+    {
+      "path": "docs/adr/README.md",
+      "bytes": 3819,
+      "sha256": "85a6c148823fb50a2c7d1361d452973e9011d427eab34b80882d58e1cb44cd70"
+    },
+    {
+      "path": "docs/adr/sources.json",
+      "bytes": 1569,
+      "sha256": "5c23b37930be800e9e621e7a5ec1e64b4f707b8ae6d95a4b978a885ab868f498"
+    },
+    {
+      "path": "docs/adr/verification.txt",
+      "bytes": 1188,
+      "sha256": "911a17f64a2e0040f9ef127b004a8e00443025b73f987f469eea08827a2848e2"
+    },
+    {
+      "path": "docs/baseline/README.md",
+      "bytes": 1917,
+      "sha256": "15760921d7c1a6d805d306f6b179d7cbd280d2cba577daf11d07bca31ed1bf15"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-harness-tool-inventory-v1.1.json",
+      "bytes": 196149,
+      "sha256": "30b6904aad8d85dac3e789434e434c449575383cb23e254329a84930436f5b02"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-security-performance-recheck-v2.md",
+      "bytes": 5808,
+      "sha256": "6839750256d799baaa2bdbed4472c9a36afb7ef7deb1415cea1db6f4d70f9792"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-testability-recheck-v2.md",
+      "bytes": 7632,
+      "sha256": "4b8b4a3893fb55ceafdef0937c1b78818931d433a86949dd36d55165a19d9725"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-tool-migration-evidence-v1.1.md",
+      "bytes": 87122,
+      "sha256": "2111bc4a0be86a3cc69420fb9b9d08adc0bc5b609686d859b38830edce17c0f7"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-web-fetch-output-v0.2.0.schema.json",
+      "bytes": 602,
+      "sha256": "08a144489ed9ea37b5b33a5ffdc815237f31d4f229b76ba1d5e465b9e13f9ff8"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-可行性与总体方案-v0.3.md",
+      "bytes": 95190,
+      "sha256": "2b8e53c700aab0d96a6f06351ee9f924a43c8d5af4b5f62837b20e6f92e6c014"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-合稿修订与评审对照-v0.3.md",
+      "bytes": 8322,
+      "sha256": "ca708c3693ffd385cbedc5b5bb4a619c5bbd72e3a1e39031bc4f528974278ea5"
+    },
+    {
+      "path": "docs/baseline/XIAO-33-工程规范-v0.2.md",
+      "bytes": 27621,
+      "sha256": "36553f58e0b129903f04389c852f75560cf4879bbe9fbdac0e2759cb3f8298b7"
+    },
+    {
+      "path": "docs/baseline/sources.json",
+      "bytes": 3311,
+      "sha256": "6bb5d032f661b2575c5d17b16bec91135ea1c3896ce588ee0225a23d412add28"
+    },
+    {
+      "path": "docs/verification/XIAO-36/architecture-handoff.md",
+      "bytes": 16026,
+      "sha256": "2cfdd7af1775d43a416ba177c1944d12f71bf965d8cb4c3761d4ab61d06c6bd2"
+    },
+    {
+      "path": "docs/verification/XIAO-37/backend-handoff.md",
+      "bytes": 10825,
+      "sha256": "1111bf6c1834672449fc2b57adcacf38240a7f8d5da0acc658ebb4096a17ea00"
+    },
+    {
+      "path": "docs/verification/XIAO-37/r5-r6-handoff.md",
+      "bytes": 7343,
+      "sha256": "f4865dd7a9999c80c529d7bcf86b5ea40b1b0a12e77e28fc2db56f64dbfc8e42"
+    },
+    {
+      "path": "docs/verification/XIAO-43/Harness-LICENSE.txt",
+      "bytes": 1065,
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+    },
+    {
+      "path": "docs/verification/XIAO-43/backend-handoff.md",
+      "bytes": 5854,
+      "sha256": "265155e023251da0b24c2a7a26f47e56d7c8cc2adca71f0e0985d4d0a3b353a2"
+    },
+    {
+      "path": "docs/verification/XIAO-43/checkpoint-90m.md",
+      "bytes": 2085,
+      "sha256": "a7d05c5801237ea2b04c2d8c7bb78e4447f1115fc9ac7bed9ba2fd5f0090c434"
+    },
+    {
+      "path": "docs/verification/XIAO-43/qa01-handoff.md",
+      "bytes": 7152,
+      "sha256": "7141d202f73ec57c081c4b168e88fbc3bbd44dc89bf585ae04415e6847a8ce01"
+    },
+    {
+      "path": "docs/verification/XIAO-43/r1-observer-handoff.md",
+      "bytes": 6836,
+      "sha256": "7e9bd4a46c688f0cf4d299ca38cb8c9d366a0b9997b5005dcd578ad9cb7a151e"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/contract-manifest.json",
+      "bytes": 2385,
+      "sha256": "ccafd9c765a37f1eb2b16d7571a6cfd083435369df9bc0d5c43f0aa385841a54"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/contracts/compose_report-0.2.0/input.schema.json",
+      "bytes": 4070,
+      "sha256": "4901da65bf56c28822d76e4a8eee0803097c3c43a6a8ccd026529b061d3a4400"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/contracts/compose_report-0.2.0/output.schema.json",
+      "bytes": 5181,
+      "sha256": "183994b16bdc7b3f0de711674a639c741fa85a58ff618ac7d3d378d3dca1fe79"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/contracts/compose_report-0.2.0/plugin.yaml",
+      "bytes": 878,
+      "sha256": "894bd18c387715169d9117cd9dde2a8392141e8cc03e6f7865a1b0bdd409f430"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/contracts/image-input-capability.schema.json",
+      "bytes": 1009,
+      "sha256": "1b00c95513e266badf0e3a3e347eec9e2cb6fbdde081af394a3c74a50a9d1989"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/contracts/read_image/input.schema.json",
+      "bytes": 303,
+      "sha256": "cdf5a6395bfa7123c880d03869b8d595e15e2e4c8f0cda188278afb21990355c"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/contracts/read_image/output.schema.json",
+      "bytes": 2118,
+      "sha256": "2b3e16c2ba0318dc62f26fb6410622997eb2591d074e1f7acf8c8c5d2da68108"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/contracts/read_image/plugin.yaml",
+      "bytes": 865,
+      "sha256": "9b08fea3c0de3facd8fc6898a27981176ad28970683962a48568a2cbf0a50d1e"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/contracts/task-images-field.schema.json",
+      "bytes": 833,
+      "sha256": "9b1b59d8c09242deaa6a7cdc33c75409fb4ab238ec04f79d77516cb9afd8c331"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence-manifest.json",
+      "bytes": 6960,
+      "sha256": "27fcff61cb2e4e020da45cb1399e2b6c9444b5cbea16301a5534df513bb40f10"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/CodecProbe.java",
+      "bytes": 772,
+      "sha256": "209bde556d7f23381be9b6334921f018706da2f534a34daf0cd711d4cbe2fa65"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/ContractProbe.java",
+      "bytes": 3159,
+      "sha256": "9efd3e1bd542b49f1f792e56779bf1ec1e9fd29026444f1c4b1b86752d21062d"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/LICENSE",
+      "bytes": 1065,
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/deepseek-pricing.html",
+      "bytes": 26044,
+      "sha256": "1c09ddb597f14a905666181d9079fab4af97ea316a1390a343680461b38ec708"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/deepseek-pricing.txt",
+      "bytes": 4312,
+      "sha256": "bb8b714e126bb76ad09ea6a285fbaf73966b748ab3ec47f025b6781e7fcba13f"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/deepseek-vision.html",
+      "bytes": 81888,
+      "sha256": "774f6a580df711123b21eef86f1dee8af1bdc564c58ed80c6f182de871231ba0"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/deepseek-vision.txt",
+      "bytes": 10263,
+      "sha256": "e8ad3623963204d21ab867d14a9f881221566aac2c462fffdcbafd78df8d3d73"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/jdk-imageio-probe.txt",
+      "bytes": 379,
+      "sha256": "95f706adb883798f5e531648d7130fbe3b97cd7a7d657e8566745f5eee857cd4"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/master-baseline.json",
+      "bytes": 177,
+      "sha256": "1b951644e599569c94893598e5c0e0325748bde6e2b117b2753ec24eb94c67c9"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/packages__attachment__attachment-local__src__image.ts",
+      "bytes": 5594,
+      "sha256": "ec48db7f7702bb06317c10c393c1fc6a8ec0927f87f63021f419f015dd69827f"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/packages__attachment__attachment-local__src__index.ts",
+      "bytes": 12601,
+      "sha256": "1a1d3fda491bbb0789447e6f9ab92840d6652eff8d68fbccc2a4307ccc5f9f8b"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/packages__attachment__attachment-local__src__request-image.ts",
+      "bytes": 7715,
+      "sha256": "bbb89a0150520a8c73d96fa884066e4b2cc82085864c5899500e45bd6aac889e"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/packages__attachment__attachment__src__types.ts",
+      "bytes": 6116,
+      "sha256": "893a8d2501251873d7a885ac9d7249f9a79c3e71e18ef921c260bf56e2c6c354"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/packages__fs__tool-fs__src__read-image.ts",
+      "bytes": 16573,
+      "sha256": "36cef763f246effda50ad7e3a50de46380bb65eb6cd87f758f07d716f10f2f54"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/packages__fs__tool-fs__src__read-target.ts",
+      "bytes": 1464,
+      "sha256": "3e89ce59dae8d4d568ed0833d4c939ac9cd62eda380e1b4addf697a311b56d43"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/packages__fs__tool-fs__tests__read-image.spec.ts",
+      "bytes": 40481,
+      "sha256": "1df54c209c3269299b97398386c6972ea0962d819b5e87a79fc41b3d5c94d3c0"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/schema-probe.txt",
+      "bytes": 404,
+      "sha256": "5652be9aa2ef2934b32ef68d4aa11cbb03353fdd38e24274def79f6438b517ce"
+    },
+    {
+      "path": "docs/verification/XIAO-46/architecture/evidence/spring-ai-media-signatures.txt",
+      "bytes": 2093,
+      "sha256": "f1205912290e375090459d822c1cf6aa492076235473900b31acb9f7378cd571"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/ADR-0007-mcp-readonly-same-host.md",
+      "bytes": 9544,
+      "sha256": "b2cb9cd5652e8a0d97cbeb43239cbe9dc081b997e2e83658932686916b529fa5"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/ContractProbe.java",
+      "bytes": 2535,
+      "sha256": "6131126b116f96fa09c98655292a9b710f9c2b066e431f11c17778a489c42ae8"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/PACKAGE-MANIFEST.json",
+      "bytes": 12185,
+      "sha256": "99d6a5f06e10335df9cdf39e048d5bc0c1433223ac1941ce54318038d3fe6871"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/ProtocolProbe.java",
+      "bytes": 10204,
+      "sha256": "e3a9331c9e4ddb37e6edc9d4fc55e60b09d93cc7f885945ee08c12b09f3f8ea4"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/README.md",
+      "bytes": 1679,
+      "sha256": "3086cf9a519eb4797f33dfb537b55c50930b6bfc048e96cb40afbebc8dd42c0a"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/VERIFICATION.md",
+      "bytes": 5917,
+      "sha256": "f538208e4b04583f151b29ecba6dcd469159e398d200d11890bee2f4dbe6e576"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/catalog.json",
+      "bytes": 2126,
+      "sha256": "c5da8a217cd0c5fe2b2a4ef118187f3ed737f7e8ccb2f412218e875381ad82d9"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/examples/list-input.json",
+      "bytes": 23,
+      "sha256": "a158decdb2a26324110b4e0488dbfa0d93329501bde3a7e2101f952e3ebeb838"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/examples/read-input.json",
+      "bytes": 57,
+      "sha256": "60567f9cebf49e1b65fe4ebd9e15f8c822e904983c24cf8a54ba1a9bda866697"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/examples/read-output.json",
+      "bytes": 769,
+      "sha256": "c1aa6e3f9b4360cda805461f3a1e1bed8ae9e70116d6de7ff811e148deb40c49"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/examples/resources-output.json",
+      "bytes": 618,
+      "sha256": "ff521850353c6a48c64d964c09e359ba734252ad851987a4e2476ab6dcdcb9fa"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/examples/server-profile.json",
+      "bytes": 656,
+      "sha256": "01fc79b51eb1357174a40c14df5efb5c751d5817116fcd3fd52c264be1be2494"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/examples/templates-output.json",
+      "bytes": 610,
+      "sha256": "3cbfcd1598d0dcff359f1ed05e86871815db573d059a10d2709700f012b07d53"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/list-snapshot-v1.schema.json",
+      "bytes": 1886,
+      "sha256": "3305bee394e407a1cd376f07a159e2b01028141efca037a136189de99a0409af"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/list_mcp_resource_templates/input.schema.json",
+      "bytes": 472,
+      "sha256": "3286b79a0d26f83175b185cbedaa3169b12ca4b7f42ea583ca4c6d4156793332"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/list_mcp_resource_templates/output.schema.json",
+      "bytes": 2363,
+      "sha256": "757410a2b9e69a156dd294e30c6b67dc98e03d89c5aef2735c212ef6da06ebb0"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/list_mcp_resource_templates/plugin.yaml",
+      "bytes": 906,
+      "sha256": "415f4670e231a68ec062c2284163f60c1c514c849df2e196e86acb58ce49dcaf"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/list_mcp_resources/input.schema.json",
+      "bytes": 463,
+      "sha256": "29fd7302a672247a952d9abbe4fb35174e97c64e91a3a60b0612e97f8454ddb5"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/list_mcp_resources/output.schema.json",
+      "bytes": 2522,
+      "sha256": "1d97dc3c26c23f3ff7576d2022e18d8ca87f78531a64284addbe1472b8ac3087"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/list_mcp_resources/plugin.yaml",
+      "bytes": 880,
+      "sha256": "12f874c8b47a8600cb50742c683c60bb1bbc01d43e5c69aa0b5350bd415dd472"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/read_mcp_resource/input.schema.json",
+      "bytes": 576,
+      "sha256": "99bb5fea5f44d507585a3ba512addda2050c9a54ac99647977f2fe0932563650"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/read_mcp_resource/output.schema.json",
+      "bytes": 3007,
+      "sha256": "913b8a04ef378864565dfe764d0a84e8c4434557f998cb67bcc6a21f89c8f1c9"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/read_mcp_resource/plugin.yaml",
+      "bytes": 877,
+      "sha256": "3f3c6e3397da857f1d57c6ee4522d3ed71ae49c086da6a61149edf218e45f42b"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/schema-index.json",
+      "bytes": 1395,
+      "sha256": "4ff8e6e0c9ef697c02517426a948479f5976806c9f4249c954a69fa579b826db"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/server-profile-v1.schema.json",
+      "bytes": 2986,
+      "sha256": "906bffc7e23bfb3a7065d2059aff541a07061c8941318855462d0999a75c5b13"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/contracts/task-binding-v1.schema.json",
+      "bytes": 5115,
+      "sha256": "eac67f85d9d731b12a51bb7bcd214776da07566ec0a25db7aba5bf2d158961cf"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/G02-inventory-extract.json",
+      "bytes": 4301,
+      "sha256": "c1aa8eb0566ff1497ddefd696a173fce78cd58eb0ea1314e0583c70d538e98cc"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/LICENSE",
+      "bytes": 1065,
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/THIRD_PARTY_NOTICES.md",
+      "bytes": 24780,
+      "sha256": "260b8f9e14d68c083c8abe5d0c6b4cb5212d5f03025f327fdcd9656629222879"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/attempt-history.txt",
+      "bytes": 1672,
+      "sha256": "26dff66ac0d1f68636fd1761be9a95e0e76446f335ab71c56115a4c53081b127"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/contract-check.json",
+      "bytes": 1484,
+      "sha256": "9b16aa7e8b8d80a035792ff202b9ed701a4b64b0988535514aebcdb0d6828c2f"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__docs__implementation-p4-runtime.md",
+      "bytes": 11656,
+      "sha256": "9790d771813b3dbe44a095c9f64a0b599d0663564e8dcc701515891951dd2d94"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__src__main__java__io__github__lovexiaopeng__jimu__adapters__runtime__search__NativeRunner.java",
+      "bytes": 13727,
+      "sha256": "97b1ce948d96b81a7419c923c05442b9db1ecc0ea873f9473fcde44e1e26f636"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__tools__native_bundle_verify.py",
+      "bytes": 2464,
+      "sha256": "6b98a4adc15fb946103d94842f34e2f0fd690dfa80aac4f5b9d6f3b93bb99c49"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__tools__native_rebuild.py",
+      "bytes": 22586,
+      "sha256": "7cbefe392d4f6b2f779ca12b4e84642fb7a599665c23cf94586c1010e73def1a"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__workers__search__README.md",
+      "bytes": 5763,
+      "sha256": "0a0859f70135d7dce6f530e366e576223821e4b12b722278cc96c00aee11f9eb"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__workers__search__v2__README.md",
+      "bytes": 6675,
+      "sha256": "6669a1f63c9d65967aa4ee5df7ea34a363ec814ab93bfc36edaf3491990c63df"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__workers__search__v2__pins.json",
+      "bytes": 610,
+      "sha256": "b38e8e58440da8e718af8ec2376c256d9361f80b69b6f99d598965d5bf252f11"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/jimu-master__workers__search__v2__source-inputs.json",
+      "bytes": 25208,
+      "sha256": "5676dcde7cfc2c21121eaaed1caf49536c52db3e64c6e90e586d3b3e0924100a"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/jvm-contract-probe.txt",
+      "bytes": 285,
+      "sha256": "0817f7f9b8e7e32a168330474751b6e167eb37a3742d651635780b86d934a0e3"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/jvm-probe-dependencies.json",
+      "bytes": 2065,
+      "sha256": "43d5d6fc03b39fff1c67683f4f8040163dd1a2e378f4c5222b95dd1f80b91a76"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/master-baseline.json",
+      "bytes": 1920,
+      "sha256": "8e9190372bb8d35b6c108c18f6539dba5287ea62e9bb2e797da5a4574906bf33"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/master-compare.json",
+      "bytes": 1267,
+      "sha256": "4a0de909ee578579e60cbc43bea397a494e856eff3cdd3c0022385b0aa67e3c2"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/mcp-spec__LICENSE",
+      "bytes": 12227,
+      "sha256": "0382b0057770ca05e9c350a50aa3b1c1fea84da0bc81d723bf00b9aa841be58a"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/mcp-spec__docs__specification__2025-06-18__basic__lifecycle.mdx",
+      "bytes": 8196,
+      "sha256": "9800e66e16cb0b71c339f6007fd14f6d17cc48741d4a8d381cc38f916bb6d05e"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/mcp-spec__docs__specification__2025-06-18__basic__transports.mdx",
+      "bytes": 13956,
+      "sha256": "df1217279334b6f3af8bb457191884ba831dce2c5389d7a0556ba920270ca902"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/mcp-spec__docs__specification__2025-06-18__basic__utilities__cancellation.mdx",
+      "bytes": 2491,
+      "sha256": "a95b0cccf6842dafddd4d5a421d36232d469229770341283cc6cebd57026b4d7"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/mcp-spec__docs__specification__2025-06-18__server__resources.mdx",
+      "bytes": 9519,
+      "sha256": "2e5b6dafc9f7a40196064e7ce3d1615c5820f78e663d0d064f1a1a3cfdcf935e"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/mcp-spec__schema__2025-06-18__schema.ts",
+      "bytes": 42430,
+      "sha256": "7d7f4cc6f3adb76e3fd5e1eee6bab8b1e183cfaf719da66d2aa5661737ca9539"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-client__package.json",
+      "bytes": 2309,
+      "sha256": "b6b39815c81557dfbfc643da56a12f14439361d88552728b434b4c79cdfc9578"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-client__src__connection.ts",
+      "bytes": 18741,
+      "sha256": "06dc1b3a1297b8b23f6ac5c44f3ba6740716c76db71c28cfb8f14d6c0340030e"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-client__src__server-context.ts",
+      "bytes": 1475,
+      "sha256": "02ca9fe759891788572385a00f0cc7b6e92d6e98e103c1d00dd99ccec0d6319a"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-client__src__transport.ts",
+      "bytes": 1594,
+      "sha256": "6f3fca685af3d5654c476e95db24e1245dc1fa021a0bd7f477ce4ad997e1c8f6"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-client__tests__fixtures__resources-server.ts",
+      "bytes": 1354,
+      "sha256": "09e869798f4ad88aa43845904b9ca933eb82b1b93b81bed3315bdd86742f4153"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-resources__package.json",
+      "bytes": 1563,
+      "sha256": "cba024e9f05b7538e204d584b99d6c69a726040a2eab9016142297d5ebca61fd"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-resources__src__index.ts",
+      "bytes": 5314,
+      "sha256": "6b19614393d187629b7d273d8e8bca3d30f45cf0eac75b51493d0678eb809b65"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-resources__src__render.ts",
+      "bytes": 913,
+      "sha256": "10a9d2bea66851c5cbf47c263bd673f20b72072d0dd514baf8a8bd2a0e68822c"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-resources__src__tools.ts",
+      "bytes": 2704,
+      "sha256": "a415aa6edea0ae5efdb71e02bb48d79a454ce97e0cc9f3b5f0c15631d5994090"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/packages__mcp__mcp-resources__tests__resources.spec.ts",
+      "bytes": 18495,
+      "sha256": "5e351ff55611236c72e6c4dce458d2f43465927c92e91154a0d76dafa767773c"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/protocol-probe-attempt-1.txt",
+      "bytes": 3482,
+      "sha256": "9eb1c1e58f1b82ffc7cf06e8286b36eeee43719ba0f65094e06a7bcae44603cd"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/protocol-probe.txt",
+      "bytes": 3694,
+      "sha256": "7a145ea98be7454659dd51d804f724c245e9e3bd2edad4d6618f2f4211d882bc"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/reviewed-jimu-sources.json",
+      "bytes": 3197,
+      "sha256": "3b25e38ba14c12ff71c37f8fe44a6dac1beb5421842a00f252e2ab1a9ae1ee2a"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/evidence/sources.json",
+      "bytes": 9963,
+      "sha256": "cf8bd80241698675c1c7f5ca6520927f7d42db14cf74b8c612da51bd3ac2f6f3"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/fetch-evidence.ps1",
+      "bytes": 4518,
+      "sha256": "7180ed64af00fc228c62f9ecbe668d16483b1cf0de58807b76db286f387e32b7"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/implementation-contract.md",
+      "bytes": 23524,
+      "sha256": "b1d5c37dd0792748e1a75f2045899b93e4afe015301299fe7ce87deae5c272ac"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/make-contracts.cjs",
+      "bytes": 8190,
+      "sha256": "1665e3f365b5ce11d0b3f59c5581a538eb612a66690d1465c90efef885523315"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/package.ps1",
+      "bytes": 2190,
+      "sha256": "8b794d966802a503653572cb37495166225a0d4ee1ccb925b5352a2d372d40a8"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/verify-contracts.py",
+      "bytes": 3132,
+      "sha256": "422ae56ed12920599f0374e933fefae5fe926576d4be1635de25c21532442a0c"
+    },
+    {
+      "path": "docs/verification/XIAO-48/architecture/verify-jvm.ps1",
+      "bytes": 1936,
+      "sha256": "09290f13079d6687713a092c3181657807005a93c124a0dc2ac55cdb86678342"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/ADR-0008-durable-user-questions.md",
+      "bytes": 6781,
+      "sha256": "f7845c1c34466de1e40591d910dc422c156c0f339d97be8271ee299502ab63e4"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/ContractProbe.java",
+      "bytes": 1391,
+      "sha256": "1519f8d4ee7e05467fdbd367c38f630cb3f7d7e0acc62f042fdc2c36404221f8"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/PACKAGE-MANIFEST.json",
+      "bytes": 13776,
+      "sha256": "9be58ffe2dab580ea7ab07c93c9530bee4f32f2bf00396a16e8be5a41cf9114e"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/README.md",
+      "bytes": 2009,
+      "sha256": "ff291d57285a484d6a03edfb36f5326af1873d8e4252bf4406c9505fb9d9a64a"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/SuspensionProbe.java",
+      "bytes": 3809,
+      "sha256": "0c693ce9a3fd47f75bb1f3c4a5e263b0ceeef2b3f9cf69e1084dc3454ac1b990"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/VERIFICATION.md",
+      "bytes": 5476,
+      "sha256": "0f6d553721dceb57e33631dcc88caadc62c6083cb63d9e91b8ef79bf297cf9df"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/answer-receipt-v1.schema.json",
+      "bytes": 967,
+      "sha256": "869e2ca6debd97f80ac35378112c7a3cfab7c5f50d6e46b7059ccd41b0c05e6b"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/answer-request-v1.schema.json",
+      "bytes": 1280,
+      "sha256": "35fbb2c105f94b3f3e3cd8507d4aa6412ea57912d54c4c3c6469ec93e4df4112"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.1.0/description.txt",
+      "bytes": 112,
+      "sha256": "25aea8b40ebb02a055b0c8522f5a1c5c8982808a91e146fa316708719f69dd30"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.1.0/input.schema.json",
+      "bytes": 1597,
+      "sha256": "b4826a19462ff68aa2325843edf26b9d60ac0558d3f0c3f800e53875345102dc"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.1.0/output.schema.json",
+      "bytes": 1026,
+      "sha256": "01a8cfc1f700d5d7a6be665480284073143841a27d8fd99b4ad76f9e3a7a4fe0"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.1.0/plugin.yaml",
+      "bytes": 926,
+      "sha256": "8131479a7640390bd1bbe282fe337588c2cec0bd101005b4262e1779a22cd60c"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.2.0/description.txt",
+      "bytes": 320,
+      "sha256": "6cf520f97ce9afb915f02dda551130f04f2c16f613b7ffa0e28fad38e7b76c52"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.2.0/input.schema.json",
+      "bytes": 1899,
+      "sha256": "57fabb51fa4dbfc961f455e559bdc17aac95ead256e46c0d6f9f41f8eee913f4"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.2.0/output.schema.json",
+      "bytes": 1929,
+      "sha256": "298380b43ca65139d77a05ff886a21b82eead5444d86f7109b76ec04ba1853b7"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/ask_user_question-0.2.0/plugin.yaml",
+      "bytes": 926,
+      "sha256": "c7d14d8bfa825bc249da3eb8457d90ffc20ca587855e64f612e17da482c26378"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/catalog.json",
+      "bytes": 1847,
+      "sha256": "7ba04c41f8ce7129ff427d6202637ed9d4d9ec060028615a346359f0e88844b6"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/examples/answer-receipt.json",
+      "bytes": 273,
+      "sha256": "23fc0e6f769bb1b22638310d3394f88016affa4d997042a8941bec58409021e5"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/examples/answer-request.json",
+      "bytes": 147,
+      "sha256": "1546a93beaf90cbfea486769a5f6292d3d6dedb0115ef6e108ee4289c62fb553"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/examples/answer-result.json",
+      "bytes": 137,
+      "sha256": "9079f80708d0236ba2ac34d68198a85d784de46bb7bc2c20772f39a7534d1e1e"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/examples/binding.json",
+      "bytes": 295,
+      "sha256": "6babc22a82bc650f362bef630849aa2f63a6472648c44e9041e959d6e2988d75"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/examples/blocking-input.json",
+      "bytes": 280,
+      "sha256": "e4d923be83f19acb12d25eb4914e79a035f5e314851a90124771291e5c287785"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/examples/empty-list.json",
+      "bytes": 34,
+      "sha256": "da6fa0fb6dc64a3faf1f81f830b8696ccf02b9c654135111429090fa240870f8"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/examples/indefinite-input.json",
+      "bytes": 122,
+      "sha256": "bc172f14cc7308d559e7e3a516b86d304480eedf9b1c4a13fe8c8132c7ec8aa1"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/examples/late-reply.json",
+      "bytes": 532,
+      "sha256": "4c2e569c730506b3cc0e9b74531c70e50b5f529491839053573e89d37c8a73a4"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/examples/open-list.json",
+      "bytes": 749,
+      "sha256": "e0eb63912914a4a380a3af10b0187e23616982e5415bd9aadf2cb390896c8742"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/examples/pending-result.json",
+      "bytes": 367,
+      "sha256": "d4a8617e6fa063e2da34e68b2e1ae02ae40953d1d49331996251ac145eaddedf"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/examples/skip-result.json",
+      "bytes": 76,
+      "sha256": "9631cdea506f30b8e818524e3c04ee27ad9325de3b5dcb3b2f3044107d5fd590"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/examples/timed-input.json",
+      "bytes": 256,
+      "sha256": "3264ad23740d56b99bb328175007b4ebf864d769a139d4b644a18e3e9882dc11"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/late-reply-v1.schema.json",
+      "bytes": 2743,
+      "sha256": "e02623a944bc41114c0c0c8c1bbb7b66ab53fd133dd81a962f71edda42a65489"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/question-list-v1.schema.json",
+      "bytes": 6346,
+      "sha256": "e965de1b107ede8acf06a0f543ef595ddd3d1909e3baf1673e75ea61073ebe2f"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/schema-index.json",
+      "bytes": 1970,
+      "sha256": "18a4863b00c5bb875ca9a62a3ed79b2fa99009a2cefa939a8c722cd7dc2ce005"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/contracts/task-binding-v1.schema.json",
+      "bytes": 907,
+      "sha256": "d6d6828a4a16bf222d5af3eda83d44b222f11c22db8e2a100559e101313dfa89"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/.agents__notes__implemented__architecture__2026-09-19-timed-user-question-two-settlements.md",
+      "bytes": 15141,
+      "sha256": "2f81984cbaef261d79f384636efd4b2979a1e2accd2173bd35db5c9ec74c2730"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/DefaultToolCallingManager.javap.txt",
+      "bytes": 44997,
+      "sha256": "a6a569def219ee612d6b2d91df4dc629b50b6b5675914717be23e773aead77ea"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/LICENSE",
+      "bytes": 1065,
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/THIRD_PARTY_NOTICES.md",
+      "bytes": 24780,
+      "sha256": "260b8f9e14d68c083c8abe5d0c6b4cb5212d5f03025f327fdcd9656629222879"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/ToolCallingAdvisor.javap.txt",
+      "bytes": 52843,
+      "sha256": "f86279920be8a90cf5da45878fde1a52be1e73bbba699634fe8e493144b1a97c"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/contract-check.json",
+      "bytes": 690,
+      "sha256": "e9ca9bc864d24f5d67f8c8e05d6da03ca71b4da71efb7ff48398b94f14dc6165"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/contract-probe-compile.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/dependency-classpath-log.txt",
+      "bytes": 894,
+      "sha256": "4295f6c9ef1c60f1e9812daebba6c5be03a000d030079a744fecae71845558e5"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/docs__persistence-changes__2026-09-21-user-question-reply.md",
+      "bytes": 2305,
+      "sha256": "6dc43e2b60727a294526d7643cdbeb8e918b9e22c93508425841fbc117e5848f"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/docs__subsystems__user-questions.md",
+      "bytes": 16654,
+      "sha256": "9d90ad794fc1fe22ae9c54a8162b27d0e6f46dfd6fe0a3ba81ea05d1e037ea7a"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/framework-probe-compile.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/framework-probe.txt",
+      "bytes": 596,
+      "sha256": "6f232d9ba41147dd157eb6299bdc2243647427c84d3714d35e98b8bfa48bf7fe"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/java-version.txt",
+      "bytes": 208,
+      "sha256": "c09b3f6e7993628681d0f0e0fdfa12ccbfef6d7798ad260ec13807486db8b267"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/jvm-contract-probe.txt",
+      "bytes": 74,
+      "sha256": "fdffb8b9f33fa3065874f67d5cc07b83a003f6cc3a01ef98da7c998e19b1e820"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/master-baseline.json",
+      "bytes": 531,
+      "sha256": "f6eed23222d720779776ed653312e0d157783f47a9bc5459454673c7f0d90e28"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__client__ui-user-questions__src__client__QuestionComposer.tsx",
+      "bytes": 28612,
+      "sha256": "e6a763552a3ebb3dcc18f1043f5437e7c4a32b5c796128ee284a5cf21108df20"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__client__ui-user-questions__src__client__index.ts",
+      "bytes": 17729,
+      "sha256": "909f686a18a45ea81119355c1d9c3aa199c722578478e3e8e1332f9606863ce2"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__client__ui-user-questions__src__client__question-reply.ts",
+      "bytes": 7494,
+      "sha256": "2ce7aa0e8b469412b68a61c7ffee7007c6cc66600bfdf3d19904774040d512fe"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__client__ui-user-questions__src__index.ts",
+      "bytes": 457,
+      "sha256": "76a004fd33761675527d201d9870079e6ece96bbf3083037530b0f7679470b69"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__client__ui-user-questions__tests__pending-question.client.spec.ts",
+      "bytes": 6319,
+      "sha256": "5c6ff23069e22ec07271a01853f5785f8a0610da299f2450e0fd22dd7ba9a5f4"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__client__ui-user-questions__tests__user-questions-composer.client.spec.tsx",
+      "bytes": 45403,
+      "sha256": "a7a2514b30436178e251c5e3212a57302c448500c9239edda43dbac39748e08b"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__tool-ask-user__package.json",
+      "bytes": 1380,
+      "sha256": "b826ac166ecf18d6f3bedee4db9517d73fe7732ffc8eb2f75bcc1ce2cb0ebadd"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__tool-ask-user__src__index.ts",
+      "bytes": 4419,
+      "sha256": "592f5b7b2e8528180b1bce69b33010d38b1e4352514484cada991c0add0e5bef"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__tool-ask-user__src__timed.ts",
+      "bytes": 9097,
+      "sha256": "c11da1a785add253eb99cda4a56e6729bb3a6191cc59b07533a8165faabdd942"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__tool-ask-user__tests__tool-ask-user.spec.ts",
+      "bytes": 25664,
+      "sha256": "5590a4c4efd6edfd63be7a477426a7737c2666beb9f3bd2c275f7aad4c652b51"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__user-questions__src__index.ts",
+      "bytes": 15058,
+      "sha256": "5bf54301a5560daf36a75ec12496a57dc7d2f20d741e17895df3c03584673106"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__user-questions__src__projection.ts",
+      "bytes": 13979,
+      "sha256": "d01796bd8d4fd098bf8f004ccced882c8a243bb88b563871abc26dc98c9a3e7a"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__user-questions__src__timed-wait.ts",
+      "bytes": 3107,
+      "sha256": "adc8a7ac7d079a8d468a0607329aec6025865ff366482790cf62edeb269c61ae"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__user-questions__src__types.ts",
+      "bytes": 6385,
+      "sha256": "682e2c58e1915019b3ef50be91a4edcdd7ba6cf3e4637baeb0fb4efa7319fa93"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__user-questions__tests__timed-wait.spec.ts",
+      "bytes": 4196,
+      "sha256": "dd9cf726d25092931b671468b3b7c407679493b886313b2a23a1583b435ddb59"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/packages__interaction__user-questions__tests__user-questions.spec.ts",
+      "bytes": 37725,
+      "sha256": "e654e9dc67b3f1bc04d49dbf31ee34fc009f398de08e35e49b85982ceff9b612"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/probe-compile-log.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/probe-dependencies.json",
+      "bytes": 14097,
+      "sha256": "a0074ad2f8f661948dca9d286841fc169950d7ac1a94cc3640d585034a597137"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/python-contract-probe.txt",
+      "bytes": 69,
+      "sha256": "4c5dd55622b89cc44c572f0c5ff7f890600507f066805a8401272c62909137d1"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/reviewed-jimu-sources.json",
+      "bytes": 11596,
+      "sha256": "ba0ffb4182027fbf75b967744b1057cc9b44422e0bcc07bace36159bcefb8124"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/schema-cases.json",
+      "bytes": 26970,
+      "sha256": "12d578d952d6d8faa91dc82b49d1e49f792fbdb6d475735ba34cd486cbbffd66"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/source-layout.json",
+      "bytes": 156,
+      "sha256": "c1ba54e82ca417d2b4bd8cf31a7866036f35073e5c6e34a0d0bbb6384b591ebb"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/sources.json",
+      "bytes": 7900,
+      "sha256": "10cdd368d4c8b661baacd36ff7ef37438fe0403d44f1c9b10ca7fcf856970050"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/evidence/upstream-tree.json",
+      "bytes": 6280144,
+      "sha256": "4656134c0ff0aef89018356e0ec0da54f74f6da43871436f25eb59a97169284d"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/implementation-contract.md",
+      "bytes": 24182,
+      "sha256": "12384ab9e3b184efa571307be08a8eb7ab045765eda895574e93fbae0be1023c"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/make-contracts.py",
+      "bytes": 11448,
+      "sha256": "4c45dd3000d9e8adaf684f22fb83db4c0dcad0b59e29bc66a1084643cd85ffff"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/package.py",
+      "bytes": 2754,
+      "sha256": "799740b34b66d1d6303fe3475bf8ae65480f4660abe2d3c418e7eec818c0da26"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/verify-contracts.py",
+      "bytes": 7122,
+      "sha256": "aacd2195fc366456b1595f7ab649b2f3c3936ebcc2eda323d9c5ca03a4c1b999"
+    },
+    {
+      "path": "docs/verification/XIAO-49/architecture/verify.ps1",
+      "bytes": 2700,
+      "sha256": "34eaf1be4f3ec112f78951d9fa16721088fc8351c3e9d439a2c95b8e44aa6218"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/ADR-0009-task-todo-projection.md",
+      "bytes": 6337,
+      "sha256": "e86c20bcee171191e7598f92ccc8f9ddb0bc3f31511ec2355eb6ec685b7de6eb"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/ContractProbe.java",
+      "bytes": 5428,
+      "sha256": "19e932826057da533c926399b05c2a72ed2a732d82917965fb7bc7a0ae4fedd1"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/PACKAGE-MANIFEST.json",
+      "bytes": 15129,
+      "sha256": "64648fe3793e77b936a962364deb70a932994d206f74f53a2d7ea6e19b970cc7"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/README.md",
+      "bytes": 1863,
+      "sha256": "17972ab4f93303c57f3102ac5feb045615978dce3e0d73394b0a1a09054699c2"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/THIRD_PARTY_NOTICES.md",
+      "bytes": 650,
+      "sha256": "b23c431349c5a0cecbd0d1c53d95743e3e93e71f3c04ee159f8e66d94a89a8e1"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/VERIFICATION.md",
+      "bytes": 3352,
+      "sha256": "36a27634a650e6493d1b1ff3b2044baa1d87823ae061081ba64de1822944927f"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/catalog.json",
+      "bytes": 1404,
+      "sha256": "af06bd067b9d7a4ba55f71dbebe32b0e106af3a8fcae88b53557ca487951afdc"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/examples/absent.json",
+      "bytes": 202,
+      "sha256": "2def954a202f5a24497336c44b620d8b970c6e6fd70f1d975ba3e34974142356"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/examples/binding.json",
+      "bytes": 760,
+      "sha256": "9334726a83a7c4e22533889d9a9efb31360cdc7d2f417db9d7136afadc89abb5"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/examples/empty-input.json",
+      "bytes": 18,
+      "sha256": "b0589fd879719ad744379d0a2f24e0fbbff61aeef4cf957c795682c62cef08ed"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/examples/empty-output.json",
+      "bytes": 95,
+      "sha256": "282ed6832d874f3d4d44d2f71c242658cfff48575dedfd7d3a13294ff3da71bc"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/examples/empty-view.json",
+      "bytes": 762,
+      "sha256": "a58652093c839a9498977b63f577fd3afe1b3c630faf3a3d1bceac2b4a3d7940"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/examples/latest-view.json",
+      "bytes": 915,
+      "sha256": "89a739383119ed10f80a9642d987ee87cf70c23dd4304d58383d86cdc680bc9a"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/examples/purged-unwritten.json",
+      "bytes": 220,
+      "sha256": "1c331bca326d87534dff72caff968573370d843b62106add1004b58c44f15634"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/examples/purged-view.json",
+      "bytes": 763,
+      "sha256": "1292c739f81b420118b05395a6f6d052ea347b559310a2b74f3f3e76db92996b"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/examples/replacement-input.json",
+      "bytes": 171,
+      "sha256": "abbb8dc744dcca375163d78d8ad1de166893f153b86b5ac8de69360fa3c0355f"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/examples/replacement-output.json",
+      "bytes": 248,
+      "sha256": "eedafa744e0b80d774efb92c280ea51ca40a3d6f2ddbea12ef48d94ce5f1522f"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/examples/unwritten.json",
+      "bytes": 223,
+      "sha256": "97b66eac66628f1726e86e67c8fbd78c1328069e86725adb3f78ec5ed92ea2a2"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/task-binding-v1.schema.json",
+      "bytes": 2170,
+      "sha256": "2650d93bac1aa35cb9ae958fb045a1d3ef1299beedc879d32ac682a2bf8f8530"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/todo-view-v1.schema.json",
+      "bytes": 12668,
+      "sha256": "039171d4ecec7cb31f7edfe40a53785d6bb9593385b0b1b72aecbcaed43f0ca2"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/todo_write-0.1.0/description.txt",
+      "bytes": 477,
+      "sha256": "05bef58a8da85fa207fddd674a930d36ef4225db37575e4c5cb1c638c757b644"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/todo_write-0.1.0/input.schema.json",
+      "bytes": 754,
+      "sha256": "18f340ae56366ad533d2ed6eb3dce4cda9022110ac4be2750b1134f05096b1d1"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/todo_write-0.1.0/output.schema.json",
+      "bytes": 1303,
+      "sha256": "5aaeeadb3ce3e7e8c34e991dcc85b87cf4ce5e9502163b9b8668523bf49df99c"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/contracts/todo_write-0.1.0/plugin.yaml",
+      "bytes": 842,
+      "sha256": "fbece39d857c7576cade7a0132ba466ed9476b86fb4d3280308234a6ca3dc36f"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/.agents__notes__archived__architecture__2026-07-20-todo-event-ownership.md",
+      "bytes": 3262,
+      "sha256": "4c92c6dd9a5879437224f57616d1e106bf5a6afc1dd6229b033a01a51a035470"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/.agents__notes__archived__feature__2026-07-28-todo-plan-clears-on-next-turn.md",
+      "bytes": 3091,
+      "sha256": "af16dd33b87cf31d097e8e1292c590461a6e4428f80b21580c724c61ae602b51"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/G27-inventory-extract.json",
+      "bytes": 2197,
+      "sha256": "feb221f92ca9a1239d731c9f3b8f1ca60f0aebc117a8985b5e68caa998099083"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/LICENSE",
+      "bytes": 1065,
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/THIRD_PARTY_NOTICES.md",
+      "bytes": 24780,
+      "sha256": "260b8f9e14d68c083c8abe5d0c6b4cb5212d5f03025f327fdcd9656629222879"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/archive-byte-differences.txt",
+      "bytes": 135,
+      "sha256": "aa5def5f0e7bb6b057976eb1d74332adadc1829587c54115c90e60cbedabbbfb"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/attempt-history.txt",
+      "bytes": 1615,
+      "sha256": "7b64a9fcca7ee8b11001c352a4bc3b75b74583f3b5bc8d5e200ff7badc8a5f74"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/contract-check.json",
+      "bytes": 179,
+      "sha256": "e26272812102c22d45360a438e643a4f131114519b8cac5034c8ba86bef0a4f4"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/dependency-classpath-log.txt",
+      "bytes": 861,
+      "sha256": "cfb6180a99e44f1bc78d050ca8bf9070f2675ee84b4c5a48c632e0c85b2f2a58"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/final-master-check.json",
+      "bytes": 199,
+      "sha256": "c419d72f4816b6d61f71cb5686171ddd72323d716146fbd373af433fd49c2eb3"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/frozen-migrations.json",
+      "bytes": 4000,
+      "sha256": "844fdfc93ee6ce2b06883aa5ba17c3167a7234ff88677e2d3ffb07c9d71a3abb"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/java-version.txt",
+      "bytes": 208,
+      "sha256": "c09b3f6e7993628681d0f0e0fdfa12ccbfef6d7798ad260ec13807486db8b267"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/jimu-master__src__main__java__io__github__lovexiaopeng__jimu__adapters__ai__springai__DurableAgent.java",
+      "bytes": 39259,
+      "sha256": "395b5429f8611a191768223f95e0ab1aecf62e9b91edca10b4d796a6502b355c"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/jimu-master__src__main__java__io__github__lovexiaopeng__jimu__adapters__persistence__JdbcLedger.java",
+      "bytes": 223696,
+      "sha256": "07a169daa8fae2460c8cf183efdc2a1e32daa4e6929508064fe068a47e67d081"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/jimu-master__src__main__java__io__github__lovexiaopeng__jimu__adapters__runtime__contract__SchemaContract.java",
+      "bytes": 1977,
+      "sha256": "bfd42fccd264dd9b5b00cb69c0ccc771d89abfbf2fc083d73da66d912c92e5d9"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/jimu-master__src__main__java__io__github__lovexiaopeng__jimu__adapters__runtime__worker__WorkerLoop.java",
+      "bytes": 3902,
+      "sha256": "e86cbe664a60e33dd209a63207d9c96ccf2249d8c778f376c7c62818f962dbcb"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/jimu-master__src__main__resources__db__migration__V16__durable_user_questions.sql",
+      "bytes": 2694,
+      "sha256": "8b24cad2e4cd2c8118274972e81623a832ead2b47f0899f33b51a6ae93258c28"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/jimu-tree.json",
+      "bytes": 284416,
+      "sha256": "2a9bdd7cf32aa56adaa11745745cf1f26ffe14d31ebcdae4f7b38ff4a5d55fd3"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/jimu-verified-blobs.json",
+      "bytes": 172688,
+      "sha256": "8ad1fa7dda803ecb60e2f0f16e448e874474235ce7f7caf06991a6436cd4e9c2"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/jvm-contract-probe.txt",
+      "bytes": 208,
+      "sha256": "f1cdea4e6cb9735caf5b8a988190f5ef7c426fc64b2e8871786bd535ea78ed3a"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/master-baseline.json",
+      "bytes": 404,
+      "sha256": "0c0f9786dd2e121098da6769a1bb8abc5f82a0b3f0414533f6883a4f86bb0ee5"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__core__agent__src__index.ts",
+      "bytes": 31398,
+      "sha256": "218b30227cdc55d4c193112495a852507d12070028572ac95e6f9d1f954d1077"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__core__agent__src__projection.ts",
+      "bytes": 360,
+      "sha256": "2113e31ffcb4c98a1d4ddb15d36ee833f086ed5965520febaca65d6dbea6fe40"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__core__agent__src__types.ts",
+      "bytes": 3887,
+      "sha256": "b237d5d00d9b549cc32c7d91e08aaf83004d14d2bfa0179eeebc3fbfe18fed62"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__core__session__src__index.ts",
+      "bytes": 65812,
+      "sha256": "c1f08f7dcf4075eeebb13e6ea06b3f348bfeb85b8a5d4e4bfd1c3b93c1959332"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__core__session__src__types.ts",
+      "bytes": 24681,
+      "sha256": "515cba50f366b06dc3caaab45e8ce98c48c80fc07684437aba014df13ce04f2f"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__core__tools__src__index.ts",
+      "bytes": 91055,
+      "sha256": "0f49b0958f0c8a8e3678505a05ebba1d34b3938653233600297b1cbac244fb1f"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__core__tools__src__types.ts",
+      "bytes": 2897,
+      "sha256": "26c2c9ac831526d9bcefe5ee3b9b1a6a8ca313d43efffe579670366790539bb6"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__session__session-persistence-jsonl__src__index.ts",
+      "bytes": 75605,
+      "sha256": "52cad4e39f5ba4d173ec322c647f16bac12385b4819aa07684f12a123f94f72f"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__session__session-persistence__src__index.ts",
+      "bytes": 8535,
+      "sha256": "d3da1fc3977e23eb5c2f73d6245a0d9c5967f9a0d755065e74ccd26e76794f14"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__session__session-projection__src__index.ts",
+      "bytes": 31588,
+      "sha256": "f6e57c06f57b20a74e87a8a476a7adfb67ccbbd3d924bd52420db93ac9a7381b"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__session__session-projection__src__types.ts",
+      "bytes": 1066,
+      "sha256": "6ad9530ea5cfc8ff3e73b34413e5757da8091248b0a874c304f5c5a83500f555"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__todo__tool-todo__package.json",
+      "bytes": 1908,
+      "sha256": "71b4ed98935f0cdf4a60c53f3a2b270b20e1cca99a3287b8adc3db9efb96678b"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__todo__tool-todo__src__client.ts",
+      "bytes": 373,
+      "sha256": "803e092ec67d96b6fceb351f1d1fec5713c40adaffd6528813e70cc4cd498822"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__todo__tool-todo__src__index.ts",
+      "bytes": 8621,
+      "sha256": "74eed074d1b056cc0a029f9b8343bc9337c14f04696c528daaedcbebe9842a17"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__todo__tool-todo__src__types.ts",
+      "bytes": 1838,
+      "sha256": "2db87c666a0fad3dbca2dbf14c0f9a9f28f78bb4a1da78ddced4a1c0e5f0ba58"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__todo__tool-todo__tests__integration.spec.ts",
+      "bytes": 4276,
+      "sha256": "7e18b3b1fe8a463edeb0160b6ebd42ad5ef2dd22f8dddf3c1fd5d3ab07acc778"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__todo__tool-todo__tests__loader-composition.spec.ts",
+      "bytes": 6225,
+      "sha256": "7ada30f08840b0a785c7b2aa74c0d22e33ab137561e0418d6347412b1936a73d"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__todo__tool-todo__tests__projection.spec.ts",
+      "bytes": 4810,
+      "sha256": "4808edfde5d27fa0d63045ae1bc784d52a8cc22f24b396babeb95b31cfedb544"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/packages__todo__tool-todo__tests__tool-todo.spec.ts",
+      "bytes": 13459,
+      "sha256": "6b17d974f3aef7c4690ffac7a7999313f61637c7db3208b4e78ebafe6f5d6284"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/probe-compile-log.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/probe-dependencies.json",
+      "bytes": 13391,
+      "sha256": "d93195113743e22e07505d4bece13255d911bf9b8052d16c5fd0edf4eaa4623b"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/python-contract-probe.txt",
+      "bytes": 166,
+      "sha256": "2626ea66e1ab730193747ee6f70daf1590aa384c8d36a2e1ea862a342b1dce84"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/reviewed-jimu-sources.json",
+      "bytes": 6168,
+      "sha256": "23ec1210efb442e988e3af97ca8b63942609366007575fda24ab2740e352a453"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/schema-cases.json",
+      "bytes": 25422,
+      "sha256": "49037d74a8134153be8c515dad83b5d09be4f3a58341fed68616515264d3425e"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/semantic-cases.json",
+      "bytes": 50606,
+      "sha256": "101ceeb3e3976abedfdb2343fbfd56363afcf99ee0ec0b2b054eeafa3ba76aa1"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/snapshots__session__todo-write__session.v4.jsonl",
+      "bytes": 8203,
+      "sha256": "ffb32f2c8f873ccdef94b9ee974b44abd1139bbcdcbee1bd1bd97e6700d6c0e8"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/source-map.md",
+      "bytes": 3446,
+      "sha256": "f72cdc0774289c41961a8991b78f72407bd25175fd76645d5f14ee92b3b6f5d3"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/sources.json",
+      "bytes": 13429,
+      "sha256": "897a592b0f457c8bb47256f5991b71309913ddceab98e4a4b52018b4fccf8a7f"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/upstream-body-probe.txt",
+      "bytes": 235,
+      "sha256": "344147128e6b891b8f6a8f91bed90d16a8d75f04d6f2d30642166e0ea20326e0"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/upstream-path-candidates.json",
+      "bytes": 73977,
+      "sha256": "5d271b9ecd7dcaa19b6e7a51a0ac21c3d5aad60b5e5c7eefed0339711212c825"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/evidence/upstream-tree.json",
+      "bytes": 6280144,
+      "sha256": "4656134c0ff0aef89018356e0ec0da54f74f6da43871436f25eb59a97169284d"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/fetch-evidence.ps1",
+      "bytes": 3799,
+      "sha256": "3b3af53c0b8079e5f16c561f3dd97d8ddfa31569416e5d11db02a3213f71efd6"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/fetch-upstream.ps1",
+      "bytes": 2784,
+      "sha256": "92e4b2b68ff2e353ce47e20cc82c92d99ff5d1dacb06cac67c7b7f1f5e1b53c8"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/implementation-contract.md",
+      "bytes": 21689,
+      "sha256": "9d6b7becf926735abbbf517429e251bf9689823556a2b471318e3cad4221fb6c"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/make-contracts.cjs",
+      "bytes": 7617,
+      "sha256": "c134f925bb7614df8d5aae01fc05e696646abbf721a325a11d97df0d4f9980d7"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/migration-contract.sql",
+      "bytes": 4133,
+      "sha256": "044a2230c4cb53c9f5f0e9fe53e8855b13cf96f756e79766bc8cc323dd4a4d53"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/package.py",
+      "bytes": 1958,
+      "sha256": "5ee75a7a1a6c4c3d1f25a93a898ad2be41c149268278a8d1d8af038be140fc8a"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/verify-contracts.py",
+      "bytes": 7172,
+      "sha256": "57abe67ffc8e49fabef1c75998e7e3ca2b96c8988994bd0e7a12aa146b65f1b0"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/verify-jvm.ps1",
+      "bytes": 1423,
+      "sha256": "ddeee87ad3fb1be994b80e4b583e795d4c5020314afe8adf83e8f9169efe0c32"
+    },
+    {
+      "path": "docs/verification/XIAO-50/architecture/verify-upstream.cjs",
+      "bytes": 1276,
+      "sha256": "4aaefd16149bfc8a1f49ea45c7f928a1c565a85f3c22b0e9fbb867995ab20def"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/.gitattributes",
+      "bytes": 41,
+      "sha256": "558b65ed291cca45e3b7278b0ae7cf5c09f5244f99155c62b35cef779a3f44f8"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/ADR-0010-task-logical-directory.md",
+      "bytes": 3450,
+      "sha256": "506bb2518757e5e9c2e9561d73f967ca9599b3f7403327b7fe311f4060122b90"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/ContractProbe.java",
+      "bytes": 6602,
+      "sha256": "d0dcd31037d0fc9358d19ab22d484adbd5451d173458fcc2d02bf7cbb5943486"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/PACKAGE-MANIFEST.json",
+      "bytes": 11351,
+      "sha256": "3f03c8502bd5f2e0fdf87a284c613d235c2fed894b377a27f4169b938c2f9234"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/README.md",
+      "bytes": 2266,
+      "sha256": "25b104d6463f3d688fe2b758c6f7a0c428cc614438c957dec8685b785090cbf4"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/THIRD_PARTY_NOTICES.md",
+      "bytes": 857,
+      "sha256": "ca2f7d2bdebaada135040690b92a9bb4ba9d7d9096f366a4f5364bc636922ebe"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/VERIFICATION.md",
+      "bytes": 3426,
+      "sha256": "9fc68f6fcafebd4c5be25485aa7be8d98d28437863003d80fdcb369f90a3b44a"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/capture-evidence.cjs",
+      "bytes": 4139,
+      "sha256": "2481be35bfb693c29084e6cbe513cab2c6b54e533a476ba478121b2bc9ed523a"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/contracts/catalog.json",
+      "bytes": 2042,
+      "sha256": "efe109759f71352610fac1368c514df6a9e966df38f641d4f9d4e4a2e0af9139"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/contracts/directory-view-v1.schema.json",
+      "bytes": 5986,
+      "sha256": "610686fe2244869ef1d34bae37a34b4e47f5f308a89359f66cc85627efe359ce"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/contracts/examples/absent.json",
+      "bytes": 181,
+      "sha256": "3d5298c592ac2b1db6da8052dce14576c70982b9c50bde029fc78fae875274b9"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/contracts/examples/binding.json",
+      "bytes": 1274,
+      "sha256": "e876b8390d85ccdf6d11cfb4d08891f18f8b69ea5c094d8ec6c92a9d130c71c3"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/contracts/examples/changed.json",
+      "bytes": 697,
+      "sha256": "bac1b5ac7510d919e3b804f2d556769f323809616b11352db6277b9d934795a9"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/contracts/examples/initial.json",
+      "bytes": 199,
+      "sha256": "ed4d7794dd9df661f9435f4477afc8b3c5eb8acc7fb210d2443ab9e1ba7eaabd"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/contracts/examples/purged.json",
+      "bytes": 688,
+      "sha256": "845f4dc416b99ef05d20f0634734d6a7b0e429f6a440906f27f0e0786aef3979"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/contracts/examples/purging.json",
+      "bytes": 689,
+      "sha256": "cce000076e499896aa078be4af5b7e547eb1f485fab2a69a9b5c0b2c98f926ed"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/contracts/task-binding-v1.schema.json",
+      "bytes": 3282,
+      "sha256": "b827ccf527750f03e52828247a44dcc17e46b7bedf281a537e943783ca477a1b"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/contracts/working_directory-0.1.0/description.txt",
+      "bytes": 358,
+      "sha256": "cefaa4e939e0bd1397847dedc0bdd77da5f84d42ee8c9e77fbeae02c4437a7df"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/contracts/working_directory-0.1.0/input.schema.json",
+      "bytes": 448,
+      "sha256": "5c614cd160f74a9326226ee10faff2bd50739e972eb49a86c84827f43b98d81e"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/contracts/working_directory-0.1.0/output.schema.json",
+      "bytes": 469,
+      "sha256": "5cb3ee7a0697a415a91b8ece2bc2bd3338dd8185e0fb7a3a68697abeec365492"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/contracts/working_directory-0.1.0/plugin.yaml",
+      "bytes": 975,
+      "sha256": "edfc01edef4ca2b4c528f9590bc832f66424cf1300ac72d6fec5ac3fa7d7eb14"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/frozen-migrations.json",
+      "bytes": 3428,
+      "sha256": "d6cd567728670bc05fd00da1b1a02ba8c6c86406cd47b8e27575f6794a3ab226"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/git-commit-failure.txt",
+      "bytes": 327,
+      "sha256": "a2aac83852cea4bdc83b9eb0a8d61f93bf3a7a26228c7070abeb607de40a5b4e"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/git-transport-failure.txt",
+      "bytes": 449,
+      "sha256": "783e0c2acfd0ca0c5294c971aa9cc8178390f9e9e6c7271e1e5992e21133c386"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/java-version.txt",
+      "bytes": 208,
+      "sha256": "c09b3f6e7993628681d0f0e0fdfa12ccbfef6d7798ad260ec13807486db8b267"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/jimu-sources.json",
+      "bytes": 10195,
+      "sha256": "dc77b819c8da502ab2674e39d60d791921aa72b981f20972877d044582065774"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/jvm-probe.txt",
+      "bytes": 457,
+      "sha256": "e210bebaa570fd2b13d707bdafa474aafb95d16dededeec0344a4aec299b76c1"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/master-confirmation.json",
+      "bytes": 212,
+      "sha256": "9077520b1a88c32f349522ca5b2094abba73318ed85e26d005615f52e5d6d0e5"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/path-cases.json",
+      "bytes": 2134,
+      "sha256": "aaba26a8ecc4e5891a269a346ef32e9855e209bae71e2917b4b889708fd6618b"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/probe-compile.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/probe-dependencies.json",
+      "bytes": 14095,
+      "sha256": "47bfb37b5d942566c0f6c12185487465c75cd792525172471482ae7ffb1c5234"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/schema-cases.json",
+      "bytes": 16925,
+      "sha256": "df480687bde7190d96d03b2b8cce70a039e0738fc239ab69e71d244e1aa8163d"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/source-map.md",
+      "bytes": 2490,
+      "sha256": "823fd7a9b3efdb3f1d72aec3b80994b34d1188027ef17512a39aa880de17f629"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream-sources.json",
+      "bytes": 9763,
+      "sha256": "a928543d8161c7882c83603f296a75b615407e7cef467cf14f26548dc40c3991"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/LICENSE",
+      "bytes": 1065,
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/docs__persistence-changes__2026-10-05-working-directory-attribution.md",
+      "bytes": 1954,
+      "sha256": "bab0a8b0954677db806a2d38545abea79475968a8fe137ae3f77983306f9766a"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/docs__subsystems__working-directory.md",
+      "bytes": 4050,
+      "sha256": "a3cd2c2a02f8ffe6850a2af7d31b350deca4b72200be6e8cd6e3dbe703b05b10"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__core__session__src__index.ts",
+      "bytes": 65812,
+      "sha256": "c1f08f7dcf4075eeebb13e6ea06b3f348bfeb85b8a5d4e4bfd1c3b93c1959332"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__core__session__src__types.ts",
+      "bytes": 24681,
+      "sha256": "515cba50f366b06dc3caaab45e8ce98c48c80fc07684437aba014df13ce04f2f"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__fs__fs-local__src__fsio.ts",
+      "bytes": 37181,
+      "sha256": "d7cc70e0a8b06981b94e1ca64963f956f939892c4ea0399e282be5427c42778f"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__fs__fs-local__src__index.ts",
+      "bytes": 13039,
+      "sha256": "77cdf3a1a259c9e24fef28f42f937a6b5ce1ad6d692fbc8dab148925cc4f1f28"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__fs__fs__src__index.ts",
+      "bytes": 13191,
+      "sha256": "bb3e351a975fde0f5d313cf9374af958b5d92f85b9f7c6688ccc7098409690d7"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__fs__fs__src__types.ts",
+      "bytes": 7554,
+      "sha256": "5918ac1953e92aaeadb00d209c6043a8207c165e82085c9fdef4581f0b2933a4"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__fs__tool-fs__src__edit.ts",
+      "bytes": 7834,
+      "sha256": "2602b2482f5234ab26cddf656cbe0020b53dc69a36bb8a835b57a55ed23a2055"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__fs__tool-fs__src__index.ts",
+      "bytes": 4313,
+      "sha256": "8c14a541ff65e54c3321ce9675c807e320332d96eaa5078716632e4b73b0af80"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__fs__tool-fs__src__read-target.ts",
+      "bytes": 1464,
+      "sha256": "3e89ce59dae8d4d568ed0833d4c939ac9cd62eda380e1b4addf697a311b56d43"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__fs__tool-fs__src__session-cwd.ts",
+      "bytes": 980,
+      "sha256": "591e67a95f1ed4d819ab76cf6f43e57c21ca7d7450a452e9b8e0c951c6790593"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__fs__tool-fs__src__write.ts",
+      "bytes": 7025,
+      "sha256": "87287ca7774af83f8c4841a78bfcfe213c684d172648c7b108a0539d5c674d47"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__session__session-persistence-jsonl__src__index.ts",
+      "bytes": 75605,
+      "sha256": "52cad4e39f5ba4d173ec322c647f16bac12385b4819aa07684f12a123f94f72f"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__session__session-persistence__src__index.ts",
+      "bytes": 8535,
+      "sha256": "d3da1fc3977e23eb5c2f73d6245a0d9c5967f9a0d755065e74ccd26e76794f14"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__session__session-projection__src__index.ts",
+      "bytes": 31588,
+      "sha256": "f6e57c06f57b20a74e87a8a476a7adfb67ccbbd3d924bd52420db93ac9a7381b"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__session__session-projection__src__types.ts",
+      "bytes": 1066,
+      "sha256": "6ad9530ea5cfc8ff3e73b34413e5757da8091248b0a874c304f5c5a83500f555"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__session__tool-working-directory__package.json",
+      "bytes": 1422,
+      "sha256": "869b39af37a26b3cde310a94425cee60112d4152665f10f7ef2f381376c3d4eb"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__session__tool-working-directory__src__index.ts",
+      "bytes": 1656,
+      "sha256": "c318bea6a4ab0f8f5c1482334471fc217315111ee579dc9581635a1a608c23eb"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__session__working-directory__src__index.ts",
+      "bytes": 9151,
+      "sha256": "5d8b57ba56fe96f73713f66805342ca5690df50fb530b41846abc7d3d4447fbd"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__session__working-directory__tests__admission.spec.ts",
+      "bytes": 4477,
+      "sha256": "3669f75afce37eb992a5e7dfd1a34de14ca202c1642333ff04e1e92a512a0c58"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/packages__session__working-directory__tests__working-directory.spec.ts",
+      "bytes": 17919,
+      "sha256": "7ad082885ea4d9fb1bf026d727705dde7984816cb7915d4b97b036b6735bdbe4"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/snapshots__session__working-directory-consumers__session.v4.jsonl",
+      "bytes": 20952,
+      "sha256": "a2072029209eeb31e146755017c9a91c407ee6341a3186b4da6f06e585c6d679"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/evidence/upstream/snapshots__session__working-directory__session.v4.jsonl",
+      "bytes": 20311,
+      "sha256": "ba59581dd423bedffb7bb55d9f9b33f7784bc821772a6fae3114982daa940a97"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/fetch-upstream.cjs",
+      "bytes": 3515,
+      "sha256": "937dc8fd8791a53248191a84081a6f3e5edf85e85c02b911b167097547931713"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/implementation-contract.md",
+      "bytes": 30392,
+      "sha256": "9e1ccc9b607d0e0368f525098d8b9a8e99738d30d0713ef3e64d6fa3f3328d8e"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/make-contracts.cjs",
+      "bytes": 9967,
+      "sha256": "3c1a7ef4ee8c97e51294d84ed380fead1edfb3527e735f69bc8d365d2d6d3899"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/migration-contract.sql",
+      "bytes": 6483,
+      "sha256": "4f0b38e242120a7372511830d809da5926aa3002a59b7f71c152e625d3e4aaed"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/verify-package.cjs",
+      "bytes": 1667,
+      "sha256": "43a7c0d9949a64b5c2cde89079ca25fc9c76ccaaba287c24a5c4d5f68c40f9c2"
+    },
+    {
+      "path": "docs/verification/XIAO-51/architecture/verify.ps1",
+      "bytes": 1918,
+      "sha256": "3a54e081d0d5e177e7a8ab3cc54e09e79ca2477b22274c13ba5990996e00b9cc"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/ContractProbe.java",
+      "bytes": 10022,
+      "sha256": "d4bbd3c963daec7f54aa1948584bfafae3c1fa982fcb2113e068737af3afd9eb"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/PACKAGE-MANIFEST.json",
+      "bytes": 19143,
+      "sha256": "badcc4d4db919ca541b4474b4644864775029c90d0f174aa31bf65c80ae932a4"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/README.md",
+      "bytes": 2788,
+      "sha256": "d1a3db51b475ccc4e0907bf7a097e46401d37812242703a057b59d4f12cd4136"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/THIRD_PARTY_NOTICES.md",
+      "bytes": 998,
+      "sha256": "5ca4c68f0f122053570e0b6464b9321fc8a99fb9621f4d6111251f04c16a5e06"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/VERIFICATION.md",
+      "bytes": 3611,
+      "sha256": "97a46cd9989fa2aeba8ab8a458601e64d04c657b16d1eaeb955bd68c9d95343e"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/capture-evidence.cjs",
+      "bytes": 7856,
+      "sha256": "388ecfb7ba1fe5424eafad682abbbcc9d31aeba687af477f7292c182133133db"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/catalog.json",
+      "bytes": 1159,
+      "sha256": "82ac8d60427d7b60632c8d0072d2c6c4fff2858f9f8c342ca412080a703b24e0"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/context-v1.schema.json",
+      "bytes": 1283,
+      "sha256": "94a3ab013b2decf90cdf2ab54e3554ad6fa10d63037d0fdef36988697a3cb6f1"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/event-v1.schema.json",
+      "bytes": 8282,
+      "sha256": "7626dd1e7b1f599e3b5bcc90ca0190c44e48f4142b462ddf48634286fc2a8471"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/binding.json",
+      "bytes": 1098,
+      "sha256": "c7accb59b5216ffeda05ae7608a5ec49c033813412cb2abe49a3b2ca7ed9fb64"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/context.json",
+      "bytes": 405,
+      "sha256": "d5b25eb7aea02b09c50eb693082c9db0c301b6cc27a1a12cd67dcd1a7e1955b2"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/current-input.json",
+      "bytes": 71,
+      "sha256": "07dbea2c5b19f100cb80c455186e46af86b7277de004c2acf306b93ad44e3466"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/first-read-output.json",
+      "bytes": 749,
+      "sha256": "6b297e8e7110908d598cf568f9877ab17b879251058c38571db8b69604411d6b"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/first-read-output.wire.json",
+      "bytes": 581,
+      "sha256": "7bed00eb1df7fa697d67d82c8e7bbe5e97101bec7df8d8c5cf7bc64f522509bb"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/input.json",
+      "bytes": 44,
+      "sha256": "dad416dfb699bd23f447b0c282ca2d796f4215563b24357b194ae2d8c1cb9e23"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/owner-history.json",
+      "bytes": 491,
+      "sha256": "dd54b0d7de30ffff68d3ee1ff195f893d7f579278b0b076633bc6051686078f4"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/read-output.json",
+      "bytes": 1434,
+      "sha256": "b78f42c46e704513d4970bb4f9e825867acaa13a98c967a6466ae4776ade388c"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/read-receipt.json",
+      "bytes": 611,
+      "sha256": "ab4da31188b0bb9a2bc994147b9400222faaef3f90759cc8c11ca8a64f85cfe4"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/response-event.json",
+      "bytes": 568,
+      "sha256": "4cb9c684aae3315095eeb7ac36e87ef4dee4140b85274c8bd4582bc54fc38844"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/trace.json",
+      "bytes": 5267,
+      "sha256": "557c5cd40fbd110bc47fcb7eb2f3d4510d6396c9eeb7607eaf5380dad1ea6653"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/examples/user-event.json",
+      "bytes": 390,
+      "sha256": "bdbb1a52d412ab2d3b3064f5f717952bc3f28b3b2434e988d452b153d521f026"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/owner-history-v1.schema.json",
+      "bytes": 1611,
+      "sha256": "dd4291e10d0d60abc930826fa5f88c233281ea66c79868d93fa9b8e6118d6ee6"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/session_event_read-0.1.0/description.txt",
+      "bytes": 489,
+      "sha256": "353537c1d241ce90d0a707d60ac25fa615516ad3a28c37e41f64b9465549f563"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/session_event_read-0.1.0/input.schema.json",
+      "bytes": 627,
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/session_event_read-0.1.0/output.schema.json",
+      "bytes": 15590,
+      "sha256": "266801da14857cee3bb79a7ffcd2fadcda33e8bb5480c451917302171ed4c9b7"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/session_event_read-0.1.0/plugin.yaml",
+      "bytes": 897,
+      "sha256": "bb28507cfd9486a96ab2996e577342733816dd3d72923c2ae0e07f6dcdef2294"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/contracts/task-binding-v1.schema.json",
+      "bytes": 3080,
+      "sha256": "54a30c835bb7b27dc30f48e2d091703d051a13a2f3fe989232c4c43a1ddbca9c"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/dependency-classpath.txt",
+      "bytes": 887,
+      "sha256": "ccaf9b71c151c78ff2d913decd9510f0027a798b6edfc787f4433af0143a9021"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/frozen-migrations.json",
+      "bytes": 8040,
+      "sha256": "75d73c1205c5e9703bd8713867ace85488b3a416e3795f7e86dba13e82899d42"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/java-version.txt",
+      "bytes": 208,
+      "sha256": "c09b3f6e7993628681d0f0e0fdfa12ccbfef6d7798ad260ec13807486db8b267"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/jimu-sources.json",
+      "bytes": 13672,
+      "sha256": "5757c16f26bdc1ac29068d5b7b9d98f8aa965d19421802b65ee29db419c160e6"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/jvm-probe.txt",
+      "bytes": 89,
+      "sha256": "1b4fcce86519110464ff21a84e2d964f2b1a01417c46812d0687d86f0dae4ef4"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/probe-compile.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/probe-dependencies.json",
+      "bytes": 14066,
+      "sha256": "0184c5a6145267bcbd35fbee2a819ff6d45a149352ff5b3e9d657bafd011f9b1"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/schema-cases.json",
+      "bytes": 1975,
+      "sha256": "2b5ee5ec08c575e72cb33787918d3e42d9ec7e13f637b6bb4e6bab1c0f3276ee"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/source-map.md",
+      "bytes": 3508,
+      "sha256": "7e24db85cdeb379c6c630efd24855ab570dc00befeb02e9ef61f65efa3bbbb7a"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream-sources.json",
+      "bytes": 21078,
+      "sha256": "8f3e56ba42b046b39330c51264b17bdc46547d0140c64029cc25a5ab0841872c"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/LICENSE",
+      "bytes": 1065,
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/docs__subsystems__session-projection.md",
+      "bytes": 22473,
+      "sha256": "dac9f68590978614831fd43db91f726ee63ad90dd47c6a378e43fc159f9c610c"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/docs__subsystems__session-query.md",
+      "bytes": 21696,
+      "sha256": "56700e4a7dd44b34bbb1dbe066039f6c470d813876a90d50f606c863f4edfef2"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent-loop__src__agent.ts",
+      "bytes": 28972,
+      "sha256": "4add12f5c22bb1b8cf1dbc239c9b09fa3351feff2c936cb2b8900036468bd01b"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent-loop__src__index.ts",
+      "bytes": 39200,
+      "sha256": "3ea0262656c8ddcaa3be315c150bdc2af09371031c3c471d4ded511e21c6e86b"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent__src__index.ts",
+      "bytes": 31398,
+      "sha256": "218b30227cdc55d4c193112495a852507d12070028572ac95e6f9d1f954d1077"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent__src__projection.ts",
+      "bytes": 360,
+      "sha256": "2113e31ffcb4c98a1d4ddb15d36ee833f086ed5965520febaca65d6dbea6fe40"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__agent__src__types.ts",
+      "bytes": 3887,
+      "sha256": "b237d5d00d9b549cc32c7d91e08aaf83004d14d2bfa0179eeebc3fbfe18fed62"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__session__src__index.ts",
+      "bytes": 65812,
+      "sha256": "c1f08f7dcf4075eeebb13e6ea06b3f348bfeb85b8a5d4e4bfd1c3b93c1959332"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__core__session__src__types.ts",
+      "bytes": 24681,
+      "sha256": "515cba50f366b06dc3caaab45e8ce98c48c80fc07684437aba014df13ce04f2f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__package.json",
+      "bytes": 2140,
+      "sha256": "7c9521f081c49e116f850743b368d9e3aa35099ffc0ba7786c1ca94b7dd2c087"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__index.ts",
+      "bytes": 5993,
+      "sha256": "01ece54934bdec5f9145995d050b4af0e76c939cc695828f39da53a1089a2825"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__input.ts",
+      "bytes": 11609,
+      "sha256": "d27d365537360ec82402b91d24092d715906ffae74fb9ca947dfa35d58a5cb3f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__operations.ts",
+      "bytes": 10387,
+      "sha256": "e80e9c55e3e1568491bb9c6c356f7bd595fc9804f65c765a791e77e908c00c6e"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__presentation.ts",
+      "bytes": 8499,
+      "sha256": "f05f5fa18507d03cab12ea1c689e4f72fb448e1dab21245f0074a289520bf462"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__service-boundary.ts",
+      "bytes": 5417,
+      "sha256": "f67e74bdf163d79ec399c8f63865e9180346623ba970c60ea0d2cea76b20bd99"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__src__workspace-access.ts",
+      "bytes": 7822,
+      "sha256": "6f2f38689b945e86bf898ecd2063eeaa257c2aea27838f884fd1ee777f763e35"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__tests__sqlite-integration.spec.ts",
+      "bytes": 9039,
+      "sha256": "6ab114e48a688db0832ce7fc76f396fe8d3b859b12185dbdb4d042976c220b8f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__experimental__tool-session-query__tests__tool-session-query.spec.ts",
+      "bytes": 84774,
+      "sha256": "70cf5bc29d453266680ab1ed3a8d2c99fd239130640d92edfe8df72ddf988f3c"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__src__index.ts",
+      "bytes": 41094,
+      "sha256": "72868e4ae967fee94967df5939ee092a582249ff7b37afc4fe0cf7660d48b8d3"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__src__query.ts",
+      "bytes": 15548,
+      "sha256": "b29363581b715a1eb50509d7c5ff039d7d4004926160cd88ffcbadaa44ca1c48"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__src__schema.ts",
+      "bytes": 6098,
+      "sha256": "2cc4c7c8e50409847599a048922d55ef4ffbd1ac2309502f3a5a06420bc1a28f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__tests__query.spec.ts",
+      "bytes": 10405,
+      "sha256": "6e181e90f4cdba647a368a7bf3ee84c4d5b5a9921a3a5e2981b3f869ea09f2c6"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query-sqlite__tests__sqlite.spec.ts",
+      "bytes": 85376,
+      "sha256": "112fe7bf3e2b405c87b6caca0c9a40174402025caf0bd36ad2117238459f6295"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__cold-read.ts",
+      "bytes": 2499,
+      "sha256": "e2bbc3e2e59c7a4843e9d957e99c37f323d59d224502366a1fcc17f29e196317"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__config.ts",
+      "bytes": 2321,
+      "sha256": "5850ab0dd78a26843d6ff899f5bb85af4cc8745f163ff71a17586bcda5da570f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__corpus.ts",
+      "bytes": 12664,
+      "sha256": "632b1178f54b88a607c61f4929551e8f766f15a8fac57fb22697df8e6cdbab60"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__documents.ts",
+      "bytes": 2731,
+      "sha256": "07f4a5af51d1a4bee5aede654e6cf9198d97c176d8b4ea39666bf6c3fdd95acd"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__extraction.ts",
+      "bytes": 2853,
+      "sha256": "7ee4fbae1b5101613fd1174289678c97faf77ecbee57649b9970998822277479"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__index.ts",
+      "bytes": 15460,
+      "sha256": "549f7f90c90efec63a5c7d69dbc65938c0f9578f85dcfc8ee25a49a43a8e83e3"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__observation.ts",
+      "bytes": 14878,
+      "sha256": "04a470ad5245aac1e70e0bf899515a931e52e7dba94ffcc0bfe9a978932e1347"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__sources.ts",
+      "bytes": 869,
+      "sha256": "57bf2721a598b86f796aac4946ace26d59529cb15f2eec587c068b1cdd88feb7"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__src__types.ts",
+      "bytes": 10880,
+      "sha256": "0d61d7fbeb325f93cc6a99ec362b825f264a1764e8bbf48d4136dc1634a026b6"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session-query__session-query__tests__session-query.spec.ts",
+      "bytes": 53872,
+      "sha256": "a4f9749ead00fcaaff7adf689213c14bb945a41de9256caa684de55180d3b1c6"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence-jsonl__src__index.ts",
+      "bytes": 75605,
+      "sha256": "52cad4e39f5ba4d173ec322c647f16bac12385b4819aa07684f12a123f94f72f"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence-jsonl__src__storage.ts",
+      "bytes": 24212,
+      "sha256": "57d5fa1d7efd17789d6a223f6aa5e06b79092665bea13f8a23d3bab644d066c3"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence__src__handle.ts",
+      "bytes": 5319,
+      "sha256": "2fd8b5c5188ffdf5adee78a260b3dd0a9be97e5eb9fcdb5aafae5a8ed5471a31"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence__src__index.ts",
+      "bytes": 8535,
+      "sha256": "d3da1fc3977e23eb5c2f73d6245a0d9c5967f9a0d755065e74ccd26e76794f14"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-persistence__src__storage-contract.ts",
+      "bytes": 6252,
+      "sha256": "062911ece08832418f2fd0dc8fabdd8848897de6b2d97bc7fca54a634e0c99bd"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-projection__src__index.ts",
+      "bytes": 31588,
+      "sha256": "f6e57c06f57b20a74e87a8a476a7adfb67ccbbd3d924bd52420db93ac9a7381b"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/evidence/upstream/packages__session__session-projection__src__types.ts",
+      "bytes": 1066,
+      "sha256": "6ad9530ea5cfc8ff3e73b34413e5757da8091248b0a874c304f5c5a83500f555"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/fetch-upstream.cjs",
+      "bytes": 4059,
+      "sha256": "b9aa47ce85652db2cf9ff2582cf3b5fafbe9d41d8f3fcd1f5da1cfae83fb1c9d"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/implementation-contract.md",
+      "bytes": 27595,
+      "sha256": "b14bd3ae971f334b6b03c34f45d127dbbeb354987f7fa358294a0ad2f0470f69"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/make-contracts.cjs",
+      "bytes": 10359,
+      "sha256": "2c89e5588e24dff0b7ff8ae898aedf527e791a8c1c658a909b73e0620f2bead9"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/migration-contract.sql",
+      "bytes": 7600,
+      "sha256": "8a79f8d40e315aa8f8dfd136ba294dbf36f18333386f74e256a656c7289e3c81"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/package.cjs",
+      "bytes": 2921,
+      "sha256": "48a149df895fe63b1fc6d314cc6fec109a66dc227377b5b851d9d6a4a3a7a900"
+    },
+    {
+      "path": "docs/verification/XIAO-52/architecture/verify.ps1",
+      "bytes": 1717,
+      "sha256": "622d35a14a6b76b19a28d8715a6947bc6a37495bf18ac3dcccf95ab278eedfb0"
+    },
+    {
+      "path": "docs/verification/XIAO-52/backend/README.md",
+      "bytes": 6257,
+      "sha256": "7a38064b88af5789b461f238d73ba64c5eeb9cc07676fc63a596fcae1b73e3c0"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/ContractProbe.java",
+      "bytes": 8123,
+      "sha256": "79527894c49e67fb59557bbc9c3038edef6da9f8f73f2ef72eb38fb994b70bfa"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/PACKAGE-MANIFEST.json",
+      "bytes": 30573,
+      "sha256": "0d20ab2ded07cefd4ab3abd629d96094b48e98af28958ad453c3662f58ee0dd2"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/README.md",
+      "bytes": 2554,
+      "sha256": "d71e8a9ccc774fad30acb36e6bb74d874fb31bc822e7cb20fd51fb634ba2d8a2"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/THIRD_PARTY_NOTICES.md",
+      "bytes": 791,
+      "sha256": "06006f7865c9cb5fd365afd931a0e8569977a996feafe2553c02fa8b2ac321c9"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/VERIFICATION.md",
+      "bytes": 3814,
+      "sha256": "c967cc66d9d929514cc25310d8f6dc9d20f75f41ddf2c4970838c577e0523902"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/capture-evidence.cjs",
+      "bytes": 4559,
+      "sha256": "4adaa7ff989c24490f5b9f4e9c58b7278b13a2c3fe95bd4e4538a060d5d70f3c"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/catalog-v2.json",
+      "bytes": 1674,
+      "sha256": "3b46a1165221462186eb862d4c86ed6e9f7258b0a05abfe03d5e35896db1a3dd"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/context-v2.schema.json",
+      "bytes": 1273,
+      "sha256": "3116de9c3a95c4e5eac7f870915b1fb5fbc7d48a8771768ce713dc29884521b0"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/event-v2.schema.json",
+      "bytes": 8989,
+      "sha256": "05046a2212bd106d7026e94db1d124ba50365182da7963a443bd965e5f4e7075"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/examples/binding.json",
+      "bytes": 1718,
+      "sha256": "1b0f5990bd940a2d60863406e041d4a0305502811c81d0fef4d37b4260def6dc"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/examples/context.json",
+      "bytes": 405,
+      "sha256": "21adf98084445e197287f42bcc7a68915c7350f1fbafcafa0b2fd748b5e794a4"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/examples/empty-output.json",
+      "bytes": 344,
+      "sha256": "afd5e4474bf2a95e652926ada7bb06c02224e22986353c5b1807f46935fe349c"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/examples/model-event.json",
+      "bytes": 725,
+      "sha256": "65e33209db0e85ae9a73eedf2e25ba95bcc511d3430055d02cb132c79e9a46af"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/examples/normalized-query.json",
+      "bytes": 210,
+      "sha256": "1614325666c02c9af5634fbb571cded1961c1ba51235f2fd3095396e1b30fc73"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/examples/owner-history.json",
+      "bytes": 491,
+      "sha256": "f2338f789f73fd00f75c5aa4971c470f21627207305fc89af4618036f13f8287"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/examples/read-output.json",
+      "bytes": 740,
+      "sha256": "579dc12addbaa3d593cf640f17bbe970d44c6b47034fbf57252e1f0377a36e3c"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/examples/search-input.json",
+      "bytes": 114,
+      "sha256": "b6549424b28f5305661ab3faa2f85b0cd3a48587d5767d4fb47b71855c8df925"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/examples/search-output.json",
+      "bytes": 806,
+      "sha256": "f6cfe33e796d3121fa4ad900b3c502ec7e698a4aa4b4f6a844332beb5cbeb516"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/examples/search-output.wire.json",
+      "bytes": 638,
+      "sha256": "29edda7a86d3306e13a7e5c5121a8c4b84a7c1332dd39e863a12334232e56997"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/examples/user-event.json",
+      "bytes": 381,
+      "sha256": "3cf0082ba1e3255ebc0e0be0ccc721c138dfa0621f3681fe11217cf9993ad1a8"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/owner-history-v2.schema.json",
+      "bytes": 1601,
+      "sha256": "a76d748919da9650e87179fede4d1a469fdfd1d0f4d3b8e882167ecc514e690c"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/session_event_read-0.2.0/description.txt",
+      "bytes": 541,
+      "sha256": "14b708a833e18d2e887ce72b00de2d1ef8715ee90322fdf20cbf5b9f4a9d64f9"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/session_event_read-0.2.0/input.schema.json",
+      "bytes": 627,
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/session_event_read-0.2.0/output.schema.json",
+      "bytes": 16509,
+      "sha256": "7823e04505d76cb80e7d6a644d10504ece4260be0e01e7026206df833a7ea6d9"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/session_event_read-0.2.0/plugin.yaml",
+      "bytes": 897,
+      "sha256": "968cf2ab9e3557b995151bce2bac40ea32a41b8d489550a38938e2e61d768ffa"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/session_event_search-0.1.0/description.txt",
+      "bytes": 767,
+      "sha256": "b91db9e0ccd349b8d0d23185f642f6350b04c472d5ec406455238659a0290209"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/session_event_search-0.1.0/input.schema.json",
+      "bytes": 2300,
+      "sha256": "52fdd4305f6791d80469a4f2537d1b544790e8dec59e24960f731cf5f9295584"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/session_event_search-0.1.0/output.schema.json",
+      "bytes": 3540,
+      "sha256": "51356d3c17c2bf298c653f21160bbe052e5638f189dc932b40cce75f12e53076"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/session_event_search-0.1.0/plugin.yaml",
+      "bytes": 903,
+      "sha256": "cec185661a7afac5cbf4ceb558c949cf166779e018c409ac5098f6568c195d9b"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/contracts/task-binding-v2.schema.json",
+      "bytes": 4604,
+      "sha256": "fa5b2bf3542723a2cb98f4aaa30357659523520107502bde153ace6cc1b02634"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/evidence/artifact-check.json",
+      "bytes": 302,
+      "sha256": "adbe440d2bd8dfcd65dc17acc94b6903176ce9c165f887d5eff843ef72beb3d2"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/evidence/java-version.txt",
+      "bytes": 208,
+      "sha256": "c09b3f6e7993628681d0f0e0fdfa12ccbfef6d7798ad260ec13807486db8b267"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/evidence/jimu-sources.json",
+      "bytes": 13924,
+      "sha256": "739389c6fc06b5d1fd6aa060eb36f75293adaab8d196aa04842c48077f8fbb16"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/evidence/jvm-probe.txt",
+      "bytes": 57,
+      "sha256": "fe81dce55517be68dbc25180c1a8fddc016b816a2e8ea01d95d34b189e923829"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/evidence/probe-compile.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/evidence/schema-cases.json",
+      "bytes": 2629,
+      "sha256": "e76545c9960a4a1d81f199bfafc23575812c53dd52a897fa4306cbb190801fe0"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/evidence/source-map.md",
+      "bytes": 16084,
+      "sha256": "71dabb9f98b86629eeb22641984bd1c13471f8a6dce97b97804aba6d5d44eaba"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/evidence/upstream-sources.json",
+      "bytes": 23250,
+      "sha256": "a056ad07409271017411971a12fc75876dec3c50cf1bc2605f1f9314961b5688"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/evidence/upstream/packages__session-query__session-query__src__cursor.ts",
+      "bytes": 569,
+      "sha256": "78eb05f7db53414fd742572f91fa7f575622a4759d32ce5ba2999aa1ed4825f6"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/evidence/upstream/packages__session-query__session-query__src__filters.ts",
+      "bytes": 8506,
+      "sha256": "574759cf15980ad2e0b69791d26c596c6a573bae52d613294e12770ac583ecdc"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/implementation-contract.md",
+      "bytes": 25869,
+      "sha256": "f0d9ceb5ca0e4489c76dafde308557e0e1810d547a6aa92d0517d5f6a5d2ff45"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/make-contracts.cjs",
+      "bytes": 10588,
+      "sha256": "c28d8f64990c571e7fd8c4836ed2bb025eaa5799e57660008fd878103f3df160"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/migration-contract.sql",
+      "bytes": 4665,
+      "sha256": "54d654c67a6975b1aabea0b1ab36639cccf9afd0b609a81c6eaf5640de1b1798"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/package.cjs",
+      "bytes": 1726,
+      "sha256": "3eed6579718bea42ee64a23f0c030d56634e4583077f1c97ed1464de014a350b"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/verify-artifacts.cjs",
+      "bytes": 8398,
+      "sha256": "3c3e487992860f5dba950fbc89ecac6a05646b4a740655b9de3b4b0e336e6833"
+    },
+    {
+      "path": "docs/verification/XIAO-53/architecture/verify.ps1",
+      "bytes": 1264,
+      "sha256": "fb3238119c9f998f39388c173b54893af58a811004d7155f2886841172b09214"
+    },
+    {
+      "path": "docs/verification/XIAO-54/BACKEND-VERIFICATION.md",
+      "bytes": 7554,
+      "sha256": "2f67ca8a303d693f1b12170c7ffc4905f4531b438e4ac13c4e6472f6a3a4172f"
+    },
+    {
+      "path": "docs/verification/XIAO-54/REVIEW-54-01.md",
+      "bytes": 4987,
+      "sha256": "bab002215f11120f476894f7f2b7ffa6c9bf6d561588c8cf118f25df482883b5"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/ContractProbe.java",
+      "bytes": 7507,
+      "sha256": "72edb4d31fbb005b4b85bdf15618f208687e9beef7f220953d0d5bff97e83bb9"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/PACKAGE-MANIFEST.json",
+      "bytes": 38532,
+      "sha256": "8842b23e09ad5df58c52ac5c182011ee645c5cf466bf8edbaeca109310b7868d"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/README.md",
+      "bytes": 2008,
+      "sha256": "eb38b590ea63ee1e836746d44072926432762e01a89a30272786b438b5f17039"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/THIRD_PARTY_NOTICES.md",
+      "bytes": 540,
+      "sha256": "28d25cdfea1907187169c1b1f04f2724ac57daf74bd9d8f04b3ae45e138c760b"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/VERIFICATION.md",
+      "bytes": 2853,
+      "sha256": "c1c8ceaf70d4a61593434f855e32a2cfeed5d4f52bcb0766c54f9aa76cabfa1d"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/capture-evidence.cjs",
+      "bytes": 7786,
+      "sha256": "96a58e2546a5c7406dcdd8ff0c56277cfd6d1b215b86dc28ff6906571611603b"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/catalog-v3.json",
+      "bytes": 2308,
+      "sha256": "064089523d52fe0161d53530c1d8b088ee5e8e20c1d7f57f75badeec15b0d0c7"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/context-v3.schema.json",
+      "bytes": 1273,
+      "sha256": "5691a2e400d7f8006715512524cf25b6e84c4387ba64b10f7501ac08f85f310e"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/event-v3.schema.json",
+      "bytes": 10452,
+      "sha256": "ba3eed79df80f9eafccf121badd8bd88d5c211344775e143b199d3cc1831edb7"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/examples/binding.json",
+      "bytes": 2182,
+      "sha256": "7771ece9ad5e134403b13c91a532c1479a254d3a9ab47f9a975eb3260a2b5769"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/examples/context.json",
+      "bytes": 405,
+      "sha256": "66ec916ace04676e2ed23831d57c5147615bed47401aa803438e33362752bfed"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/examples/owner-history.json",
+      "bytes": 491,
+      "sha256": "25c276f24e6a488e1e8f50fd17cbb170821cc20e84c5e9e4f9ee41b2e4c940e3"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/examples/read-output.json",
+      "bytes": 769,
+      "sha256": "d1735727fa9118c4075674327fdd4c5dcf20da7d232796e58a87828b8c6d9a70"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/examples/read-receipt.json",
+      "bytes": 647,
+      "sha256": "9492c7dbc9e3cd8753adb63d06f551636d8941753707e33ff73e7e26ad49b589"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/examples/read-sources.json",
+      "bytes": 113,
+      "sha256": "129d0b1748f5fc075e396e7a7f32ee90beba0f1fc5bd49dd10331e0457675ca0"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/examples/search-output.json",
+      "bytes": 806,
+      "sha256": "610c0ec2dce73068d618b8fb713220b7367d306e56fff1c594250ae86280a199"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/examples/trace-input.json",
+      "bytes": 15,
+      "sha256": "60f43ffef07c31271f73f931ffce77379518c410946df4aa23817c02e921311e"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/examples/trace-output.json",
+      "bytes": 737,
+      "sha256": "a275605eb69624afcd601c55da57ad1aaeb37b4624423083e343829544484199"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/examples/user-event.json",
+      "bytes": 408,
+      "sha256": "418efab7e13cffd37c7fd478a543ae09206c329edfa0faa26b2e9a2160d980c9"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/owner-history-v3.schema.json",
+      "bytes": 1601,
+      "sha256": "9e0924f0d307ae3ddbf61780fab12a6c190a1a83a186995aaf2c79116d04053d"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/read-sources.schema.json",
+      "bytes": 502,
+      "sha256": "819c3b54a9b68aa8dd18ecbec487397821e2c82db2e0b76a81b80d3fad41c3ee"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/session_event_read-0.3.0/description.txt",
+      "bytes": 206,
+      "sha256": "d4dd2398b320d91ba355ff30a45506696b433aa02d81e7bdad34a37a5f45ad8c"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/session_event_read-0.3.0/input.schema.json",
+      "bytes": 627,
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/session_event_read-0.3.0/output.schema.json",
+      "bytes": 18106,
+      "sha256": "762f4ca547c81156a35937e0fd2120deb7a4aa5da9f401b9f4ecde778db14da2"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/session_event_read-0.3.0/plugin.yaml",
+      "bytes": 897,
+      "sha256": "3b99e0428a0e3605724a8b7790539b3ed17b06fe24afc9c7c48678ced1be4cb6"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/session_event_search-0.2.0/description.txt",
+      "bytes": 170,
+      "sha256": "04b04c1a490134039e95a864a9d25dafc4e93cc595196d26b16746cc285b9989"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/session_event_search-0.2.0/input.schema.json",
+      "bytes": 2300,
+      "sha256": "52fdd4305f6791d80469a4f2537d1b544790e8dec59e24960f731cf5f9295584"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/session_event_search-0.2.0/output.schema.json",
+      "bytes": 3540,
+      "sha256": "457e3723413e6c9b2b548a27ca6832159dfff6c5741fd3b021a5825dffb695e7"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/session_event_search-0.2.0/plugin.yaml",
+      "bytes": 903,
+      "sha256": "e73db11770e860c29f9d24de477f8107355cebfdefab45bed945234fc1a1a6b7"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/session_event_trace-0.1.0/description.txt",
+      "bytes": 264,
+      "sha256": "a604404610101a18c86797e38f3725bf21a5a6d961ca7d8656fd071519567a60"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/session_event_trace-0.1.0/input.schema.json",
+      "bytes": 455,
+      "sha256": "7849c52bcc5b58775f5a7dec28bf41399746ef1780c815a88dc8630e03227c91"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/session_event_trace-0.1.0/output.schema.json",
+      "bytes": 3547,
+      "sha256": "5595052fbd89307318bc1593438ff208117c29ddfdf747d0f86c15fb5ae532dc"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/session_event_trace-0.1.0/plugin.yaml",
+      "bytes": 900,
+      "sha256": "5ed8ee7d9db15d5c10cb644d3172977e6e174a5e4135f69fa999172ed5fc7c0a"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/contracts/task-binding-v3.schema.json",
+      "bytes": 5782,
+      "sha256": "fded13d824326d679d306d6a24512414c9e0c1ae170768fbce860b3627fe6b17"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/java-version.txt",
+      "bytes": 208,
+      "sha256": "c09b3f6e7993628681d0f0e0fdfa12ccbfef6d7798ad260ec13807486db8b267"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/jimu-sources.json",
+      "bytes": 20980,
+      "sha256": "f99e540f34a18a97360b17b26b95ae33ff86bca03cb2892b60c5de873a00e318"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/jvm-probe.txt",
+      "bytes": 40,
+      "sha256": "6ea61fa2495b2f9fd2cea52bdad015a2e7f5ea9a86a37e8d56d33102fc56a1ed"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/probe-compile.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/schema-cases.json",
+      "bytes": 1893,
+      "sha256": "9a6e8e6739e777237de37e3ef74b7daa948aa3e4a707068969a06b838c52ec6e"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/source-map.md",
+      "bytes": 5646,
+      "sha256": "251d057708e609816ce3ed9e3e8e60250e3c4790dc879220cd7c2519b0ab210d"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/upstream-sources.json",
+      "bytes": 25868,
+      "sha256": "eb5d275cbcfcad73c69efc1b71d9f971f5e2ade5e8dfa5ff17866c14499543c5"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/upstream/packages__core__session__src__surface.ts",
+      "bytes": 30011,
+      "sha256": "5b5394dc02584cb3549330b358fbe5919d05f8a6920d90f6819bb7e3b4783154"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/upstream/packages__core__session__tests__surface.spec.ts",
+      "bytes": 43645,
+      "sha256": "24ff96add9f77859b01a662f48c3406b12b9a3ae2e9393f3317198cd214b3a03"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/upstream/packages__session-query__session-query__src__tracing.ts",
+      "bytes": 8342,
+      "sha256": "f63d528f4e31bbf7bb79c9add03095885e87f1ecf71c6aeaee01d509639ea60a"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/upstream/packages__session-query__session-query__tests__tracing.spec.ts",
+      "bytes": 20400,
+      "sha256": "539c570f2e3e4fe2849919195125e3892740996c2e397bfcba8c08687b35a744"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/evidence/upstream/packages__session__session-format-catalog__src__message-projections.ts",
+      "bytes": 507,
+      "sha256": "55440dba1a74e200d303d9653e069f2c49d226860d91159eb17e65262e0b8d89"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/implementation-contract.md",
+      "bytes": 21130,
+      "sha256": "d5269e4aa0601f9093103bedf15bb207784784ff2d4677c6e0eac7c2012c3722"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/make-contracts.cjs",
+      "bytes": 9033,
+      "sha256": "ab8742d217a8fd912fe3a98e9bfa33f780b73cfe86b264d2456544f1f2e5f5a5"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/migration-contract.sql",
+      "bytes": 5960,
+      "sha256": "c3232c7824e962df697e444fee1dbed2fdaa807b7671664d3a1aba8d063b4ea1"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/package.cjs",
+      "bytes": 1936,
+      "sha256": "23a76fc16c2e4f874b0c85d9b7db88a671c0893f80d699f148c7d4284587182c"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/verify-artifacts.cjs",
+      "bytes": 2284,
+      "sha256": "26eac600cf94e6289e5a23cb4c7827ade09b4b3a6f9d40ee3aa7dcb329d1b58f"
+    },
+    {
+      "path": "docs/verification/XIAO-54/architecture/verify.ps1",
+      "bytes": 1322,
+      "sha256": "d31ec17bbb63a06040e70c41fbe4d29f9f0994df1b0cff992da4e9790c071f14"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/ContractProbe.java",
+      "bytes": 8625,
+      "sha256": "b5d8ede6d0e4718e7ee1f0da22c3d23147dd053f823fbba2b51d4d1494646022"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/PACKAGE-MANIFEST.json",
+      "bytes": 46422,
+      "sha256": "e904863f8bc3001054d3ba35e799fee4673ce1217b5d5641f5d8cde86087d4a2"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/README.md",
+      "bytes": 1891,
+      "sha256": "9104f42b34140dc374eee838772c42aab4366b0c3ac830bc477e6821f04d49db"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/THIRD_PARTY_NOTICES.md",
+      "bytes": 600,
+      "sha256": "b9792abf5033168c3ff0ed277f4663d8a8c57564da37f047ea51975144b1d647"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/VERIFICATION.md",
+      "bytes": 3402,
+      "sha256": "6ca8b441a33f96a38aaf7945750be08c13dc06bcaf9d55747dfad00ec28e356b"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/capture-evidence.cjs",
+      "bytes": 8258,
+      "sha256": "024abab1a00407f78f11c83b968db5929047f511d712935eddc581b41d5f0b3f"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/admission-input.schema.json",
+      "bytes": 600,
+      "sha256": "014b4d6b78a574967b81882b1e1b2fc541e9bb299095b127db771f435947575f"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/admission-output.schema.json",
+      "bytes": 2331,
+      "sha256": "a404b3c299c60f0b0698915e0d28bbf59b1aebe85f9b74f1f75fb02cd88ca222"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/authority-scope.schema.json",
+      "bytes": 3477,
+      "sha256": "77ced585e1815c23b3d00251ca88f00de1c8eec5f5245fe3c8ff658f2bd0f8bc"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/catalog-v4.json",
+      "bytes": 2082,
+      "sha256": "cca1703817362eca300b745b9111177a7d295c9791e17515b104c037bd084a15"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/context-v4.schema.json",
+      "bytes": 2318,
+      "sha256": "240fe19ecc91ebd7bc55e4604f4038d1d9890ca3301551c43aa62bee8f5bb5c0"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/event-v4.schema.json",
+      "bytes": 10572,
+      "sha256": "105f63550e64f5cf893d3c6b2df4e3f7fe14c015fcd65a3deca9aee09a87b5f0"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/admission-empty-scope.json",
+      "bytes": 88,
+      "sha256": "a68222a637d809369ece40fc595c725a84a104f59414eb8499f32fb658d80b55"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/admission-output.json",
+      "bytes": 254,
+      "sha256": "f78eaaf573170c74db8f0abf1a72193926daec336242c8b6498082ca1e5dcf40"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/admission.json",
+      "bytes": 202,
+      "sha256": "e0658ceb9959001c56d6f7cd0fcee59ffd4e0e0c5e8e6cc5e72781db62f85b44"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/binding.json",
+      "bytes": 2108,
+      "sha256": "ab7ec75b98fd97dcd8a0145573f70b5b552305d65d773e4a9e086031c120b8f3"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/context.json",
+      "bytes": 747,
+      "sha256": "6025f0f565ab7f4abb01504ef45d2bc3e04bb5e270efc9db802947d2856d774a"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/empty-output.json",
+      "bytes": 418,
+      "sha256": "7ca6d9d3dbff131d8c0e65511910b5b63e9a1afe9abaffb02a79acddd3ac8898"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/owner-history.json",
+      "bytes": 597,
+      "sha256": "d03c8d59bc4a3b3160b04ce74f7ed8886785587ee7219e9ae391be3054179428"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/read-output.json",
+      "bytes": 750,
+      "sha256": "962d40839045c4f3db265d926647c8fc2155cb604920b0721e9772c26611fff5"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/read-receipt.json",
+      "bytes": 876,
+      "sha256": "9ccae5c18da9f87c294e54a2bbba78b2a34f2686fbb191a98ceee6bea41fe746"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/read-refs.json",
+      "bytes": 171,
+      "sha256": "e98dfc8527f29f9fcbab3fcf70b4dc94d3413e3e641368f725c814f435d2bc43"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/scope.json",
+      "bytes": 1285,
+      "sha256": "a639bd34258b3afb5257aa79742ab9be678adf162eecf682551bb1cec932d5d0"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/search-input.json",
+      "bytes": 237,
+      "sha256": "af424ee455391aedcebc49ab823d23130568bfe665e09f10bf50094baae83fe2"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/search-output.json",
+      "bytes": 1706,
+      "sha256": "a1c7c1580bcdbe2d41e7b4a7b2c4ce652bdad9d9084124403e3d0a3bff878a87"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/examples/user-event.json",
+      "bytes": 381,
+      "sha256": "37f41bbc645b13e39eee107e47d77ea108aed85c71eb19cdb9f69086d5fdbf23"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/http-catalog.json",
+      "bytes": 1340,
+      "sha256": "d37d96e64547870818496abae82f65800664a507718f7d85fd17a24993a87de2"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/owner-history-v4.schema.json",
+      "bytes": 1838,
+      "sha256": "a735462f235e43fbf6c1e83f0ff55d36a2014a0a730b173cfae99b176c0e207a"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/read-refs.schema.json",
+      "bytes": 699,
+      "sha256": "3f907834c55f81e783e1a48d822aeb0fc7646d9bacf603c729dd99cb20c94dd7"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_event_read-0.4.0/description.txt",
+      "bytes": 513,
+      "sha256": "695b9ea5f0fac218aa5abfbb207c803995502eb8de516c5b5404ba32a1095412"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_event_read-0.4.0/input.schema.json",
+      "bytes": 627,
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_event_read-0.4.0/output.schema.json",
+      "bytes": 18396,
+      "sha256": "361a97e7da6592d44989759f0256c05c6bd1ec6041c5b11c30ad4e0b162208e4"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_event_read-0.4.0/plugin.yaml",
+      "bytes": 897,
+      "sha256": "d31a4fefdd020bf8c598cc10d4c35afc2b4a72482c4e4938e58b3c979d7ea4c7"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_search-0.1.0/description.txt",
+      "bytes": 758,
+      "sha256": "77cc9f0ab2b2534f0277aa5469822a7212802f89836b538f058ec79dc112b756"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_search-0.1.0/input.schema.json",
+      "bytes": 4236,
+      "sha256": "a3055ae0da20e6815ad712163f66461db483728bdee928aa599c442a1ab055b8"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_search-0.1.0/output.schema.json",
+      "bytes": 5112,
+      "sha256": "8ad3904e0d7d6d946fb84efd34935e5b35c0ee240b17034f8b2a0c9fbe0b4778"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/session_search-0.1.0/plugin.yaml",
+      "bytes": 886,
+      "sha256": "97b81f0b7c07b869f810592dc8e335c0b7957d4ea7e96650ff12390344ce26d4"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/contracts/task-binding-v4.schema.json",
+      "bytes": 5430,
+      "sha256": "4446f01591b241122073fba2f6de8634b5a3f845c5a4719bb7bcedda09f3fee4"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/actual-master.json",
+      "bytes": 482,
+      "sha256": "c9a7b3b26c2676eca9a4bc475563f71e2630dfce15c2134d8b2e7dd7334fd937"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/artifact-check.json",
+      "bytes": 212,
+      "sha256": "54a3c4b7d51c077774ba679669dfc6c00cbbe45d8b6b66b78c841ccafcc11d96"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/java-version.txt",
+      "bytes": 208,
+      "sha256": "c09b3f6e7993628681d0f0e0fdfa12ccbfef6d7798ad260ec13807486db8b267"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/jimu-sources.json",
+      "bytes": 30935,
+      "sha256": "dcb99b410ab27f729d91a77aabe23cb44582a43dcee597439dcbb2c97c136e46"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/jvm-probe.txt",
+      "bytes": 40,
+      "sha256": "a7ccc2312a22f7c21477958392b8837e5633f0efdb372b04130e9929781d58c9"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/probe-compile.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/schema-cases.json",
+      "bytes": 2736,
+      "sha256": "c10a1da35846821567b29eb771684679555d3e7f9a554be1408d81184ffe0110"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/source-map.md",
+      "bytes": 7439,
+      "sha256": "eca4b4537d82334ad9beaabbb1dec2a24158df08c51f0bd2848121e4c0b05bca"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/evidence/upstream-sources.json",
+      "bytes": 26003,
+      "sha256": "5e2452435ea612c90c785780f5f45c810a2fbbd0560ba51a758dec5ec7c1d3ae"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/implementation-contract.md",
+      "bytes": 25893,
+      "sha256": "573b4c2413253ad9d8ae8e6ea5503d5956b7cd08c54a5d48349f4eef455b87b2"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/make-contracts.cjs",
+      "bytes": 16448,
+      "sha256": "6d099025cadd7f9512c915ab96007086de2e1721c2a956ef34962a07f010a6f0"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/migration-contract.sql",
+      "bytes": 9979,
+      "sha256": "9d0066b33aafed97517861387c4e57afcadaff3026cb17942e592a8b5eda14e6"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/package.cjs",
+      "bytes": 1974,
+      "sha256": "9dd0c42cc58155067614d5800ae094fa83eb2c51b617f6394da3efe522b6262a"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/verify-artifacts.cjs",
+      "bytes": 4326,
+      "sha256": "60da90c8b6d28f67d84e4b7ed502cfe74626993e6c0195d08f1415b88f8574f1"
+    },
+    {
+      "path": "docs/verification/XIAO-55/architecture/verify.ps1",
+      "bytes": 1322,
+      "sha256": "ee45eea219e165cbed45e36c5c2c534e53ed14daa05154ae2841ff2feda9d4c6"
+    },
+    {
+      "path": "docs/verification/xiao-40-web-cancellation.md",
+      "bytes": 2678,
+      "sha256": "3b930764ae20c0d13eb5d6964cffca56d288762fe243da12c2aae527bb0f0c77"
+    },
+    {
+      "path": "src/main/resources/application.properties",
+      "bytes": 495,
+      "sha256": "0f5c14fe3fdbe9eeded11022891a2bee2a6dd5dbbca1aa4970ee2c0310838b5f"
+    },
+    {
+      "path": "src/main/resources/db/migration/V10__business_task_policy.sql",
+      "bytes": 387,
+      "sha256": "dd53e8624bbee3fb8e3ed4edf826d67bfa2a074ac1fe6262c4cc7517d5bb20e4"
+    },
+    {
+      "path": "src/main/resources/db/migration/V11__native_search.sql",
+      "bytes": 1780,
+      "sha256": "6a13006bd44552a2507a4e15b3a5fec7dfab20326773d60b440fcd0c288fe6a9"
+    },
+    {
+      "path": "src/main/resources/db/migration/V12__process_observer_identity.sql",
+      "bytes": 205,
+      "sha256": "0229b5e2064768f14806845e0045a3dfde817b08e397e6747b1f54caee2802d1"
+    },
+    {
+      "path": "src/main/resources/db/migration/V13__task_images.sql",
+      "bytes": 1946,
+      "sha256": "c6f4ad00f2bb2c618cdc5551420e272e883d6bfc53c64e877084d184817f147e"
+    },
+    {
+      "path": "src/main/resources/db/migration/V14__image_checkpoint_retention.sql",
+      "bytes": 1399,
+      "sha256": "3efa3e1240e1f3917265915d0e3713d799b7839a45618f97577fc1029a9801ab"
+    },
+    {
+      "path": "src/main/resources/db/migration/V15__mcp_resources.sql",
+      "bytes": 2330,
+      "sha256": "4a33b950278439feac9b11312381b78207f38f78a298f78923402db86bd03244"
+    },
+    {
+      "path": "src/main/resources/db/migration/V16__durable_user_questions.sql",
+      "bytes": 2694,
+      "sha256": "8b24cad2e4cd2c8118274972e81623a832ead2b47f0899f33b51a6ae93258c28"
+    },
+    {
+      "path": "src/main/resources/db/migration/V17__task_todo_projection.sql",
+      "bytes": 4136,
+      "sha256": "1e5892b4409ff93c1c4fdd6e8928cd7b4e0c3dccf13bf10d2d9cf639642d1b04"
+    },
+    {
+      "path": "src/main/resources/db/migration/V18__task_logical_directory.sql",
+      "bytes": 6475,
+      "sha256": "b0f0c5289e5fffafcdfc4a80f612b772cba40fa15c11f4fbb3a8487d1865fb63"
+    },
+    {
+      "path": "src/main/resources/db/migration/V19__authorized_session_history.sql",
+      "bytes": 7604,
+      "sha256": "e507d7378f7737d104fd8a2ad8bd2a7e51d89c5dfe0e014ed106356cbc0866d7"
+    },
+    {
+      "path": "src/main/resources/db/migration/V1__p2_ledger.sql",
+      "bytes": 7122,
+      "sha256": "c1d4c158b1f5c5a9cc955bee9fe93a5cdbed7a2a80e3026f4c835da235977e70"
+    },
+    {
+      "path": "src/main/resources/db/migration/V20__bounded_session_event_search.sql",
+      "bytes": 4664,
+      "sha256": "3ffb24906f323dd33a92d5e8d97278a542d7ae998df2d44ad857e172193cb857"
+    },
+    {
+      "path": "src/main/resources/db/migration/V21__captured_session_event_read_provenance.sql",
+      "bytes": 6125,
+      "sha256": "6d24e72f1260d49343f017af7f060ddec1afa8f70faaa60fef87a44ee8bb6fbc"
+    },
+    {
+      "path": "src/main/resources/db/migration/V22__explicit_prior_session_search_scope.sql",
+      "bytes": 10053,
+      "sha256": "be4e33f8b61abefd09269cdc1cdf38cca9514338de5cdc781b9d66b19bb500a6"
+    },
+    {
+      "path": "src/main/resources/db/migration/V2__local_worker_receipts.sql",
+      "bytes": 295,
+      "sha256": "98497bd4a3d2adbe3f401036a123d11b9c2af17309f452c8090ac8158a9c02c5"
+    },
+    {
+      "path": "src/main/resources/db/migration/V3__attempt_quiescence.sql",
+      "bytes": 253,
+      "sha256": "f2095fb71fd867c5715f7a531ea79b72f4beb3c42f775dd421986d76ebb9e6df"
+    },
+    {
+      "path": "src/main/resources/db/migration/V4__model_snapshots_and_budgets.sql",
+      "bytes": 1942,
+      "sha256": "1a1d5fa336be3d55decfab17cd7acf62abdfcab520b35414d3f8fb0cca7ac981"
+    },
+    {
+      "path": "src/main/resources/db/migration/V5__task_tool_snapshots.sql",
+      "bytes": 1289,
+      "sha256": "f87c2370145760e4d712bb9ff62a1ebcfac0d3461aea67b0f4b7c59f32c72615"
+    },
+    {
+      "path": "src/main/resources/db/migration/V6__report_receipts.sql",
+      "bytes": 257,
+      "sha256": "0678241322741e682f02c580f4894f68de8283a17538a2dd70ff350e394a5d7e"
+    },
+    {
+      "path": "src/main/resources/db/migration/V7__bounded_evaluation_plans.sql",
+      "bytes": 876,
+      "sha256": "cbb04f1f00e5ee468def9fe9d3d309947e691f4f1b1ac54e426a856fc761a314"
+    },
+    {
+      "path": "src/main/resources/db/migration/V8__evaluation_material_binding.sql",
+      "bytes": 326,
+      "sha256": "f91f70a6fc008b02942ded03bf25bcb6870bc7f272df8546be0cfdcb7b12d28d"
+    },
+    {
+      "path": "src/main/resources/db/migration/V9__evaluation_execution_scope.sql",
+      "bytes": 771,
+      "sha256": "bd4e7327e825554ccf64b2110a9bec7e203a0443b99eb01bc65504ba4cba7066"
+    },
+    {
+      "path": "src/main/resources/directory/catalog.json",
+      "bytes": 2042,
+      "sha256": "efe109759f71352610fac1368c514df6a9e966df38f641d4f9d4e4a2e0af9139"
+    },
+    {
+      "path": "src/main/resources/directory/directory-view-v1.schema.json",
+      "bytes": 5986,
+      "sha256": "610686fe2244869ef1d34bae37a34b4e47f5f308a89359f66cc85627efe359ce"
+    },
+    {
+      "path": "src/main/resources/directory/examples/absent.json",
+      "bytes": 181,
+      "sha256": "3d5298c592ac2b1db6da8052dce14576c70982b9c50bde029fc78fae875274b9"
+    },
+    {
+      "path": "src/main/resources/directory/examples/binding.json",
+      "bytes": 1274,
+      "sha256": "e876b8390d85ccdf6d11cfb4d08891f18f8b69ea5c094d8ec6c92a9d130c71c3"
+    },
+    {
+      "path": "src/main/resources/directory/examples/changed.json",
+      "bytes": 697,
+      "sha256": "bac1b5ac7510d919e3b804f2d556769f323809616b11352db6277b9d934795a9"
+    },
+    {
+      "path": "src/main/resources/directory/examples/initial.json",
+      "bytes": 199,
+      "sha256": "ed4d7794dd9df661f9435f4477afc8b3c5eb8acc7fb210d2443ab9e1ba7eaabd"
+    },
+    {
+      "path": "src/main/resources/directory/examples/purged.json",
+      "bytes": 688,
+      "sha256": "845f4dc416b99ef05d20f0634734d6a7b0e429f6a440906f27f0e0786aef3979"
+    },
+    {
+      "path": "src/main/resources/directory/examples/purging.json",
+      "bytes": 689,
+      "sha256": "cce000076e499896aa078be4af5b7e547eb1f485fab2a69a9b5c0b2c98f926ed"
+    },
+    {
+      "path": "src/main/resources/directory/task-binding-v1.schema.json",
+      "bytes": 3282,
+      "sha256": "b827ccf527750f03e52828247a44dcc17e46b7bedf281a537e943783ca477a1b"
+    },
+    {
+      "path": "src/main/resources/directory/working_directory-0.1.0/description.txt",
+      "bytes": 358,
+      "sha256": "cefaa4e939e0bd1397847dedc0bdd77da5f84d42ee8c9e77fbeae02c4437a7df"
+    },
+    {
+      "path": "src/main/resources/directory/working_directory-0.1.0/input.schema.json",
+      "bytes": 448,
+      "sha256": "5c614cd160f74a9326226ee10faff2bd50739e972eb49a86c84827f43b98d81e"
+    },
+    {
+      "path": "src/main/resources/directory/working_directory-0.1.0/output.schema.json",
+      "bytes": 469,
+      "sha256": "5cb3ee7a0697a415a91b8ece2bc2bd3338dd8185e0fb7a3a68697abeec365492"
+    },
+    {
+      "path": "src/main/resources/directory/working_directory-0.1.0/plugin.yaml",
+      "bytes": 975,
+      "sha256": "edfc01edef4ca2b4c528f9590bc832f66424cf1300ac72d6fec5ac3fa7d7eb14"
+    },
+    {
+      "path": "src/main/resources/evaluation/qwen-main-v1.json",
+      "bytes": 955,
+      "sha256": "f2c2ea68f6027b00b6af5162b8e999471f03844df53ca9298f9b613cd2fa68f4"
+    },
+    {
+      "path": "src/main/resources/evaluation/qwen-main-v1.source.json",
+      "bytes": 7287,
+      "sha256": "b58e55e317cb070e64b1949ea7be623beaa75ad83fc315ca63feaae217bbaab8"
+    },
+    {
+      "path": "src/main/resources/evaluation/qwen-pro-optional-v1.json",
+      "bytes": 1081,
+      "sha256": "ff9bb43db5cc7377ec60a516dab560a7c25ffcd4e0c177fe2cf3eecaec750d37"
+    },
+    {
+      "path": "src/main/resources/evaluation/qwen-pro-optional-v1.source.json",
+      "bytes": 8457,
+      "sha256": "7af19d6808e81c9d6c77904ff63ee9339fb14d6e5cf47fd2875736977fc024ef"
+    },
+    {
+      "path": "src/main/resources/interaction/LICENSE",
+      "bytes": 1065,
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+    },
+    {
+      "path": "src/main/resources/interaction/THIRD_PARTY_NOTICES.txt",
+      "bytes": 422,
+      "sha256": "f89efbb13a2077bb2fe8e92abedefe5273ce9d3d9bb355e2fa5252ca34ec4160"
+    },
+    {
+      "path": "src/main/resources/interaction/answer-receipt-v1.schema.json",
+      "bytes": 967,
+      "sha256": "869e2ca6debd97f80ac35378112c7a3cfab7c5f50d6e46b7059ccd41b0c05e6b"
+    },
+    {
+      "path": "src/main/resources/interaction/answer-request-v1.schema.json",
+      "bytes": 1280,
+      "sha256": "35fbb2c105f94b3f3e3cd8507d4aa6412ea57912d54c4c3c6469ec93e4df4112"
+    },
+    {
+      "path": "src/main/resources/interaction/ask_user_question-0.1.0/description.txt",
+      "bytes": 112,
+      "sha256": "25aea8b40ebb02a055b0c8522f5a1c5c8982808a91e146fa316708719f69dd30"
+    },
+    {
+      "path": "src/main/resources/interaction/ask_user_question-0.1.0/input.schema.json",
+      "bytes": 1597,
+      "sha256": "b4826a19462ff68aa2325843edf26b9d60ac0558d3f0c3f800e53875345102dc"
+    },
+    {
+      "path": "src/main/resources/interaction/ask_user_question-0.1.0/output.schema.json",
+      "bytes": 1026,
+      "sha256": "01a8cfc1f700d5d7a6be665480284073143841a27d8fd99b4ad76f9e3a7a4fe0"
+    },
+    {
+      "path": "src/main/resources/interaction/ask_user_question-0.1.0/plugin.yaml",
+      "bytes": 926,
+      "sha256": "8131479a7640390bd1bbe282fe337588c2cec0bd101005b4262e1779a22cd60c"
+    },
+    {
+      "path": "src/main/resources/interaction/ask_user_question-0.2.0/description.txt",
+      "bytes": 320,
+      "sha256": "6cf520f97ce9afb915f02dda551130f04f2c16f613b7ffa0e28fad38e7b76c52"
+    },
+    {
+      "path": "src/main/resources/interaction/ask_user_question-0.2.0/input.schema.json",
+      "bytes": 1899,
+      "sha256": "57fabb51fa4dbfc961f455e559bdc17aac95ead256e46c0d6f9f41f8eee913f4"
+    },
+    {
+      "path": "src/main/resources/interaction/ask_user_question-0.2.0/output.schema.json",
+      "bytes": 1929,
+      "sha256": "298380b43ca65139d77a05ff886a21b82eead5444d86f7109b76ec04ba1853b7"
+    },
+    {
+      "path": "src/main/resources/interaction/ask_user_question-0.2.0/plugin.yaml",
+      "bytes": 926,
+      "sha256": "c7d14d8bfa825bc249da3eb8457d90ffc20ca587855e64f612e17da482c26378"
+    },
+    {
+      "path": "src/main/resources/interaction/catalog.json",
+      "bytes": 1847,
+      "sha256": "7ba04c41f8ce7129ff427d6202637ed9d4d9ec060028615a346359f0e88844b6"
+    },
+    {
+      "path": "src/main/resources/interaction/examples/answer-receipt.json",
+      "bytes": 273,
+      "sha256": "23fc0e6f769bb1b22638310d3394f88016affa4d997042a8941bec58409021e5"
+    },
+    {
+      "path": "src/main/resources/interaction/examples/answer-request.json",
+      "bytes": 147,
+      "sha256": "1546a93beaf90cbfea486769a5f6292d3d6dedb0115ef6e108ee4289c62fb553"
+    },
+    {
+      "path": "src/main/resources/interaction/examples/answer-result.json",
+      "bytes": 137,
+      "sha256": "9079f80708d0236ba2ac34d68198a85d784de46bb7bc2c20772f39a7534d1e1e"
+    },
+    {
+      "path": "src/main/resources/interaction/examples/binding.json",
+      "bytes": 295,
+      "sha256": "6babc22a82bc650f362bef630849aa2f63a6472648c44e9041e959d6e2988d75"
+    },
+    {
+      "path": "src/main/resources/interaction/examples/blocking-input.json",
+      "bytes": 280,
+      "sha256": "e4d923be83f19acb12d25eb4914e79a035f5e314851a90124771291e5c287785"
+    },
+    {
+      "path": "src/main/resources/interaction/examples/empty-list.json",
+      "bytes": 34,
+      "sha256": "da6fa0fb6dc64a3faf1f81f830b8696ccf02b9c654135111429090fa240870f8"
+    },
+    {
+      "path": "src/main/resources/interaction/examples/indefinite-input.json",
+      "bytes": 122,
+      "sha256": "bc172f14cc7308d559e7e3a516b86d304480eedf9b1c4a13fe8c8132c7ec8aa1"
+    },
+    {
+      "path": "src/main/resources/interaction/examples/late-reply.json",
+      "bytes": 532,
+      "sha256": "4c2e569c730506b3cc0e9b74531c70e50b5f529491839053573e89d37c8a73a4"
+    },
+    {
+      "path": "src/main/resources/interaction/examples/open-list.json",
+      "bytes": 749,
+      "sha256": "e0eb63912914a4a380a3af10b0187e23616982e5415bd9aadf2cb390896c8742"
+    },
+    {
+      "path": "src/main/resources/interaction/examples/pending-result.json",
+      "bytes": 367,
+      "sha256": "d4a8617e6fa063e2da34e68b2e1ae02ae40953d1d49331996251ac145eaddedf"
+    },
+    {
+      "path": "src/main/resources/interaction/examples/skip-result.json",
+      "bytes": 76,
+      "sha256": "9631cdea506f30b8e818524e3c04ee27ad9325de3b5dcb3b2f3044107d5fd590"
+    },
+    {
+      "path": "src/main/resources/interaction/examples/timed-input.json",
+      "bytes": 256,
+      "sha256": "3264ad23740d56b99bb328175007b4ebf864d769a139d4b644a18e3e9882dc11"
+    },
+    {
+      "path": "src/main/resources/interaction/late-reply-v1.schema.json",
+      "bytes": 2743,
+      "sha256": "e02623a944bc41114c0c0c8c1bbb7b66ab53fd133dd81a962f71edda42a65489"
+    },
+    {
+      "path": "src/main/resources/interaction/question-list-v1.schema.json",
+      "bytes": 6346,
+      "sha256": "e965de1b107ede8acf06a0f543ef595ddd3d1909e3baf1673e75ea61073ebe2f"
+    },
+    {
+      "path": "src/main/resources/interaction/schema-index.json",
+      "bytes": 1970,
+      "sha256": "18a4863b00c5bb875ca9a62a3ed79b2fa99009a2cefa939a8c722cd7dc2ce005"
+    },
+    {
+      "path": "src/main/resources/interaction/task-binding-v1.schema.json",
+      "bytes": 907,
+      "sha256": "d6d6828a4a16bf222d5af3eda83d44b222f11c22db8e2a100559e101313dfa89"
+    },
+    {
+      "path": "src/main/resources/mcp/catalog.json",
+      "bytes": 2126,
+      "sha256": "c5da8a217cd0c5fe2b2a4ef118187f3ed737f7e8ccb2f412218e875381ad82d9"
+    },
+    {
+      "path": "src/main/resources/mcp/examples/list-input.json",
+      "bytes": 23,
+      "sha256": "a158decdb2a26324110b4e0488dbfa0d93329501bde3a7e2101f952e3ebeb838"
+    },
+    {
+      "path": "src/main/resources/mcp/examples/read-input.json",
+      "bytes": 57,
+      "sha256": "60567f9cebf49e1b65fe4ebd9e15f8c822e904983c24cf8a54ba1a9bda866697"
+    },
+    {
+      "path": "src/main/resources/mcp/examples/read-output.json",
+      "bytes": 769,
+      "sha256": "c1aa6e3f9b4360cda805461f3a1e1bed8ae9e70116d6de7ff811e148deb40c49"
+    },
+    {
+      "path": "src/main/resources/mcp/examples/resources-output.json",
+      "bytes": 618,
+      "sha256": "ff521850353c6a48c64d964c09e359ba734252ad851987a4e2476ab6dcdcb9fa"
+    },
+    {
+      "path": "src/main/resources/mcp/examples/server-profile.json",
+      "bytes": 656,
+      "sha256": "01fc79b51eb1357174a40c14df5efb5c751d5817116fcd3fd52c264be1be2494"
+    },
+    {
+      "path": "src/main/resources/mcp/examples/templates-output.json",
+      "bytes": 610,
+      "sha256": "3cbfcd1598d0dcff359f1ed05e86871815db573d059a10d2709700f012b07d53"
+    },
+    {
+      "path": "src/main/resources/mcp/list-snapshot-v1.schema.json",
+      "bytes": 1886,
+      "sha256": "3305bee394e407a1cd376f07a159e2b01028141efca037a136189de99a0409af"
+    },
+    {
+      "path": "src/main/resources/mcp/list_mcp_resource_templates/input.schema.json",
+      "bytes": 472,
+      "sha256": "3286b79a0d26f83175b185cbedaa3169b12ca4b7f42ea583ca4c6d4156793332"
+    },
+    {
+      "path": "src/main/resources/mcp/list_mcp_resource_templates/output.schema.json",
+      "bytes": 2363,
+      "sha256": "757410a2b9e69a156dd294e30c6b67dc98e03d89c5aef2735c212ef6da06ebb0"
+    },
+    {
+      "path": "src/main/resources/mcp/list_mcp_resource_templates/plugin.yaml",
+      "bytes": 906,
+      "sha256": "415f4670e231a68ec062c2284163f60c1c514c849df2e196e86acb58ce49dcaf"
+    },
+    {
+      "path": "src/main/resources/mcp/list_mcp_resources/input.schema.json",
+      "bytes": 463,
+      "sha256": "29fd7302a672247a952d9abbe4fb35174e97c64e91a3a60b0612e97f8454ddb5"
+    },
+    {
+      "path": "src/main/resources/mcp/list_mcp_resources/output.schema.json",
+      "bytes": 2522,
+      "sha256": "1d97dc3c26c23f3ff7576d2022e18d8ca87f78531a64284addbe1472b8ac3087"
+    },
+    {
+      "path": "src/main/resources/mcp/list_mcp_resources/plugin.yaml",
+      "bytes": 880,
+      "sha256": "12f874c8b47a8600cb50742c683c60bb1bbc01d43e5c69aa0b5350bd415dd472"
+    },
+    {
+      "path": "src/main/resources/mcp/read_mcp_resource/input.schema.json",
+      "bytes": 576,
+      "sha256": "99bb5fea5f44d507585a3ba512addda2050c9a54ac99647977f2fe0932563650"
+    },
+    {
+      "path": "src/main/resources/mcp/read_mcp_resource/output.schema.json",
+      "bytes": 3007,
+      "sha256": "913b8a04ef378864565dfe764d0a84e8c4434557f998cb67bcc6a21f89c8f1c9"
+    },
+    {
+      "path": "src/main/resources/mcp/read_mcp_resource/plugin.yaml",
+      "bytes": 877,
+      "sha256": "3f3c6e3397da857f1d57c6ee4522d3ed71ae49c086da6a61149edf218e45f42b"
+    },
+    {
+      "path": "src/main/resources/mcp/schema-index.json",
+      "bytes": 1395,
+      "sha256": "4ff8e6e0c9ef697c02517426a948479f5976806c9f4249c954a69fa579b826db"
+    },
+    {
+      "path": "src/main/resources/mcp/server-profile-v1.schema.json",
+      "bytes": 2986,
+      "sha256": "906bffc7e23bfb3a7065d2059aff541a07061c8941318855462d0999a75c5b13"
+    },
+    {
+      "path": "src/main/resources/mcp/task-binding-v1.schema.json",
+      "bytes": 5115,
+      "sha256": "eac67f85d9d731b12a51bb7bcd214776da07566ec0a25db7aba5bf2d158961cf"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/compose_report-0.2.0/input.schema.json",
+      "bytes": 4070,
+      "sha256": "4901da65bf56c28822d76e4a8eee0803097c3c43a6a8ccd026529b061d3a4400"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/compose_report-0.2.0/output.schema.json",
+      "bytes": 5181,
+      "sha256": "183994b16bdc7b3f0de711674a639c741fa85a58ff618ac7d3d378d3dca1fe79"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/compose_report-0.2.0/plugin.yaml",
+      "bytes": 878,
+      "sha256": "894bd18c387715169d9117cd9dde2a8392141e8cc03e6f7865a1b0bdd409f430"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/compose_report/input.schema.json",
+      "bytes": 3178,
+      "sha256": "b3263debdaff7e1de56fc0e3970b70055e57ff53f8db80157cbd7031984cbcac"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/compose_report/output.schema.json",
+      "bytes": 1543,
+      "sha256": "7bc3e97873dc92d84906d7c924875ada06dc420bd398686f030a36363115ade3"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/compose_report/plugin.yaml",
+      "bytes": 652,
+      "sha256": "3059c113b5527e885f4851bf13a21a7d47a68fdc49c4b31d69da9c9315ac5e99"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/edit/input.schema.json",
+      "bytes": 612,
+      "sha256": "7d9e0154760864950d077222757e190534777039c953fde1262cc0ef343fe622"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/edit/output.schema.json",
+      "bytes": 607,
+      "sha256": "af70998ce690b0a518dee65617424900e9ccdb4e7dacc9efd0bf7c4e2d163127"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/edit/plugin.yaml",
+      "bytes": 849,
+      "sha256": "7f63221c4e64380013294a81f0735756b5e570b9a6753d79cfa04d79275662fa"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/glob/input.schema.json",
+      "bytes": 543,
+      "sha256": "58891d77d67bf50e19d67ba82278bd9f156112d1d8627d05dfe17fca524881d5"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/glob/output.schema.json",
+      "bytes": 971,
+      "sha256": "03c0d326d3c0053135e31b487e2e54424fc9befcf05b5c47cc73a52177e0d761"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/glob/plugin.yaml",
+      "bytes": 850,
+      "sha256": "4607188b5c909d7450cfbfda5f644dd32ad783607cefa4e1a03ecfbf47ab3024"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/grep/input.schema.json",
+      "bytes": 637,
+      "sha256": "fd6e5607007ee218e7033a93647e225e2eb7f1f1b52d726c06c9aed1abae7d9d"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/grep/output.schema.json",
+      "bytes": 1395,
+      "sha256": "ea926abbc8c8ce00a68559c79421ba7df4f8c006526fc7acc7dde761148bd37a"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/grep/plugin.yaml",
+      "bytes": 850,
+      "sha256": "7731999146b96b1967f3f0f4bff9ec70cf4b80980a20b2b7022f4c9c1da2327e"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/present/input.schema.json",
+      "bytes": 753,
+      "sha256": "5ee1eecd2798c0795be14c6430133251e56b48f36ea12ab12500a74739401190"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/present/output.schema.json",
+      "bytes": 1106,
+      "sha256": "29533528d028fa1d254fcbe73b189c6500c21202e6b52055382a42ad17a0886a"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/present/plugin.yaml",
+      "bytes": 631,
+      "sha256": "6aa35e5900356d675d6e35934ed88f4f725452b2a0e54db0351bc7b93fc7b583"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/read/input.schema.json",
+      "bytes": 503,
+      "sha256": "dd957a70a488c9167ee4b1ff79e65790f073492b05c9933919e89adf0dd26cec"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/read/output.schema.json",
+      "bytes": 770,
+      "sha256": "3afdd8ce04586f381583d26eb91f3000745bf519a3571f702fd8da5b6cfaf4a9"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/read/plugin.yaml",
+      "bytes": 622,
+      "sha256": "9857ab76822692529c5f3ad5fadd3198e161fd08951825f9cc1cdd2b6b0f8759"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/read_image/input.schema.json",
+      "bytes": 303,
+      "sha256": "cdf5a6395bfa7123c880d03869b8d595e15e2e4c8f0cda188278afb21990355c"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/read_image/output.schema.json",
+      "bytes": 2118,
+      "sha256": "2b3e16c2ba0318dc62f26fb6410622997eb2591d074e1f7acf8c8c5d2da68108"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/read_image/plugin.yaml",
+      "bytes": 865,
+      "sha256": "9b08fea3c0de3facd8fc6898a27981176ad28970683962a48568a2cbf0a50d1e"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/webfetch-public/plugin.yaml",
+      "bytes": 677,
+      "sha256": "3c9d26608f61deb39c86c931daeb5775d20886ce4884d5a4cf862d6121d11483"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/webfetch/input.schema.json",
+      "bytes": 218,
+      "sha256": "a08d14641ebb1101f0f95757c569035cf134a17d8faced55ccf11baee1e2163a"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/webfetch/plugin.yaml",
+      "bytes": 625,
+      "sha256": "b728d072dee18aae4a9eeea46336c2163e70309fcbb1c15fbc23092575be3c45"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/write/input.schema.json",
+      "bytes": 442,
+      "sha256": "26fbf190900805f120cfdc5f112526fa8b4c683a8f76a629619dcd4a24eeb0b7"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/write/output.schema.json",
+      "bytes": 478,
+      "sha256": "b80d38a29e6fe4f73bf070971bfdd49bfc06d3f7fbd0e07b41890aef853020af"
+    },
+    {
+      "path": "src/main/resources/plugins/builtin/write/plugin.yaml",
+      "bytes": 626,
+      "sha256": "41cb80aa705f2588508601b4f2db718d0dca6d55291d28ac0351fe3d01999546"
+    },
+    {
+      "path": "src/main/resources/session/catalog.json",
+      "bytes": 1159,
+      "sha256": "82ac8d60427d7b60632c8d0072d2c6c4fff2858f9f8c342ca412080a703b24e0"
+    },
+    {
+      "path": "src/main/resources/session/context-v1.schema.json",
+      "bytes": 1283,
+      "sha256": "94a3ab013b2decf90cdf2ab54e3554ad6fa10d63037d0fdef36988697a3cb6f1"
+    },
+    {
+      "path": "src/main/resources/session/event-v1.schema.json",
+      "bytes": 8282,
+      "sha256": "7626dd1e7b1f599e3b5bcc90ca0190c44e48f4142b462ddf48634286fc2a8471"
+    },
+    {
+      "path": "src/main/resources/session/examples/binding.json",
+      "bytes": 1098,
+      "sha256": "c7accb59b5216ffeda05ae7608a5ec49c033813412cb2abe49a3b2ca7ed9fb64"
+    },
+    {
+      "path": "src/main/resources/session/examples/context.json",
+      "bytes": 405,
+      "sha256": "d5b25eb7aea02b09c50eb693082c9db0c301b6cc27a1a12cd67dcd1a7e1955b2"
+    },
+    {
+      "path": "src/main/resources/session/examples/current-input.json",
+      "bytes": 71,
+      "sha256": "07dbea2c5b19f100cb80c455186e46af86b7277de004c2acf306b93ad44e3466"
+    },
+    {
+      "path": "src/main/resources/session/examples/first-read-output.json",
+      "bytes": 749,
+      "sha256": "6b297e8e7110908d598cf568f9877ab17b879251058c38571db8b69604411d6b"
+    },
+    {
+      "path": "src/main/resources/session/examples/first-read-output.wire.json",
+      "bytes": 581,
+      "sha256": "7bed00eb1df7fa697d67d82c8e7bbe5e97101bec7df8d8c5cf7bc64f522509bb"
+    },
+    {
+      "path": "src/main/resources/session/examples/input.json",
+      "bytes": 44,
+      "sha256": "dad416dfb699bd23f447b0c282ca2d796f4215563b24357b194ae2d8c1cb9e23"
+    },
+    {
+      "path": "src/main/resources/session/examples/owner-history.json",
+      "bytes": 491,
+      "sha256": "dd54b0d7de30ffff68d3ee1ff195f893d7f579278b0b076633bc6051686078f4"
+    },
+    {
+      "path": "src/main/resources/session/examples/read-output.json",
+      "bytes": 1434,
+      "sha256": "b78f42c46e704513d4970bb4f9e825867acaa13a98c967a6466ae4776ade388c"
+    },
+    {
+      "path": "src/main/resources/session/examples/read-receipt.json",
+      "bytes": 611,
+      "sha256": "ab4da31188b0bb9a2bc994147b9400222faaef3f90759cc8c11ca8a64f85cfe4"
+    },
+    {
+      "path": "src/main/resources/session/examples/response-event.json",
+      "bytes": 568,
+      "sha256": "4cb9c684aae3315095eeb7ac36e87ef4dee4140b85274c8bd4582bc54fc38844"
+    },
+    {
+      "path": "src/main/resources/session/examples/trace.json",
+      "bytes": 5267,
+      "sha256": "557c5cd40fbd110bc47fcb7eb2f3d4510d6396c9eeb7607eaf5380dad1ea6653"
+    },
+    {
+      "path": "src/main/resources/session/examples/user-event.json",
+      "bytes": 390,
+      "sha256": "bdbb1a52d412ab2d3b3064f5f717952bc3f28b3b2434e988d452b153d521f026"
+    },
+    {
+      "path": "src/main/resources/session/owner-history-v1.schema.json",
+      "bytes": 1611,
+      "sha256": "dd4291e10d0d60abc930826fa5f88c233281ea66c79868d93fa9b8e6118d6ee6"
+    },
+    {
+      "path": "src/main/resources/session/session_event_read-0.1.0/description.txt",
+      "bytes": 489,
+      "sha256": "353537c1d241ce90d0a707d60ac25fa615516ad3a28c37e41f64b9465549f563"
+    },
+    {
+      "path": "src/main/resources/session/session_event_read-0.1.0/input.schema.json",
+      "bytes": 627,
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0"
+    },
+    {
+      "path": "src/main/resources/session/session_event_read-0.1.0/output.schema.json",
+      "bytes": 15590,
+      "sha256": "266801da14857cee3bb79a7ffcd2fadcda33e8bb5480c451917302171ed4c9b7"
+    },
+    {
+      "path": "src/main/resources/session/session_event_read-0.1.0/plugin.yaml",
+      "bytes": 897,
+      "sha256": "bb28507cfd9486a96ab2996e577342733816dd3d72923c2ae0e07f6dcdef2294"
+    },
+    {
+      "path": "src/main/resources/session/task-binding-v1.schema.json",
+      "bytes": 3080,
+      "sha256": "54a30c835bb7b27dc30f48e2d091703d051a13a2f3fe989232c4c43a1ddbca9c"
+    },
+    {
+      "path": "src/main/resources/session/v2/catalog-v2.json",
+      "bytes": 1674,
+      "sha256": "3b46a1165221462186eb862d4c86ed6e9f7258b0a05abfe03d5e35896db1a3dd"
+    },
+    {
+      "path": "src/main/resources/session/v2/context-v2.schema.json",
+      "bytes": 1273,
+      "sha256": "3116de9c3a95c4e5eac7f870915b1fb5fbc7d48a8771768ce713dc29884521b0"
+    },
+    {
+      "path": "src/main/resources/session/v2/event-v2.schema.json",
+      "bytes": 8989,
+      "sha256": "05046a2212bd106d7026e94db1d124ba50365182da7963a443bd965e5f4e7075"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/binding.json",
+      "bytes": 1718,
+      "sha256": "1b0f5990bd940a2d60863406e041d4a0305502811c81d0fef4d37b4260def6dc"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/context.json",
+      "bytes": 405,
+      "sha256": "21adf98084445e197287f42bcc7a68915c7350f1fbafcafa0b2fd748b5e794a4"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/empty-output.json",
+      "bytes": 344,
+      "sha256": "afd5e4474bf2a95e652926ada7bb06c02224e22986353c5b1807f46935fe349c"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/model-event.json",
+      "bytes": 725,
+      "sha256": "65e33209db0e85ae9a73eedf2e25ba95bcc511d3430055d02cb132c79e9a46af"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/normalized-query.json",
+      "bytes": 210,
+      "sha256": "1614325666c02c9af5634fbb571cded1961c1ba51235f2fd3095396e1b30fc73"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/owner-history.json",
+      "bytes": 491,
+      "sha256": "f2338f789f73fd00f75c5aa4971c470f21627207305fc89af4618036f13f8287"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/read-output.json",
+      "bytes": 740,
+      "sha256": "579dc12addbaa3d593cf640f17bbe970d44c6b47034fbf57252e1f0377a36e3c"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/search-input.json",
+      "bytes": 114,
+      "sha256": "b6549424b28f5305661ab3faa2f85b0cd3a48587d5767d4fb47b71855c8df925"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/search-output.json",
+      "bytes": 806,
+      "sha256": "f6cfe33e796d3121fa4ad900b3c502ec7e698a4aa4b4f6a844332beb5cbeb516"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/search-output.wire.json",
+      "bytes": 638,
+      "sha256": "29edda7a86d3306e13a7e5c5121a8c4b84a7c1332dd39e863a12334232e56997"
+    },
+    {
+      "path": "src/main/resources/session/v2/examples/user-event.json",
+      "bytes": 381,
+      "sha256": "3cf0082ba1e3255ebc0e0be0ccc721c138dfa0621f3681fe11217cf9993ad1a8"
+    },
+    {
+      "path": "src/main/resources/session/v2/owner-history-v2.schema.json",
+      "bytes": 1601,
+      "sha256": "a76d748919da9650e87179fede4d1a469fdfd1d0f4d3b8e882167ecc514e690c"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_read-0.2.0/description.txt",
+      "bytes": 541,
+      "sha256": "14b708a833e18d2e887ce72b00de2d1ef8715ee90322fdf20cbf5b9f4a9d64f9"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_read-0.2.0/input.schema.json",
+      "bytes": 627,
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_read-0.2.0/output.schema.json",
+      "bytes": 16509,
+      "sha256": "7823e04505d76cb80e7d6a644d10504ece4260be0e01e7026206df833a7ea6d9"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_read-0.2.0/plugin.yaml",
+      "bytes": 897,
+      "sha256": "968cf2ab9e3557b995151bce2bac40ea32a41b8d489550a38938e2e61d768ffa"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_search-0.1.0/description.txt",
+      "bytes": 767,
+      "sha256": "b91db9e0ccd349b8d0d23185f642f6350b04c472d5ec406455238659a0290209"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_search-0.1.0/input.schema.json",
+      "bytes": 2300,
+      "sha256": "52fdd4305f6791d80469a4f2537d1b544790e8dec59e24960f731cf5f9295584"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_search-0.1.0/output.schema.json",
+      "bytes": 3540,
+      "sha256": "51356d3c17c2bf298c653f21160bbe052e5638f189dc932b40cce75f12e53076"
+    },
+    {
+      "path": "src/main/resources/session/v2/session_event_search-0.1.0/plugin.yaml",
+      "bytes": 903,
+      "sha256": "cec185661a7afac5cbf4ceb558c949cf166779e018c409ac5098f6568c195d9b"
+    },
+    {
+      "path": "src/main/resources/session/v2/task-binding-v2.schema.json",
+      "bytes": 4604,
+      "sha256": "fa5b2bf3542723a2cb98f4aaa30357659523520107502bde153ace6cc1b02634"
+    },
+    {
+      "path": "src/main/resources/session/v3/catalog-v3.json",
+      "bytes": 2308,
+      "sha256": "064089523d52fe0161d53530c1d8b088ee5e8e20c1d7f57f75badeec15b0d0c7"
+    },
+    {
+      "path": "src/main/resources/session/v3/context-v3.schema.json",
+      "bytes": 1273,
+      "sha256": "5691a2e400d7f8006715512524cf25b6e84c4387ba64b10f7501ac08f85f310e"
+    },
+    {
+      "path": "src/main/resources/session/v3/event-v3.schema.json",
+      "bytes": 10452,
+      "sha256": "ba3eed79df80f9eafccf121badd8bd88d5c211344775e143b199d3cc1831edb7"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/binding.json",
+      "bytes": 2182,
+      "sha256": "7771ece9ad5e134403b13c91a532c1479a254d3a9ab47f9a975eb3260a2b5769"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/context.json",
+      "bytes": 405,
+      "sha256": "66ec916ace04676e2ed23831d57c5147615bed47401aa803438e33362752bfed"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/owner-history.json",
+      "bytes": 491,
+      "sha256": "25c276f24e6a488e1e8f50fd17cbb170821cc20e84c5e9e4f9ee41b2e4c940e3"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/read-output.json",
+      "bytes": 769,
+      "sha256": "d1735727fa9118c4075674327fdd4c5dcf20da7d232796e58a87828b8c6d9a70"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/read-receipt.json",
+      "bytes": 647,
+      "sha256": "9492c7dbc9e3cd8753adb63d06f551636d8941753707e33ff73e7e26ad49b589"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/read-sources.json",
+      "bytes": 113,
+      "sha256": "129d0b1748f5fc075e396e7a7f32ee90beba0f1fc5bd49dd10331e0457675ca0"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/search-output.json",
+      "bytes": 806,
+      "sha256": "610c0ec2dce73068d618b8fb713220b7367d306e56fff1c594250ae86280a199"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/trace-input.json",
+      "bytes": 15,
+      "sha256": "60f43ffef07c31271f73f931ffce77379518c410946df4aa23817c02e921311e"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/trace-output.json",
+      "bytes": 737,
+      "sha256": "a275605eb69624afcd601c55da57ad1aaeb37b4624423083e343829544484199"
+    },
+    {
+      "path": "src/main/resources/session/v3/examples/user-event.json",
+      "bytes": 408,
+      "sha256": "418efab7e13cffd37c7fd478a543ae09206c329edfa0faa26b2e9a2160d980c9"
+    },
+    {
+      "path": "src/main/resources/session/v3/owner-history-v3.schema.json",
+      "bytes": 1601,
+      "sha256": "9e0924f0d307ae3ddbf61780fab12a6c190a1a83a186995aaf2c79116d04053d"
+    },
+    {
+      "path": "src/main/resources/session/v3/read-sources.schema.json",
+      "bytes": 502,
+      "sha256": "819c3b54a9b68aa8dd18ecbec487397821e2c82db2e0b76a81b80d3fad41c3ee"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_read-0.3.0/description.txt",
+      "bytes": 206,
+      "sha256": "d4dd2398b320d91ba355ff30a45506696b433aa02d81e7bdad34a37a5f45ad8c"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_read-0.3.0/input.schema.json",
+      "bytes": 627,
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_read-0.3.0/output.schema.json",
+      "bytes": 18106,
+      "sha256": "762f4ca547c81156a35937e0fd2120deb7a4aa5da9f401b9f4ecde778db14da2"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_read-0.3.0/plugin.yaml",
+      "bytes": 897,
+      "sha256": "3b99e0428a0e3605724a8b7790539b3ed17b06fe24afc9c7c48678ced1be4cb6"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_search-0.2.0/description.txt",
+      "bytes": 170,
+      "sha256": "04b04c1a490134039e95a864a9d25dafc4e93cc595196d26b16746cc285b9989"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_search-0.2.0/input.schema.json",
+      "bytes": 2300,
+      "sha256": "52fdd4305f6791d80469a4f2537d1b544790e8dec59e24960f731cf5f9295584"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_search-0.2.0/output.schema.json",
+      "bytes": 3540,
+      "sha256": "457e3723413e6c9b2b548a27ca6832159dfff6c5741fd3b021a5825dffb695e7"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_search-0.2.0/plugin.yaml",
+      "bytes": 903,
+      "sha256": "e73db11770e860c29f9d24de477f8107355cebfdefab45bed945234fc1a1a6b7"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_trace-0.1.0/description.txt",
+      "bytes": 264,
+      "sha256": "a604404610101a18c86797e38f3725bf21a5a6d961ca7d8656fd071519567a60"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_trace-0.1.0/input.schema.json",
+      "bytes": 455,
+      "sha256": "7849c52bcc5b58775f5a7dec28bf41399746ef1780c815a88dc8630e03227c91"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_trace-0.1.0/output.schema.json",
+      "bytes": 3547,
+      "sha256": "5595052fbd89307318bc1593438ff208117c29ddfdf747d0f86c15fb5ae532dc"
+    },
+    {
+      "path": "src/main/resources/session/v3/session_event_trace-0.1.0/plugin.yaml",
+      "bytes": 900,
+      "sha256": "5ed8ee7d9db15d5c10cb644d3172977e6e174a5e4135f69fa999172ed5fc7c0a"
+    },
+    {
+      "path": "src/main/resources/session/v3/task-binding-v3.schema.json",
+      "bytes": 5782,
+      "sha256": "fded13d824326d679d306d6a24512414c9e0c1ae170768fbce860b3627fe6b17"
+    },
+    {
+      "path": "src/main/resources/session/v4/admission-input.schema.json",
+      "bytes": 600,
+      "sha256": "014b4d6b78a574967b81882b1e1b2fc541e9bb299095b127db771f435947575f"
+    },
+    {
+      "path": "src/main/resources/session/v4/admission-output.schema.json",
+      "bytes": 2331,
+      "sha256": "a404b3c299c60f0b0698915e0d28bbf59b1aebe85f9b74f1f75fb02cd88ca222"
+    },
+    {
+      "path": "src/main/resources/session/v4/authority-scope.schema.json",
+      "bytes": 3477,
+      "sha256": "77ced585e1815c23b3d00251ca88f00de1c8eec5f5245fe3c8ff658f2bd0f8bc"
+    },
+    {
+      "path": "src/main/resources/session/v4/catalog-v4.json",
+      "bytes": 2082,
+      "sha256": "cca1703817362eca300b745b9111177a7d295c9791e17515b104c037bd084a15"
+    },
+    {
+      "path": "src/main/resources/session/v4/context-v4.schema.json",
+      "bytes": 2318,
+      "sha256": "240fe19ecc91ebd7bc55e4604f4038d1d9890ca3301551c43aa62bee8f5bb5c0"
+    },
+    {
+      "path": "src/main/resources/session/v4/event-v4.schema.json",
+      "bytes": 10572,
+      "sha256": "105f63550e64f5cf893d3c6b2df4e3f7fe14c015fcd65a3deca9aee09a87b5f0"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/admission-empty-scope.json",
+      "bytes": 88,
+      "sha256": "a68222a637d809369ece40fc595c725a84a104f59414eb8499f32fb658d80b55"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/admission-output.json",
+      "bytes": 254,
+      "sha256": "f78eaaf573170c74db8f0abf1a72193926daec336242c8b6498082ca1e5dcf40"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/admission.json",
+      "bytes": 202,
+      "sha256": "e0658ceb9959001c56d6f7cd0fcee59ffd4e0e0c5e8e6cc5e72781db62f85b44"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/binding.json",
+      "bytes": 2108,
+      "sha256": "ab7ec75b98fd97dcd8a0145573f70b5b552305d65d773e4a9e086031c120b8f3"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/context.json",
+      "bytes": 747,
+      "sha256": "6025f0f565ab7f4abb01504ef45d2bc3e04bb5e270efc9db802947d2856d774a"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/empty-output.json",
+      "bytes": 418,
+      "sha256": "7ca6d9d3dbff131d8c0e65511910b5b63e9a1afe9abaffb02a79acddd3ac8898"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/owner-history.json",
+      "bytes": 597,
+      "sha256": "d03c8d59bc4a3b3160b04ce74f7ed8886785587ee7219e9ae391be3054179428"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/read-output.json",
+      "bytes": 750,
+      "sha256": "962d40839045c4f3db265d926647c8fc2155cb604920b0721e9772c26611fff5"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/read-receipt.json",
+      "bytes": 876,
+      "sha256": "9ccae5c18da9f87c294e54a2bbba78b2a34f2686fbb191a98ceee6bea41fe746"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/read-refs.json",
+      "bytes": 171,
+      "sha256": "e98dfc8527f29f9fcbab3fcf70b4dc94d3413e3e641368f725c814f435d2bc43"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/scope.json",
+      "bytes": 1285,
+      "sha256": "a639bd34258b3afb5257aa79742ab9be678adf162eecf682551bb1cec932d5d0"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/search-input.json",
+      "bytes": 237,
+      "sha256": "af424ee455391aedcebc49ab823d23130568bfe665e09f10bf50094baae83fe2"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/search-output.json",
+      "bytes": 1706,
+      "sha256": "a1c7c1580bcdbe2d41e7b4a7b2c4ce652bdad9d9084124403e3d0a3bff878a87"
+    },
+    {
+      "path": "src/main/resources/session/v4/examples/user-event.json",
+      "bytes": 381,
+      "sha256": "37f41bbc645b13e39eee107e47d77ea108aed85c71eb19cdb9f69086d5fdbf23"
+    },
+    {
+      "path": "src/main/resources/session/v4/http-catalog.json",
+      "bytes": 1340,
+      "sha256": "d37d96e64547870818496abae82f65800664a507718f7d85fd17a24993a87de2"
+    },
+    {
+      "path": "src/main/resources/session/v4/owner-history-v4.schema.json",
+      "bytes": 1838,
+      "sha256": "a735462f235e43fbf6c1e83f0ff55d36a2014a0a730b173cfae99b176c0e207a"
+    },
+    {
+      "path": "src/main/resources/session/v4/read-refs.schema.json",
+      "bytes": 699,
+      "sha256": "3f907834c55f81e783e1a48d822aeb0fc7646d9bacf603c729dd99cb20c94dd7"
+    },
+    {
+      "path": "src/main/resources/session/v4/session_event_read-0.4.0/description.txt",
+      "bytes": 513,
+      "sha256": "695b9ea5f0fac218aa5abfbb207c803995502eb8de516c5b5404ba32a1095412"
+    },
+    {
+      "path": "src/main/resources/session/v4/session_event_read-0.4.0/input.schema.json",
+      "bytes": 627,
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0"
+    },
+    {
+      "path": "src/main/resources/session/v4/session_event_read-0.4.0/output.schema.json",
+      "bytes": 18396,
+      "sha256": "361a97e7da6592d44989759f0256c05c6bd1ec6041c5b11c30ad4e0b162208e4"
+    },
+    {
+      "path": "src/main/resources/session/v4/session_event_read-0.4.0/plugin.yaml",
+      "bytes": 897,
+      "sha256": "d31a4fefdd020bf8c598cc10d4c35afc2b4a72482c4e4938e58b3c979d7ea4c7"
+    },
+    {
+      "path": "src/main/resources/session/v4/session_search-0.1.0/description.txt",
+      "bytes": 758,
+      "sha256": "77cc9f0ab2b2534f0277aa5469822a7212802f89836b538f058ec79dc112b756"
+    },
+    {
+      "path": "src/main/resources/session/v4/session_search-0.1.0/input.schema.json",
+      "bytes": 4236,
+      "sha256": "a3055ae0da20e6815ad712163f66461db483728bdee928aa599c442a1ab055b8"
+    },
+    {
+      "path": "src/main/resources/session/v4/session_search-0.1.0/output.schema.json",
+      "bytes": 5112,
+      "sha256": "8ad3904e0d7d6d946fb84efd34935e5b35c0ee240b17034f8b2a0c9fbe0b4778"
+    },
+    {
+      "path": "src/main/resources/session/v4/session_search-0.1.0/plugin.yaml",
+      "bytes": 886,
+      "sha256": "97b81f0b7c07b869f810592dc8e335c0b7957d4ea7e96650ff12390344ce26d4"
+    },
+    {
+      "path": "src/main/resources/session/v4/task-binding-v4.schema.json",
+      "bytes": 5430,
+      "sha256": "4446f01591b241122073fba2f6de8634b5a3f845c5a4719bb7bcedda09f3fee4"
+    },
+    {
+      "path": "src/main/resources/todo/catalog.json",
+      "bytes": 1404,
+      "sha256": "af06bd067b9d7a4ba55f71dbebe32b0e106af3a8fcae88b53557ca487951afdc"
+    },
+    {
+      "path": "src/main/resources/todo/examples/absent.json",
+      "bytes": 202,
+      "sha256": "2def954a202f5a24497336c44b620d8b970c6e6fd70f1d975ba3e34974142356"
+    },
+    {
+      "path": "src/main/resources/todo/examples/binding.json",
+      "bytes": 760,
+      "sha256": "9334726a83a7c4e22533889d9a9efb31360cdc7d2f417db9d7136afadc89abb5"
+    },
+    {
+      "path": "src/main/resources/todo/examples/empty-input.json",
+      "bytes": 18,
+      "sha256": "b0589fd879719ad744379d0a2f24e0fbbff61aeef4cf957c795682c62cef08ed"
+    },
+    {
+      "path": "src/main/resources/todo/examples/empty-output.json",
+      "bytes": 95,
+      "sha256": "282ed6832d874f3d4d44d2f71c242658cfff48575dedfd7d3a13294ff3da71bc"
+    },
+    {
+      "path": "src/main/resources/todo/examples/empty-view.json",
+      "bytes": 762,
+      "sha256": "a58652093c839a9498977b63f577fd3afe1b3c630faf3a3d1bceac2b4a3d7940"
+    },
+    {
+      "path": "src/main/resources/todo/examples/latest-view.json",
+      "bytes": 915,
+      "sha256": "89a739383119ed10f80a9642d987ee87cf70c23dd4304d58383d86cdc680bc9a"
+    },
+    {
+      "path": "src/main/resources/todo/examples/purged-unwritten.json",
+      "bytes": 220,
+      "sha256": "1c331bca326d87534dff72caff968573370d843b62106add1004b58c44f15634"
+    },
+    {
+      "path": "src/main/resources/todo/examples/purged-view.json",
+      "bytes": 763,
+      "sha256": "1292c739f81b420118b05395a6f6d052ea347b559310a2b74f3f3e76db92996b"
+    },
+    {
+      "path": "src/main/resources/todo/examples/replacement-input.json",
+      "bytes": 171,
+      "sha256": "abbb8dc744dcca375163d78d8ad1de166893f153b86b5ac8de69360fa3c0355f"
+    },
+    {
+      "path": "src/main/resources/todo/examples/replacement-output.json",
+      "bytes": 248,
+      "sha256": "eedafa744e0b80d774efb92c280ea51ca40a3d6f2ddbea12ef48d94ce5f1522f"
+    },
+    {
+      "path": "src/main/resources/todo/examples/unwritten.json",
+      "bytes": 223,
+      "sha256": "97b66eac66628f1726e86e67c8fbd78c1328069e86725adb3f78ec5ed92ea2a2"
+    },
+    {
+      "path": "src/main/resources/todo/task-binding-v1.schema.json",
+      "bytes": 2170,
+      "sha256": "2650d93bac1aa35cb9ae958fb045a1d3ef1299beedc879d32ac682a2bf8f8530"
+    },
+    {
+      "path": "src/main/resources/todo/todo-view-v1.schema.json",
+      "bytes": 12668,
+      "sha256": "039171d4ecec7cb31f7edfe40a53785d6bb9593385b0b1b72aecbcaed43f0ca2"
+    },
+    {
+      "path": "src/main/resources/todo/todo_write-0.1.0/description.txt",
+      "bytes": 477,
+      "sha256": "05bef58a8da85fa207fddd674a930d36ef4225db37575e4c5cb1c638c757b644"
+    },
+    {
+      "path": "src/main/resources/todo/todo_write-0.1.0/input.schema.json",
+      "bytes": 754,
+      "sha256": "18f340ae56366ad533d2ed6eb3dce4cda9022110ac4be2750b1134f05096b1d1"
+    },
+    {
+      "path": "src/main/resources/todo/todo_write-0.1.0/output.schema.json",
+      "bytes": 1303,
+      "sha256": "5aaeeadb3ce3e7e8c34e991dcc85b87cf4ce5e9502163b9b8668523bf49df99c"
+    },
+    {
+      "path": "src/main/resources/todo/todo_write-0.1.0/plugin.yaml",
+      "bytes": 842,
+      "sha256": "fbece39d857c7576cade7a0132ba466ed9476b86fb4d3280308234a6ca3dc36f"
+    },
+    {
+      "path": "tools/evaluation/frozen/HANDOFF.md",
+      "bytes": 11678,
+      "sha256": "72cee4a3c4dfb424d57d64cc46349f1aee2a29623ec636cd29c562787b1bb7fe"
+    },
+    {
+      "path": "tools/evaluation/frozen/MANIFEST.json",
+      "bytes": 13990,
+      "sha256": "2cf38fb5cce4591bf8abc220eb6c0f5533d2db1823ca546d6db26397d89e2feb"
+    },
+    {
+      "path": "tools/evaluation/frozen/RESOURCE-RECEIPT.json",
+      "bytes": 726,
+      "sha256": "137febadd5130e899e50c5c60fcf98ca382771dc3a6d94de982dac5b5bfd1092"
+    },
+    {
+      "path": "tools/evaluation/frozen/VALIDATION.json",
+      "bytes": 1107,
+      "sha256": "514beafca9ee63fd7d4b85f2c26ffff197bbd2207354e142c9bbbd74a93b3c0d"
+    },
+    {
+      "path": "tools/evaluation/frozen/budget-audit.json",
+      "bytes": 12422,
+      "sha256": "bd0836c6f736da4e91d3dc873738ecec780bef53ccc94154a2af0865ee2930a7"
+    },
+    {
+      "path": "tools/evaluation/frozen/build_plans.py",
+      "bytes": 20963,
+      "sha256": "f3ab5a01320c554e5cf22ed9aeff100df738026312c431afae7dcedbd2393f41"
+    },
+    {
+      "path": "tools/evaluation/frozen/closed-plan.schema.json",
+      "bytes": 19308,
+      "sha256": "121503a48da30762419b5a47be8673f9594e5eaf6ed186eed8fcc4b7c7226bef"
+    },
+    {
+      "path": "tools/evaluation/frozen/common-materials.json",
+      "bytes": 3053,
+      "sha256": "189997f9963aa4881257664c956e1159b812aab8c3c182734bd2434038c650a1"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository-manifest.json",
+      "bytes": 7755,
+      "sha256": "a836c5be36af4091adf32f0ffab13d7a450fd3dcd67ff48f6a01b5a8ac97401b"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/docs/baseline/XIAO-33-web-fetch-output-v0.2.0.schema.json",
+      "bytes": 602,
+      "sha256": "08a144489ed9ea37b5b33a5ffdc815237f31d4f229b76ba1d5e465b9e13f9ff8"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+      "bytes": 24270,
+      "sha256": "6db9c8a5a501c9456dedd24eb2dfc4f32cf9d01887d4ac79564f803a90ca2256"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/OpenAiProtocol.java",
+      "bytes": 13833,
+      "sha256": "8ca6f8983d7267515d7e5df7f1cdf3999e35425e9a0b2a5d69d574dfcbee6b1f"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/ToolDefinitionMapper.java",
+      "bytes": 574,
+      "sha256": "1e84ea7d68a8e6ae7f2c67944fcf04f11406c0ea29a6c644424180d3b1369469"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/ModelCosts.java",
+      "bytes": 779,
+      "sha256": "2ab0740004b7d24772b801cd5676c1bf40a4db9a28846cfc18d709dd281adc69"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/Payloads.java",
+      "bytes": 1944,
+      "sha256": "b3b808ba8832b08e01811a45ce9d6afe674bfe272cbceaf033618fefca5dc77c"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportPolicy.java",
+      "bytes": 5261,
+      "sha256": "026d3bc8919ab453e6aaaad050bf615447b140f9baa1fb3b04584c0ff04335e0"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelProfiles.java",
+      "bytes": 10615,
+      "sha256": "11542cc2e82229fc73e8f899ab888a490aaeb8e92a7a28da13f3408488f8e3d0"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/PublicPageProjection.java",
+      "bytes": 2818,
+      "sha256": "a831fdfe913f6cd6af96cfa426c643aa147791af41a0eaac1657713223569121"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/model/api/ModelSnapshot.java",
+      "bytes": 1792,
+      "sha256": "98c665b179470db47ccb87a39b3206ee817e46aa93804df7ba013446f8af796a"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/java/io/github/lovexiaopeng/jimu/plugins/builtin/webfetch/FetchOutput.java",
+      "bytes": 161,
+      "sha256": "528d18c689440d47fa78c675e1646dcae5b24dff272e64680a65227ef0475de9"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/db/migration/V4__model_snapshots_and_budgets.sql",
+      "bytes": 1942,
+      "sha256": "1a1d5fa336be3d55decfab17cd7acf62abdfcab520b35414d3f8fb0cca7ac981"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/present/input.schema.json",
+      "bytes": 753,
+      "sha256": "5ee1eecd2798c0795be14c6430133251e56b48f36ea12ab12500a74739401190"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/present/output.schema.json",
+      "bytes": 1106,
+      "sha256": "29533528d028fa1d254fcbe73b189c6500c21202e6b52055382a42ad17a0886a"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/present/plugin.yaml",
+      "bytes": 631,
+      "sha256": "6aa35e5900356d675d6e35934ed88f4f725452b2a0e54db0351bc7b93fc7b583"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/read/input.schema.json",
+      "bytes": 503,
+      "sha256": "dd957a70a488c9167ee4b1ff79e65790f073492b05c9933919e89adf0dd26cec"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/read/output.schema.json",
+      "bytes": 770,
+      "sha256": "3afdd8ce04586f381583d26eb91f3000745bf519a3571f702fd8da5b6cfaf4a9"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/read/plugin.yaml",
+      "bytes": 622,
+      "sha256": "9857ab76822692529c5f3ad5fadd3198e161fd08951825f9cc1cdd2b6b0f8759"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/webfetch-public/plugin.yaml",
+      "bytes": 677,
+      "sha256": "3c9d26608f61deb39c86c931daeb5775d20886ce4884d5a4cf862d6121d11483"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/webfetch/input.schema.json",
+      "bytes": 218,
+      "sha256": "a08d14641ebb1101f0f95757c569035cf134a17d8faced55ccf11baee1e2163a"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/webfetch/plugin.yaml",
+      "bytes": 625,
+      "sha256": "b728d072dee18aae4a9eeea46336c2163e70309fcbb1c15fbc23092575be3c45"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/write/input.schema.json",
+      "bytes": 442,
+      "sha256": "26fbf190900805f120cfdc5f112526fa8b4c683a8f76a629619dcd4a24eeb0b7"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/write/output.schema.json",
+      "bytes": 478,
+      "sha256": "b80d38a29e6fe4f73bf070971bfdd49bfc06d3f7fbd0e07b41890aef853020af"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/repository/src/main/resources/plugins/builtin/write/plugin.yaml",
+      "bytes": 626,
+      "sha256": "41cb80aa705f2588508601b4f2db718d0dca6d55291d28ac0351fe3d01999546"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/tool-pins.json",
+      "bytes": 1419,
+      "sha256": "13eb730b6bebf3ed633c62010237238ccc0f1810d8ffe8abd15548844f047a55"
+    },
+    {
+      "path": "tools/evaluation/frozen/contracts/tools.json",
+      "bytes": 3198,
+      "sha256": "f43788c87cc5d7525b63ae19f5785ca65c437f2435883f6dcc0ff13c5572f65e"
+    },
+    {
+      "path": "tools/evaluation/frozen/drafts/W4.initial.md",
+      "bytes": 241,
+      "sha256": "5fad02804f7669a6f23d973b0876bfd73c838c62fa9e737e3711a95216448436"
+    },
+    {
+      "path": "tools/evaluation/frozen/drafts/seed-manifest.json",
+      "bytes": 589,
+      "sha256": "c554b4283b64dcf0b69a5e6033afcc338d60b865a6730b6417a2c3f61a36eac4"
+    },
+    {
+      "path": "tools/evaluation/frozen/gates/B-unlock-policy.json",
+      "bytes": 1740,
+      "sha256": "e461fa08012a9ae32181c8a9b94104d42233ec19d8ec7ed08a9ae505df044133"
+    },
+    {
+      "path": "tools/evaluation/frozen/official/base-url.md",
+      "bytes": 8833,
+      "sha256": "f0357f2679da8c588e144d4c8dfa411b9f42522d22801198184b436bd7faa8d6"
+    },
+    {
+      "path": "tools/evaluation/frozen/official/chat-api.md",
+      "bytes": 131599,
+      "sha256": "cea699a0250c0f7c9122f5effe0147dedb33f0e1b66d3b120b46ffb39c2aa80b"
+    },
+    {
+      "path": "tools/evaluation/frozen/official/deep-thinking.md",
+      "bytes": 122779,
+      "sha256": "0b4fb190ebabf5b50861a3efb94aa93e130daf0d8ed2f42d0fbbedf8ac6fa7fc"
+    },
+    {
+      "path": "tools/evaluation/frozen/official/deepseek-api.md",
+      "bytes": 41043,
+      "sha256": "fd3b5bf1af05de68764b69fba15d5a55f119be1b424ef6e65c835d80e743862d"
+    },
+    {
+      "path": "tools/evaluation/frozen/official/flash37.md",
+      "bytes": 39060,
+      "sha256": "f3b84e646aeeb6eb76cc41fafc8dcfa851d2d805c9fd94797fc069b77960bd94"
+    },
+    {
+      "path": "tools/evaluation/frozen/official/flash38.md",
+      "bytes": 13674,
+      "sha256": "26f794be85b8d9ec7143d6bad79ef97e5f1a20c70c86b96efcd62a17443a2a4c"
+    },
+    {
+      "path": "tools/evaluation/frozen/official/function-calling.md",
+      "bytes": 197627,
+      "sha256": "b9da42acf23cae57eeb89b1a5a02b45156205500a08e2121e8a840931bebc310"
+    },
+    {
+      "path": "tools/evaluation/frozen/official/max37.md",
+      "bytes": 31381,
+      "sha256": "cff4c89b3aff81ac95db74b2919de15535ce47ccd352e886bac4c6083cdabaaf"
+    },
+    {
+      "path": "tools/evaluation/frozen/official/max38.md",
+      "bytes": 33292,
+      "sha256": "66fcd980cb9fc14b69aa2bb9ac8847a9f4cb25cef4d9d50bc80e49322fed9313"
+    },
+    {
+      "path": "tools/evaluation/frozen/official/plus37.md",
+      "bytes": 29042,
+      "sha256": "2605e62bb1a410473666eae05d0ca15805eef65d0d6b943b02b14888c92aea20"
+    },
+    {
+      "path": "tools/evaluation/frozen/official/pricing.md",
+      "bytes": 649803,
+      "sha256": "d5c8c84475c958bc95bd56118458fa6b2f51323852bb112821c7fc97e9638ee5"
+    },
+    {
+      "path": "tools/evaluation/frozen/official/pro.md",
+      "bytes": 19285,
+      "sha256": "8db45dd845cd1358f26836069f3271723efe3070b2c62135f64b14d52a95fec8"
+    },
+    {
+      "path": "tools/evaluation/frozen/official/sources.json",
+      "bytes": 6311,
+      "sha256": "e2ee8ee62ee325e07e851411564657a44e3445cbf9b2ad5db5425f2a0629e7b1"
+    },
+    {
+      "path": "tools/evaluation/frozen/offline/FreezeProjection.java",
+      "bytes": 533,
+      "sha256": "10dfbd509f6d3adfb4dab5900a9f9e46d496df09141110c6aa321085cdd0f7bc"
+    },
+    {
+      "path": "tools/evaluation/frozen/plan-catalogue.json",
+      "bytes": 602,
+      "sha256": "b379eb65e33a37ea220b7c01e89cb6980703b3c0404f9da2a4ad9e40010a931d"
+    },
+    {
+      "path": "tools/evaluation/frozen/plans/qwen-main-v1.json",
+      "bytes": 7287,
+      "sha256": "b58e55e317cb070e64b1949ea7be623beaa75ad83fc315ca63feaae217bbaab8"
+    },
+    {
+      "path": "tools/evaluation/frozen/plans/qwen-pro-optional-v1.json",
+      "bytes": 8457,
+      "sha256": "7af19d6808e81c9d6c77904ff63ee9339fb14d6e5cf47fd2875736977fc024ef"
+    },
+    {
+      "path": "tools/evaluation/frozen/prepare_materials.py",
+      "bytes": 10280,
+      "sha256": "964258b38dd365e131717d863bd75a8e0cc39e95d8a7daa4feec8f016960112b"
+    },
+    {
+      "path": "tools/evaluation/frozen/profiles/candidates.json",
+      "bytes": 19102,
+      "sha256": "29141fbc261729c73a950860d7303554580a82496dd5330690e67cb7b4b12cac"
+    },
+    {
+      "path": "tools/evaluation/frozen/profiles/qwen-main-v1.json",
+      "bytes": 14179,
+      "sha256": "92aa178fd3b88b540e93babf9a9dc8a9152c4b8a2320f58ff87e2b44ce733d32"
+    },
+    {
+      "path": "tools/evaluation/frozen/profiles/qwen-pro-optional-v1.json",
+      "bytes": 18803,
+      "sha256": "02693ca450cb90a784de51aa63b44e105ea87b264ad62c0ab8996555108574e1"
+    },
+    {
+      "path": "tools/evaluation/frozen/prompts/W1.goal.txt",
+      "bytes": 2060,
+      "sha256": "f46e1623106e5a6aa5602d787ec69015653920288bc6f1e6c0774389361bcfd0"
+    },
+    {
+      "path": "tools/evaluation/frozen/prompts/W2.goal.txt",
+      "bytes": 1449,
+      "sha256": "9e97594303251321fa94953e4543063c32582576a20f55abde1f2534637236fa"
+    },
+    {
+      "path": "tools/evaluation/frozen/prompts/W3.goal.txt",
+      "bytes": 1677,
+      "sha256": "e036feb51d7c23fe794fb83e20807365cb88d0c37149614084053812dcf404d8"
+    },
+    {
+      "path": "tools/evaluation/frozen/prompts/W4.goal.txt",
+      "bytes": 1355,
+      "sha256": "0bc5c7dd66a793273dfd52526f993ecbbee7d42c1e6dd070b5ac0aeaa5e0a63c"
+    },
+    {
+      "path": "tools/evaluation/frozen/prompts/host-system-binding.json",
+      "bytes": 359,
+      "sha256": "18f2568054149e7b98ab76454af7233fda4053792c5c6d043bb766201cd00999"
+    },
+    {
+      "path": "tools/evaluation/frozen/prompts/host-system.template.txt",
+      "bytes": 524,
+      "sha256": "098e9b223328912e9c0d0a7e510a9eb280ef2388aa1dbf5c833a8f3bfd5f3078"
+    },
+    {
+      "path": "tools/evaluation/frozen/requests/W1.submit.json",
+      "bytes": 2289,
+      "sha256": "05e109243d3f6dc8e9ba2dbac72f9f339f57b12fa23590bb55ee63c213724ee1"
+    },
+    {
+      "path": "tools/evaluation/frozen/requests/W2.submit.json",
+      "bytes": 1678,
+      "sha256": "c6cf6fb59f8b5fcb89863e0d499af2fba0cc090d3fa1f6eb833aa4f62f06bac3"
+    },
+    {
+      "path": "tools/evaluation/frozen/requests/W3.submit.json",
+      "bytes": 1906,
+      "sha256": "972f47a14c7227f83db26ce772f596c71188a948697b3c036cad433013ed582c"
+    },
+    {
+      "path": "tools/evaluation/frozen/requests/W4.submit.json",
+      "bytes": 1582,
+      "sha256": "9ad5e639c5d9083133919f5eab6ede89c8796523b2ebc94af96363066c859427"
+    },
+    {
+      "path": "tools/evaluation/frozen/runtime-closed.properties",
+      "bytes": 176,
+      "sha256": "96963b648e307b0e6730c2333c4508979d7da9743ba3fc1dabedef1ef47769d8"
+    },
+    {
+      "path": "tools/evaluation/frozen/samples.json",
+      "bytes": 4492,
+      "sha256": "26e4ee4cdc8dd288d46778119c3830aa07abf936eb6156ea6e0b4beb58a32f42"
+    },
+    {
+      "path": "tools/evaluation/frozen/scoring/C1-answer.schema.json",
+      "bytes": 730,
+      "sha256": "142ef9be0dcb9391114d537aa8765b70d21321f260cc0ca512b13c009b301289"
+    },
+    {
+      "path": "tools/evaluation/frozen/scoring/oracles.json",
+      "bytes": 1800,
+      "sha256": "f4663d4dc528213eae3cec8bc372249c655558cf1988403e42fad354ca9c20b6"
+    },
+    {
+      "path": "tools/evaluation/frozen/scoring/rubric.json",
+      "bytes": 8169,
+      "sha256": "d0716fa2e7585a9c8b39e936f21b65b3c0b6921f3f7ef6b00d3710e611c3926c"
+    },
+    {
+      "path": "tools/evaluation/frozen/scoring/scorecard.template.json",
+      "bytes": 2485,
+      "sha256": "924948672558d7846c971e7d87058753079952f66abbf09ae2c608a7129bdcb1"
+    },
+    {
+      "path": "tools/evaluation/frozen/sources/colorsys.fetch.json",
+      "bytes": 2720,
+      "sha256": "e9096fedc2cd2d40f794fcdbf9a5880a4789f7a0bad25f0177c5d97dfc8414bf"
+    },
+    {
+      "path": "tools/evaluation/frozen/sources/colorsys.raw",
+      "bytes": 22124,
+      "sha256": "06cf848052167e898b062c466217fc196354aeefdfe5bfa50b890477d35b219d"
+    },
+    {
+      "path": "tools/evaluation/frozen/sources/colorsys.visible.txt",
+      "bytes": 2601,
+      "sha256": "ddd98870ba06608c0b567061264399d57e5b90f6ce7637fd9370697975e7da36"
+    },
+    {
+      "path": "tools/evaluation/frozen/sources/projection-dependencies.json",
+      "bytes": 887,
+      "sha256": "99b05e15c203a7040916c0cb2d0f7f6ff44cff25034199d8f10be5c3a3486970"
+    },
+    {
+      "path": "tools/evaluation/frozen/sources/raw-manifest.json",
+      "bytes": 1287,
+      "sha256": "faf54c0c88e577242aab9ec28c2ea65a4426236ddcb0ef93e6a062c1273d168b"
+    },
+    {
+      "path": "tools/evaluation/frozen/sources/rfc768.fetch.json",
+      "bytes": 6280,
+      "sha256": "13237f4b39e345fa1a78bb5ea1e310d58bf62b7da93c0f0506b8d5d590a956d0"
+    },
+    {
+      "path": "tools/evaluation/frozen/sources/rfc768.raw",
+      "bytes": 5896,
+      "sha256": "7dc8880e1ecef9c3f9da0db4b876a16e96bfa4f0953cc9d977d414f8f680c2f0"
+    },
+    {
+      "path": "tools/evaluation/frozen/sources/rfc768.visible.txt",
+      "bytes": 5986,
+      "sha256": "af4045d8d8d5bf6082ab853790e3beb3c595a1882ae9004864811bb1f3b85dfa"
+    },
+    {
+      "path": "tools/evaluation/frozen/sources/source-manifest.json",
+      "bytes": 2636,
+      "sha256": "87c5b50abf630f43b943e33b93b4a446bd2bc4f53f2865f941011df03c73d1fd"
+    },
+    {
+      "path": "tools/evaluation/frozen/verify_package.py",
+      "bytes": 9112,
+      "sha256": "dd964d74a6e3afc0c54fa47702d2676820ad151d35e85ebf27497003f421ef9c"
+    }
+  ]
+}

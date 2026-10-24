@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryContracts;
 import io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryPaths;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;

@@ -1,0 +1,47 @@
+{
+  "baseline": "725d9fd0f0684a2b9f061737bad16c351b067f61",
+  "scope": "B2 partial validateSessionScopes plus actually shared current eligibility/whole-scope/ordered locks/afterCompletion persistence; not complete runtime scope/receipt",
+  "deleted": {
+    "oldStaticJdbcCalls": 15,
+    "oldDynamicRowForwarder": 1,
+    "static": [
+      "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN') LIMIT 1",
+      "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN' OR (state='RESERVED' AND category<>'SESSION_HISTORY_STORAGE')) LIMIT 1",
+      "SELECT id FROM model_dispatch WHERE tenant_id=? AND task_id=? AND state IN ('DISPATCHED','USAGE_UNKNOWN','BOUND_EXCEEDED') LIMIT 1",
+      "SELECT tenant_id,caller_task_id FROM ((SELECT tenant_id,caller_task_id,next_validation_at FROM task_session_scope FORCE INDEX(scope_validation) WHERE content_state='PRESENT' AND grant_state='ACTIVE' AND next_validation_at<=CURRENT_TIMESTAMP(6) ORDER BY next_validation_at,tenant_id,caller_task_id LIMIT 8) UNION ALL (SELECT tenant_id,caller_task_id,next_validation_at FROM task_session_scope FORCE INDEX(scope_validation) WHERE content_state='PRESENT' AND grant_state='REVOKED' AND next_validation_at<=CURRENT_TIMESTAMP(6) ORDER BY next_validation_at,tenant_id,caller_task_id LIMIT 8)) bounded ORDER BY next_validation_at,tenant_id,caller_task_id LIMIT 8",
+      "UPDATE task_session_scope SET next_validation_at=TIMESTAMPADD(SECOND,60,CURRENT_TIMESTAMP(6)) WHERE tenant_id=? AND caller_task_id=?",
+      "UPDATE task_session_scope SET invalidated_at=COALESCE(invalidated_at,CURRENT_TIMESTAMP(6)) WHERE tenant_id=? AND caller_task_id=?",
+      "SELECT capabilities FROM task WHERE tenant_id=? AND id=?",
+      "SELECT source_task_id FROM task_session_scope_target FORCE INDEX(PRIMARY) WHERE tenant_id=? AND caller_task_id=? ORDER BY ordinal LIMIT 9",
+      "SELECT id FROM task WHERE tenant_id=? AND id=? FOR UPDATE",
+      "SELECT *,retain_until>CURRENT_TIMESTAMP(6) AS retained FROM task_session_scope WHERE tenant_id=? AND caller_task_id=? FOR UPDATE",
+      "SELECT * FROM task_session_scope_target FORCE INDEX(PRIMARY) WHERE tenant_id=? AND caller_task_id=? ORDER BY ordinal LIMIT 9",
+      "SELECT tenant_id,id,owner_actor_id,capabilities,tools_digest,installation_epoch,state,created_at,request_digest FROM task WHERE tenant_id=? AND id=?",
+      "SELECT ordinal FROM task_session_scope_target FORCE INDEX(PRIMARY) WHERE tenant_id=? AND caller_task_id=? LIMIT 1",
+      "SELECT retain_until>=TIMESTAMPADD(SECOND,180,CURRENT_TIMESTAMP(6)) FROM task_session_history WHERE tenant_id=? AND task_id=?",
+      "UPDATE task_session_scope SET invalidated_at=COALESCE(invalidated_at,CURRENT_TIMESTAMP(6)),next_validation_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND caller_task_id=? AND content_state='PRESENT'"
+    ]
+  },
+  "entry": "LedgerMaintenance -> cleanupArtifacts -> validateSessionScopes -> SessionScopeMaintenanceServiceImpl -> SessionScopeMaintenanceRecords -> actual SessionScopeMapper and original SessionQueryTransaction",
+  "shared": "JdbcSessionScopes adapter -> SessionScopeEligibilityServiceImpl -> typed SessionScopeRecords -> MP ScopeSourceReadMapper / SessionScopeMapper / existing safety Mapper and writers port",
+  "post": "ScopeInvalidation.afterCompletion -> Service.persistInvalidation -> requiresNew same DS/query absolute deadline -> budget/ordered-task -> idempotent invalidate+schedule -> accounting -> final deadline",
+  "newMapperStatements": 11,
+  "actualMp": "ScopeSourceReadMapper.selectMaps with LambdaQueryWrapper tenant+id; no by-id; original nine-column projection",
+  "remainingInventory": {
+    "static": 267,
+    "dynamic": 22,
+    "literalBinds": 935
+  },
+  "tableStates": "35 tables + readonly receipt all OPEN",
+  "retainedShared": "JdbcSessionRecords.history/account/metadata and other native admission/runtime receipt SQL remain used; not counted as deleted. No parallel write chain.",
+  "boundaries": [
+    "Original bounded ACTIVE/REVOKED 8-row union and index/order",
+    "Original caller/source scope/authority/history binding, content/retention, identity/pins/epoch, zero-dependent-source, target ordinal/order/canonical JSON/digests and full-set checks",
+    "Original terminal/writer/UNKNOWN source eligibility and admission180s floor",
+    "Original budget -> sorted distinct source/caller task locks",
+    "Original independent60s scheduling commit before second current validation UoW",
+    "Original safe invalidated purge via shared HistoryRetentionService, atomic event/metadata fixed-point/release",
+    "SessionQueryTransaction final work and beforeCommit deadline checks unchanged; separate core final gate gap remains OPEN",
+    "No provider/effect replay, schema/protocol/frozen limit/feature change"
+  ]
+}

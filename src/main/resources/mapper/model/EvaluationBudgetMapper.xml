@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.model.mapper.EvaluationBudgetMapper">
+  <update id="stopTaskRun">
+    <![CDATA[UPDATE evaluation_budget b JOIN task t ON t.tenant_id=b.tenant_id AND t.evaluation_run_id=b.id SET b.state='STOPPED' WHERE t.tenant_id=#{tenant} AND t.id=#{taskId}]]>
+  </update>
+  <select id="selectRunForUpdate" resultType="map">
+    <![CDATA[SELECT tenant_id,id,max_requests,requests_used,max_cost_micros,cost_held,state,policy_version,plan_snapshot,plan_digest,phase_b_snapshot,phase_b_digest FROM evaluation_budget WHERE tenant_id=#{tenant} AND id=#{runId} FOR UPDATE]]>
+  </select>
+  <update id="stopRun">
+    <![CDATA[UPDATE evaluation_budget SET state='STOPPED' WHERE tenant_id=#{tenant} AND id=#{runId}]]>
+  </update>
+  <update id="reserveModelCost">
+    <![CDATA[UPDATE evaluation_budget SET requests_used=requests_used+1,cost_held=cost_held+#{cost} WHERE tenant_id=#{tenant} AND id=#{runId}]]>
+  </update>
+  <update id="adjustSettledModelCost">
+    <![CDATA[UPDATE evaluation_budget SET cost_held=cost_held+#{delta},state=IF(#{stop},'STOPPED',state) WHERE tenant_id=#{tenant} AND id=#{runId}]]>
+  </update>
+</mapper>

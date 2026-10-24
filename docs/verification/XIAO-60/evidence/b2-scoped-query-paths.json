@@ -1,0 +1,54 @@
+{
+  "baseline": "33f31e860fe86d8dd6e94cb6c8ced4674b403bcd",
+  "entry": "JdbcLedger queryView -> SessionScopeQueryServiceImpl -> typed SessionScopeQueries -> MapperSessionScopeQueries -> real MP selectMaps and SessionScopeQueryMapper",
+  "removed": {
+    "oldStaticJdbcCalls": 13,
+    "oldDynamicSqlCalls": 0,
+    "sql": [
+      "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=?",
+      "SELECT * FROM step_session_scope WHERE tenant_id=? AND step_id=? AND caller_task_id=?",
+      "SELECT * FROM invocation_session_scope_query WHERE tenant_id=? AND invocation_id=? FOR UPDATE",
+      "SELECT * FROM event WHERE tenant_id=? AND task_id=? AND seq=?",
+      "SELECT * FROM reservation WHERE tenant_id=? AND task_id=? AND id=?",
+      "SELECT id FROM task_attempt WHERE tenant_id=? AND task_id=? AND id=? AND fence=?",
+      "SELECT * FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq=?",
+      "UPDATE task SET tools_used=tools_used+1 WHERE tenant_id=? AND id=?",
+      "UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=?",
+      "UPDATE reservation SET actual=1 WHERE tenant_id=? AND id=?",
+      "UPDATE invocation SET state=?,output_snapshot=?,output_digest=? WHERE tenant_id=? AND id=? AND state='PENDING'",
+      "UPDATE invocation_session_scope_query SET outcome=?,failure_code=?,scan_digest=?,scan_rows=?,scan_event_bytes=?,read_refs_snapshot=?,read_refs_digest=?,read_refs_bytes=?,output_digest=?,output_bytes=?,receipt_event_seq=?,native_read_seq=?,committed_attempt_id=?,committed_fence=?,committed_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND invocation_id=? AND outcome='PENDING'",
+      "SELECT * FROM invocation_session_scope_query WHERE tenant_id=? AND invocation_id=?"
+    ]
+  },
+  "xmlStatements": 6,
+  "mpReadProjections": [
+    "step",
+    "step_session_scope",
+    "invocation_session_scope_query (committed read)",
+    "event receipt",
+    "reservation",
+    "task_attempt",
+    "session_public_event"
+  ],
+  "rules": [
+    "original fence/scope/tool/slot/current-pin checks and original refusal ordering",
+    "normalized/input/authority/context full proofs and terminal receipt/reservation/attempt/output/native proofs",
+    "PENDING-only original tool limits and scan/read; typed nullable scan fields correct baseline missing-read NULL unboxing rollback, enabling intended FAILED receipt before404",
+    "original body charge, counter/reservation/receipt/native-read/event/query commit order in same DS/UoW",
+    "original final fence/current scope/deadline/account and SessionQueryTransaction work-end/beforeCommit check",
+    "original DataAccess/Transaction uncertainty; afterCompletion invalidation and shared codecs reused"
+  ],
+  "remaining": {
+    "static": 252,
+    "dynamic": 22,
+    "allTables": "35 tables + readonly receipt all OPEN",
+    "next": "sessionContext and remaining scope/receipt/admission writes/modules/maintenance",
+    "coreFinalBeforeCommitGap": "OPEN, independent of stronger scope transaction"
+  },
+  "limits": [
+    "sparse read projections alter measured bytes/operations; no all-SQL/roundtrip invariance claim",
+    "shared originalDirectorySlot/current scope/scan/metadata/native receipt validation still-used SQL not counted deleted",
+    "no schema22/V1-V22/frozen bytes or protocol change",
+    "private test data only; no real paid vision/keys/external billing/shared data/CI/daemon/proxy/FRP"
+  ]
+}

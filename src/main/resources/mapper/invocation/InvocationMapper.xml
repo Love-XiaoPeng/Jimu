@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.invocation.mapper.InvocationMapper">
+  <select id="selectPendingEffects" resultType="map">
+    <![CDATA[SELECT id FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state IN ('RUNNING','OUTCOME_UNKNOWN')]]>
+  </select>
+  <update id="markRunningEffectsUnknown">
+    <![CDATA[UPDATE invocation SET state='OUTCOME_UNKNOWN' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='RUNNING']]>
+  </update>
+  <select id="selectUnfinishedStepInvocations" resultType="map">
+    <![CDATA[SELECT id FROM invocation WHERE tenant_id=#{tenant} AND step_id=#{stepId} AND state<>'SUCCEEDED']]>
+  </select>
+  <select id="selectUnfinishedTaskInvocations" resultType="map">
+    <![CDATA[SELECT id FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state<>'SUCCEEDED']]>
+  </select>
+  <select id="countTaskInvocationsScalar" resultType="long">
+    <![CDATA[SELECT COUNT(*) FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId}]]>
+  </select>
+  <select id="countAttemptInvocationsScalar" resultType="int">
+    <![CDATA[SELECT COUNT(*) FROM invocation WHERE tenant_id=#{tenant} AND attempt_id=#{attemptId}]]>
+  </select>
+<update id="bindTodoRevision">
+    <![CDATA[UPDATE invocation SET todo_expected_revision=#{revision} WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND step_id=#{stepId} AND slot=#{slot}]]>
+  </update>
+  <select id="selectOriginalSlot" resultType="map"><![CDATA[SELECT tenant_id,id,task_id,step_id,attempt_id,ordinal,slot,provider_id,effect_intent_id,tool,plugin_version,plugin_digest,installation_epoch,input_snapshot,input_digest,state,output_snapshot,output_digest,projection_version,updated_at,record_version,todo_expected_revision,todo_applied_revision,todo_committed_attempt_id,todo_committed_fence,todo_event_seq,todo_committed_at FROM invocation WHERE tenant_id=#{tenant} AND step_id=#{stepId} AND slot=#{slot} AND task_id=#{taskId}]]></select>
+  <select id="selectSuccessfulRead" resultType="map"><![CDATA[SELECT id FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND tool='read' AND state='SUCCEEDED' LIMIT 1]]></select>
+  <update id="markAdmittedRunning"><![CDATA[UPDATE invocation SET state='RUNNING' WHERE tenant_id=#{tenant} AND id=#{invocationId}]]></update>
+  <select id="selectTaskInvocation" resultType="map"><![CDATA[SELECT tenant_id,id,task_id,step_id,attempt_id,ordinal,slot,provider_id,effect_intent_id,tool,plugin_version,plugin_digest,installation_epoch,input_snapshot,input_digest,state,output_snapshot,output_digest,projection_version,updated_at,record_version,todo_expected_revision,todo_applied_revision,todo_committed_attempt_id,todo_committed_fence,todo_event_seq,todo_committed_at FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND id=#{invocationId}]]></select>
+  <update id="succeedRunning"><![CDATA[UPDATE invocation SET state='SUCCEEDED',output_snapshot=#{output},output_digest=#{digest},updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{invocationId} AND task_id=#{taskId} AND state='RUNNING']]></update>
+  <update id="failRunning"><![CDATA[UPDATE invocation SET state='FAILED',updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{invocationId} AND task_id=#{taskId} AND state='RUNNING']]></update>
+  <update id="markInvocationUnknown"><![CDATA[UPDATE invocation SET state='OUTCOME_UNKNOWN' WHERE tenant_id=#{tenant} AND id=#{invocationId} AND task_id=#{taskId} AND state='RUNNING']]></update>
+  <select id="selectMaterialSources" resultType="map"><![CDATA[SELECT input_snapshot,output_snapshot,output_digest FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND tool='web_fetch' AND state='SUCCEEDED']]></select>
+  <select id="selectMaterialFileHistory" resultType="map"><![CDATA[SELECT i.tool,i.output_snapshot,i.output_digest FROM invocation i JOIN step s ON s.tenant_id=i.tenant_id AND s.id=i.step_id WHERE i.tenant_id=#{tenant} AND i.task_id=#{taskId} AND i.state='SUCCEEDED' AND i.tool IN ('read','write') ORDER BY s.ordinal,i.slot]]></select>
+  <select id="selectProtectedInvocation" resultType="map"><![CDATA[SELECT id FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND id=#{invocationId} AND tool=#{tool}]]></select>
+</mapper>

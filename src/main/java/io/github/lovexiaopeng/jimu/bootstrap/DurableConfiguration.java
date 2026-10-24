@@ -2,6 +2,7 @@ package io.github.lovexiaopeng.jimu.bootstrap;
 
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent;
 import io.github.lovexiaopeng.jimu.adapters.persistence.JdbcLedger;
+import io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure.LedgerSchema;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceRuntime;
 import io.github.lovexiaopeng.jimu.adapters.runtime.events.DatabaseEventFeed;
 import io.github.lovexiaopeng.jimu.adapters.runtime.health.HttpResourceProbe;
@@ -19,11 +20,16 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.worker.OperationThreads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.WorkerLoop;
 import io.github.lovexiaopeng.jimu.adapters.storage.LocalArtifactStore;
 import io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore;
+import io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactService;
+import io.github.lovexiaopeng.jimu.kernel.artifact.service.impl.ArtifactServiceImpl;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Identity;
+import io.github.lovexiaopeng.jimu.kernel.task.service.TaskService;
+import io.github.lovexiaopeng.jimu.kernel.task.service.impl.TaskServiceImpl;
+import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebPageReader;
 import java.io.IOException;
@@ -37,7 +43,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "jimu.durable.enabled", havingValue = "true")
@@ -60,16 +66,12 @@ public class DurableConfiguration {
   }
 
   @Bean
-  DataSource ledgerDataSource(Environment env) {
-    return new DriverManagerDataSource(
-        env.getRequiredProperty("jimu.db.url"),
-        env.getRequiredProperty("jimu.db.user"),
-        env.getRequiredProperty("jimu.db.password"));
-  }
-
-  @Bean
   JdbcLedger ledger(
       DataSource source,
+      DataSourceTransactionManager transactions,
+      org.mybatis.spring.SqlSessionTemplate sqlSessions,
+      LedgerUnitOfWork unitOfWork,
+      LedgerSchema schema,
       Environment env,
       ModelProfiles models,
       NativeSearchRuntime searches,
@@ -87,7 +89,8 @@ public class DurableConfiguration {
           .migrate();
     }
     Flyway.configure().dataSource(source).cleanDisabled(true).load().validate();
-    var ledger = new JdbcLedger(source, models);
+    var ledger =
+        new JdbcLedger(source, models, transactions, unitOfWork, schema::check, sqlSessions);
     ledger.nativeSearchAvailability(searches::available);
     ledger.imageStorage(images.orElse(null));
     ledger.mcpSettings(mcpSettings);
@@ -127,6 +130,16 @@ public class DurableConfiguration {
         env.getProperty("jimu.session-event-search.enabled", Boolean.class, false));
     ledger.check();
     return ledger;
+  }
+
+  @Bean
+  TaskService taskService(Tasks tasks) {
+    return new TaskServiceImpl(tasks);
+  }
+
+  @Bean
+  ArtifactService artifactService(JdbcLedger ledger, ArtifactStore store) {
+    return new ArtifactServiceImpl(ledger.artifactAccess(), store);
   }
 
   @Bean

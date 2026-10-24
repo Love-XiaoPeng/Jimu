@@ -2,6 +2,7 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
@@ -13,7 +14,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Native public history records. All mutations run under the owning ledger's budget/task locks. */
@@ -52,9 +52,11 @@ final class JdbcSessionRecords {
   final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts search =
       new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts();
   private final JdbcTemplate db;
-  private final ThreadLocal<SearchBudget> searchBudget = new ThreadLocal<>();
+  private SearchBudget searchBudget;
+  private final io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query;
 
-  private static final class SearchBudget {
+  private static final class SearchBudget
+      implements io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.ResultMeter {
     int reads;
     long bytes, operations;
     final Runnable deadline;
@@ -81,21 +83,29 @@ final class JdbcSessionRecords {
       this.scratchLimit = scratchLimit;
     }
 
-    void charge(List<Map<String, Object>> rows) {
+    @Override
+    public io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.ColumnMeter begin() {
       deadline.run();
       if (++reads > (prior ? 4096 : 1024)) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-      long batchBytes = 0;
-      for (var row : rows)
-        for (var entry : row.entrySet()) {
-          long size = 8L + SessionContracts.bytes(entry.getKey()) + scalarBytes(entry.getValue());
+      return new io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.ColumnMeter() {
+        private long batchBytes;
+
+        @Override
+        public void column(String label, Object value) {
+          long size =
+              8L
+                  + SessionContracts.bytes(label)
+                  + io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.scalarBytes(
+                      value);
           bytes += size;
           batchBytes += size;
           if (trace) operation(size);
+          // Reject at the provider boundary, before collecting the next result field.
+          if (bytes > (prior ? 16777216 : 8388608)
+              || (prior ? batchBytes * 3 : bytes * (trace ? 3 : 2)) + 524288 > scratchLimit)
+            throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
         }
-      // Conservatively charge UTF-16 strings/row fields plus the active code point arrays.
-      if (bytes > (prior ? 16777216 : 8388608)
-          || (prior ? batchBytes * 3 : bytes * (trace ? 3 : 2)) + 524288 > scratchLimit)
-        throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+      };
     }
 
     void operation(long count) {
@@ -121,28 +131,8 @@ final class JdbcSessionRecords {
   }
 
   private List<String> sensitive;
-  private final Map<String, List<String>> metadataColumns =
-      new java.util.concurrent.ConcurrentHashMap<>();
   private static final DateTimeFormatter UTC =
       DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
-  private static final Set<String> BODIES =
-      Set.of(
-          "request_snapshot",
-          "goal",
-          "summary",
-          "response_snapshot",
-          "input_snapshot",
-          "output_snapshot",
-          "usage_snapshot",
-          "event_snapshot",
-          "normalized_query_snapshot",
-          "read_sources_snapshot",
-          "authority_snapshot",
-          "target_snapshot",
-          "source_task_id",
-          "context_snapshot",
-          "normalized_snapshot",
-          "read_refs_snapshot");
   private static final List<String> TABLES =
       List.of(
           "task",
@@ -163,7 +153,28 @@ final class JdbcSessionRecords {
           "event");
 
   JdbcSessionRecords(JdbcTemplate db) {
+    this(db, null);
+  }
+
+  JdbcSessionRecords(
+      JdbcTemplate db, io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    this(db, query, null);
+  }
+
+  private org.mybatis.spring.SqlSessionTemplate mapperSession;
+  java.util.function.Function<Map<String, Object>, String> context;
+
+  JdbcSessionRecords(
+      JdbcTemplate db,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      org.mybatis.spring.SqlSessionTemplate mapperSession) {
     this.db = db;
+    this.query = query;
+    this.mapperSession = mapperSession;
+  }
+
+  void copyConfiguration(JdbcSessionRecords original) {
+    this.sensitive = original.sensitive;
   }
 
   void sensitive(List<String> values) {
@@ -190,17 +201,11 @@ final class JdbcSessionRecords {
   }
 
   private List<Map<String, Object>> rows(String sql, Object... args) {
-    if (searchBudget.get() != null && searchBudget.get().prior) {
-      if (sql.startsWith("SELECT * FROM step WHERE"))
-        sql +=
-            " AND OCTET_LENGTH(request_snapshot)<=131072 AND COALESCE(OCTET_LENGTH(response_snapshot),0)<=16384";
-      if (sql.startsWith("SELECT * FROM invocation WHERE"))
-        sql +=
-            " AND OCTET_LENGTH(input_snapshot)<=4096 AND COALESCE(OCTET_LENGTH(output_snapshot),0)<=32768";
+    if (searchBudget != null && query == null)
+      throw new IllegalStateException("Session search requires an explicit query context");
+    try (var ignored = query == null ? null : query.meter(searchBudget)) {
+      return db.queryForList(sql, args);
     }
-    var result = db.queryForList(sql, args);
-    if (searchBudget.get() != null) searchBudget.get().charge(result);
-    return result;
   }
 
   private Map<String, Object> one(String sql, Object... args) {
@@ -214,11 +219,7 @@ final class JdbcSessionRecords {
   }
 
   Map<String, Object> history(Map<String, Object> task, boolean readable) {
-    var found =
-        rows(
-            "SELECT *,retain_until>CURRENT_TIMESTAMP(6) AS retained FROM task_session_history WHERE tenant_id=? AND task_id=? FOR UPDATE",
-            s(task, "tenant_id"),
-            s(task, "id"));
+    var found = mapperRows("SessionHistoryRetentionMapper.history", task);
     if (found.isEmpty()) throw new TaskFailure(409, "SESSION_HISTORY_UNAVAILABLE");
     var h = found.getFirst();
     if (n(h, "record_version") != 1
@@ -258,18 +259,24 @@ final class JdbcSessionRecords {
         != 1) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
   }
 
-  private List<String> columns(String table) {
-    return metadataColumns.computeIfAbsent(
-        table,
-        t ->
-            db
-                .queryForList(
-                    "SELECT COLUMN_NAME FROM information_schema.columns WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? ORDER BY ORDINAL_POSITION",
-                    String.class,
-                    t)
-                .stream()
-                .filter(c -> !BODIES.contains(c))
-                .toList());
+  private org.mybatis.spring.SqlSessionTemplate mapperSession() {
+    if (mapperSession == null)
+      mapperSession =
+          io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure.LedgerMapperSessions
+              .create(java.util.Objects.requireNonNull(db.getDataSource()));
+    return mapperSession;
+  }
+
+  private List<Map<String, Object>> mapperRows(String operation, Map<String, Object> task) {
+    var args = new java.util.HashMap<String, Object>();
+    args.put("query", query);
+    args.put("tenant", s(task, "tenant_id"));
+    args.put("taskId", s(task, "id"));
+    try (var ignored = query == null ? null : query.meter(searchBudget)) {
+      return mapperSession()
+          .selectList(
+              "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper." + operation, args);
+    }
   }
 
   long metadata(Map<String, Object> task, boolean closing) {
@@ -280,19 +287,12 @@ final class JdbcSessionRecords {
     long total = 0;
     long cleanupHeadroom = 1024;
     for (String table : TABLES) {
-      String key =
-          table.equals("task") ? "id" : table.contains("scope") ? "caller_task_id" : "task_id";
-      for (var row :
-          rows(
-              "SELECT "
-                  + String.join(",", columns(table))
-                  + " FROM "
-                  + table
-                  + " WHERE tenant_id=? AND "
-                  + key
-                  + "=?",
-              s(task, "tenant_id"),
-              s(task, "id"))) {
+      String operation =
+          "SessionHistoryRetentionMapper.metadata"
+              + java.util.Arrays.stream(table.split("_"))
+                  .map(p -> Character.toUpperCase(p.charAt(0)) + p.substring(1))
+                  .collect(java.util.stream.Collectors.joining());
+      for (var row : mapperRows(operation, task)) {
         cleanupHeadroom +=
             switch (table) {
               case "task" -> 768;
@@ -324,18 +324,13 @@ final class JdbcSessionRecords {
     for (int i = 0; i < 4; i++) {
       long bytes = metadata(task, closing);
       long old =
-          db.queryForObject(
-              "SELECT metadata_bytes FROM task_session_history WHERE tenant_id=? AND task_id=?",
-              Long.class,
-              s(task, "tenant_id"),
-              s(task, "id"));
+          n(mapperRows("SessionContextMapper.metadataBytes", task).getFirst(), "metadata_bytes");
       if (old == bytes) return;
-      db.update(
-          "UPDATE task_session_history SET metadata_bytes=?,held_bytes=IF(content_state='PURGED',?,held_bytes) WHERE tenant_id=? AND task_id=?",
-          bytes,
-          bytes,
-          s(task, "tenant_id"),
-          s(task, "id"));
+      mapperSession()
+          .getMapper(
+              io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionContextMapper
+                  .class)
+          .account(query, bytes, s(task, "tenant_id"), s(task, "id"));
     }
     throw corrupt();
   }
@@ -423,50 +418,55 @@ final class JdbcSessionRecords {
   }
 
   List<Map<String, Object>> recent(Map<String, Object> task, long upper) {
-    var result = new ArrayList<Map<String, Object>>();
-    for (var r :
-        rows(
-            "SELECT seq,type FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq BETWEEN ? AND ? ORDER BY seq LIMIT 8",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            Math.max(0, upper - 7),
-            upper)) result.add(Map.of("seq", n(r, "seq"), "type", s(r, "type")));
+    var wrapper =
+        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                    .ScopeQueryNativeEntity>()
+            .select(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getSeq,
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getType)
+            .eq(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getTenantId,
+                s(task, "tenant_id"))
+            .eq(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getTaskId,
+                s(task, "id"))
+            .between(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getSeq,
+                Math.max(0, upper - 7),
+                upper)
+            .orderByAsc(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+                        .ScopeQueryNativeEntity
+                    ::getSeq)
+            .last("LIMIT 8");
+    var args = new java.util.HashMap<String, Object>();
+    args.put("query", query);
+    args.put("ew", wrapper);
+    List<Map<String, Object>> result;
+    try (var ignored = query == null ? null : query.meter(searchBudget)) {
+      result =
+          mapperSession()
+              .selectList(
+                  "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryNativeReadMapper.selectMaps",
+                  args);
+    }
     if (result.size() != Math.min(8, upper + 1)) throw corrupt();
     return result;
   }
 
   String context(Map<String, Object> task) {
-    long upper = n(history(task, true), "next_seq") - 1;
-    String raw =
-        Payloads.json(
-            Map.of(
-                "kind",
-                "session_event_context",
-                "version",
-                version(task),
-                "session_id",
-                s(task, "id"),
-                "upper_seq",
-                upper,
-                "user_message_seq",
-                0,
-                "recent",
-                recent(task, upper)));
-    if (JdbcSessionScopes.task(task)) {
-      var scope = scopes.require(task);
-      var node = (com.fasterxml.jackson.databind.node.ObjectNode) contracts.json(raw, 4096);
-      node.put("scope_sha256", s(scope.row(), "authority_digest"));
-      node.put("retain_until", scope.authority().path("retain_until").asText());
-      var prior = node.putArray("prior_sessions");
-      for (var target : scope.authority().path("targets"))
-        prior
-            .addObject()
-            .put("session_id", target.path("session_id").asText())
-            .put("upper_seq", target.path("upper_seq").asLong());
-      raw = Payloads.json(node);
-    }
-    contract(task).context(raw);
-    return raw;
+    return context.apply(task);
   }
 
   void prepare(Map<String, Object> task, String request, String step) {
@@ -507,18 +507,20 @@ final class JdbcSessionRecords {
     var h = history(task, true);
     var st =
         one(
-            "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=?",
+            "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=? AND (NOT ? OR (OCTET_LENGTH(request_snapshot)<=131072 AND COALESCE(OCTET_LENGTH(response_snapshot),0)<=16384))",
             s(task, "tenant_id"),
             step,
-            s(task, "id"));
+            s(task, "id"),
+            searchBudget != null && searchBudget.prior);
     if (st.get("session_upper_seq") == null
         || !s(h, "binding_digest").equals(s(st, "session_binding_digest"))) throw corrupt();
     for (var i :
         rows(
-            "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND step_id=? ORDER BY ordinal",
+            "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND step_id=? AND (NOT ? OR (OCTET_LENGTH(input_snapshot)<=4096 AND COALESCE(OCTET_LENGTH(output_snapshot),0)<=32768)) ORDER BY ordinal",
             s(task, "tenant_id"),
             s(task, "id"),
-            step)) {
+            step,
+            searchBudget != null && searchBudget.prior)) {
       if (JdbcSessionScopes.task(task)) {
         bindScopeCall(task, st, i);
         continue;
@@ -675,14 +677,14 @@ final class JdbcSessionRecords {
       Runnable deadline) {
     if (!traceTask(task) && !JdbcSessionScopes.task(task))
       return readRows(task, input, upper, boundary);
-    searchBudget.set(
+    searchBudget =
         JdbcSessionScopes.task(task)
             ? new SearchBudget(deadline, false, 16777216, true)
-            : new SearchBudget(deadline, true, 1048576));
+            : new SearchBudget(deadline, true, 1048576);
     try {
       return readRows(task, input, upper, boundary);
     } finally {
-      searchBudget.remove();
+      searchBudget = null;
     }
   }
 
@@ -777,8 +779,7 @@ final class JdbcSessionRecords {
   }
 
   private JsonNode verifyEvent(Map<String, Object> task, Map<String, Object> r) {
-    if (JdbcSessionScopes.task(task))
-      io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionScopeQueryBudget.operation(1);
+    if (JdbcSessionScopes.task(task)) if (query != null) query.operation(1);
     if (!s(task, "tenant_id").equals(s(r, "tenant_id")) || !s(task, "id").equals(s(r, "task_id")))
       throw corrupt();
     if (n(r, "record_version") != 1 || n(r, "event_version") != version(task))
@@ -825,10 +826,11 @@ final class JdbcSessionRecords {
       case "step.started", "model.response" -> {
         var st =
             one(
-                "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=?",
+                "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=? AND (NOT ? OR (OCTET_LENGTH(request_snapshot)<=131072 AND COALESCE(OCTET_LENGTH(response_snapshot),0)<=16384))",
                 s(task, "tenant_id"),
                 s(r, "source_step_id"),
-                s(task, "id"));
+                s(task, "id"),
+                searchBudget != null && searchBudget.prior);
         boolean model = s(r, "type").equals("model.response");
         if (!s(r, "fact_key").equals((model ? "response:" : "step:") + s(st, "id"))
             || !source.path("kind").asText().equals(model ? "model" : "step")
@@ -847,11 +849,12 @@ final class JdbcSessionRecords {
         }
         var i =
             one(
-                "SELECT * FROM invocation WHERE tenant_id=? AND id=? AND task_id=? AND step_id=?",
+                "SELECT * FROM invocation WHERE tenant_id=? AND id=? AND task_id=? AND step_id=? AND (NOT ? OR (OCTET_LENGTH(input_snapshot)<=4096 AND COALESCE(OCTET_LENGTH(output_snapshot),0)<=32768))",
                 s(task, "tenant_id"),
                 s(r, "source_invocation_id"),
                 s(task, "id"),
-                s(r, "source_step_id"));
+                s(r, "source_step_id"),
+                searchBudget != null && searchBudget.prior);
         var b =
             one(
                 "SELECT * FROM invocation_session_read WHERE tenant_id=? AND invocation_id=? AND task_id=? AND step_id=?",
@@ -959,10 +962,11 @@ final class JdbcSessionRecords {
         .equals(Payloads.json(event.path("source_event_seqs")))) throw corrupt();
     var st =
         one(
-            "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=?",
+            "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=? AND (NOT ? OR (OCTET_LENGTH(request_snapshot)<=131072 AND COALESCE(OCTET_LENGTH(response_snapshot),0)<=16384))",
             s(task, "tenant_id"),
             s(task, "id"),
-            s(i, "step_id"));
+            s(i, "step_id"),
+            searchBudget != null && searchBudget.prior);
     validateStep(task, st);
     if (!s(history(task, true), "binding_digest").equals(s(b, "binding_digest"))
         || n(st, "session_upper_seq") != n(b, "upper_seq")
@@ -1065,7 +1069,7 @@ final class JdbcSessionRecords {
             input.seq())
         .isEmpty()) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
     var budget = new SearchBudget(deadline, true);
-    searchBudget.set(budget);
+    searchBudget = budget;
     try {
       var records =
           rows(
@@ -1154,7 +1158,7 @@ final class JdbcSessionRecords {
           eventBytes,
           edges);
     } finally {
-      searchBudget.remove();
+      searchBudget = null;
     }
   }
 
@@ -1346,11 +1350,12 @@ final class JdbcSessionRecords {
       Map<String, Object> task, Map<String, Object> event, JsonNode value) {
     var i =
         one(
-            "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND step_id=?",
+            "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND step_id=? AND (NOT ? OR (OCTET_LENGTH(input_snapshot)<=4096 AND COALESCE(OCTET_LENGTH(output_snapshot),0)<=32768))",
             s(task, "tenant_id"),
             s(task, "id"),
             s(event, "source_invocation_id"),
-            s(event, "source_step_id"));
+            s(event, "source_step_id"),
+            searchBudget != null && searchBudget.prior);
     var b =
         one(
             "SELECT * FROM invocation_session_scope_query WHERE tenant_id=? AND invocation_id=? AND caller_task_id=? AND step_id=?",
@@ -1360,10 +1365,11 @@ final class JdbcSessionRecords {
             s(i, "step_id"));
     var step =
         one(
-            "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=?",
+            "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=? AND (NOT ? OR (OCTET_LENGTH(request_snapshot)<=131072 AND COALESCE(OCTET_LENGTH(response_snapshot),0)<=16384))",
             s(task, "tenant_id"),
             s(task, "id"),
-            s(i, "step_id"));
+            s(i, "step_id"),
+            searchBudget != null && searchBudget.prior);
     validateStep(task, step);
     var scope = scopes.require(task);
     var cut =
@@ -1470,10 +1476,10 @@ final class JdbcSessionRecords {
         throw JdbcSessionScopes.unavailable();
     var matcher =
         new io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionMatcher(
-            input, deadline);
+            input, deadline, query == null ? count -> {} : query::operation);
     var scanned = new ArrayList<Map<String, Object>>();
     int eventBytes = 0;
-    searchBudget.set(new SearchBudget(deadline, false, 16777216, true));
+    searchBudget = new SearchBudget(deadline, false, 16777216, true);
     try {
       for (int sourceIndex = 0; sourceIndex < scope.sources().size(); sourceIndex++) {
         var source = scope.sources().get(sourceIndex);
@@ -1503,7 +1509,7 @@ final class JdbcSessionRecords {
       scopes.contracts.output(output);
       return new Search(output, Payloads.hash(Payloads.json(scanned)), scanned.size(), eventBytes);
     } finally {
-      searchBudget.remove();
+      searchBudget = null;
     }
   }
 
@@ -1518,7 +1524,7 @@ final class JdbcSessionRecords {
                 .filter(source -> id.equals(s(source, "id")))
                 .findFirst()
                 .orElseThrow(JdbcSessionScopes::unavailable);
-    searchBudget.set(new SearchBudget(deadline, false, 16777216, true));
+    searchBudget = new SearchBudget(deadline, false, 16777216, true);
     try {
       return readRows(
           target,
@@ -1530,7 +1536,7 @@ final class JdbcSessionRecords {
           value.path("upper_seq").asLong(),
           id.equals(s(caller, "id")) ? "pre-step" : "scoped-admission");
     } finally {
-      searchBudget.remove();
+      searchBudget = null;
     }
   }
 
@@ -1551,7 +1557,7 @@ final class JdbcSessionRecords {
     var scanned = new ArrayList<Map<String, Object>>();
     int eventBytes = 0;
     var budget = new SearchBudget(deadline);
-    searchBudget.set(budget);
+    searchBudget = budget;
     try {
       if ((input.seqFrom() == null ? 0 : input.seqFrom())
           <= Math.min(upper, input.seqTo() == null ? upper : input.seqTo())) {
@@ -1581,150 +1587,7 @@ final class JdbcSessionRecords {
       searchContract(task).output(output);
       return new Search(output, Payloads.hash(Payloads.json(scanned)), scanned.size(), eventBytes);
     } finally {
-      searchBudget.remove();
+      searchBudget = null;
     }
-  }
-
-  void purge(Map<String, Object> task) {
-    var h = history(task, false);
-    String tenant = s(task, "tenant_id"), id = s(task, "id");
-    var retained = new LinkedHashMap<String, Object>();
-    for (String table :
-        List.of(
-            "task",
-            "step",
-            "invocation",
-            "model_dispatch",
-            "session_public_event",
-            "invocation_session_search",
-            "invocation_session_read",
-            "invocation_session_trace",
-            "task_session_scope",
-            "task_session_scope_target",
-            "step_session_scope",
-            "invocation_session_scope_query")) {
-      String key =
-          table.equals("task") ? "id" : table.contains("scope") ? "caller_task_id" : "task_id";
-      var entries = new ArrayList<Map<String, Object>>();
-      for (var row :
-          rows("SELECT * FROM " + table + " WHERE tenant_id=? AND " + key + "=?", tenant, id)) {
-        var item = new LinkedHashMap<String, Object>();
-        item.put(
-            "id",
-            row.get(
-                table.equals("session_public_event")
-                    ? "seq"
-                    : List.of(
-                                "invocation_session_search",
-                                "invocation_session_trace",
-                                "invocation_session_read",
-                                "invocation_session_scope_query")
-                            .contains(table)
-                        ? "invocation_id"
-                        : table.equals("task_session_scope_target")
-                            ? "ordinal"
-                            : table.equals("step_session_scope")
-                                ? "step_id"
-                                : table.equals("task_session_scope") ? "caller_task_id" : "id"));
-        for (String field : BODIES)
-          if (row.get(field) != null) {
-            String raw = s(row, field);
-            item.put(
-                field, Map.of("sha256", Payloads.hash(raw), "bytes", SessionContracts.bytes(raw)));
-          }
-        entries.add(item);
-      }
-      retained.put(table, entries);
-    }
-    if (JdbcSessionScopes.task(task)) {
-      db.update(
-          "UPDATE invocation_session_scope_query SET normalized_snapshot=NULL,read_refs_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND caller_task_id=?",
-          tenant,
-          id);
-      db.update(
-          "UPDATE step_session_scope SET context_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND caller_task_id=?",
-          tenant,
-          id);
-      db.update(
-          "UPDATE task_session_scope_target SET source_task_id=NULL,target_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND caller_task_id=?",
-          tenant,
-          id);
-      db.update(
-          "UPDATE task_session_scope SET authority_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND caller_task_id=?",
-          tenant,
-          id);
-    }
-    retained.put("version", 1);
-    retained.put("original_body_bytes", n(h, "body_bytes"));
-    retained.put("binding_digest", s(h, "binding_digest"));
-    String receipt = Payloads.json(retained);
-    db.update(
-        "UPDATE session_public_event SET event_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND task_id=?",
-        tenant,
-        id);
-    if (searchTask(task))
-      db.update(
-          "UPDATE invocation_session_search SET normalized_query_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND task_id=?",
-          tenant,
-          id);
-    db.update(
-        "UPDATE invocation_session_trace SET content_state='PURGED' WHERE tenant_id=? AND task_id=?",
-        tenant,
-        id);
-    db.update(
-        "UPDATE invocation_session_read SET read_sources_snapshot=NULL,content_state='PURGED' WHERE tenant_id=? AND task_id=?",
-        tenant,
-        id);
-    db.update(
-        "UPDATE invocation SET input_snapshot='',output_snapshot=NULL WHERE tenant_id=? AND task_id=?",
-        tenant,
-        id);
-    db.update(
-        "UPDATE step SET request_snapshot='',response_snapshot=NULL,request_cleanup_state='SESSION_PURGED',retained_request_digest=request_digest WHERE tenant_id=? AND task_id=?",
-        tenant,
-        id);
-    db.update(
-        "UPDATE model_dispatch SET usage_snapshot=NULL WHERE tenant_id=? AND task_id=?",
-        tenant,
-        id);
-    db.update(
-        "UPDATE task SET goal='',request_snapshot='',summary=NULL WHERE tenant_id=? AND id=?",
-        tenant,
-        id);
-    // All immutable policy/model/tool pins remain counted metadata, not retained user content.
-    db.update(
-        "UPDATE task_session_history SET content_state='PURGED',body_bytes=0,cleanup_receipt=?,held_bytes=metadata_bytes WHERE tenant_id=? AND task_id=? AND content_state='PRESENT'",
-        receipt,
-        tenant,
-        id);
-  }
-
-  void release(Map<String, Object> task) {
-    String tenant = s(task, "tenant_id"), id = s(task, "id");
-    // Include the changed decimal widths of actual/held/metadata in the final receipt charge.
-    for (int pass = 0; pass < 5; pass++) {
-      long bytes = metadata(task, true);
-      db.update(
-          "UPDATE task_session_history SET metadata_bytes=?,held_bytes=? WHERE tenant_id=? AND task_id=?",
-          bytes,
-          bytes,
-          tenant,
-          id);
-      db.update(
-          "UPDATE reservation SET state='SETTLED',actual=? WHERE tenant_id=? AND id=? AND category='SESSION_HISTORY_STORAGE'",
-          bytes,
-          tenant,
-          id + ":session-history");
-      // Settling the reservation changes state/actual scalar widths too. Verify the
-      // complete post-update rows before accepting a fixed point and releasing quota.
-      if (metadata(task, true) == bytes) {
-        db.update(
-            "UPDATE tenant_budget SET history_storage_held=history_storage_held-? WHERE tenant_id=?",
-            8388608 - bytes,
-            tenant);
-        return;
-      }
-    }
-    throw corrupt();
   }
 }

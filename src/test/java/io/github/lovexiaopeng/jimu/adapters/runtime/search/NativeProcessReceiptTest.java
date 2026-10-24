@@ -2,7 +2,7 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.search;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger.ProcessIdentity;
 import java.io.IOException;
 import org.junit.jupiter.api.Test;

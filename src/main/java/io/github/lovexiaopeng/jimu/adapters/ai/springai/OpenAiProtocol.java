@@ -73,7 +73,7 @@ public final class OpenAiProtocol {
         byte[] bytes = media.apply(ref);
         if (!m.content()
                 .equals(io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.text(ref))
-            || !io.github.lovexiaopeng.jimu.adapters.persistence.Payloads.hash(bytes)
+            || !io.github.lovexiaopeng.jimu.adapters.codec.Payloads.hash(bytes)
                 .equals(ref.image().sha256())
             || bytes.length != ref.image().size())
           throw new IllegalArgumentException("Media integrity mismatch");

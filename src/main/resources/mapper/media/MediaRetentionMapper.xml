@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.MediaRetentionMapper">
+  <select id="candidates" resultType="map"><![CDATA[SELECT tenant_id,id FROM task WHERE record_version=3 AND media_cleanup_state='RETAINED' AND state IN ('SUCCEEDED','FAILED','CANCELLED') AND updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY LIMIT 32]]></select>
+  <select id="unknownHolds" resultType="map"><![CDATA[SELECT id FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='HELD_UNKNOWN']]></select>
+  <update id="markDeleting"><![CDATA[UPDATE task_image_object SET cleanup_state='DELETING' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND cleanup_state='RETAINED']]></update>
+  <select id="lockCheckpoints" resultType="map"><![CDATA[SELECT id,request_snapshot,request_digest FROM step WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND request_cleanup_state='RETAINED' FOR UPDATE]]></select>
+  <update id="purgeCheckpoint"><![CDATA[UPDATE step SET request_snapshot=#{snapshot},request_cleanup_state='MEDIA_PURGED',retained_request_digest=#{digest} WHERE tenant_id=#{tenant} AND id=#{stepId}]]></update>
+  <select id="lockHolds" resultType="map"><![CDATA[SELECT tenant_id,id,task_id,dispatch_id,category,amount,actual,usage_quality,cost_quality,state,record_version FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND category IN ('MEDIA_INPUT','MEDIA_STORAGE','MEDIA_CHECKPOINT') AND state IN ('RESERVED','SETTLED') FOR UPDATE]]></select>
+  <update id="releaseCheckpointBytes"><![CDATA[UPDATE tenant_budget SET media_checkpoint_held=media_checkpoint_held-#{bytes} WHERE tenant_id=#{tenant}]]></update>
+  <update id="purgeInputs"><![CDATA[UPDATE task_image_input SET raw_base64=NULL WHERE tenant_id=#{tenant} AND task_id=#{taskId}]]></update>
+  <update id="markObjectsDeleted"><![CDATA[UPDATE task_image_object SET cleanup_state='DELETED' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND cleanup_state='DELETING']]></update>
+  <update id="markTaskDeleted"><![CDATA[UPDATE task SET media_cleanup_state='DELETED' WHERE tenant_id=#{tenant} AND id=#{taskId}]]></update>
+</mapper>

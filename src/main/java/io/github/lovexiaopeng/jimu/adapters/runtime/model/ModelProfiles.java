@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.model;
 
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import java.net.URI;
@@ -257,13 +258,13 @@ public final class ModelProfiles {
     return fixture ? null : settings.evaluationRunId();
   }
 
-  public EvaluationPlans.Selection evaluationSelection() {
+  public EvaluationPlan.Selection evaluationSelection() {
     if (fixture || settings.evaluationPlanRef() == null) return null;
     return EvaluationPlans.selection(
         settings.evaluationPlanRef(), settings.evaluationPhase(), settings.evaluationSample());
   }
 
-  public void checkEvaluationModel(EvaluationPlans.Plan plan, ModelSnapshot snapshot) {
+  public void checkEvaluationModel(EvaluationPlan.Plan plan, ModelSnapshot snapshot) {
     EvaluationPlans.validateModel(
         plan, snapshot, env.getProperty("jimu.test-mode", Boolean.class, false));
   }
@@ -395,12 +396,12 @@ public final class ModelProfiles {
 
   /** Pure validation shared with operator binding; never resolves secrets or enables dispatch. */
   public static void validateStructure(
-      EvaluationPlans.Plan plan, ModelSnapshot p, boolean testMode) {
+      EvaluationPlan.Plan plan, ModelSnapshot p, boolean testMode) {
     validateStructure(plan, p, testMode, false);
   }
 
   private static void validateStructure(
-      EvaluationPlans.Plan plan, ModelSnapshot p, boolean testMode, boolean business) {
+      EvaluationPlan.Plan plan, ModelSnapshot p, boolean testMode, boolean business) {
     if (p == null || p.baseUrl() == null || p.profile() == null || p.profile().isBlank())
       throw new IllegalArgumentException("Invalid model profile");
     URI uri;

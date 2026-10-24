@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.BuiltinManifestLoader;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
 import io.github.lovexiaopeng.jimu.adapters.runtime.web.PublicWebPolicy;

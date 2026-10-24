@@ -1,0 +1,99 @@
+{
+  "baseline": "f347569353ececab341f7532719e669d56f6d12d",
+  "scope": "B2 partial artifact retention; all 35 tables plus read-only receipt OPEN",
+  "removedSqlSites": 6,
+  "removed": [
+    {
+      "originalSql": "SELECT a.tenant_id,a.id,a.task_id,a.upload_id FROM artifact a JOIN task t ON t.tenant_id=a.tenant_id AND t.id=a.task_id JOIN reservation r ON r.tenant_id=a.tenant_id AND r.id=a.id WHERE r.state<>'RELEASED' AND ((a.state IN ('STAGING','VERIFIED','ABANDONED') AND a.updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 1 HOUR AND t.state IN ('FAILED','CANCELLED')) OR (a.state IN ('PUBLISHED','EXPIRED') AND a.expires_at<CURRENT_TIMESTAMP(6))) LIMIT 64",
+      "replacement": "ArtifactRetentionMapper.candidates"
+    },
+    {
+      "originalSql": "SELECT * FROM artifact WHERE tenant_id=? AND id=? FOR UPDATE",
+      "replacement": "ArtifactRetentionMapper.lockArtifact"
+    },
+    {
+      "originalSql": "UPDATE artifact SET state=? WHERE tenant_id=? AND id=?",
+      "replacement": "ArtifactRetentionMapper.mark"
+    },
+    {
+      "originalSql": "SELECT * FROM reservation WHERE tenant_id=? AND id=?",
+      "replacement": "ReservationReadMapper.selectMaps, full11-column LambdaQueryWrapper tenant_id+id"
+    },
+    {
+      "originalSql": "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
+      "replacement": "ArtifactRetentionMapper.releaseStorage"
+    },
+    {
+      "originalSql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=?",
+      "replacement": "ReservationMapper.releaseQueueSlot, existing parameterized exact body"
+    }
+  ],
+  "statements": [
+    {
+      "kind": "select",
+      "id": "ArtifactRetentionMapper.candidates",
+      "sql": "SELECT a.tenant_id,a.id,a.task_id,a.upload_id FROM artifact a JOIN task t ON t.tenant_id=a.tenant_id AND t.id=a.task_id JOIN reservation r ON r.tenant_id=a.tenant_id AND r.id=a.id WHERE r.state<>'RELEASED' AND ((a.state IN ('STAGING','VERIFIED','ABANDONED') AND a.updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 1 HOUR AND t.state IN ('FAILED','CANCELLED')) OR (a.state IN ('PUBLISHED','EXPIRED') AND a.expires_at<CURRENT_TIMESTAMP(6))) LIMIT 64"
+    },
+    {
+      "kind": "select",
+      "id": "ArtifactRetentionMapper.lockArtifact",
+      "sql": "SELECT tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,snapshot_key,sha256,size,media_type,created_at,updated_at,expires_at,record_version,file_receipt,receipt_digest FROM artifact WHERE tenant_id=#{tenant} AND id=#{artifactId} FOR UPDATE"
+    },
+    {
+      "kind": "update",
+      "id": "ArtifactRetentionMapper.mark",
+      "sql": "UPDATE artifact SET state=#{state} WHERE tenant_id=#{tenant} AND id=#{artifactId}"
+    },
+    {
+      "kind": "update",
+      "id": "ArtifactRetentionMapper.releaseStorage",
+      "sql": "UPDATE tenant_budget SET storage_held=storage_held-#{amount} WHERE tenant_id=#{tenant}"
+    }
+  ],
+  "ordinaryMp": {
+    "mapper": "ReservationReadMapper.selectMaps",
+    "predicates": "tenant_id+id",
+    "columns": [
+      "tenant_id",
+      "id",
+      "task_id",
+      "dispatch_id",
+      "category",
+      "amount",
+      "actual",
+      "usage_quality",
+      "cost_quality",
+      "state",
+      "record_version"
+    ],
+    "query": "explicit same-level query + ew"
+  },
+  "paths": [
+    {
+      "entry": "LedgerMaintenance -> ExecutionLedger.cleanupArtifacts -> JdbcLedger.cleanupArtifacts",
+      "service": "ArtifactRetentionServiceImpl.cleanup",
+      "port": "ArtifactRetentions",
+      "adapter": "MapperArtifactRetentions",
+      "phases": [
+        "Existing module-maintenance sequence unchanged in JdbcLedger, then cross-tenant LIMIT64 artifact candidate join outside transaction",
+        "UoW: budget -> original locked(scope/task) -> artifact FOR UPDATE; same state/quiescence checks; mark state",
+        "Outside every DB transaction: ArtifactStore.removeUpload(exact tenant, persisted uploadId); failure propagates and leaves hold retained",
+        "New UoW: budget -> same task -> reservation full tenant/id; if not RELEASED subtract original amount and mark RELEASED atomically"
+      ],
+      "rules": [
+        "No additional public permission/fence check; existing internal maintenance derives tenant/task/upload from authoritative rows",
+        "Original unexpired FAILED/CANCELLED and expired SUCCEEDED/FAILED/CANCELLED checks; no inference from writer quiescence alone",
+        "No artifact delete, no extra reservation FOR UPDATE/CAS/category/task filter added; existing budget serialization retained",
+        "Store errors and final transaction errors abort batch; retry from EXPIRED/ABANDONED and unreleased hold; unique writer chain only",
+        "17 artifact and11 reservation columns preserve prior physical result projection; SQL/network metadata changes not claimed absent"
+      ],
+      "verification": "ArtifactRetentionServiceTest, ArtifactRetentionScenario on exact old/new JAR and xiao60_b2_artifact_cleanup_verify.py"
+    }
+  ],
+  "remaining": [
+    "Other module cleanup/runtime scope/receipt and exact CLI assembly exception OPEN",
+    "Complete scope/maintenance lock permutations and real read_image/paid visual not covered",
+    "Native concurrent filesystem list/delete race unchanged; fixture serializes only actual disk delete to prove two candidate settlement contenders",
+    "B3-B5, junior, independent review/QA/business acceptance/merge not activated"
+  ]
+}

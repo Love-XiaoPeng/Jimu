@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.mcp.mapper.McpRetentionMapper">
+  <select id="candidates" resultType="map"><![CDATA[SELECT DISTINCT r.tenant_id,r.task_id FROM reservation r JOIN task t ON t.tenant_id=r.tenant_id AND t.id=r.task_id LEFT JOIN mcp_result m ON m.tenant_id=r.tenant_id AND m.task_id=r.task_id AND r.id=CONCAT('mcp:',m.root_invocation_id) WHERE r.category='MCP_RESULT' AND r.state IN ('RESERVED','SETTLED') AND t.state IN ('SUCCEEDED','FAILED','CANCELLED') AND (m.expires_at<CURRENT_TIMESTAMP(6) OR m.root_invocation_id IS NULL AND t.updated_at<CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY) LIMIT 32]]></select>
+  <select id="unknownHolds" resultType="map"><![CDATA[SELECT id FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='HELD_UNKNOWN']]></select>
+  <select id="lockExpiredHolds" resultType="map"><![CDATA[SELECT r.tenant_id,r.id,r.task_id,r.dispatch_id,r.category,r.amount,r.actual,r.usage_quality,r.cost_quality,r.state,r.record_version FROM reservation r LEFT JOIN mcp_result m ON m.tenant_id=r.tenant_id AND m.task_id=r.task_id AND r.id=CONCAT('mcp:',m.root_invocation_id) WHERE r.tenant_id=#{tenant} AND r.task_id=#{taskId} AND r.category='MCP_RESULT' AND r.state IN ('RESERVED','SETTLED') AND (m.expires_at<CURRENT_TIMESTAMP(6) OR m.root_invocation_id IS NULL AND #{updatedAt}<CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY) FOR UPDATE]]></select>
+  <update id="purgeResult"><![CDATA[UPDATE mcp_result SET body=NULL,state='DELETED' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND root_invocation_id=#{root}]]></update>
+</mapper>

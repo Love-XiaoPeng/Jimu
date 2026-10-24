@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionRetentionMapper">
+  <select id="candidates" resultType="map"><![CDATA[SELECT tenant_id,id FROM task WHERE question_cleanup_state='RETAINED' AND state IN ('SUCCEEDED','FAILED','CANCELLED') AND created_at<=CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY ORDER BY created_at,id LIMIT 32]]></select>
+  <select id="unsafeReservations" resultType="map"><![CDATA[SELECT id FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN') LIMIT 1]]></select>
+  <select id="unknownInvocations" resultType="map"><![CDATA[SELECT id FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='OUTCOME_UNKNOWN' LIMIT 1]]></select>
+  <update id="purgeStep"><![CDATA[UPDATE step SET request_snapshot=#{tombstone},response_snapshot=IF(response_snapshot IS NULL,NULL,#{tombstone}),request_cleanup_state='QUESTION_PURGED',retained_request_digest=request_digest WHERE tenant_id=#{tenant} AND id=#{id}]]></update>
+  <update id="purgeInvocation"><![CDATA[UPDATE invocation SET input_snapshot=#{tombstone},output_snapshot=IF(output_snapshot IS NULL,NULL,#{tombstone}) WHERE tenant_id=#{tenant} AND id=#{id}]]></update>
+  <update id="purgeQuestion"><![CDATA[UPDATE user_question SET request_snapshot=#{tombstone},answer_snapshot=IF(answer_snapshot IS NULL,NULL,#{tombstone}),receipt_snapshot=IF(receipt_snapshot IS NULL,NULL,#{tombstone}),retained_digests=#{retained} WHERE tenant_id=#{tenant} AND id=#{id}]]></update>
+  <update id="purgeTask"><![CDATA[UPDATE task SET request_snapshot=#{tombstone},goal=#{tombstone},summary=IF(summary IS NULL,NULL,#{tombstone}),question_cleanup_state='PURGED',question_retained_digests=#{retained} WHERE tenant_id=#{tenant} AND id=#{taskId}]]></update>
+  <update id="releaseHold"><![CDATA[UPDATE reservation SET state='RELEASED' WHERE tenant_id=#{tenant} AND id=#{holdId} AND state='RESERVED']]></update>
+  <update id="releaseBudget"><![CDATA[UPDATE tenant_budget SET storage_held=storage_held-2097152 WHERE tenant_id=#{tenant}]]></update>
+</mapper>

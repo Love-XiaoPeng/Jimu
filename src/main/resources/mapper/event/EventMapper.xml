@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.event.mapper.EventMapper">
+  <select id="selectFactSequence" resultType="map">
+    <![CDATA[SELECT seq FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND fact_id=#{factId}]]>
+  </select>
+  <insert id="insertFact">
+    <![CDATA[INSERT INTO event(tenant_id,task_id,seq,event_id,fact_id,type,code,status,artifact_id) VALUES(#{tenant},#{taskId},#{sequence},#{eventId},#{factId},#{type},#{code},#{status},#{artifactId})]]>
+  </insert>
+  <select id="selectFactSequenceValue" resultType="long">SELECT seq FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND fact_id=#{factId}</select>
+  <select id="selectFactCode" resultType="map"><![CDATA[SELECT code FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND fact_id=#{factId}]]></select>
+</mapper>

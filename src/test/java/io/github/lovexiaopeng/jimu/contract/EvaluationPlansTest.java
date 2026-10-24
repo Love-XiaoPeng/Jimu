@@ -5,9 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import io.github.lovexiaopeng.jimu.adapters.persistence.ModelCosts;
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationPlans;
+import io.github.lovexiaopeng.jimu.kernel.budget.domain.ModelCosts;
+import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import java.util.HashMap;
@@ -16,6 +17,10 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class EvaluationPlansTest {
+  private final io.github.lovexiaopeng.jimu.kernel.model.service.EvaluationBindingService bindings =
+      new io.github.lovexiaopeng.jimu.kernel.model.service.impl.EvaluationBindingServiceImpl(
+          new io.github.lovexiaopeng.jimu.adapters.runtime.model.RuntimeEvaluationPlanCodec());
+
   @Test
   void exactCapabilityAndPricesCannotBeReplacedByAnUnprovenSmallContext() {
     var plan = EvaluationPlans.plan("qwen-main-v1");
@@ -109,14 +114,14 @@ class EvaluationPlansTest {
   @Test
   void qualityUnlockRejectsBelowThresholdHardFailuresAndThirdFinalist() {
     var p = EvaluationPlans.plan("qwen-main-v1");
-    var score = new EvaluationPlans.Score(16, 27, 27, 15, false);
-    var grades = new HashMap<String, EvaluationPlans.Assessment>();
+    var score = new EvaluationPlan.Score(16, 27, 27, 15, false);
+    var grades = new HashMap<String, EvaluationPlan.Assessment>();
     for (String model : p.candidates().keySet())
       grades.put(
-          model, new EvaluationPlans.Assessment(true, true, 18, score, score, "a".repeat(64)));
+          model, new EvaluationPlan.Assessment(true, true, 18, score, score, "a".repeat(64)));
     var finalists = p.candidates().keySet().stream().sorted().limit(2).toList();
     var q =
-        new EvaluationPlans.Qualification(
+        new EvaluationPlan.Qualification(
             EvaluationPlans.digest(p),
             p.materialsDigest(),
             grades,
@@ -128,20 +133,20 @@ class EvaluationPlansTest {
             "2026-10-16T00:00:00Z",
             "test-run");
     String json = Payloads.json(q);
-    assertEquals(q, EvaluationPlans.qualify(p, json, Payloads.hash(json)));
-    assertThrows(TaskFailure.class, () -> EvaluationPlans.qualify(p, json, "0".repeat(64)));
+    assertEquals(q, bindings.qualify(p, json, Payloads.hash(json)));
+    assertThrows(TaskFailure.class, () -> bindings.qualify(p, json, "0".repeat(64)));
     for (var bad :
         List.of(
-            new EvaluationPlans.Score(15, 27, 27, 15, false),
-            new EvaluationPlans.Score(20, 26, 30, 20, false),
-            new EvaluationPlans.Score(20, 30, 26, 20, false),
-            new EvaluationPlans.Score(20, 30, 30, 20, true))) {
+            new EvaluationPlan.Score(15, 27, 27, 15, false),
+            new EvaluationPlan.Score(20, 26, 30, 20, false),
+            new EvaluationPlan.Score(20, 30, 26, 20, false),
+            new EvaluationPlan.Score(20, 30, 30, 20, true))) {
       grades.put(
           finalists.getFirst(),
-          new EvaluationPlans.Assessment(true, true, 18, bad, score, "a".repeat(64)));
+          new EvaluationPlan.Assessment(true, true, 18, bad, score, "a".repeat(64)));
       String invalid =
           Payloads.json(
-              new EvaluationPlans.Qualification(
+              new EvaluationPlan.Qualification(
                   q.planDigest(),
                   q.materialsDigest(),
                   grades,
@@ -152,12 +157,11 @@ class EvaluationPlansTest {
                   "synthetic-reviewer",
                   "2026-10-16T00:00:00Z",
                   "test-run"));
-      assertThrows(
-          TaskFailure.class, () -> EvaluationPlans.qualify(p, invalid, Payloads.hash(invalid)));
+      assertThrows(TaskFailure.class, () -> bindings.qualify(p, invalid, Payloads.hash(invalid)));
     }
     String third =
         Payloads.json(
-            new EvaluationPlans.Qualification(
+            new EvaluationPlan.Qualification(
                 q.planDigest(),
                 q.materialsDigest(),
                 grades,
@@ -168,6 +172,6 @@ class EvaluationPlansTest {
                 "synthetic-reviewer",
                 "2026-10-16T00:00:00Z",
                 "test-run"));
-    assertThrows(TaskFailure.class, () -> EvaluationPlans.qualify(p, third, Payloads.hash(third)));
+    assertThrows(TaskFailure.class, () -> bindings.qualify(p, third, Payloads.hash(third)));
   }
 }

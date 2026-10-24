@@ -1,0 +1,257 @@
+{
+  "baseline": "28744449ee7b094e9ed4ca0f64933635312358f6",
+  "removedSites": 23,
+  "distinctRemovedBodies": 21,
+  "removed": [
+    {
+      "method": "get",
+      "sql": "SELECT capabilities FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=?"
+    },
+    {
+      "method": "view",
+      "sql": "SELECT * FROM artifact WHERE tenant_id=? AND task_id=? AND state='PUBLISHED' ORDER BY id"
+    },
+    {
+      "method": "cancel",
+      "sql": "UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?"
+    },
+    {
+      "method": "cancel",
+      "sql": "UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6), state='CANCEL_REQUESTED' WHERE tenant_id=? AND id=?"
+    },
+    {
+      "method": "events",
+      "sql": "SELECT COALESCE(MIN(seq),0) FROM event WHERE tenant_id=? AND task_id=? AND occurred_at>CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY"
+    },
+    {
+      "method": "events",
+      "sql": "SELECT * FROM event WHERE tenant_id=? AND task_id=? AND seq>? ORDER BY seq LIMIT ?"
+    },
+    {
+      "method": "closeQuestions",
+      "sql": "SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND phase IN ('OPEN','CONTINUED') FOR UPDATE"
+    },
+    {
+      "method": "closeQuestions",
+      "sql": "UPDATE user_question SET phase='CLOSED',revision=revision+1,close_code=? WHERE tenant_id=? AND id=?"
+    },
+    {
+      "method": "closeQuestions",
+      "sql": "UPDATE invocation SET state=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND state='WAITING_USER'"
+    },
+    {
+      "method": "closeQuestions",
+      "sql": "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=? AND id=? AND category='TOOL' AND state='RESERVED'"
+    },
+    {
+      "method": "closeQuestions",
+      "sql": "UPDATE user_question SET delivery_state='DISCARDED',close_code=? WHERE tenant_id=? AND task_id=? AND delivery_state='PENDING'"
+    },
+    {
+      "method": "closeQuestions",
+      "sql": "UPDATE task SET waiting_question_id=NULL,question_continuation_step_id=NULL WHERE tenant_id=? AND id=?"
+    },
+    {
+      "method": "terminal",
+      "sql": "UPDATE task SET state=?,code=? WHERE tenant_id=? AND id=?"
+    },
+    {
+      "method": "terminal",
+      "sql": "UPDATE invocation SET state='OUTCOME_UNKNOWN' WHERE tenant_id=? AND task_id=? AND state='RUNNING'"
+    },
+    {
+      "method": "terminal",
+      "sql": "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND task_id=? AND category='TOOL' AND state='RESERVED'"
+    },
+    {
+      "method": "terminal",
+      "sql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'"
+    },
+    {
+      "method": "terminal",
+      "sql": "UPDATE tenant_budget SET queued=queued-? WHERE tenant_id=?"
+    },
+    {
+      "method": "terminal",
+      "sql": "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND task_id=? AND category='MODEL' AND state='RESERVED'"
+    },
+    {
+      "method": "terminal",
+      "sql": "UPDATE task_attempt SET state=?,ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND state='ACTIVE'"
+    },
+    {
+      "method": "releaseRun",
+      "sql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'"
+    },
+    {
+      "method": "releaseRun",
+      "sql": "UPDATE tenant_budget SET running=running-1 WHERE tenant_id=?"
+    },
+    {
+      "method": "releaseQuestionTask",
+      "sql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'"
+    },
+    {
+      "method": "releaseQuestionTask",
+      "sql": "UPDATE tenant_budget SET question_tasks_held=question_tasks_held-1 WHERE tenant_id=?"
+    }
+  ],
+  "statements": [
+    {
+      "kind": "update",
+      "method": "requestCancelIntent",
+      "sql": "UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{taskId}"
+    },
+    {
+      "kind": "update",
+      "method": "requestCancel",
+      "sql": "UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6), state='CANCEL_REQUESTED' WHERE tenant_id=#{tenant} AND id=#{taskId}"
+    },
+    {
+      "kind": "select",
+      "method": "oldestEvent",
+      "sql": "SELECT COALESCE(MIN(seq),0) FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND occurred_at>CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY"
+    },
+    {
+      "kind": "select",
+      "method": "eventPage",
+      "sql": "SELECT tenant_id,task_id,seq,event_id,fact_id,type,code,status,artifact_id,occurred_at,payload_version FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND seq>#{after} ORDER BY seq LIMIT #{limit}"
+    },
+    {
+      "kind": "select",
+      "method": "lockQuestions",
+      "sql": "SELECT tenant_id,id,task_id,owner_actor_id,invocation_id,ordinal,record_version,question_version,revision,binding_digest,mode,effective_timeout,phase,request_snapshot,request_digest,created_at,foreground_due_at,answer_expires_at,retain_until,close_code,answer_id,answered_actor_id,answered_at,accepted_seq,answer_snapshot,answer_digest,answer_key,answer_request_digest,answer_source_revision,receipt_snapshot,delivery_state,delivery_step_id,retained_digests FROM user_question WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND phase IN ('OPEN','CONTINUED') FOR UPDATE"
+    },
+    {
+      "kind": "update",
+      "method": "closeQuestion",
+      "sql": "UPDATE user_question SET phase='CLOSED',revision=revision+1,close_code=#{code} WHERE tenant_id=#{tenant} AND id=#{questionId}"
+    },
+    {
+      "kind": "update",
+      "method": "stopQuestionInvocation",
+      "sql": "UPDATE invocation SET state=#{state},updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{invocationId} AND state='WAITING_USER'"
+    },
+    {
+      "kind": "update",
+      "method": "settleQuestion",
+      "sql": "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=#{tenant} AND id=#{invocationId} AND category='TOOL' AND state='RESERVED'"
+    },
+    {
+      "kind": "update",
+      "method": "discardQuestionDelivery",
+      "sql": "UPDATE user_question SET delivery_state='DISCARDED',close_code=#{code} WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND delivery_state='PENDING'"
+    },
+    {
+      "kind": "update",
+      "method": "clearQuestionContinuation",
+      "sql": "UPDATE task SET waiting_question_id=NULL,question_continuation_step_id=NULL WHERE tenant_id=#{tenant} AND id=#{taskId}"
+    },
+    {
+      "kind": "update",
+      "method": "setTerminal",
+      "sql": "UPDATE task SET state=#{state},code=#{code} WHERE tenant_id=#{tenant} AND id=#{taskId}"
+    },
+    {
+      "kind": "update",
+      "method": "markUnknownInvocations",
+      "sql": "UPDATE invocation SET state='OUTCOME_UNKNOWN' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='RUNNING'"
+    },
+    {
+      "kind": "update",
+      "method": "holdUnknownTools",
+      "sql": "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND category='TOOL' AND state='RESERVED'"
+    },
+    {
+      "kind": "update",
+      "method": "releaseReservation",
+      "sql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=#{tenant} AND id=#{reservationId} AND state='RESERVED'"
+    },
+    {
+      "kind": "update",
+      "method": "releaseQueue",
+      "sql": "UPDATE tenant_budget SET queued=queued-#{count} WHERE tenant_id=#{tenant}"
+    },
+    {
+      "kind": "update",
+      "method": "releaseRun",
+      "sql": "UPDATE tenant_budget SET running=running-1 WHERE tenant_id=#{tenant}"
+    },
+    {
+      "kind": "update",
+      "method": "releaseQuestionTask",
+      "sql": "UPDATE tenant_budget SET question_tasks_held=question_tasks_held-1 WHERE tenant_id=#{tenant}"
+    },
+    {
+      "kind": "update",
+      "method": "holdUnknownModels",
+      "sql": "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND category='MODEL' AND state='RESERVED'"
+    },
+    {
+      "kind": "update",
+      "method": "stopAttempt",
+      "sql": "UPDATE task_attempt SET state=#{state},ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{attemptId} AND state='ACTIVE'"
+    }
+  ],
+  "mp": [
+    {
+      "mapper": "TaskVisibilityMapper.selectMaps",
+      "where": "tenant_id + id + owner_actor_id",
+      "projection": "scope hint capabilities only; full existing visibility unchanged"
+    },
+    {
+      "mapper": "ArtifactViewMapper.selectMaps",
+      "where": "tenant_id + task_id + state='PUBLISHED'",
+      "order": "id",
+      "projection": "all 17 original columns"
+    }
+  ],
+  "paths": [
+    {
+      "entry": "TaskController.get -> TaskServiceImpl.get / JdbcLedger.get",
+      "service": "TaskOperationsServiceImpl.get/view",
+      "port": "TaskOperationsRecords",
+      "locks": "scope hint; scope special path budget -> sorted scope tasks -> locked task; ordinary visible locks scope then actor as before",
+      "rules": "scope access denial redacts code/summary/artifacts; history retention hides summary only; no new access bypass"
+    },
+    {
+      "entry": "TaskController.cancel -> TaskServiceImpl.cancel / JdbcLedger.cancel",
+      "service": "TaskOperationsServiceImpl.cancel/terminal/closeQuestions",
+      "port": "TaskOperationsRecords.Row",
+      "locks": "budget -> visible(scope, actor) -> scope/task -> question rows; all same DS/UoW",
+      "rules": "idempotent intent; UNKNOWN active-writer intent without outcome/cost change; quiescent queue/question terminal; queue/run/question-task CAS release; original question settlement and terminal events"
+    },
+    {
+      "entry": "DatabaseEventFeed.subscribe -> JdbcLedger.events",
+      "service": "TaskOperationsServiceImpl.events",
+      "port": "TaskOperationsRecords.Row",
+      "locks": "budget -> ordered scope tasks -> visible/actor; same transaction",
+      "rules": "access before future/retention cursor, exclusive seq cursor, ordered page maximum64, unchanged public Event/SSE types"
+    },
+    {
+      "entry": "existing worker/execution/module terminal/closeQuestions/view callers",
+      "service": "same shared TaskOperationsServiceImpl helpers",
+      "port": "same row handle bound to caller UoW",
+      "rules": "no nested independent write; original owner lock order and fence retained; runtime scope SQL and other module SQL remain OPEN"
+    }
+  ],
+  "constraints": {
+    "tenant": "Every point mutation keeps original complete tenant + PK; intentional task collections keep tenant + task key and original state predicates",
+    "parameters": "All XML #{...}; explicit query parameter alongside MP ew, no business ThreadLocal",
+    "transaction": "Original tx refusal allowlist and afterCompletion scope invalidation remain unchanged",
+    "projection": "event11 and question33 explicit columns replace prior star; no claim of unchanged all SQL/metadata/network costs",
+    "singleWriter": true,
+    "tableStates": "35 tables + read-only receipt all OPEN"
+  },
+  "verification": {
+    "direct": "TaskOperationsScenario exact old/new real private MySQL, actual lock waits, late result rollback, accounting/idempotency/fence/UNKNOWN/cursor, explicit meters/deadline",
+    "scope": "xiao60_b2_task_scope_verify.py",
+    "question": "xiao60_b2_task_question_verify.py",
+    "units": "TaskOperationsServiceTest 9 tests"
+  },
+  "remaining": [
+    "Other B2 runtime scope/receipt, module and cleanup business chains",
+    "Nonempty synthetic paid-ledger anomaly combinations; paid visual/read_image; all maintenance lock permutations",
+    "B3-B5 and independent review/QA/business acceptance/merge not active"
+  ]
+}

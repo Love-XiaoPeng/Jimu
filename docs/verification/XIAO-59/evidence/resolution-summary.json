@@ -1,0 +1,46 @@
+{
+  "baseline": "620d5e0e5bfe7b5da530f10997936466159ba34f",
+  "toolchain": {
+    "java": "21.0.12.1",
+    "maven": "3.9.9",
+    "node": "v24.21.0"
+  },
+  "candidate": {
+    "boot": "4.1.1",
+    "spring": "7.0.9",
+    "springAi": "2.0.1",
+    "mybatisPlus": "3.5.17",
+    "mybatis": "3.5.19",
+    "mybatisSpring": "4.0.0",
+    "hikari": "7.0.2",
+    "connectorJ": "9.7.0",
+    "flyway": "12.4.0"
+  },
+  "artifacts": [
+    {
+      "path": "baseline-effective-pom.xml.gz",
+      "encoding": "gzip",
+      "bytes": 429987,
+      "sha256": "91f417be5472b23d39a2b82328fcb219498e00c2f1327cab7128296f2923d983"
+    },
+    {
+      "path": "candidate-effective-pom.xml.gz",
+      "encoding": "gzip",
+      "bytes": 430483,
+      "sha256": "316903c27c66b18dcf6e169dd4b983175e81e9989cf86ca444090513d7f03db5"
+    },
+    {
+      "path": "candidate-pom.xml",
+      "encoding": "utf8 LF",
+      "bytes": 7286,
+      "sha256": "907e051f880cadb356bfd28fe26effeb5191e4b26dc70708c588e95d3f26d3fb"
+    },
+    {
+      "path": "compatibility-probe.txt.gz",
+      "encoding": "gzip",
+      "bytes": 2564,
+      "sha256": "384ab00291058b940af8e21ba6110f6177de7dd58a31742d2e0e1c4076b16fd6"
+    }
+  ],
+  "executed": "Dependency resolution, Enforcer and isolated two-context Java wiring only. No product build, database connection or business tests."
+}

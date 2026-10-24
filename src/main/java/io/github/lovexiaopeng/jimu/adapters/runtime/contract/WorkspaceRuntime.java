@@ -1,7 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.contract;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeSearchQuery;
 import io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeSearchRuntime;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.BoundaryProbe;

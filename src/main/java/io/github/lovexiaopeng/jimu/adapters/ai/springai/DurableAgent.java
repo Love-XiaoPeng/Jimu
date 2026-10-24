@@ -2,7 +2,7 @@ package io.github.lovexiaopeng.jimu.adapters.ai.springai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.BuiltinManifestLoader;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportPolicy;

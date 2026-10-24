@@ -1,6 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.contract;
 
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;

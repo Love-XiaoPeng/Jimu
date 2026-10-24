@@ -32,6 +32,7 @@ public final class SessionQueryDeadline implements AutoCloseable {
   private static final Semaphore DNS_SLOTS = new Semaphore(8);
   private static final ScheduledThreadPoolExecutor ALARMS = alarms();
   private final long deadline;
+  private final SessionQueryDeadline previous;
   private final List<Socket> sockets = new ArrayList<>();
   private final ScheduledFuture<?> alarm;
   private boolean closed;
@@ -46,6 +47,7 @@ public final class SessionQueryDeadline implements AutoCloseable {
 
   public SessionQueryDeadline(long deadline) {
     this.deadline = deadline;
+    previous = CURRENT.get();
     CURRENT.set(this);
     alarm =
         ALARMS.schedule(
@@ -82,7 +84,8 @@ public final class SessionQueryDeadline implements AutoCloseable {
 
   @Override
   public void close() {
-    CURRENT.remove();
+    if (previous == null) CURRENT.remove();
+    else CURRENT.set(previous);
     alarm.cancel(false);
     closeSockets();
   }

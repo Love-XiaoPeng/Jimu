@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.lovexiaopeng.jimu.adapters.persistence.Payloads;
+import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ReportContext;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ReportFile;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Source;
