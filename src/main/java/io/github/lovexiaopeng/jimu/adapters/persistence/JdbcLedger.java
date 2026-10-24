@@ -43,6 +43,8 @@ public final class JdbcLedger
         io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger {
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeQueryService
+      scopeQueries;
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeRevocationService
       scopeRevocations;
   private final io.github.lovexiaopeng.jimu.kernel.worker.service.WorkerService workerService;
@@ -351,266 +353,7 @@ public final class JdbcLedger
       Lease lease, String stepId, Call call, String version, String digest) {
     if (query == null)
       return queryView(lease, true).scopedOrResult(lease, stepId, call, version, digest);
-    return scopedQueryOrResult(lease, stepId, call, version, digest);
-  }
-
-  private String scopedQueryOrResult(
-      Lease lease, String stepId, Call call, String version, String digest) {
-    AdmissionResult<String> result;
-    try {
-      result =
-          sessionTransaction(
-              () -> {
-                var task = fenced(lease, true);
-                if (!JdbcSessionScopes.task(task)
-                    || !List.of("session_event_read", "session_search").contains(call.tool()))
-                  throw new TaskFailure(409, "INVOCATION_MISMATCH");
-                var i = originalDirectorySlot(lease, stepId, call, version, digest);
-                var st =
-                    one(
-                        "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=?",
-                        lease.tenant(),
-                        stepId,
-                        lease.taskId());
-                sessions.validateStep(task, st);
-                var scope = sessionScopes.require(task);
-                var cut =
-                    one(
-                        "SELECT * FROM step_session_scope WHERE tenant_id=? AND step_id=? AND caller_task_id=?",
-                        lease.tenant(),
-                        stepId,
-                        lease.taskId());
-                var b =
-                    one(
-                        "SELECT * FROM invocation_session_scope_query WHERE tenant_id=? AND invocation_id=? FOR UPDATE",
-                        lease.tenant(),
-                        s(i, "id"));
-                String normalized = sessions.normalizedScope(task, st, call.tool(), call.input());
-                sessions.validateNormalizedScope(normalized, b);
-                boolean read = call.tool().equals("session_event_read");
-                if (n(b, "record_version") != 1
-                    || !lease.taskId().equals(s(b, "caller_task_id"))
-                    || !stepId.equals(s(b, "step_id"))
-                    || !(read ? "READ" : "SEARCH").equals(s(b, "operation"))
-                    || !s(st, "session_binding_digest").equals(s(b, "binding_digest"))
-                    || !Payloads.hash(call.input()).equals(s(b, "input_digest"))
-                    || !s(scope.row(), "authority_digest").equals(s(b, "authority_digest"))
-                    || !s(cut, "authority_digest").equals(s(b, "authority_digest"))
-                    || !s(st, "session_context_digest").equals(s(b, "context_digest"))
-                    || !s(cut, "context_digest").equals(s(b, "context_digest"))
-                    || !Payloads.hash(s(cut, "context_snapshot")).equals(s(cut, "context_digest"))
-                    || !"PRESENT".equals(s(b, "content_state"))) throw JdbcSessionRecords.corrupt();
-                if (!"PENDING".equals(s(i, "state"))) {
-                  boolean success = "SUCCEEDED".equals(s(b, "outcome"));
-                  if (!s(i, "state").equals(s(b, "outcome"))
-                      || !List.of("SUCCEEDED", "FAILED").contains(s(b, "outcome")))
-                    throw JdbcSessionRecords.corrupt();
-                  var receipt =
-                      one(
-                          "SELECT * FROM event WHERE tenant_id=? AND task_id=? AND seq=?",
-                          lease.tenant(),
-                          lease.taskId(),
-                          n(b, "receipt_event_seq"));
-                  var reservation =
-                      one(
-                          "SELECT * FROM reservation WHERE tenant_id=? AND task_id=? AND id=?",
-                          lease.tenant(),
-                          lease.taskId(),
-                          s(i, "id"));
-                  if (!s(receipt, "fact_id").equals("result:" + s(i, "id"))
-                      || !s(receipt, "type").equals(success ? "tool.completed" : "tool.failed")
-                      || !java.util.Objects.equals(receipt.get("code"), b.get("failure_code"))
-                      || !"TOOL".equals(s(reservation, "category"))
-                      || !"SETTLED".equals(s(reservation, "state"))
-                      || n(reservation, "actual") != 1) throw JdbcSessionRecords.corrupt();
-                  one(
-                      "SELECT id FROM task_attempt WHERE tenant_id=? AND task_id=? AND id=? AND fence=?",
-                      lease.tenant(),
-                      lease.taskId(),
-                      s(b, "committed_attempt_id"),
-                      n(b, "committed_fence"));
-                  if (success) {
-                    String output = s(i, "output_snapshot");
-                    if (!Payloads.hash(output).equals(s(i, "output_digest"))
-                        || !s(i, "output_digest").equals(s(b, "output_digest"))
-                        || io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts
-                                .bytes(output)
-                            != n(b, "output_bytes")) throw JdbcSessionRecords.corrupt();
-                    if (read) sessions.v4.output(output);
-                    else sessionScopes.contracts.output(output);
-                  } else if (i.get("output_snapshot") != null
-                      || i.get("output_digest") != null
-                      || n(b, "output_bytes") != 0) throw JdbcSessionRecords.corrupt();
-                  if (read) {
-                    var nativeReceipt =
-                        one(
-                            "SELECT * FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq=?",
-                            lease.tenant(),
-                            lease.taskId(),
-                            n(b, "native_read_seq"));
-                    sessions.verify(task, nativeReceipt);
-                  }
-                  todoCommitFence(lease);
-                  sessionScopes.require(task);
-                  sessionRemainingMillis();
-                  sessions.account(task, false);
-                  return new AdmissionResult<String>(
-                      success ? s(i, "output_snapshot") : null,
-                      success
-                          ? null
-                          : new TaskFailure(
-                              sessionFailureStatus(s(b, "failure_code")), s(b, "failure_code")));
-                }
-                if (!"PENDING".equals(s(b, "outcome"))) throw JdbcSessionRecords.corrupt();
-                var budget = bucket(lease.tenant());
-                if (n(task, "tools_used") >= n(task, "max_tools")
-                    || n(task, "tools_used") >= 20
-                    || n(budget, "tool_used") >= n(budget, "tool_limit"))
-                  throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
-                JdbcSessionRecords.Search search = null;
-                JdbcSessionRecords.Read found = null;
-                TaskFailure failure = null;
-                try {
-                  if (read)
-                    found = sessions.scopeRead(task, normalized, this::sessionRemainingMillis);
-                  else
-                    search =
-                        sessions.priorSearch(
-                            task,
-                            sessionScopes.contracts.input(call.input()),
-                            this::sessionRemainingMillis);
-                } catch (TaskFailure rejected) {
-                  if (!rejected.code().equals("SESSION_EVENT_NOT_FOUND")) throw rejected;
-                  failure = rejected;
-                }
-                String output =
-                    found != null ? found.output() : search != null ? search.output() : null;
-                String refs = read ? found == null ? "[]" : found.sources() : null;
-                String outcome = failure == null ? "SUCCEEDED" : "FAILED",
-                    code = failure == null ? null : failure.code(),
-                    invocation = s(i, "id");
-                if (output != null)
-                  sessions.body(
-                      task,
-                      io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(
-                          output));
-                if (refs != null) {
-                  sessionScopes.contracts.refs(refs);
-                  sessions.body(
-                      task,
-                      io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(
-                          refs));
-                }
-                db.update(
-                    "UPDATE task SET tools_used=tools_used+1 WHERE tenant_id=? AND id=?",
-                    lease.tenant(),
-                    lease.taskId());
-                db.update(
-                    "UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=?",
-                    lease.tenant());
-                reserve(
-                    lease.tenant(),
-                    lease.taskId(),
-                    invocation,
-                    invocation,
-                    "TOOL",
-                    1,
-                    "SETTLED",
-                    "KNOWN");
-                db.update(
-                    "UPDATE reservation SET actual=1 WHERE tenant_id=? AND id=?",
-                    lease.tenant(),
-                    invocation);
-                db.update(
-                    "UPDATE invocation SET state=?,output_snapshot=?,output_digest=? WHERE tenant_id=? AND id=? AND state='PENDING'",
-                    outcome,
-                    output,
-                    output == null ? null : Payloads.hash(output),
-                    lease.tenant(),
-                    invocation);
-                event(task, "intent:" + invocation, "tool.dispatched", null);
-                event(
-                    task,
-                    "result:" + invocation,
-                    failure == null ? "tool.completed" : "tool.failed",
-                    code);
-                long receipt =
-                    n(
-                        first(
-                            mappers
-                                .events()
-                                .selectFactSequence(
-                                    query, lease.tenant(), lease.taskId(), "result:" + invocation)),
-                        "seq");
-                Long nativeSeq = read ? n(sessions.history(task, true), "next_seq") : null;
-                var refValues = read && found != null ? sessions.contracts.json(refs, 2048) : null;
-                String scan =
-                    search != null
-                        ? search.scanDigest()
-                        : found != null ? Payloads.hash(refs) : null;
-                Integer scanRows =
-                    search != null ? search.rows() : found != null ? refValues.size() : null;
-                Integer scanBytes =
-                    search != null
-                        ? search.eventBytes()
-                        : found != null ? found.eventBytes() : null;
-                db.update(
-                    "UPDATE invocation_session_scope_query SET outcome=?,failure_code=?,scan_digest=?,scan_rows=?,scan_event_bytes=?,read_refs_snapshot=?,read_refs_digest=?,read_refs_bytes=?,output_digest=?,output_bytes=?,receipt_event_seq=?,native_read_seq=?,committed_attempt_id=?,committed_fence=?,committed_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND invocation_id=? AND outcome='PENDING'",
-                    outcome,
-                    code,
-                    scan,
-                    scanRows,
-                    scanBytes,
-                    refs,
-                    refs == null ? null : Payloads.hash(refs),
-                    refs == null
-                        ? null
-                        : io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts
-                            .bytes(refs),
-                    output == null ? null : Payloads.hash(output),
-                    output == null
-                        ? 0
-                        : io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts
-                            .bytes(output),
-                    receipt,
-                    nativeSeq,
-                    lease.attemptId(),
-                    lease.fence(),
-                    lease.tenant(),
-                    invocation);
-                if (read) {
-                  var committed =
-                      one(
-                          "SELECT * FROM invocation_session_scope_query WHERE tenant_id=? AND invocation_id=?",
-                          lease.tenant(),
-                          invocation);
-                  sessionAppend(
-                      task,
-                      "read:" + invocation,
-                      "session.read",
-                      sessions.source("invocation", stepId, invocation),
-                      sessions.scopeReceipt(committed),
-                      false,
-                      s(i, "input_digest"),
-                      lease);
-                }
-                todoCommitFence(lease);
-                sessionScopes.require(task);
-                sessionRemainingMillis();
-                sessions.account(task, false);
-                return new AdmissionResult<String>(output, failure);
-              },
-              Math.min(
-                  System.nanoTime() + 2_000_000_000L,
-                  System.nanoTime()
-                      + java.time.Duration.between(java.time.Instant.now(), lease.deadline())
-                          .toNanos()));
-    } catch (org.springframework.dao.DataAccessException
-        | org.springframework.transaction.TransactionException failure) {
-      throw new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionCommitUnconfirmed();
-    }
-    if (result.rejection() != null) throw result.rejection();
-    return result.value();
+    return scopeQueries.scopedOrResult(lease, stepId, call, version, digest);
   }
 
   private int sessionRemainingMillis() {
@@ -787,7 +530,7 @@ public final class JdbcLedger
     }
   }
 
-  private long sessionAppend(
+  long sessionAppend(
       Map<String, Object> task,
       String fact,
       String type,
@@ -3548,6 +3291,9 @@ public final class JdbcLedger
                 source, query);
     sessions = new JdbcSessionRecords(db, query);
     sessionScopes = new JdbcSessionScopes(this, db, sessions);
+    scopeQueries =
+        new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionScopeQueryServiceImpl(
+            new MapperSessionScopeQueries(this));
     scopeRevocations =
         new io.github.lovexiaopeng.jimu.kernel.session.service.impl
             .SessionScopeRevocationServiceImpl(new MapperSessionScopeRevocations(this));

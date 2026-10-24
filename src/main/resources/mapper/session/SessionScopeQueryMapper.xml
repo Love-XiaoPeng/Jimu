@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionScopeQueryMapper">
+  <select id="lockBinding" resultType="map"><![CDATA[SELECT tenant_id,invocation_id,caller_task_id,step_id,record_version,operation,binding_digest,input_digest,authority_digest,context_digest,normalized_snapshot,normalized_digest,normalized_bytes,content_state,outcome,failure_code,output_digest,output_bytes,receipt_event_seq,native_read_seq,committed_attempt_id,committed_fence FROM invocation_session_scope_query WHERE tenant_id=#{tenant} AND invocation_id=#{invocation} FOR UPDATE]]></select>
+  <update id="consumeTask"><![CDATA[UPDATE task SET tools_used=tools_used+1 WHERE tenant_id=#{tenant} AND id=#{task}]]></update>
+  <update id="consumeTenant"><![CDATA[UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=#{tenant}]]></update>
+  <update id="settle"><![CDATA[UPDATE reservation SET actual=1 WHERE tenant_id=#{tenant} AND id=#{invocation}]]></update>
+  <update id="finishInvocation"><![CDATA[UPDATE invocation SET state=#{outcome},output_snapshot=#{output},output_digest=#{digest} WHERE tenant_id=#{tenant} AND id=#{invocation} AND state='PENDING']]></update>
+  <update id="commitQuery"><![CDATA[UPDATE invocation_session_scope_query SET outcome=#{commit.outcome},failure_code=#{commit.code},scan_digest=#{commit.scan},scan_rows=#{commit.rows},scan_event_bytes=#{commit.eventBytes},read_refs_snapshot=#{commit.refs},read_refs_digest=#{commit.refsDigest},read_refs_bytes=#{commit.refsBytes},output_digest=#{commit.outputDigest},output_bytes=#{commit.outputBytes},receipt_event_seq=#{commit.receipt},native_read_seq=#{commit.nativeSeq},committed_attempt_id=#{attempt},committed_fence=#{fence},committed_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND invocation_id=#{invocation} AND outcome='PENDING']]></update>
+</mapper>
