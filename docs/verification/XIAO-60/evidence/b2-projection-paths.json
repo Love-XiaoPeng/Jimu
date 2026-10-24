@@ -1,0 +1,47 @@
+{
+  "baseline": "2eb8235ca61c236270c08b3348ad55af3ff03039",
+  "inventory": {
+    "static": 203,
+    "dynamicScannerItems": 23,
+    "literalBinds": 701
+  },
+  "removedStaticJdbc": 0,
+  "removedDynamicSql": 0,
+  "reason": "projectedCalls has no SQL. Original response/append callers and real MP/parameterized persistence chains unchanged; no extra queries/transactions.",
+  "unchanged": [
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sha256": "d713918eb5e16e78e52bf2e3170bf35beb2f123f85b96d8d3c24e3e6966c262f"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperModelWorkflows.java",
+      "sha256": "02de9666c7d2f87501adacf545e6cd91fe4174e562b7928963376b010825844b"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sha256": "ee5dd85dda1a799c4ebf049c4843358ba00fb8e92b418e2ea0d2361574bcccf8"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeRecords.java",
+      "sha256": "515414eb23d035ce9e05bea7556905c9f572a475a6aac56acd32247f8bf58ca5"
+    }
+  ],
+  "entries": [
+    "response preflight -> projectedCalls -> SessionCallProjectionServiceImpl -> StoredSessionCallProjections original codecs/sensitive config/Payloads.json",
+    "JdbcLedger model append -> same shared Service -> original sessionAppend and event/accounting transaction",
+    "frozen model event replay -> same original projection/receipt proof chain"
+  ],
+  "preserved": [
+    "original native-first short circuit, arguments access before task/name classification, per-call lazy iteration",
+    "strictJson2048/4096 and original ObjectNode cast/NULL/unchecked exceptions; sensitive evaluated before publicText",
+    "query only redaction and aggregate redacted, other argument bytes direct; field order/type, call id/type/name/order and immutable list",
+    "serialized UTF8 check and429 SESSION_HISTORY_LIMIT; response preflight/admit/accounting/append order unchanged",
+    "same tenant/full keys/DS/UoW/fence/lock/proof/query/deadline/atomic accounting/UNKNOWN/afterCompletion/metadata",
+    "schema22/V1-V22/frozen input/normalized/receipt/resources unchanged"
+  ],
+  "remaining": [
+    "B2/35 tables+readonly receipt OPEN; runtime/admission/module/maintenance queued",
+    "core UoW last beforeCommit, cold/full locks, persisted FAILED read and existing coverage OPEN",
+    "next shared runtime bindCalls/bindScopeCall requires PM assignment; no concurrent writer/new task claimed"
+  ]
+}

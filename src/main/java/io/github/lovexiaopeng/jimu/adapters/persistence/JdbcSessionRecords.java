@@ -945,26 +945,15 @@ final class JdbcSessionRecords {
 
   record PublicCalls(List<DurableAgent.ToolCall> calls, boolean redacted) {}
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionCallProjectionService
+      callProjections =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionCallProjectionServiceImpl();
+
   PublicCalls projectedCalls(Map<String, Object> task, List<DurableAgent.ToolCall> calls) {
-    var projected = new ArrayList<DurableAgent.ToolCall>();
-    boolean redacted = false;
-    for (var call : calls) {
-      String arguments = call.arguments();
-      if (searchTask(task) && call.name().equals("session_event_search")
-          || JdbcSessionScopes.task(task) && call.name().equals("session_search")) {
-        var node =
-            (com.fasterxml.jackson.databind.node.ObjectNode)
-                contracts.strictJson(arguments, JdbcSessionScopes.task(task) ? 4096 : 2048);
-        var text = contracts.publicText(node.path("query").textValue(), sensitive());
-        redacted |= text.redacted();
-        node.put("query", text.content());
-        arguments = Payloads.json(node);
-        if (SessionContracts.bytes(arguments) > (JdbcSessionScopes.task(task) ? 4096 : 2048))
-          throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-      }
-      projected.add(new DurableAgent.ToolCall(call.id(), call.type(), call.name(), arguments));
-    }
-    return new PublicCalls(List.copyOf(projected), redacted);
+    var values = new StoredSessionCallProjections(this, task, calls);
+    callProjections.project(values);
+    return values.result();
   }
 
   private static Map<String, Object> scopeRef(String id, long seq, String digest) {
