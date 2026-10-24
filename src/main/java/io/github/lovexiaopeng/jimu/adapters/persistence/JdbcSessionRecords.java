@@ -755,7 +755,7 @@ final class JdbcSessionRecords {
         records.stream().mapToInt(r -> Math.toIntExact(n(r, "event_bytes"))).sum());
   }
 
-  private static Map<String, Object> readSummary(JsonNode value) {
+  static Map<String, Object> readSummary(JsonNode value) {
     var summary = new LinkedHashMap<String, Object>();
     for (String key : List.of("seq", "type", "time", "source", "redacted"))
       summary.put(key, value.get(key));
@@ -1228,123 +1228,25 @@ final class JdbcSessionRecords {
         || SessionContracts.bytes(stored) != n(binding, "normalized_bytes")) throw corrupt();
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeReadProofService
+      scopeReadProofs =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionScopeReadProofServiceImpl();
+
   String verifyScopeRead(Map<String, Object> task, Map<String, Object> event, JsonNode value) {
-    var i =
-        one(
-            "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND step_id=? AND (NOT ? OR (OCTET_LENGTH(input_snapshot)<=4096 AND COALESCE(OCTET_LENGTH(output_snapshot),0)<=32768))",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            s(event, "source_invocation_id"),
-            s(event, "source_step_id"),
-            searchBudget != null && searchBudget.prior);
-    var b =
-        one(
-            "SELECT * FROM invocation_session_scope_query WHERE tenant_id=? AND invocation_id=? AND caller_task_id=? AND step_id=?",
-            s(task, "tenant_id"),
-            s(i, "id"),
-            s(task, "id"),
-            s(i, "step_id"));
-    var step =
-        one(
-            "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=? AND (NOT ? OR (OCTET_LENGTH(request_snapshot)<=131072 AND COALESCE(OCTET_LENGTH(response_snapshot),0)<=16384))",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            s(i, "step_id"),
-            searchBudget != null && searchBudget.prior);
-    validateStep(task, step);
-    var scope = scopes.require(task);
-    var cut =
-        one(
-            "SELECT * FROM step_session_scope WHERE tenant_id=? AND caller_task_id=? AND step_id=?",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            s(i, "step_id"));
-    String normalizedInput =
-        normalizedScope(task, step, "session_event_read", s(i, "input_snapshot"));
-    validateNormalizedScope(normalizedInput, b);
-    if (!"READ".equals(s(b, "operation"))
-        || !"session_event_read".equals(s(i, "tool"))
-        || !Payloads.hash(s(i, "input_snapshot")).equals(s(i, "input_digest"))
-        || !s(scope.row(), "authority_digest").equals(s(b, "authority_digest"))
-        || !s(b, "authority_digest").equals(s(cut, "authority_digest"))
-        || !s(step, "session_context_digest").equals(s(b, "context_digest"))
-        || !s(b, "context_digest").equals(s(cut, "context_digest"))
-        || !Payloads.hash(s(cut, "context_snapshot")).equals(s(cut, "context_digest"))
-        || !s(step, "session_binding_digest").equals(s(b, "binding_digest"))
-        || !s(event, "fact_key").equals("read:" + s(i, "id"))
-        || !value.path("source").path("kind").asText().equals("invocation")
-        || n(b, "native_read_seq") != n(event, "seq")
-        || !s(i, "state").equals(s(b, "outcome"))
-        || !s(i, "input_digest").equals(s(b, "input_digest"))
-        || !Payloads.json(scopeReceipt(b)).equals(Payloads.json(value.path("data")))
-        || !Payloads.json(scopeReadRefs(task, s(i, "id")))
-            .equals(Payloads.json(value.path("source_event_refs")))) throw corrupt();
-    var refs = scopeReadRefs(task, s(i, "id"));
-    if ("SUCCEEDED".equals(s(b, "outcome"))) {
-      String raw = s(i, "output_snapshot");
-      v4.output(raw);
-      if (!Payloads.hash(raw).equals(s(b, "output_digest"))
-          || !s(b, "output_digest").equals(s(i, "output_digest"))
-          || SessionContracts.bytes(raw) != n(b, "output_bytes")) throw corrupt();
-      var output = contracts.json(raw, 32768);
-      var normalized = contracts.json(s(b, "normalized_snapshot"), 4096);
-      long targetSeq = normalized.path("seq").asLong();
-      long from = Math.max(0, targetSeq - normalized.path("before").asInt());
-      long to =
-          Math.min(
-              normalized.path("upper_seq").asLong(), targetSeq + normalized.path("after").asInt());
-      if (!output.path("session_id").asText().equals(normalized.path("target_session_id").asText())
-          || output.path("upper_seq").asLong() != normalized.path("upper_seq").asLong()
-          || output.path("window").path("from_seq").asLong() != from
-          || output.path("window").path("to_seq").asLong() != to
-          || output.path("before").size() != targetSeq - from
-          || output.path("after").size() != to - targetSeq
-          || refs.size() != to - from + 1) throw corrupt();
-      // 只核原切点内的直接端点；收据的来源仍为完整事件摘要，不递归展开旧 read。
-      var endpoints =
-          rows(
-              "SELECT seq,event_snapshot,event_digest,event_bytes FROM session_public_event FORCE INDEX(PRIMARY) WHERE tenant_id=? AND task_id=? AND seq BETWEEN ? AND ? AND content_state='PRESENT' AND event_bytes BETWEEN 1 AND 16384 AND OCTET_LENGTH(event_snapshot)=event_bytes ORDER BY seq LIMIT 9",
-              s(task, "tenant_id"),
-              normalized.path("target_session_id").asText(),
-              from,
-              to);
-      if (endpoints.size() != refs.size()) throw corrupt();
-      for (int index = 0; index < refs.size(); index++) {
-        var ref = refs.get(index);
-        var endpoint = endpoints.get(index);
-        long seq = ref.path("seq").asLong();
-        var projected =
-            seq == targetSeq
-                ? output.path("target")
-                : seq < targetSeq
-                    ? output.path("before").get(index)
-                    : output.path("after").get((int) (seq - targetSeq - 1));
-        if (!ref.path("session_id").asText().equals(output.path("session_id").asText())
-            || seq != from + index
-            || seq != n(endpoint, "seq")) throw corrupt();
-        String endpointRaw = s(endpoint, "event_snapshot");
-        if (SessionContracts.bytes(endpointRaw) != n(endpoint, "event_bytes")
-            || !Payloads.hash(endpointRaw).equals(s(endpoint, "event_digest"))
-            || !s(endpoint, "event_digest").equals(ref.path("event_sha256").asText()))
-          throw corrupt();
-        v4.event(endpointRaw);
-        var sourceEvent = contracts.json(endpointRaw, 16384);
-        if (sourceEvent.path("seq").asLong() != seq
-            || !sourceEvent.path("session_id").asText().equals(ref.path("session_id").asText())
-            || projected == null
-            || !Payloads.json(seq == targetSeq ? sourceEvent : readSummary(sourceEvent))
-                .equals(Payloads.json(projected))) throw corrupt();
-      }
-      var target =
-          refs.stream()
-              .filter(ref -> ref.path("seq").asLong() == normalized.path("seq").asLong())
-              .findFirst()
-              .orElseThrow(JdbcSessionRecords::corrupt);
-      if (!Payloads.hash(Payloads.json(output.path("target")))
-          .equals(target.path("event_sha256").asText())) throw corrupt();
-    } else if (!refs.isEmpty() || i.get("output_snapshot") != null || n(b, "output_bytes") != 0)
-      throw corrupt();
-    return s(i, "input_digest");
+    return scopeReadProofs.verify(new MapperSessionScopeReadProofs(this, task, event, value));
+  }
+
+  List<Map<String, Object>> scopeProofEndpoints(String tenant, String session, long from, long to) {
+    if (searchBudget != null && query == null)
+      throw new IllegalStateException("Session search requires an explicit query context");
+    try (var ignored = query == null ? null : query.meter(searchBudget)) {
+      return mapperSession()
+          .getMapper(
+              io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper
+                  .SessionScopeReadProofMapper.class)
+          .endpoints(query, tenant, session, from, to);
+    }
   }
 
   Search priorSearch(

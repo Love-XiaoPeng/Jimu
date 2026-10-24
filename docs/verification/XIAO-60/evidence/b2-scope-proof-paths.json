@@ -1,0 +1,38 @@
+{
+  "baseline": "da386d1a60a4a197536721414277deceb6cddb8a",
+  "entry": "shared event proof -> JdbcSessionRecords.verifyScopeRead -> SessionScopeReadProofServiceImpl -> typed SessionScopeReadProofs.Proof -> MapperSessionScopeReadProofs -> four actual MP selectMaps reads plus bounded parameterized SessionScopeReadProofMapper; same DS/UoW/query/result-meter envelope",
+  "removed": {
+    "staticJdbcCalls": 5,
+    "sql": [
+      "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND step_id=? AND (NOT ? OR (OCTET_LENGTH(input_snapshot)<=4096 AND COALESCE(OCTET_LENGTH(output_snapshot),0)<=32768))",
+      "SELECT * FROM invocation_session_scope_query WHERE tenant_id=? AND invocation_id=? AND caller_task_id=? AND step_id=?",
+      "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=? AND (NOT ? OR (OCTET_LENGTH(request_snapshot)<=131072 AND COALESCE(OCTET_LENGTH(response_snapshot),0)<=16384))",
+      "SELECT * FROM step_session_scope WHERE tenant_id=? AND caller_task_id=? AND step_id=?",
+      "SELECT seq,event_snapshot,event_digest,event_bytes FROM session_public_event FORCE INDEX(PRIMARY) WHERE tenant_id=? AND task_id=? AND seq BETWEEN ? AND ? AND content_state='PRESENT' AND event_bytes BETWEEN 1 AND 16384 AND OCTET_LENGTH(event_snapshot)=event_bytes ORDER BY seq LIMIT 9"
+    ],
+    "dynamicJdbc": 0,
+    "sharedStillUsedNotCounted": true
+  },
+  "inventory": {
+    "static": 207,
+    "dynamicScannerItems": 23,
+    "literalBinds": 714,
+    "tables": "35 tables + readonly receipt all OPEN"
+  },
+  "preserved": [
+    "invocation/binding/step reads then shared validateStep; current scope authority then step cut then original normalized-input helper; refusal order and original guards",
+    "normalized JSON semantics, original stored bytes/digest; ordered scope receipt codec; source refs read twice as before",
+    "successful output shape/digest/size and target/window/ref cardinality; forced PRIMARY scan with original PRESENT/size/body predicates and limit9",
+    "direct endpoint source/digest/bytes/contract and selected target/summary; summary limit only after endpoint source identity and only for non-target",
+    "failed read requires empty refs, NULL invocation output and zero output bytes; original exceptions and NULL unboxing remain at original decision points",
+    "same DS/UoW/query/result-meter and absolute deadline; no new transaction, mutation, dual write or effect/provider replay",
+    "schema22/V1-V22/frozen inputs unchanged"
+  ],
+  "measurement": "Narrower MP projections change result meters. Exact frozen event/receipt proof results and structural window comparison recorded separately; no universal SQL/byte/roundtrip invariance.",
+  "remaining": [
+    "native verifyReadRelation/readSources proof Service/ports/MP/Mapper and SQL deletion; shared validateStep/scopeReadRefs/normalizedScope still in use; other runtime/admission/module/maintenance",
+    "core UoW final beforeCommit deadline gap, cold-lock and full scope/maintenance/file lock arrangements OPEN",
+    "exact CLI assembly, complete native workers, actual v3 trace cleanup, nonempty paid ledger anomalies and real paid vision OPEN",
+    "B2/all35 tables+readonly receipt OPEN; B3-B5/juniors/61/62/T48/new features not activated"
+  ]
+}

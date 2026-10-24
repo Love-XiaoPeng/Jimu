@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionScopeReadProofMapper">
+  <select id="endpoints" resultType="map"><![CDATA[SELECT seq,event_snapshot,event_digest,event_bytes FROM session_public_event FORCE INDEX(PRIMARY) WHERE tenant_id=#{tenant} AND task_id=#{session} AND seq BETWEEN #{from} AND #{to} AND content_state='PRESENT' AND event_bytes BETWEEN 1 AND 16384 AND OCTET_LENGTH(event_snapshot)=event_bytes ORDER BY seq LIMIT 9]]></select>
+</mapper>

@@ -79,6 +79,9 @@ class PersistenceAssemblyTest {
             "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionContextMapper.account"));
     assertTrue(
         configuration.hasStatement(
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionScopeReadProofMapper.endpoints"));
+    assertTrue(
+        configuration.hasStatement(
             "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionReadMapper.commitRead"));
     assertTrue(
         configuration.hasStatement(
