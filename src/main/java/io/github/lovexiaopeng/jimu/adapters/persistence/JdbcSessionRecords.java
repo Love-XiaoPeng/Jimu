@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Native public history records. All mutations run under the owning ledger's budget/task locks. */
@@ -769,154 +768,37 @@ final class JdbcSessionRecords {
     return summary;
   }
 
-  JsonNode verify(Map<String, Object> task, Map<String, Object> r) {
-    try {
-      return verifyEvent(task, r);
-    } catch (TaskFailure failure) {
-      if (traceTask(task) && failure.status() == 400) throw corrupt();
-      throw failure;
-    }
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionEventProofService
+      eventProofs =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionEventProofServiceImpl();
+
+  JsonNode verify(Map<String, Object> task, Map<String, Object> row) {
+    var proof = new MapperSessionEventProofs(this, task, row);
+    eventProofs.verify(proof);
+    return proof.value();
   }
 
-  private JsonNode verifyEvent(Map<String, Object> task, Map<String, Object> r) {
-    if (JdbcSessionScopes.task(task)) if (query != null) query.operation(1);
-    if (!s(task, "tenant_id").equals(s(r, "tenant_id")) || !s(task, "id").equals(s(r, "task_id")))
-      throw corrupt();
-    if (n(r, "record_version") != 1 || n(r, "event_version") != version(task))
-      throw new TaskFailure(409, "SESSION_HISTORY_VERSION_UNSUPPORTED");
-    if (!"PRESENT".equals(s(r, "content_state")))
-      throw new TaskFailure(410, "SESSION_HISTORY_EXPIRED");
-    String raw = s(r, "event_snapshot");
-    JsonNode value;
-    try {
-      value = contracts.json(raw, 16384);
-    } catch (TaskFailure invalid) {
-      throw corrupt();
+  boolean priorProof() {
+    return searchBudget != null && searchBudget.prior;
+  }
+
+  void proofOperation() {
+    if (query != null) query.operation(1);
+  }
+
+  Map<String, Object> proofRow(Class<?> mapper, Object wrapper) {
+    if (searchBudget != null && query == null)
+      throw new IllegalStateException("Session search requires an explicit query context");
+    var args = new java.util.HashMap<String, Object>();
+    args.put("query", query);
+    args.put("ew", wrapper);
+    try (var ignored = query == null ? null : query.meter(searchBudget)) {
+      List<Map<String, Object>> rows =
+          mapperSession().selectList(mapper.getName() + ".selectMaps", args);
+      if (rows.size() != 1) throw corrupt();
+      return rows.getFirst();
     }
-    if (!value.path("version").isIntegralNumber()
-        || value.path("version").asLong() != version(task)
-        || !List.of("user.message", "step.started", "model.response", "session.read", "turn.ended")
-            .contains(value.path("type").asText()))
-      throw new TaskFailure(409, "SESSION_HISTORY_VERSION_UNSUPPORTED");
-    contract(task).event(raw);
-    if (SessionContracts.bytes(raw) != n(r, "event_bytes")
-        || !Payloads.hash(raw).equals(s(r, "event_digest"))) throw corrupt();
-    var source = value.path("source");
-    if (!s(task, "id").equals(value.path("session_id").asText())
-        || value.path("seq").asLong() != n(r, "seq")
-        || !s(r, "type").equals(value.path("type").asText())
-        || !UTC.format((LocalDateTime) r.get("occurred_at")).equals(value.path("time").asText())
-        || !Objects.equals(
-            s(r, "source_step_id"),
-            source.path("step_id").isNull() ? null : source.path("step_id").asText())
-        || !Objects.equals(
-            s(r, "source_invocation_id"),
-            source.path("invocation_id").isNull() ? null : source.path("invocation_id").asText()))
-      throw corrupt();
-    String digest;
-    switch (s(r, "type")) {
-      case "user.message" -> {
-        if (n(r, "seq") != 0
-            || !s(r, "fact_key").equals("accepted-user")
-            || !source.equals(
-                Payloads.read(Payloads.json(source("request", null, null)), JsonNode.class)))
-          throw corrupt();
-        digest = s(task, "request_digest");
-      }
-      case "step.started", "model.response" -> {
-        var st =
-            one(
-                "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=? AND (NOT ? OR (OCTET_LENGTH(request_snapshot)<=131072 AND COALESCE(OCTET_LENGTH(response_snapshot),0)<=16384))",
-                s(task, "tenant_id"),
-                s(r, "source_step_id"),
-                s(task, "id"),
-                searchBudget != null && searchBudget.prior);
-        boolean model = s(r, "type").equals("model.response");
-        if (!s(r, "fact_key").equals((model ? "response:" : "step:") + s(st, "id"))
-            || !source.path("kind").asText().equals(model ? "model" : "step")
-            || !source.path("invocation_id").isNull()) throw corrupt();
-        String snapshot = s(st, model ? "response_snapshot" : "request_snapshot");
-        digest = s(st, model ? "response_digest" : "request_digest");
-        if (snapshot == null
-            || !Payloads.hash(snapshot).equals(digest)
-            || !model && value.path("data").path("ordinal").asLong() != n(st, "ordinal"))
-          throw corrupt();
-      }
-      case "session.read" -> {
-        if (JdbcSessionScopes.task(task)) {
-          digest = verifyScopeRead(task, r, value);
-          break;
-        }
-        var i =
-            one(
-                "SELECT * FROM invocation WHERE tenant_id=? AND id=? AND task_id=? AND step_id=? AND (NOT ? OR (OCTET_LENGTH(input_snapshot)<=4096 AND COALESCE(OCTET_LENGTH(output_snapshot),0)<=32768))",
-                s(task, "tenant_id"),
-                s(r, "source_invocation_id"),
-                s(task, "id"),
-                s(r, "source_step_id"),
-                searchBudget != null && searchBudget.prior);
-        var b =
-            one(
-                "SELECT * FROM invocation_session_read WHERE tenant_id=? AND invocation_id=? AND task_id=? AND step_id=?",
-                s(task, "tenant_id"),
-                s(i, "id"),
-                s(task, "id"),
-                s(i, "step_id"));
-        if (!s(r, "fact_key").equals("read:" + s(i, "id"))
-            || !source.path("kind").asText().equals("invocation")
-            || n(b, "receipt_seq") != n(r, "seq")
-            || !s(b, "outcome").equals(s(i, "state"))
-            || !Payloads.json(receipt(b)).equals(Payloads.json(value.path("data"))))
-          throw corrupt();
-        if (s(i, "state").equals("SUCCEEDED")
-            && (!Payloads.hash(s(i, "output_snapshot")).equals(s(b, "output_digest"))
-                || !s(b, "output_digest").equals(s(i, "output_digest"))
-                || SessionContracts.bytes(s(i, "output_snapshot")) != n(b, "output_bytes")))
-          throw corrupt();
-        if (traceTask(task)) verifyReadRelation(task, r, value, i, b);
-        digest = s(i, "input_digest");
-      }
-      case "turn.ended" -> {
-        var terminal =
-            one(
-                "SELECT event_id,type,status,code FROM event WHERE tenant_id=? AND task_id=? AND fact_id='terminal'",
-                s(task, "tenant_id"),
-                s(task, "id"));
-        digest = Payloads.hash(Payloads.json(terminal));
-        if (!s(r, "fact_key").equals("terminal")
-            || !source.equals(
-                Payloads.read(Payloads.json(source("task", null, null)), JsonNode.class))
-            || !Objects.equals(terminal.get("status"), value.path("data").path("state").asText())
-            || !Objects.equals(
-                terminal.get("code"),
-                value.path("data").path("code").isNull()
-                    ? null
-                    : value.path("data").path("code").asText())) throw corrupt();
-      }
-      default -> throw new TaskFailure(409, "SESSION_HISTORY_VERSION_UNSUPPORTED");
-    }
-    if (!digest.equals(s(r, "source_digest"))) throw corrupt();
-    if (traceTask(task)
-        && !"session.read".equals(s(r, "type"))
-        && !value.path("source_event_seqs").isEmpty()) throw corrupt();
-    if (JdbcSessionScopes.task(task)
-        && !"session.read".equals(s(r, "type"))
-        && !value.path("source_event_refs").isEmpty()) throw corrupt();
-    var reliable =
-        one(
-            "SELECT type FROM event WHERE tenant_id=? AND task_id=? AND seq=?",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            n(r, "reliable_event_seq"));
-    if (!"session_history.changed".equals(s(reliable, "type"))) throw corrupt();
-    if (r.get("committed_attempt_id") != null)
-      one(
-          "SELECT id FROM task_attempt WHERE tenant_id=? AND task_id=? AND id=? AND fence=?",
-          s(task, "tenant_id"),
-          s(task, "id"),
-          s(r, "committed_attempt_id"),
-          n(r, "committed_fence"));
-    return value;
   }
 
   List<JsonNode> readSources(Map<String, Object> task, String invocation) {
@@ -951,7 +833,7 @@ final class JdbcSessionRecords {
   }
 
   // Flat proof: check the original slot and immediate endpoints, never verify nested read outputs.
-  private void verifyReadRelation(
+  void verifyReadRelation(
       Map<String, Object> task,
       Map<String, Object> r,
       JsonNode event,
@@ -1346,8 +1228,7 @@ final class JdbcSessionRecords {
         || SessionContracts.bytes(stored) != n(binding, "normalized_bytes")) throw corrupt();
   }
 
-  private String verifyScopeRead(
-      Map<String, Object> task, Map<String, Object> event, JsonNode value) {
+  String verifyScopeRead(Map<String, Object> task, Map<String, Object> event, JsonNode value) {
     var i =
         one(
             "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND step_id=? AND (NOT ? OR (OCTET_LENGTH(input_snapshot)<=4096 AND COALESCE(OCTET_LENGTH(output_snapshot),0)<=32768))",

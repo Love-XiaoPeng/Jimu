@@ -1,0 +1,39 @@
+{
+  "baseline": "a2b56444705efb4cbf7da7f08d2491f727958c0f",
+  "entry": "all existing read/search/trace/scope verify callers -> JdbcSessionRecords.verify -> SessionEventProofServiceImpl -> typed SessionEventProofs.Proof -> MapperSessionEventProofs -> actual existing MP selectMaps Mappers and original same query/DS/result meter",
+  "removed": {
+    "staticJdbcCalls": 6,
+    "sql": [
+      "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=? AND (NOT ? OR (OCTET_LENGTH(request_snapshot)<=131072 AND COALESCE(OCTET_LENGTH(response_snapshot),0)<=16384))",
+      "SELECT * FROM invocation WHERE tenant_id=? AND id=? AND task_id=? AND step_id=? AND (NOT ? OR (OCTET_LENGTH(input_snapshot)<=4096 AND COALESCE(OCTET_LENGTH(output_snapshot),0)<=32768))",
+      "SELECT * FROM invocation_session_read WHERE tenant_id=? AND invocation_id=? AND task_id=? AND step_id=?",
+      "SELECT event_id,type,status,code FROM event WHERE tenant_id=? AND task_id=? AND fact_id='terminal'",
+      "SELECT type FROM event WHERE tenant_id=? AND task_id=? AND seq=?",
+      "SELECT id FROM task_attempt WHERE tenant_id=? AND task_id=? AND id=? AND fence=?"
+    ],
+    "dynamicJdbc": 0,
+    "sharedStillUsedNotCounted": true
+  },
+  "inventory": {
+    "static": 212,
+    "dynamicScannerItems": 23,
+    "literalBinds": 734,
+    "tables": "35 tables + readonly receipt all OPEN"
+  },
+  "preserved": [
+    "scope operation increment before tenant/key check; version/content/decode/contract/length/digest/time/source proof order",
+    "all five event source types; native read receipt byte order, NULL code and output proof; scope and native trace retain existing specialized proof calls",
+    "terminal source digest rebuilds original event_id/type/status/code order including NULL instead of hashing MP HashMap iteration",
+    "reliable session_history.changed proof before optional committed attempt/fence; same one-row cardinality (zero/multiple corrupt)",
+    "same DS/UoW, query.meter(searchBudget) envelope and bound parameter size guards; no query clock renewal or transaction/write introduced",
+    "trace-only400 normalization, original native unmetered and scope cumulative resource contracts",
+    "schema22/V1-V22/frozen inputs unchanged"
+  ],
+  "measurement": "MP projections narrow retrieved columns. Unit/contract and exact same-row old/new proof outcomes checked separately from SQL/byte/resource measurements. No universal SQL/byte/roundtrip invariance.",
+  "remaining": [
+    "verifyScopeRead and verifyReadRelation/readSources specialized proof Service/ports/MP/Mapper and SQL deletion; other runtime receipt/admission writes/module/maintenance",
+    "core UoW final beforeCommit deadline gap and cold-lock/full scope/maintenance/file lock arrangements OPEN",
+    "complete native workers, exact CLI assembly, actual v3 trace cleanup, nonempty paid ledger anomalies, real paid vision OPEN",
+    "B2/all35 tables+readonly receipt OPEN; B3-B5/juniors/61/62/T48/new features not activated"
+  ]
+}
