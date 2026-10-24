@@ -1,0 +1,168 @@
+{
+  "baseline": "d946f6761e578425caa30c1a3c1c0bfbf5741192",
+  "scope": "B2 partial question retention; 35 tables plus external read-only receipt all OPEN",
+  "removedJdbcCalls": 12,
+  "removed": [
+    {
+      "name": "candidates",
+      "originalSql": "SELECT tenant_id,id FROM task WHERE question_cleanup_state='RETAINED' AND state IN ('SUCCEEDED','FAILED','CANCELLED') AND created_at<=CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY ORDER BY created_at,id LIMIT 32",
+      "replacement": "QuestionRetentionMapper.candidates"
+    },
+    {
+      "name": "unsafeReservations",
+      "originalSql": "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN') LIMIT 1",
+      "replacement": "QuestionRetentionMapper.unsafeReservations"
+    },
+    {
+      "name": "unknownInvocations",
+      "originalSql": "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state='OUTCOME_UNKNOWN' LIMIT 1",
+      "replacement": "QuestionRetentionMapper.unknownInvocations"
+    },
+    {
+      "name": "steps",
+      "originalSql": "SELECT * FROM step WHERE tenant_id=? AND task_id=?",
+      "replacement": "QuestionStepReadMapper.selectMaps"
+    },
+    {
+      "name": "purgeStep",
+      "originalSql": "UPDATE step SET request_snapshot=?,response_snapshot=IF(response_snapshot IS NULL,NULL,?),request_cleanup_state='QUESTION_PURGED',retained_request_digest=request_digest WHERE tenant_id=? AND id=?",
+      "replacement": "QuestionRetentionMapper.purgeStep"
+    },
+    {
+      "name": "invocations",
+      "originalSql": "SELECT * FROM invocation WHERE tenant_id=? AND task_id=?",
+      "replacement": "QuestionInvocationReadMapper.selectMaps"
+    },
+    {
+      "name": "purgeInvocation",
+      "originalSql": "UPDATE invocation SET input_snapshot=?,output_snapshot=IF(output_snapshot IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
+      "replacement": "QuestionRetentionMapper.purgeInvocation"
+    },
+    {
+      "name": "questions",
+      "originalSql": "SELECT * FROM user_question WHERE tenant_id=? AND task_id=?",
+      "replacement": "QuestionBodyReadMapper.selectMaps"
+    },
+    {
+      "name": "purgeQuestion",
+      "originalSql": "UPDATE user_question SET request_snapshot=?,answer_snapshot=IF(answer_snapshot IS NULL,NULL,?),receipt_snapshot=IF(receipt_snapshot IS NULL,NULL,?),retained_digests=? WHERE tenant_id=? AND id=?",
+      "replacement": "QuestionRetentionMapper.purgeQuestion"
+    },
+    {
+      "name": "purgeTask",
+      "originalSql": "UPDATE task SET request_snapshot=?,goal=?,summary=IF(summary IS NULL,NULL,?),question_cleanup_state='PURGED',question_retained_digests=? WHERE tenant_id=? AND id=?",
+      "replacement": "QuestionRetentionMapper.purgeTask"
+    },
+    {
+      "name": "releaseHold",
+      "originalSql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'",
+      "replacement": "QuestionRetentionMapper.releaseHold"
+    },
+    {
+      "name": "releaseBudget",
+      "originalSql": "UPDATE tenant_budget SET storage_held=storage_held-2097152 WHERE tenant_id=?",
+      "replacement": "QuestionRetentionMapper.releaseBudget"
+    }
+  ],
+  "statements": [
+    {
+      "kind": "select",
+      "id": "QuestionRetentionMapper.candidates",
+      "sql": "SELECT tenant_id,id FROM task WHERE question_cleanup_state='RETAINED' AND state IN ('SUCCEEDED','FAILED','CANCELLED') AND created_at<=CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY ORDER BY created_at,id LIMIT 32"
+    },
+    {
+      "kind": "select",
+      "id": "QuestionRetentionMapper.unsafeReservations",
+      "sql": "SELECT id FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN') LIMIT 1"
+    },
+    {
+      "kind": "select",
+      "id": "QuestionRetentionMapper.unknownInvocations",
+      "sql": "SELECT id FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='OUTCOME_UNKNOWN' LIMIT 1"
+    },
+    {
+      "kind": "update",
+      "id": "QuestionRetentionMapper.purgeStep",
+      "sql": "UPDATE step SET request_snapshot=#{tombstone},response_snapshot=IF(response_snapshot IS NULL,NULL,#{tombstone}),request_cleanup_state='QUESTION_PURGED',retained_request_digest=request_digest WHERE tenant_id=#{tenant} AND id=#{id}"
+    },
+    {
+      "kind": "update",
+      "id": "QuestionRetentionMapper.purgeInvocation",
+      "sql": "UPDATE invocation SET input_snapshot=#{tombstone},output_snapshot=IF(output_snapshot IS NULL,NULL,#{tombstone}) WHERE tenant_id=#{tenant} AND id=#{id}"
+    },
+    {
+      "kind": "update",
+      "id": "QuestionRetentionMapper.purgeQuestion",
+      "sql": "UPDATE user_question SET request_snapshot=#{tombstone},answer_snapshot=IF(answer_snapshot IS NULL,NULL,#{tombstone}),receipt_snapshot=IF(receipt_snapshot IS NULL,NULL,#{tombstone}),retained_digests=#{retained} WHERE tenant_id=#{tenant} AND id=#{id}"
+    },
+    {
+      "kind": "update",
+      "id": "QuestionRetentionMapper.purgeTask",
+      "sql": "UPDATE task SET request_snapshot=#{tombstone},goal=#{tombstone},summary=IF(summary IS NULL,NULL,#{tombstone}),question_cleanup_state='PURGED',question_retained_digests=#{retained} WHERE tenant_id=#{tenant} AND id=#{taskId}"
+    },
+    {
+      "kind": "update",
+      "id": "QuestionRetentionMapper.releaseHold",
+      "sql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=#{tenant} AND id=#{holdId} AND state='RESERVED'"
+    },
+    {
+      "kind": "update",
+      "id": "QuestionRetentionMapper.releaseBudget",
+      "sql": "UPDATE tenant_budget SET storage_held=storage_held-2097152 WHERE tenant_id=#{tenant}"
+    }
+  ],
+  "ordinaryMp": [
+    {
+      "name": "steps",
+      "mapper": "QuestionStepReadMapper.selectMaps",
+      "predicates": "tenant_id + task_id collection; no by-id and no invented single-column PK",
+      "projection": "tenant/task + id AS rowId + consumed body fields only",
+      "query": "explicit query alongside ew; same SqlSession/DS/UoW"
+    },
+    {
+      "name": "invocations",
+      "mapper": "QuestionInvocationReadMapper.selectMaps",
+      "predicates": "tenant_id + task_id collection; no by-id and no invented single-column PK",
+      "projection": "tenant/task + id AS rowId + consumed body fields only",
+      "query": "explicit query alongside ew; same SqlSession/DS/UoW"
+    },
+    {
+      "name": "questions",
+      "mapper": "QuestionBodyReadMapper.selectMaps",
+      "predicates": "tenant_id + task_id collection; no by-id and no invented single-column PK",
+      "projection": "tenant/task + id AS rowId + consumed body fields only",
+      "query": "explicit query alongside ew; same SqlSession/DS/UoW"
+    }
+  ],
+  "paths": [
+    {
+      "entry": "LedgerMaintenance -> ExecutionLedger.cleanupArtifacts -> JdbcLedger.cleanupArtifacts -> cleanupQuestions",
+      "service": "QuestionRetentionServiceImpl.cleanup",
+      "port": "QuestionRetentions",
+      "adapter": "MapperQuestionRetentions",
+      "phases": [
+        "Outside transaction: original RETAINED + three terminal states + task.created_at <= database clock -7day, ordered created_at/id LIMIT32 cross-tenant candidates",
+        "One original tx/coreWork per candidate: tenant budget -> existing locked(scope sorted source tasks)/task; RETAINED -> original TaskOperations view with original artifact read and View.terminal predicate -> writer -> unknown reservation/usage -> OUTCOME_UNKNOWN invocation checks, preserving short circuit",
+        "Retain task/step/invocation body hash and UTF8 byte metadata in original order; MP reads only consumed key/body fields. Update step request cleanup/digest, invocation inputs/outputs with exact QUESTION_PURGED tombstone and original nullable IF",
+        "For each MP user_question, retain request/answer/receipt hash/UTF8 lengths in its own metadata, then exact tombstones with NULL retained; original request/answer digests and all unrelated columns unchanged",
+        "Purge task body and metadata -> update tenant+hold id RESERVED reservation; only affected rows ==1 subtract original2097152 storage_held -> original question-purged event and sequence/revision, all in same UoW"
+      ],
+      "boundaries": [
+        "Original seven-day age check exists only in candidate SQL, not rechecked or replaced by user_question.retain_until under lock. No new expiry, current permission/fence, payment or scope rule",
+        "Original View.terminal includes NEEDS_RECONCILIATION on locked recheck although candidate scan selects only SUCCEEDED/FAILED/CANCELLED. Unit checks original branch; full state-change permutations not claimed",
+        "No new RUNNING invocation or DISPATCHED model restriction; only original OUTCOME_UNKNOWN branch. Model dispatch bodies/usage are not part of this cleanup and remain unchanged",
+        "Hold update lacks category predicate in original; preserve exact tenant/id/RESERVED. Zero update is successful cleanup+event without budget release, not RESERVATION_STATE refusal. No actual/amount-based release or question capacity decrement introduced",
+        "Original step/invocation/question updates use schema primary key tenant+id derived under locked parent, collection reads use tenant/task. No broad composite-key by-id or saveOrUpdate",
+        "No filesystem/provider/effect calls. SQL/event failure or query-observed deadline after refund before event rolls back body/metadata/hold/budget/event and propagates. Original core UoW has no beforeCommit query deadline check: expiry after final event SQL commits before next-query timeout. This gap remains OPEN; both old/new tested, no provider/effect replay. Same query/actual meter/scope rejection transactions and media locks inherited",
+        "Shared retainQuestionBody remains for cleanupTodos. No dual SQL writer in migrated path; narrowed body projections change meters, metadata SQL/network round trips not asserted constant"
+      ],
+      "verification": "QuestionRetentionServiceTest + UserQuestionContractTest, assembly/path/frozen/package contracts; same QuestionRetentionScenario on exact old/new JAR, real private MySQL/control/two workers owner answer+receipt and foreign tenant, raw SQL/transactions/waits/cleanup"
+    }
+  ],
+  "remaining": [
+    "B2 cleanupTodos next, then other modules/runtime scope/receipt and cleanup. All35 tables + external receipt OPEN",
+    "Original core UoW final beforeCommit query deadline gap OPEN; after-final-event expiry preserves original commit boundary",
+    "Full scope/maintenance/physical file lock permutations, exact CLI assembly, nonempty paid-ledger anomalies and real paid vision still OPEN",
+    "B3-B5/juniors/61/62/independent review/QA/business acceptance/merge not activated"
+  ]
+}

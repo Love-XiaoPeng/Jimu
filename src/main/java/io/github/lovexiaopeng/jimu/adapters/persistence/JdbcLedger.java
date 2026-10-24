@@ -2843,95 +2843,11 @@ public final class JdbcLedger
     }
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionRetentionService
+      questionRetention;
+
   private void cleanupQuestions() {
-    for (var candidate :
-        rows(
-            "SELECT tenant_id,id FROM task WHERE question_cleanup_state='RETAINED' AND state IN ('SUCCEEDED','FAILED','CANCELLED') AND created_at<=CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY ORDER BY created_at,id LIMIT 32")) {
-      tx(
-          () -> {
-            String tenant = s(candidate, "tenant_id"), taskId = s(candidate, "id");
-            bucket(tenant);
-            var task = locked(tenant, taskId);
-            if (!"RETAINED".equals(s(task, "question_cleanup_state"))
-                || !view(task).terminal()
-                || !writersQuiescent(task)) return null;
-            if (!rows(
-                        "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN') LIMIT 1",
-                        tenant,
-                        taskId)
-                    .isEmpty()
-                || !rows(
-                        "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state='OUTCOME_UNKNOWN' LIMIT 1",
-                        tenant,
-                        taskId)
-                    .isEmpty()) return null;
-            var retained = new java.util.LinkedHashMap<String, Object>();
-            for (String field : List.of("request_snapshot", "goal", "summary"))
-              retainQuestionBody(retained, "task:" + field, s(task, field));
-            String tombstone = "{\"version\":1,\"state\":\"QUESTION_PURGED\"}";
-            for (var step :
-                rows("SELECT * FROM step WHERE tenant_id=? AND task_id=?", tenant, taskId)) {
-              for (String field : List.of("request_snapshot", "response_snapshot"))
-                retainQuestionBody(retained, "step:" + s(step, "id") + ":" + field, s(step, field));
-              db.update(
-                  "UPDATE step SET request_snapshot=?,response_snapshot=IF(response_snapshot IS NULL,NULL,?),request_cleanup_state='QUESTION_PURGED',retained_request_digest=request_digest WHERE tenant_id=? AND id=?",
-                  tombstone,
-                  tombstone,
-                  tenant,
-                  s(step, "id"));
-            }
-            for (var invocation :
-                rows("SELECT * FROM invocation WHERE tenant_id=? AND task_id=?", tenant, taskId)) {
-              for (String field : List.of("input_snapshot", "output_snapshot"))
-                retainQuestionBody(
-                    retained,
-                    "invocation:" + s(invocation, "id") + ":" + field,
-                    s(invocation, field));
-              db.update(
-                  "UPDATE invocation SET input_snapshot=?,output_snapshot=IF(output_snapshot IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
-                  tombstone,
-                  tombstone,
-                  tenant,
-                  s(invocation, "id"));
-            }
-            for (var q :
-                rows(
-                    "SELECT * FROM user_question WHERE tenant_id=? AND task_id=?",
-                    tenant,
-                    taskId)) {
-              var metadata = new java.util.LinkedHashMap<String, Object>();
-              for (String field :
-                  List.of("request_snapshot", "answer_snapshot", "receipt_snapshot"))
-                retainQuestionBody(metadata, field, s(q, field));
-              db.update(
-                  "UPDATE user_question SET request_snapshot=?,answer_snapshot=IF(answer_snapshot IS NULL,NULL,?),receipt_snapshot=IF(receipt_snapshot IS NULL,NULL,?),retained_digests=? WHERE tenant_id=? AND id=?",
-                  tombstone,
-                  tombstone,
-                  tombstone,
-                  Payloads.json(metadata),
-                  tenant,
-                  s(q, "id"));
-            }
-            db.update(
-                "UPDATE task SET request_snapshot=?,goal=?,summary=IF(summary IS NULL,NULL,?),question_cleanup_state='PURGED',question_retained_digests=? WHERE tenant_id=? AND id=?",
-                tombstone,
-                tombstone,
-                tombstone,
-                Payloads.json(retained),
-                tenant,
-                taskId);
-            if (db.update(
-                    "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'",
-                    tenant,
-                    taskId + ":question-storage")
-                == 1)
-              db.update(
-                  "UPDATE tenant_budget SET storage_held=storage_held-2097152 WHERE tenant_id=?",
-                  tenant);
-            event(task, "question-purged", "question.content_deleted", null);
-            return null;
-          });
-    }
+    questionRetention.cleanup();
   }
 
   private void retainQuestionBody(Map<String, Object> metadata, String key, String body) {
@@ -3937,6 +3853,9 @@ public final class JdbcLedger
           }
         };
     taskOperationRecords = new MapperTaskOperations(this);
+    questionRetention =
+        new io.github.lovexiaopeng.jimu.kernel.question.service.impl.QuestionRetentionServiceImpl(
+            new MapperQuestionRetentions(this), coreWork, Payloads::hash);
     directoryRetentionRecords = new MapperDirectoryRetentions(this);
     directoryRetention =
         new io.github.lovexiaopeng.jimu.kernel.directory.service.impl.DirectoryRetentionServiceImpl(
