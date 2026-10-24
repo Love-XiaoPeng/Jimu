@@ -1,0 +1,192 @@
+{
+  "baseline": "f43e8a4a2a71921da44fbc98a37a617e47dd48f3",
+  "scope": "B2 partial cleanupTodos; not B3 todo business; 35 tables plus read-only receipt all OPEN",
+  "removedJdbcCalls": 14,
+  "removed": [
+    {
+      "name": "candidates",
+      "originalSql": "SELECT p.tenant_id,p.task_id FROM task_todo_projection p\nJOIN task t ON t.tenant_id=p.tenant_id AND t.id=p.task_id\nWHERE p.content_state<>'PURGED' AND p.retain_until<=CURRENT_TIMESTAMP(6)\n  AND t.state IN ('SUCCEEDED','FAILED','CANCELLED')\n  AND NOT EXISTS (SELECT 1 FROM native_search_run n\n    WHERE n.tenant_id=p.tenant_id AND n.task_id=p.task_id AND n.phase<>'STOPPED')\n  AND NOT EXISTS (SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id\n    WHERE a.tenant_id=p.tenant_id AND a.task_id=p.task_id\n      AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE))\n  AND NOT EXISTS (SELECT 1 FROM reservation r\n    WHERE r.tenant_id=p.tenant_id AND r.task_id=p.task_id\n      AND (r.state='HELD_UNKNOWN' OR r.usage_quality='UNKNOWN'\n        OR (r.state='RESERVED' AND r.category<>'TODO_STORAGE')))\n  AND NOT EXISTS (SELECT 1 FROM invocation i\n    WHERE i.tenant_id=p.tenant_id AND i.task_id=p.task_id\n      AND i.state IN ('RUNNING','OUTCOME_UNKNOWN'))\n  AND NOT EXISTS (SELECT 1 FROM model_dispatch d\n    WHERE d.tenant_id=p.tenant_id AND d.task_id=p.task_id AND d.state='DISPATCHED')\nORDER BY p.retain_until,p.tenant_id,p.task_id LIMIT 32",
+      "replacement": "TodoRetentionMapper.candidates"
+    },
+    {
+      "name": "unsafeReservations",
+      "originalSql": "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN' OR (state='RESERVED' AND category<>'TODO_STORAGE')) LIMIT 1",
+      "replacement": "TodoRetentionMapper.unsafeReservations"
+    },
+    {
+      "name": "activeInvocations",
+      "originalSql": "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN') LIMIT 1",
+      "replacement": "TodoRetentionMapper.activeInvocations"
+    },
+    {
+      "name": "dispatchedModels",
+      "originalSql": "SELECT id FROM model_dispatch WHERE tenant_id=? AND task_id=? AND state='DISPATCHED' LIMIT 1",
+      "replacement": "TodoRetentionMapper.dispatchedModels"
+    },
+    {
+      "name": "steps",
+      "originalSql": "SELECT * FROM step WHERE tenant_id=? AND task_id=?",
+      "replacement": "TodoStepReadMapper.selectMaps"
+    },
+    {
+      "name": "purgeStep",
+      "originalSql": "UPDATE step SET request_snapshot=?,response_snapshot=IF(response_snapshot IS NULL,NULL,?),request_cleanup_state='TODO_PURGED',retained_request_digest=request_digest WHERE tenant_id=? AND id=?",
+      "replacement": "TodoRetentionMapper.purgeStep"
+    },
+    {
+      "name": "invocations",
+      "originalSql": "SELECT * FROM invocation WHERE tenant_id=? AND task_id=?",
+      "replacement": "TodoInvocationReadMapper.selectMaps"
+    },
+    {
+      "name": "purgeInvocation",
+      "originalSql": "UPDATE invocation SET input_snapshot=?,output_snapshot=IF(output_snapshot IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
+      "replacement": "TodoRetentionMapper.purgeInvocation"
+    },
+    {
+      "name": "dispatches",
+      "originalSql": "SELECT * FROM model_dispatch WHERE tenant_id=? AND task_id=?",
+      "replacement": "TodoDispatchReadMapper.selectMaps"
+    },
+    {
+      "name": "purgeDispatch",
+      "originalSql": "UPDATE model_dispatch SET usage_snapshot=IF(usage_snapshot IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
+      "replacement": "TodoRetentionMapper.purgeDispatch"
+    },
+    {
+      "name": "purgeTask",
+      "originalSql": "UPDATE task SET request_snapshot=?,goal=?,summary=IF(summary IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
+      "replacement": "TodoRetentionMapper.purgeTask"
+    },
+    {
+      "name": "markPurged",
+      "originalSql": "UPDATE task_todo_projection SET content_state='PURGED',retained_digests=? WHERE tenant_id=? AND task_id=?",
+      "replacement": "TodoRetentionMapper.markPurged"
+    },
+    {
+      "name": "releaseHold",
+      "originalSql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'",
+      "replacement": "TodoRetentionMapper.releaseHold"
+    },
+    {
+      "name": "releaseBudget",
+      "originalSql": "UPDATE tenant_budget SET todo_storage_held=todo_storage_held-2097152 WHERE tenant_id=?",
+      "replacement": "TodoRetentionMapper.releaseBudget"
+    }
+  ],
+  "statements": [
+    {
+      "kind": "select",
+      "id": "TodoRetentionMapper.candidates",
+      "sql": "SELECT p.tenant_id,p.task_id FROM task_todo_projection p\nJOIN task t ON t.tenant_id=p.tenant_id AND t.id=p.task_id\nWHERE p.content_state<>'PURGED' AND p.retain_until<=CURRENT_TIMESTAMP(6)\n  AND t.state IN ('SUCCEEDED','FAILED','CANCELLED')\n  AND NOT EXISTS (SELECT 1 FROM native_search_run n\n    WHERE n.tenant_id=p.tenant_id AND n.task_id=p.task_id AND n.phase<>'STOPPED')\n  AND NOT EXISTS (SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id\n    WHERE a.tenant_id=p.tenant_id AND a.task_id=p.task_id\n      AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE))\n  AND NOT EXISTS (SELECT 1 FROM reservation r\n    WHERE r.tenant_id=p.tenant_id AND r.task_id=p.task_id\n      AND (r.state='HELD_UNKNOWN' OR r.usage_quality='UNKNOWN'\n        OR (r.state='RESERVED' AND r.category<>'TODO_STORAGE')))\n  AND NOT EXISTS (SELECT 1 FROM invocation i\n    WHERE i.tenant_id=p.tenant_id AND i.task_id=p.task_id\n      AND i.state IN ('RUNNING','OUTCOME_UNKNOWN'))\n  AND NOT EXISTS (SELECT 1 FROM model_dispatch d\n    WHERE d.tenant_id=p.tenant_id AND d.task_id=p.task_id AND d.state='DISPATCHED')\nORDER BY p.retain_until,p.tenant_id,p.task_id LIMIT 32"
+    },
+    {
+      "kind": "select",
+      "id": "TodoRetentionMapper.unsafeReservations",
+      "sql": "SELECT id FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN' OR (state='RESERVED' AND category<>'TODO_STORAGE')) LIMIT 1"
+    },
+    {
+      "kind": "select",
+      "id": "TodoRetentionMapper.activeInvocations",
+      "sql": "SELECT id FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state IN ('RUNNING','OUTCOME_UNKNOWN') LIMIT 1"
+    },
+    {
+      "kind": "select",
+      "id": "TodoRetentionMapper.dispatchedModels",
+      "sql": "SELECT id FROM model_dispatch WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='DISPATCHED' LIMIT 1"
+    },
+    {
+      "kind": "update",
+      "id": "TodoRetentionMapper.purgeStep",
+      "sql": "UPDATE step SET request_snapshot=#{tombstone},response_snapshot=IF(response_snapshot IS NULL,NULL,#{tombstone}),request_cleanup_state='TODO_PURGED',retained_request_digest=request_digest WHERE tenant_id=#{tenant} AND id=#{id}"
+    },
+    {
+      "kind": "update",
+      "id": "TodoRetentionMapper.purgeInvocation",
+      "sql": "UPDATE invocation SET input_snapshot=#{tombstone},output_snapshot=IF(output_snapshot IS NULL,NULL,#{tombstone}) WHERE tenant_id=#{tenant} AND id=#{id}"
+    },
+    {
+      "kind": "update",
+      "id": "TodoRetentionMapper.purgeDispatch",
+      "sql": "UPDATE model_dispatch SET usage_snapshot=IF(usage_snapshot IS NULL,NULL,#{tombstone}) WHERE tenant_id=#{tenant} AND id=#{id}"
+    },
+    {
+      "kind": "update",
+      "id": "TodoRetentionMapper.purgeTask",
+      "sql": "UPDATE task SET request_snapshot=#{tombstone},goal=#{tombstone},summary=IF(summary IS NULL,NULL,#{tombstone}) WHERE tenant_id=#{tenant} AND id=#{taskId}"
+    },
+    {
+      "kind": "update",
+      "id": "TodoRetentionMapper.markPurged",
+      "sql": "UPDATE task_todo_projection SET content_state='PURGED',retained_digests=#{retained} WHERE tenant_id=#{tenant} AND task_id=#{taskId}"
+    },
+    {
+      "kind": "update",
+      "id": "TodoRetentionMapper.releaseHold",
+      "sql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=#{tenant} AND id=#{holdId} AND state='RESERVED'"
+    },
+    {
+      "kind": "update",
+      "id": "TodoRetentionMapper.releaseBudget",
+      "sql": "UPDATE tenant_budget SET todo_storage_held=todo_storage_held-2097152 WHERE tenant_id=#{tenant}"
+    }
+  ],
+  "additional": [
+    {
+      "statement": "TodoRetentionMapper.now",
+      "sql": "SELECT CURRENT_TIMESTAMP(6)",
+      "why": "Original questionNow call in this migrated path. Original shared helper remains for other question paths; no duplicate deletion credit"
+    },
+    {
+      "statement": "TodoProjectionReadMapper.selectMaps",
+      "predicates": "tenant_id + task_id complete key",
+      "projection": "record_version,todo_version,binding_snapshot,binding_digest,content_state,retain_until plus key",
+      "why": "Original todoProjection validation moves into retention Service only. Original shared SELECT and validator remain for other todo business; not counted as deleted"
+    }
+  ],
+  "ordinaryMp": [
+    {
+      "name": "steps",
+      "mapper": "TodoStepReadMapper.selectMaps",
+      "predicates": "tenant_id + task_id collection, no by-id",
+      "projection": "id AS rowId plus only consumed bodies and complete collection keys"
+    },
+    {
+      "name": "invocations",
+      "mapper": "TodoInvocationReadMapper.selectMaps",
+      "predicates": "tenant_id + task_id collection, no by-id",
+      "projection": "id AS rowId plus only consumed bodies and complete collection keys"
+    },
+    {
+      "name": "dispatches",
+      "mapper": "TodoDispatchReadMapper.selectMaps",
+      "predicates": "tenant_id + task_id collection, no by-id",
+      "projection": "id AS rowId plus only consumed bodies and complete collection keys"
+    }
+  ],
+  "path": {
+    "entry": "LedgerMaintenance -> ExecutionLedger.cleanupArtifacts -> JdbcLedger.cleanupArtifacts -> cleanupTodos",
+    "service": "TodoRetentionServiceImpl.cleanup",
+    "port": "TodoRetentions",
+    "adapter": "MapperTodoRetentions",
+    "phases": [
+      "Cross-tenant original bounded32 candidate scan outside UoW. Retain_until expired + not PURGED + three terminal states; anti-joins exclude native writers, attempts without quiescence/stopped receipt, UNKNOWN holds/quality, RESERVED non-TODO_STORAGE holds, RUNNING/OUTCOME_UNKNOWN invocations, DISPATCHED models. Original ORDER retain_until/tenant/task preserved",
+      "One original tx/coreWork per candidate. Budget -> existing locked(scope sorted source tasks)/task -> MP projection. Original binding record/todo version -> SHA -> parsed version -> exact expected binding checks before content guards. PURGED short circuits clock; expiry uses DB UTC clock; three terminal states -> writer -> reservation -> invocation -> dispatch, preserving short circuit",
+      "Original retained hashes/UTF8 bytes for task/step/invocation/model dispatch usage; exact TODO_PURGED/nullable IF and step retained request digest. Encoded metadata must be <=65536 UTF8 bytes after child writes, before task/projection writes",
+      "Task and projection PURGED -> original event including todo metadata guard and revision advance -> reservation tenant+id RESERVED must update exactly1 or RESERVATION_STATE rollback -> fixed2097152 independent todo_storage_held refund. Entire transaction atomic, no dual writer, no provider/effect/filesystem calls"
+    ],
+    "boundaries": [
+      "Original hold SQL has no category check; no new category/amount accounting rule. Unlike question cleanup, zero hold rows is mandatory refusal after event, with full rollback",
+      "Original core UoW final beforeCommit deadline check gap remains OPEN. Query-observed expiry after event before hold rolls back; expiry after final refund SQL commits before next-query timeout. Both exact old/new versions tested; gap not fixed or widened in this slice",
+      "Same DS/SqlSession/UoW, explicit query and actual meters; narrower MP projections intentionally affect observed bytes/operations. No assertion all SQL or network round trips unchanged",
+      "Shared todoProjection/todoMetadata, question clock and other todo business remain for later slices; shared retainQuestionBody removed only after its last caller migrated. No B3 completion claim"
+    ]
+  },
+  "validation": "TodoRetentionServiceTest/TodoContractTest plus package/assembly/path/frozen; exact old/new JAR real private MySQL/control/two workers, actual todo commits, SQL failures/recovery, strict zero hold rejection, binding refusal, lock-time projection recheck, deadline boundaries and two actual lock-wait contenders",
+  "remaining": [
+    "cleanupSessionHistory next B2 maintenance slice, then other modules/runtime scope/receipt and cleanup",
+    "Core UoW beforeCommit deadline gap OPEN",
+    "35 tables + read-only receipt OPEN; full scope/maintenance/filesystem permutations, exact CLI assembly, nonempty paid-ledger anomaly and real paid vision OPEN",
+    "B3-B5/juniors/61/62/independent review/QA/business acceptance/merge not activated"
+  ]
+}

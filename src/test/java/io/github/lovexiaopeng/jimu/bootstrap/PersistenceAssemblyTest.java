@@ -43,7 +43,11 @@ class PersistenceAssemblyTest {
             "io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.DirectoryDispatchReadMapper",
             "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionStepReadMapper",
             "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionInvocationReadMapper",
-            "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionBodyReadMapper")) {
+            "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionBodyReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoStepReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoInvocationReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoDispatchReadMapper",
+            "io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoProjectionReadMapper")) {
       assertTrue(configuration.hasStatement(namespace + ".selectMaps"));
       assertTrue(configuration.hasStatement(namespace + ".delete"));
       assertFalse(configuration.hasStatement(namespace + ".selectById"));

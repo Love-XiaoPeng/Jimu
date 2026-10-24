@@ -2719,128 +2719,10 @@ public final class JdbcLedger
     taskOperationRecords.row(task).releaseQuestionTask();
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.todo.service.TodoRetentionService todoRetention;
+
   private void cleanupTodos() {
-    // Retained UNKNOWN facts or old writers must not occupy the entire bounded batch.
-    // Candidate filters do not replace the checks below under the task lock.
-    for (var candidate :
-        rows(
-            """
-            SELECT p.tenant_id,p.task_id FROM task_todo_projection p
-            JOIN task t ON t.tenant_id=p.tenant_id AND t.id=p.task_id
-            WHERE p.content_state<>'PURGED' AND p.retain_until<=CURRENT_TIMESTAMP(6)
-              AND t.state IN ('SUCCEEDED','FAILED','CANCELLED')
-              AND NOT EXISTS (SELECT 1 FROM native_search_run n
-                WHERE n.tenant_id=p.tenant_id AND n.task_id=p.task_id AND n.phase<>'STOPPED')
-              AND NOT EXISTS (SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id
-                WHERE a.tenant_id=p.tenant_id AND a.task_id=p.task_id
-                  AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE))
-              AND NOT EXISTS (SELECT 1 FROM reservation r
-                WHERE r.tenant_id=p.tenant_id AND r.task_id=p.task_id
-                  AND (r.state='HELD_UNKNOWN' OR r.usage_quality='UNKNOWN'
-                    OR (r.state='RESERVED' AND r.category<>'TODO_STORAGE')))
-              AND NOT EXISTS (SELECT 1 FROM invocation i
-                WHERE i.tenant_id=p.tenant_id AND i.task_id=p.task_id
-                  AND i.state IN ('RUNNING','OUTCOME_UNKNOWN'))
-              AND NOT EXISTS (SELECT 1 FROM model_dispatch d
-                WHERE d.tenant_id=p.tenant_id AND d.task_id=p.task_id AND d.state='DISPATCHED')
-            ORDER BY p.retain_until,p.tenant_id,p.task_id LIMIT 32
-            """)) {
-      tx(
-          () -> {
-            String tenant = s(candidate, "tenant_id"), taskId = s(candidate, "task_id");
-            bucket(tenant);
-            var task = locked(tenant, taskId);
-            var p = todoProjection(task);
-            if ("PURGED".equals(s(p, "content_state"))
-                || time(p, "retain_until").isAfter(questionNow())
-                || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(task, "state"))
-                || !writersQuiescent(task)) return null;
-            if (!rows(
-                        "SELECT id FROM reservation WHERE tenant_id=? AND task_id=? AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN' OR (state='RESERVED' AND category<>'TODO_STORAGE')) LIMIT 1",
-                        tenant,
-                        taskId)
-                    .isEmpty()
-                || !rows(
-                        "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state IN ('RUNNING','OUTCOME_UNKNOWN') LIMIT 1",
-                        tenant,
-                        taskId)
-                    .isEmpty()
-                || !rows(
-                        "SELECT id FROM model_dispatch WHERE tenant_id=? AND task_id=? AND state='DISPATCHED' LIMIT 1",
-                        tenant,
-                        taskId)
-                    .isEmpty()) return null;
-            var retained = new java.util.LinkedHashMap<String, Object>();
-            for (String field : List.of("request_snapshot", "goal", "summary"))
-              retainQuestionBody(retained, "task:" + field, s(task, field));
-            String tombstone = "{\"version\":1,\"state\":\"TODO_PURGED\"}";
-            for (var step :
-                rows("SELECT * FROM step WHERE tenant_id=? AND task_id=?", tenant, taskId)) {
-              for (String field : List.of("request_snapshot", "response_snapshot"))
-                retainQuestionBody(retained, "step:" + s(step, "id") + ":" + field, s(step, field));
-              db.update(
-                  "UPDATE step SET request_snapshot=?,response_snapshot=IF(response_snapshot IS NULL,NULL,?),request_cleanup_state='TODO_PURGED',retained_request_digest=request_digest WHERE tenant_id=? AND id=?",
-                  tombstone,
-                  tombstone,
-                  tenant,
-                  s(step, "id"));
-            }
-            for (var invocation :
-                rows("SELECT * FROM invocation WHERE tenant_id=? AND task_id=?", tenant, taskId)) {
-              for (String field : List.of("input_snapshot", "output_snapshot"))
-                retainQuestionBody(
-                    retained,
-                    "invocation:" + s(invocation, "id") + ":" + field,
-                    s(invocation, field));
-              db.update(
-                  "UPDATE invocation SET input_snapshot=?,output_snapshot=IF(output_snapshot IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
-                  tombstone,
-                  tombstone,
-                  tenant,
-                  s(invocation, "id"));
-            }
-            for (var dispatch :
-                rows(
-                    "SELECT * FROM model_dispatch WHERE tenant_id=? AND task_id=?",
-                    tenant,
-                    taskId)) {
-              retainQuestionBody(
-                  retained,
-                  "dispatch:" + s(dispatch, "id") + ":usage_snapshot",
-                  s(dispatch, "usage_snapshot"));
-              db.update(
-                  "UPDATE model_dispatch SET usage_snapshot=IF(usage_snapshot IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
-                  tombstone,
-                  tenant,
-                  s(dispatch, "id"));
-            }
-            String digests = Payloads.json(retained);
-            if (io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(digests)
-                > 65536) throw new TaskFailure(429, "TODO_STORAGE_LIMIT");
-            db.update(
-                "UPDATE task SET request_snapshot=?,goal=?,summary=IF(summary IS NULL,NULL,?) WHERE tenant_id=? AND id=?",
-                tombstone,
-                tombstone,
-                tombstone,
-                tenant,
-                taskId);
-            db.update(
-                "UPDATE task_todo_projection SET content_state='PURGED',retained_digests=? WHERE tenant_id=? AND task_id=?",
-                digests,
-                tenant,
-                taskId);
-            event(task, "todo-purged", "todo.content_deleted", null);
-            if (db.update(
-                    "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'",
-                    tenant,
-                    taskId + ":todo-storage")
-                != 1) throw new TaskFailure(409, "RESERVATION_STATE");
-            db.update(
-                "UPDATE tenant_budget SET todo_storage_held=todo_storage_held-2097152 WHERE tenant_id=?",
-                tenant);
-            return null;
-          });
-    }
+    todoRetention.cleanup();
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionRetentionService
@@ -2848,17 +2730,6 @@ public final class JdbcLedger
 
   private void cleanupQuestions() {
     questionRetention.cleanup();
-  }
-
-  private void retainQuestionBody(Map<String, Object> metadata, String key, String body) {
-    if (body != null)
-      metadata.put(
-          key,
-          Map.of(
-              "sha256",
-              Payloads.hash(body),
-              "bytes",
-              body.getBytes(java.nio.charset.StandardCharsets.UTF_8).length));
   }
 
   boolean questionTask(Map<String, Object> task) {
@@ -3853,6 +3724,9 @@ public final class JdbcLedger
           }
         };
     taskOperationRecords = new MapperTaskOperations(this);
+    todoRetention =
+        new io.github.lovexiaopeng.jimu.kernel.todo.service.impl.TodoRetentionServiceImpl(
+            new MapperTodoRetentions(this), coreWork, Payloads::hash);
     questionRetention =
         new io.github.lovexiaopeng.jimu.kernel.question.service.impl.QuestionRetentionServiceImpl(
             new MapperQuestionRetentions(this), coreWork, Payloads::hash);
