@@ -2,6 +2,7 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -51,7 +52,7 @@ public final class EvaluationMaterials {
       throw new IllegalStateException("Frozen material digest mismatch");
   }
 
-  public static Material load(EvaluationPlans.Plan plan, String sample) {
+  public static Material load(EvaluationPlan.Plan plan, String sample) {
     if (!Payloads.hash(bytes("common-materials.json")).equals(plan.materialsDigest()))
       throw new IllegalStateException("Frozen common materials mismatch");
     node("common-materials.json").path("references").forEach(EvaluationMaterials::reference);

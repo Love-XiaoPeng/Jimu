@@ -131,7 +131,7 @@ class Model(http.server.BaseHTTPRequestHandler):
         self.wfile.write(data)
 
 
-def verify(e, materials_only=False, model_cutover=False):
+def verify(e, materials_only=False, model_cutover=False, binding_cutover=False):
     server = http.server.ThreadingHTTPServer(("127.0.0.1",0),Model)
     server.daemon_threads = True
     server.origin = "http://127.0.0.1:"+str(server.server_port)
@@ -188,15 +188,29 @@ def verify(e, materials_only=False, model_cutover=False):
     def complete(cfg,goal,sample,expected="SUCCEEDED"):
         replace(cfg)
         task = accept(goal,sample)
-        recovering = goal in ["qwen-main-v1-qwen3.7-plus-2026-05-26-W1", "qwen-main-v1-qwen3.7-plus-2026-05-26-W2"]
+        recovering = goal in ["qwen-main-v1-qwen3.7-plus-2026-05-26-W1", "qwen-main-v1-qwen3.7-plus-2026-05-26-W2"] or binding_cutover and sample == "W2"
         w = worker(cfg,"T1" if recovering else "")
         if recovering:
             e.barrier(w)
-            e.stop(w,kill=True)
+            if binding_cutover:
+                # Keep the actual zombie unreaped until the product supervisor records the
+                # matching PID/start/boot/namespace receipt. Absence after an early reap is
+                # deliberately not independent quiescence evidence.
+                w['process'].kill()
+                eventually(lambda: e.sql("SELECT quiescent FROM task_attempt WHERE task_id='"+task+"';")=="1",
+                    "product confirms killed binding worker quiescence before parent reap",20)
+                e.assert_that(e.sql("SELECT quiescent FROM task_attempt WHERE task_id='"+task+"';")=="1",
+                    "actual product process-stop receipt precedes binding recovery",task=task)
+                e.stop(w)
+            else:
+                e.stop(w,kill=True)
             e.expire(task)
             w=worker(cfg)
         view = e.state(task,expected)
         e.stop(w)
+        if binding_cutover:
+            eventually(lambda: e.sql("SELECT state FROM reservation WHERE tenant_id='tenant-a' AND id='"+task+":run';")=="RELEASED",
+                "all binding worker attempts proven quiescent and run slot released",20)
         return task,view
 
     def qualification(plan,digest,run,finalists,invalid=False):
@@ -483,7 +497,7 @@ def verify(e, materials_only=False, model_cutover=False):
     try:
         e.sql("UPDATE tenant_budget SET token_limit=1000000000,cost_limit=2000000000,model_limit=1000,running_limit=1 WHERE tenant_id='tenant-a';")
         other = e.sql("SELECT token_limit,cost_limit,model_limit,running_limit FROM tenant_budget WHERE tenant_id='tenant-b';")
-        if model_cutover:
+        if model_cutover or binding_cutover:
             p=json.loads((resources/"qwen-main-v1.json").read_text())
             model="qwen3.8-max-0902"
             for sample in ["W1","W2"]:
@@ -496,7 +510,8 @@ def verify(e, materials_only=False, model_cutover=False):
                 e.assert_that(len(view["artifacts"])==1,"model cutover retains actual plan report",sample=sample)
                 aid=view["artifacts"][0]["artifactId"]
                 e.assert_that(e.http("GET","/api/artifacts/"+aid+"/download")[0]==200,"plan report authorized download",sample=sample)
-            materials()
+            if not binding_cutover:
+                materials()
             # One changed phase-B binding/dispatch path, not the historical full matrix.
             run="b2-model-stage-b"
             digest=provision(p,run)

@@ -7,6 +7,7 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationPlans;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionQueryDeadline;
 import io.github.lovexiaopeng.jimu.kernel.budget.domain.ModelCosts;
+import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger;
@@ -47,6 +48,10 @@ public final class JdbcLedger
   private final io.github.lovexiaopeng.jimu.kernel.execution.service.ExecutionService
       executionService;
   private final io.github.lovexiaopeng.jimu.kernel.model.service.ModelDispatchService modelService;
+  private final io.github.lovexiaopeng.jimu.kernel.model.service.EvaluationBindingService
+      evaluationBindings =
+          new io.github.lovexiaopeng.jimu.kernel.model.service.impl.EvaluationBindingServiceImpl(
+              new io.github.lovexiaopeng.jimu.adapters.runtime.model.RuntimeEvaluationPlanCodec());
   private final io.github.lovexiaopeng.jimu.kernel.invocation.service.InvocationService
       invocationService;
   private final JdbcTemplate db;
@@ -5884,7 +5889,7 @@ public final class JdbcLedger
     EvaluationMaterials.require(
         json != null && Payloads.hash(json).equals(s(task, "material_digest")));
     var stored = Payloads.read(json, EvaluationMaterials.Material.class);
-    var binding = Payloads.read(s(task, "evaluation_snapshot"), EvaluationPlans.Binding.class);
+    var binding = Payloads.read(s(task, "evaluation_snapshot"), EvaluationPlan.Binding.class);
     var expected =
         EvaluationMaterials.load(EvaluationPlans.plan(binding.planId()), binding.sample());
     EvaluationMaterials.require(
@@ -6307,115 +6312,13 @@ public final class JdbcLedger
     return found.getFirst();
   }
 
-  EvaluationPlans.Plan plan(Map<String, Object> evaluation) {
-    if (evaluation == null || evaluation.get("plan_snapshot") == null) return null;
-    String json = s(evaluation, "plan_snapshot");
-    if (!Payloads.hash(json).equals(s(evaluation, "plan_digest")))
-      throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
-    var stored = Payloads.read(json, EvaluationPlans.Plan.class);
-    var canonical = EvaluationPlans.plan(stored.id());
-    if (!stored.equals(canonical)
-        || n(evaluation, "policy_version") != 2
-        || n(evaluation, "max_requests") > canonical.maxRequests()
-        || n(evaluation, "max_cost_micros") > canonical.maxCostMicros())
-      throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
-    if (!mappers
-        .tasks()
-        .selectConflictingEvaluationBinding(
-            query,
-            s(evaluation, "tenant_id"),
-            s(evaluation, "id"),
-            s(evaluation, "plan_digest"),
-            s(evaluation, "phase_b_digest"))
-        .isEmpty()) throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
-    return canonical;
+  EvaluationPlan.Plan plan(Map<String, Object> evaluation) {
+    return evaluationBindings.plan(new MapperEvaluationBindings(this, evaluation));
   }
 
-  private EvaluationPlans.Binding bindEvaluation(
+  private EvaluationPlan.Binding bindEvaluation(
       Map<String, Object> evaluation, ModelSnapshot model) {
-    var selection = models.evaluationSelection();
-    var plan = plan(evaluation);
-    if (plan == null && selection == null) return null;
-    if (plan == null || selection == null || !plan.equals(selection.plan()) || !model.paid())
-      throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
-    // Same validation as profile admission, including the strictly local test seam.
-    models.checkEvaluationModel(plan, model);
-    boolean initial =
-        mappers
-            .tasks()
-            .selectExistingEvaluationTask(query, s(evaluation, "tenant_id"), s(evaluation, "id"))
-            .isEmpty();
-    if (initial && "OPEN".equals(s(evaluation, "state"))) {
-      var tenant = bucket(s(evaluation, "tenant_id"));
-      if (n(evaluation, "requests_used") + plan.maxRequests() > n(evaluation, "max_requests")
-          || plan.matrixWorstCostMicros()
-              > n(evaluation, "max_cost_micros") - n(evaluation, "cost_held")
-          || plan.matrixWorstCostMicros() > n(tenant, "cost_limit") - n(tenant, "cost_held")
-          || plan.tenantTokenLimit() > n(tenant, "token_limit") - n(tenant, "token_held")
-          || plan.maxRequests() > n(tenant, "model_limit") - n(tenant, "model_used"))
-        throw new TaskFailure(429, "EVALUATION_MATRIX_BUDGET_UNAVAILABLE");
-    }
-    if (model.stream() != List.of("W2", "W4").contains(selection.sample()))
-      throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
-    String qualification = null;
-    if (selection.phase().equals("B")) {
-      if (!"OPEN".equals(s(evaluation, "state"))
-          || !mappers
-              .reservations()
-              .selectEvaluationUnknown(query, s(evaluation, "tenant_id"), s(evaluation, "id"))
-              .isEmpty()) throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
-      var q =
-          EvaluationPlans.qualify(
-              plan, s(evaluation, "phase_b_snapshot"), s(evaluation, "phase_b_digest"));
-      if (!q.originalRunId().equals(s(evaluation, "id")) || !q.finalists().contains(model.model()))
-        throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
-      var screening =
-          mappers
-              .tasks()
-              .selectEvaluationScreening(query, s(evaluation, "tenant_id"), s(evaluation, "id"));
-      for (String candidate : plan.candidates().keySet())
-        for (String sample : List.of("W1", "W2")) {
-          var match =
-              screening.stream()
-                  .filter(
-                      t ->
-                          candidate.equals(s(t, "evaluation_model"))
-                              && sample.equals(s(t, "evaluation_sample")))
-                  .toList();
-          if (match.size() != 1
-              || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(s(match.getFirst(), "state"))
-              || q.finalists().contains(candidate)
-                  && !"SUCCEEDED".equals(s(match.getFirst(), "state")))
-            throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
-        }
-      if (mappers
-          .tasks()
-          .selectPhaseBEvaluationTask(query, s(evaluation, "tenant_id"), s(evaluation, "id"))
-          .isEmpty()) {
-        long rounds = 12L * q.finalists().size();
-        long remainingCost =
-            q.finalists().stream()
-                .mapToLong(candidate -> 2 * EvaluationPlans.taskCost(plan, candidate, "W3"))
-                .sum();
-        var tenant = bucket(s(evaluation, "tenant_id"));
-        if (n(evaluation, "requests_used") + rounds > n(evaluation, "max_requests")
-            || remainingCost > n(evaluation, "max_cost_micros") - n(evaluation, "cost_held")
-            || remainingCost > n(tenant, "cost_limit") - n(tenant, "cost_held")
-            || rounds * 1004096 > n(tenant, "token_limit") - n(tenant, "token_held")
-            || rounds > n(tenant, "model_limit") - n(tenant, "model_used"))
-          throw new TaskFailure(429, "EVALUATION_MATRIX_BUDGET_UNAVAILABLE");
-      }
-      qualification = s(evaluation, "phase_b_digest");
-    }
-    return new EvaluationPlans.Binding(
-        plan.id(),
-        s(evaluation, "plan_digest"),
-        selection.phase(),
-        selection.sample(),
-        model.model(),
-        qualification,
-        n(evaluation, "max_requests"),
-        n(evaluation, "max_cost_micros"));
+    return evaluationBindings.bind(new MapperEvaluationBindings(this, evaluation), model);
   }
 
   void checkEvaluation(
@@ -6424,20 +6327,15 @@ public final class JdbcLedger
       requireBusiness(s(task, "tenant_id"), evaluation, task, model);
       return;
     }
-    var configured = bindEvaluation(evaluation, model);
-    if (task.get("evaluation_snapshot") == null) {
-      if (configured != null) throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
-      return;
-    }
-    String json = s(task, "evaluation_snapshot");
-    if (!Payloads.hash(json).equals(s(task, "evaluation_digest")))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-    var binding = Payloads.read(json, EvaluationPlans.Binding.class);
-    if (!binding.equals(configured)
-        || !binding.phase().equals(s(task, "evaluation_phase"))
-        || !binding.sample().equals(s(task, "evaluation_sample"))
-        || !binding.model().equals(s(task, "evaluation_model")))
-      throw new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
+    evaluationBindings.check(
+        new MapperEvaluationBindings(this, evaluation),
+        new io.github.lovexiaopeng.jimu.kernel.model.service.EvaluationBindingService.StoredBinding(
+            s(task, "evaluation_snapshot"),
+            s(task, "evaluation_digest"),
+            s(task, "evaluation_phase"),
+            s(task, "evaluation_sample"),
+            s(task, "evaluation_model")),
+        model);
   }
 
   @Override

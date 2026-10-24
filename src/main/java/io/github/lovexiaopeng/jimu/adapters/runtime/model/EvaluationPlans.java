@@ -1,7 +1,8 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.model;
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
-import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan.Plan;
+import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan.Selection;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import java.io.IOException;
 import java.net.URI;
@@ -11,92 +12,6 @@ import java.util.Map;
 
 /** Closed, versioned operator plans. These bounds never grant permission to dispatch. */
 public final class EvaluationPlans {
-  public record Rate(long inputMicrosPerMillion, long outputMicrosPerMillion) {}
-
-  public record Plan(
-      String id,
-      int version,
-      boolean enabled,
-      boolean paidDispatchAuthorized,
-      int maxRequests,
-      long maxCostMicros,
-      long phaseACostMicros,
-      long phaseBCostMicros,
-      int maxOutputTokens,
-      int outputMarginTokens,
-      long contextTokens,
-      long tenantTokenLimit,
-      long taskTokenLimit,
-      String sourcePlanSha256,
-      String materialsDigest,
-      long matrixWorstCostMicros,
-      Map<String, Rate> candidates) {
-    public Plan {
-      candidates = java.util.Collections.unmodifiableMap(new java.util.TreeMap<>(candidates));
-    }
-  }
-
-  public record Selection(Plan plan, String phase, String sample) {}
-
-  public record Binding(
-      String planId,
-      String planDigest,
-      String phase,
-      String sample,
-      String model,
-      String qualificationDigest,
-      long runMaxRequests,
-      long runMaxCostMicros) {}
-
-  public record Score(int chinese, int tools, int sources, int report, boolean hardFailure) {
-    public boolean passes() {
-      return !hardFailure
-          && chinese >= 0
-          && chinese <= 20
-          && tools >= 27
-          && tools <= 30
-          && sources >= 27
-          && sources <= 30
-          && report >= 0
-          && report <= 20
-          && chinese + tools + sources + report >= 85;
-    }
-  }
-
-  /**
-   * Grades are signed off through the existing trusted DB provisioning channel, never model JSON.
-   */
-  public record Assessment(
-      boolean completed,
-      boolean c1Passed,
-      int c1Chinese,
-      Score w1,
-      Score w2,
-      String evidenceSha256) {
-    public boolean qualifies() {
-      return completed
-          && c1Passed
-          && c1Chinese >= 18
-          && c1Chinese <= 20
-          && w1 != null
-          && w1.passes()
-          && w2 != null
-          && w2.passes();
-    }
-  }
-
-  public record Qualification(
-      String planDigest,
-      String materialsDigest,
-      Map<String, Assessment> assessments,
-      List<String> finalists,
-      boolean adjudicated,
-      String acceptedFinalCodeSha,
-      String evidenceManifestDigest,
-      String actor,
-      String timestamp,
-      String originalRunId) {}
-
   private EvaluationPlans() {}
 
   public static Plan plan(String id) {
@@ -126,13 +41,8 @@ public final class EvaluationPlans {
   }
 
   public static long taskCost(Plan plan, String model, String sample) {
-    var rate = plan.candidates().get(model);
-    long cost =
-        (plan.contextTokens() * rate.inputMicrosPerMillion()
-                + plan.maxOutputTokens() * rate.outputMicrosPerMillion()
-                + 999999)
-            / 1000000;
-    return cost * (sample.equals("W1") ? 7 : 6);
+    return io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan.taskCost(
+        plan, model, sample);
   }
 
   public static String digest(Plan plan) {
@@ -177,41 +87,5 @@ public final class EvaluationPlans {
         || price.outputMicrosPerMillion() != rate.outputMicrosPerMillion())
       throw new IllegalArgumentException(
           "Model does not match bounded evaluation capability/price");
-  }
-
-  public static Qualification qualify(Plan plan, String json, String digest) {
-    if (json == null || !Payloads.hash(json).equals(digest))
-      throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
-    var q = Payloads.read(json, Qualification.class);
-    if (!digest(plan).equals(q.planDigest())
-        || !plan.materialsDigest().equals(q.materialsDigest())
-        || q.assessments() == null
-        || !q.assessments().keySet().equals(plan.candidates().keySet())
-        || q.finalists() == null
-        || q.finalists().isEmpty()
-        || q.finalists().size() > 2
-        || q.finalists().stream().distinct().count() != q.finalists().size())
-      throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
-    if (!q.adjudicated()
-        || q.acceptedFinalCodeSha() == null
-        || !q.acceptedFinalCodeSha().matches("[0-9a-f]{40}")
-        || q.evidenceManifestDigest() == null
-        || !q.evidenceManifestDigest().matches("[0-9a-f]{64}")
-        || q.actor() == null
-        || q.actor().isBlank()
-        || q.timestamp() == null
-        || q.originalRunId() == null
-        || q.originalRunId().isBlank()) throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
-    java.time.Instant.parse(q.timestamp());
-    for (var assessment : q.assessments().values())
-      if (assessment == null
-          || !assessment.completed()
-          || assessment.evidenceSha256() == null
-          || !assessment.evidenceSha256().matches("[0-9a-f]{64}"))
-        throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
-    for (String finalist : q.finalists())
-      if (!q.assessments().containsKey(finalist) || !q.assessments().get(finalist).qualifies())
-        throw new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
-    return q;
   }
 }
