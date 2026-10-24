@@ -57,6 +57,9 @@ public final class JdbcLedger
       taskAdmissionService;
   private final io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactAccessService
       artifactAccess;
+  private final io.github.lovexiaopeng.jimu.kernel.task.service.TaskOperationsService
+      taskOperations;
+  private final MapperTaskOperations taskOperationRecords;
   private final JdbcTemplate db;
   final CoreMappers mappers;
   private final DataSource source;
@@ -2909,16 +2912,7 @@ public final class JdbcLedger
   }
 
   private void releaseQuestionTask(Map<String, Object> task) {
-    if (!questionTask(task)) return;
-    int count =
-        db.update(
-            "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'",
-            s(task, "tenant_id"),
-            s(task, "id") + ":question-task");
-    if (count == 1)
-      db.update(
-          "UPDATE tenant_budget SET question_tasks_held=question_tasks_held-1 WHERE tenant_id=?",
-          s(task, "tenant_id"));
+    taskOperationRecords.row(task).releaseQuestionTask();
   }
 
   private void cleanupTodos() {
@@ -3625,38 +3619,7 @@ public final class JdbcLedger
   }
 
   private void closeQuestions(Map<String, Object> task, String code) {
-    if (!questionTask(task)) return;
-    String tenant = s(task, "tenant_id"), taskId = s(task, "id");
-    for (var q :
-        rows(
-            "SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND phase IN ('OPEN','CONTINUED') FOR UPDATE",
-            tenant,
-            taskId)) {
-      db.update(
-          "UPDATE user_question SET phase='CLOSED',revision=revision+1,close_code=? WHERE tenant_id=? AND id=?",
-          code,
-          tenant,
-          s(q, "id"));
-      db.update(
-          "UPDATE invocation SET state=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND state='WAITING_USER'",
-          code.equals("CANCELLED") ? "CANCELLED" : "FAILED",
-          tenant,
-          s(q, "invocation_id"));
-      db.update(
-          "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=? AND id=? AND category='TOOL' AND state='RESERVED'",
-          tenant,
-          s(q, "invocation_id"));
-      event(task, "question-closed:" + s(q, "id"), "question.closed", code);
-    }
-    db.update(
-        "UPDATE user_question SET delivery_state='DISCARDED',close_code=? WHERE tenant_id=? AND task_id=? AND delivery_state='PENDING'",
-        code,
-        tenant,
-        taskId);
-    db.update(
-        "UPDATE task SET waiting_question_id=NULL,question_continuation_step_id=NULL WHERE tenant_id=? AND id=?",
-        tenant,
-        taskId);
+    taskOperations.closeQuestions(taskOperationRecords.row(task), code);
   }
 
   @Override
@@ -4217,6 +4180,10 @@ public final class JdbcLedger
             return directoryTransaction(lease, work);
           }
         };
+    taskOperationRecords = new MapperTaskOperations(this);
+    taskOperations =
+        new io.github.lovexiaopeng.jimu.kernel.task.service.impl.TaskOperationsServiceImpl(
+            taskOperationRecords, coreWork);
     artifactAccess =
         new io.github.lovexiaopeng.jimu.kernel.artifact.service.impl.ArtifactAccessServiceImpl(
             new MapperArtifactDownloads(this), coreWork, java.time.Clock.systemUTC());
@@ -4796,155 +4763,21 @@ public final class JdbcLedger
 
   @Override
   public View get(Identity identity, String task) {
-    return tx(
-        () -> {
-          var hint =
-              rows(
-                  "SELECT capabilities FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=?",
-                  identity.tenant(),
-                  task,
-                  identity.actor());
-          if (hint.size() == 1 && JdbcSessionScopes.task(hint.getFirst())) {
-            bucket(identity.tenant());
-            var row = locked(identity.tenant(), task);
-            try {
-              access(row);
-              return view(row);
-            } catch (TaskFailure failure) {
-              if (!failure.code().equals("SESSION_SCOPE_UNAVAILABLE") && failure.status() != 403)
-                throw failure;
-              return new View(
-                  s(row, "id"),
-                  s(row, "state"),
-                  n(row, "revision"),
-                  time(row, "created_at"),
-                  time(row, "updated_at"),
-                  time(row, "cancel_requested_at"),
-                  "SESSION_SCOPE_UNAVAILABLE",
-                  null,
-                  List.of());
-            }
-          }
-          var row = visible(identity, task);
-          access(row);
-          return view(row);
-        });
+    return taskOperations.get(identity, task);
   }
 
   View view(Map<String, Object> row) {
-    var artifacts =
-        rows(
-                "SELECT * FROM artifact WHERE tenant_id=? AND task_id=? AND state='PUBLISHED' ORDER BY id",
-                s(row, "tenant_id"),
-                s(row, "id"))
-            .stream()
-            .map(this::artifact)
-            .toList();
-    String summary = s(row, "summary");
-    if (JdbcSessionRecords.task(row)) {
-      var h = sessions.history(row, false);
-      if (n(h, "retained") != 1 || !"PRESENT".equals(s(h, "content_state"))) summary = null;
-    }
-    String publicCode = s(row, "code");
-    if (JdbcSessionScopes.task(row)) {
-      try {
-        access(row);
-      } catch (TaskFailure failure) {
-        summary = null;
-        artifacts = List.of();
-        publicCode = "SESSION_SCOPE_UNAVAILABLE";
-      }
-    }
-    return new View(
-        s(row, "id"),
-        s(row, "state"),
-        n(row, "revision"),
-        time(row, "created_at"),
-        time(row, "updated_at"),
-        time(row, "cancel_requested_at"),
-        publicCode,
-        summary,
-        artifacts);
-  }
-
-  private Artifact artifact(Map<String, Object> row) {
-    return new Artifact(
-        s(row, "id"),
-        s(row, "media_type"),
-        n(row, "size"),
-        s(row, "sha256"),
-        time(row, "expires_at"));
+    return taskOperations.view(taskOperationRecords.row(row));
   }
 
   @Override
   public View cancel(Identity identity, String task) {
-    return tx(
-        () -> {
-          bucket(identity.tenant());
-          visible(identity, task);
-          var row = locked(identity.tenant(), task);
-          if (row.get("cancel_requested_at") != null) return view(row);
-          if (view(row).terminal()) {
-            // Unknown outcome is terminal for business execution, but does not prove the
-            // writer exited. Persist a stop intent without changing that outcome or its cost.
-            if (!"NEEDS_RECONCILIATION".equals(s(row, "state")) || writersQuiescent(row))
-              return view(row);
-            db.update(
-                "UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
-                identity.tenant(),
-                task);
-            event(row, "cancel", "task.cancel_requested", null);
-            return view(locked(identity.tenant(), task));
-          }
-          db.update(
-              "UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6), state='CANCEL_REQUESTED' WHERE tenant_id=? AND id=?",
-              identity.tenant(),
-              task);
-          event(row, "cancel", "task.cancel_requested", null);
-          if (questionTask(row)) closeQuestions(row, "CANCELLED");
-          if ("QUEUED".equals(s(row, "state")) || questionTask(row) && writersQuiescent(row))
-            terminal(row, "CANCELLED", "CANCELLED");
-          return view(locked(identity.tenant(), task));
-        });
+    return taskOperations.cancel(identity, task);
   }
 
   @Override
   public List<Event> events(Identity identity, String task, long after, int limit) {
-    return tx(
-        () -> {
-          bucket(identity.tenant());
-          sessionScopes.lock(identity.tenant(), task);
-          var row = visible(identity, task);
-          access(row);
-          if (after > n(row, "next_event_seq")) throw new TaskFailure(400, "FUTURE_CURSOR");
-          long oldest =
-              db.queryForObject(
-                  "SELECT COALESCE(MIN(seq),0) FROM event WHERE tenant_id=? AND task_id=? AND occurred_at>CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY",
-                  Long.class,
-                  identity.tenant(),
-                  task);
-          if ((oldest > 0 && after < oldest - 1) || (oldest == 0 && n(row, "next_event_seq") > 0))
-            throw new TaskFailure(410, "CURSOR_EXPIRED");
-          return rows(
-                  "SELECT * FROM event WHERE tenant_id=? AND task_id=? AND seq>? ORDER BY seq LIMIT ?",
-                  identity.tenant(),
-                  task,
-                  after,
-                  Math.min(limit, 64))
-              .stream()
-              .map(
-                  e ->
-                      new Event(
-                          s(e, "event_id"),
-                          n(e, "seq"),
-                          s(e, "type"),
-                          task,
-                          time(e, "occurred_at"),
-                          s(e, "code"),
-                          s(e, "status"),
-                          e.get("artifact_id") == null ? List.of() : List.of(s(e, "artifact_id"))))
-              .toList();
-        });
+    return taskOperations.events(identity, task, after, limit);
   }
 
   @Override
@@ -6626,49 +6459,7 @@ public final class JdbcLedger
   }
 
   void terminal(Map<String, Object> task, String state, String code) {
-    if ("CANCELLED".equals(state) && !writersQuiescent(task)) return;
-    String tenant = s(task, "tenant_id"), taskId = s(task, "id");
-    closeQuestions(task, code == null ? "TASK_COMPLETED" : code);
-    db.update(
-        "UPDATE task SET state=?,code=? WHERE tenant_id=? AND id=?", state, code, tenant, taskId);
-    if ("NEEDS_RECONCILIATION".equals(state)) {
-      db.update(
-          "UPDATE invocation SET state='OUTCOME_UNKNOWN' WHERE tenant_id=? AND task_id=? AND state='RUNNING'",
-          tenant,
-          taskId);
-      db.update(
-          "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND task_id=? AND category='TOOL' AND state='RESERVED'",
-          tenant,
-          taskId);
-    }
-    if (!"NEEDS_RECONCILIATION".equals(state)) {
-      int queued =
-          db.update(
-              "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'",
-              tenant,
-              taskId + ":queue");
-      db.update("UPDATE tenant_budget SET queued=queued-? WHERE tenant_id=?", queued, tenant);
-    }
-    if (writersQuiescent(task)) {
-      releaseRun(task);
-      releaseQuestionTask(task);
-    }
-    db.update(
-        "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=? AND task_id=? AND category='MODEL' AND state='RESERVED'",
-        tenant,
-        taskId);
-    db.update(
-        "UPDATE task_attempt SET state=?,ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND state='ACTIVE'",
-        "SUCCEEDED".equals(state) ? "SUCCEEDED" : "STOPPED",
-        tenant,
-        s(task, "current_attempt_id"));
-    event(
-        task,
-        "terminal",
-        "SUCCEEDED".equals(state)
-            ? "task.completed"
-            : "task." + state.toLowerCase(java.util.Locale.ROOT),
-        code);
+    taskOperations.terminal(taskOperationRecords.row(task), state, code);
   }
 
   @Override
@@ -6688,17 +6479,10 @@ public final class JdbcLedger
   }
 
   private void releaseRun(Map<String, Object> task) {
-    int released =
-        db.update(
-            "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=? AND state='RESERVED'",
-            s(task, "tenant_id"),
-            s(task, "id") + ":run");
-    if (released == 1)
-      db.update(
-          "UPDATE tenant_budget SET running=running-1 WHERE tenant_id=?", s(task, "tenant_id"));
+    taskOperationRecords.row(task).releaseRun();
   }
 
-  private boolean writersQuiescent(Map<String, Object> task) {
+  boolean writersQuiescent(Map<String, Object> task) {
     if (!mappers
         .attempts()
         .selectActiveNativeTask(query, s(task, "tenant_id"), s(task, "id"))

@@ -1,0 +1,101 @@
+{
+  "baseline": "28744449ee7b094e9ed4ca0f64933635312358f6",
+  "statements": [
+    {
+      "kind": "update",
+      "method": "requestCancelIntent",
+      "sql": "UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{taskId}"
+    },
+    {
+      "kind": "update",
+      "method": "requestCancel",
+      "sql": "UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6), state='CANCEL_REQUESTED' WHERE tenant_id=#{tenant} AND id=#{taskId}"
+    },
+    {
+      "kind": "select",
+      "method": "oldestEvent",
+      "sql": "SELECT COALESCE(MIN(seq),0) FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND occurred_at>CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY"
+    },
+    {
+      "kind": "select",
+      "method": "eventPage",
+      "sql": "SELECT tenant_id,task_id,seq,event_id,fact_id,type,code,status,artifact_id,occurred_at,payload_version FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND seq>#{after} ORDER BY seq LIMIT #{limit}"
+    },
+    {
+      "kind": "select",
+      "method": "lockQuestions",
+      "sql": "SELECT tenant_id,id,task_id,owner_actor_id,invocation_id,ordinal,record_version,question_version,revision,binding_digest,mode,effective_timeout,phase,request_snapshot,request_digest,created_at,foreground_due_at,answer_expires_at,retain_until,close_code,answer_id,answered_actor_id,answered_at,accepted_seq,answer_snapshot,answer_digest,answer_key,answer_request_digest,answer_source_revision,receipt_snapshot,delivery_state,delivery_step_id,retained_digests FROM user_question WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND phase IN ('OPEN','CONTINUED') FOR UPDATE"
+    },
+    {
+      "kind": "update",
+      "method": "closeQuestion",
+      "sql": "UPDATE user_question SET phase='CLOSED',revision=revision+1,close_code=#{code} WHERE tenant_id=#{tenant} AND id=#{questionId}"
+    },
+    {
+      "kind": "update",
+      "method": "stopQuestionInvocation",
+      "sql": "UPDATE invocation SET state=#{state},updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{invocationId} AND state='WAITING_USER'"
+    },
+    {
+      "kind": "update",
+      "method": "settleQuestion",
+      "sql": "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=#{tenant} AND id=#{invocationId} AND category='TOOL' AND state='RESERVED'"
+    },
+    {
+      "kind": "update",
+      "method": "discardQuestionDelivery",
+      "sql": "UPDATE user_question SET delivery_state='DISCARDED',close_code=#{code} WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND delivery_state='PENDING'"
+    },
+    {
+      "kind": "update",
+      "method": "clearQuestionContinuation",
+      "sql": "UPDATE task SET waiting_question_id=NULL,question_continuation_step_id=NULL WHERE tenant_id=#{tenant} AND id=#{taskId}"
+    },
+    {
+      "kind": "update",
+      "method": "setTerminal",
+      "sql": "UPDATE task SET state=#{state},code=#{code} WHERE tenant_id=#{tenant} AND id=#{taskId}"
+    },
+    {
+      "kind": "update",
+      "method": "markUnknownInvocations",
+      "sql": "UPDATE invocation SET state='OUTCOME_UNKNOWN' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='RUNNING'"
+    },
+    {
+      "kind": "update",
+      "method": "holdUnknownTools",
+      "sql": "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND category='TOOL' AND state='RESERVED'"
+    },
+    {
+      "kind": "update",
+      "method": "releaseReservation",
+      "sql": "UPDATE reservation SET state='RELEASED' WHERE tenant_id=#{tenant} AND id=#{reservationId} AND state='RESERVED'"
+    },
+    {
+      "kind": "update",
+      "method": "releaseQueue",
+      "sql": "UPDATE tenant_budget SET queued=queued-#{count} WHERE tenant_id=#{tenant}"
+    },
+    {
+      "kind": "update",
+      "method": "releaseRun",
+      "sql": "UPDATE tenant_budget SET running=running-1 WHERE tenant_id=#{tenant}"
+    },
+    {
+      "kind": "update",
+      "method": "releaseQuestionTask",
+      "sql": "UPDATE tenant_budget SET question_tasks_held=question_tasks_held-1 WHERE tenant_id=#{tenant}"
+    },
+    {
+      "kind": "update",
+      "method": "holdUnknownModels",
+      "sql": "UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND category='MODEL' AND state='RESERVED'"
+    },
+    {
+      "kind": "update",
+      "method": "stopAttempt",
+      "sql": "UPDATE task_attempt SET state=#{state},ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{attemptId} AND state='ACTIVE'"
+    }
+  ],
+  "tablesRemainOpen": true
+}

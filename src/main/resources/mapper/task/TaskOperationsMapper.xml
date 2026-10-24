@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskOperationsMapper">
+  <update id="requestCancelIntent"><![CDATA[UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{taskId}]]></update>
+  <update id="requestCancel"><![CDATA[UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6), state='CANCEL_REQUESTED' WHERE tenant_id=#{tenant} AND id=#{taskId}]]></update>
+  <select id="oldestEvent" resultType="long"><![CDATA[SELECT COALESCE(MIN(seq),0) FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND occurred_at>CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY]]></select>
+  <select id="eventPage" resultType="map"><![CDATA[SELECT tenant_id,task_id,seq,event_id,fact_id,type,code,status,artifact_id,occurred_at,payload_version FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND seq>#{after} ORDER BY seq LIMIT #{limit}]]></select>
+  <select id="lockQuestions" resultType="map"><![CDATA[SELECT tenant_id,id,task_id,owner_actor_id,invocation_id,ordinal,record_version,question_version,revision,binding_digest,mode,effective_timeout,phase,request_snapshot,request_digest,created_at,foreground_due_at,answer_expires_at,retain_until,close_code,answer_id,answered_actor_id,answered_at,accepted_seq,answer_snapshot,answer_digest,answer_key,answer_request_digest,answer_source_revision,receipt_snapshot,delivery_state,delivery_step_id,retained_digests FROM user_question WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND phase IN ('OPEN','CONTINUED') FOR UPDATE]]></select>
+  <update id="closeQuestion"><![CDATA[UPDATE user_question SET phase='CLOSED',revision=revision+1,close_code=#{code} WHERE tenant_id=#{tenant} AND id=#{questionId}]]></update>
+  <update id="stopQuestionInvocation"><![CDATA[UPDATE invocation SET state=#{state},updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{invocationId} AND state='WAITING_USER']]></update>
+  <update id="settleQuestion"><![CDATA[UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=#{tenant} AND id=#{invocationId} AND category='TOOL' AND state='RESERVED']]></update>
+  <update id="discardQuestionDelivery"><![CDATA[UPDATE user_question SET delivery_state='DISCARDED',close_code=#{code} WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND delivery_state='PENDING']]></update>
+  <update id="clearQuestionContinuation"><![CDATA[UPDATE task SET waiting_question_id=NULL,question_continuation_step_id=NULL WHERE tenant_id=#{tenant} AND id=#{taskId}]]></update>
+  <update id="setTerminal"><![CDATA[UPDATE task SET state=#{state},code=#{code} WHERE tenant_id=#{tenant} AND id=#{taskId}]]></update>
+  <update id="markUnknownInvocations"><![CDATA[UPDATE invocation SET state='OUTCOME_UNKNOWN' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='RUNNING']]></update>
+  <update id="holdUnknownTools"><![CDATA[UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND category='TOOL' AND state='RESERVED']]></update>
+  <update id="releaseReservation"><![CDATA[UPDATE reservation SET state='RELEASED' WHERE tenant_id=#{tenant} AND id=#{reservationId} AND state='RESERVED']]></update>
+  <update id="releaseQueue"><![CDATA[UPDATE tenant_budget SET queued=queued-#{count} WHERE tenant_id=#{tenant}]]></update>
+  <update id="releaseRun"><![CDATA[UPDATE tenant_budget SET running=running-1 WHERE tenant_id=#{tenant}]]></update>
+  <update id="releaseQuestionTask"><![CDATA[UPDATE tenant_budget SET question_tasks_held=question_tasks_held-1 WHERE tenant_id=#{tenant}]]></update>
+  <update id="holdUnknownModels"><![CDATA[UPDATE reservation SET state='HELD_UNKNOWN',usage_quality='UNKNOWN' WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND category='MODEL' AND state='RESERVED']]></update>
+  <update id="stopAttempt"><![CDATA[UPDATE task_attempt SET state=#{state},ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{attemptId} AND state='ACTIVE']]></update>
+</mapper>
