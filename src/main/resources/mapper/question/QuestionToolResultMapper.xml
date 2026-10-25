@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionToolResultMapper">
+ <update id="completeInvocation"><![CDATA[UPDATE invocation SET state='SUCCEEDED',output_snapshot=#{output},output_digest=#{digest},updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND task_id=#{task} AND id=#{invocation} AND state='WAITING_USER']]></update>
+ <update id="settleReservation"><![CDATA[UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=#{tenant} AND id=#{invocation} AND category='TOOL' AND state='RESERVED']]></update>
+</mapper>

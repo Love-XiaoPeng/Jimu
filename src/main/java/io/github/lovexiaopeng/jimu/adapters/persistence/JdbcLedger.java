@@ -1946,23 +1946,13 @@ public final class JdbcLedger
     questionPausing.pause(new MapperQuestionPause(this, lease), state, continuation);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionToolResultService
+      questionToolCompletion =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl
+              .QuestionToolResultServiceImpl();
+
   private void questionToolResult(Map<String, Object> task, Map<String, Object> q, String output) {
-    String tenant = s(task, "tenant_id"), invocation = s(q, "invocation_id");
-    questions.output(tools(task).pins().get("ask_user_question").version(), output);
-    if (db.update(
-            "UPDATE invocation SET state='SUCCEEDED',output_snapshot=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND task_id=? AND id=? AND state='WAITING_USER'",
-            output,
-            Payloads.hash(output),
-            tenant,
-            s(task, "id"),
-            invocation)
-        != 1) throw new TaskFailure(409, "INVOCATION_STATE");
-    if (db.update(
-            "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=? AND id=? AND category='TOOL' AND state='RESERVED'",
-            tenant,
-            invocation)
-        != 1) throw new TaskFailure(409, "RESERVATION_STATE");
-    event(task, "tool:" + invocation, "tool.completed", null);
+    questionToolCompletion.complete(new MapperQuestionToolResult(this, task, q), output);
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionResumeService
