@@ -3200,22 +3200,19 @@ public final class JdbcLedger
     }
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.task.service.TaskBaseAccessService
+      taskBaseAccess =
+          new io.github.lovexiaopeng.jimu.kernel.task.service.impl.TaskBaseAccessServiceImpl();
+
   private void baseAccess(Map<String, Object> row) {
-    long currentEpoch =
-        epoch(new Identity(s(row, "tenant_id"), s(row, "owner_actor_id")), caps(row));
-    if (JdbcSessionRecords.task(row)) sessionAccess(row);
-    if (directoryTask(row)) directoryAccess(row);
-    if (todoTask(row)) todoAccess(row);
-    if (questionTask(row)) questionAccess(row);
-    else if (currentEpoch != n(row, "installation_epoch"))
-      throw new TaskFailure(403, "CAPABILITY_REVOKED");
-    if (caps(row).stream()
-        .anyMatch(io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES::contains)) {
-      if (!io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES.containsAll(caps(row)))
-        throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-      mcp.binding(row);
-    } else if (row.get("mcp_snapshot") != null || row.get("mcp_digest") != null)
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    taskBaseAccess.require(
+        new MapperTaskBaseAccess(
+            this,
+            row,
+            () -> sessionAccess(row),
+            () -> directoryAccess(row),
+            () -> todoAccess(row),
+            () -> questionAccess(row)));
   }
 
   @Override
