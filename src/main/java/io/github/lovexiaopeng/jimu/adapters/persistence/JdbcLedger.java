@@ -3065,41 +3065,22 @@ public final class JdbcLedger
     return epoch;
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.task.service.TaskCapabilitiesService
+      taskCapabilities =
+          new io.github.lovexiaopeng.jimu.kernel.task.service.impl.TaskCapabilitiesServiceImpl();
+
   @Override
   public List<String> capabilities(Identity identity) {
-    return tx(
-        () -> {
-          identity(identity);
-          return db
-              .queryForList(
-                  "SELECT plugin_id FROM installation WHERE tenant_id=? AND enabled=TRUE ORDER BY plugin_id",
-                  String.class,
-                  identity.tenant())
-              .stream()
-              .filter(
-                  name ->
-                      mcp.enabled()
-                          || !io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES.contains(
-                              name))
-              .filter(name -> questionsEnabled || !name.equals("ask_user_question"))
-              .filter(name -> !name.equals("working_directory") || directoryAvailable(identity))
-              .filter(name -> !name.equals("todo_write") || todoAvailable(identity))
-              .filter(
-                  name -> !name.equals("session_event_read") || sessionAvailable(identity, false))
-              .filter(
-                  name -> !name.equals("session_event_search") || sessionAvailable(identity, true))
-              .filter(name -> !name.equals("session_event_trace") || traceAvailable(identity))
-              .filter(name -> !name.equals("session_search") || priorAvailable(identity))
-              .filter(
-                  name -> searchAvailable.getAsBoolean() || !List.of("glob", "grep").contains(name))
-              .filter(
-                  name ->
-                      !name.equals("read_image")
-                          || imagesAvailable()
-                              && io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelImages
-                                  .enabled(models.selected(identity.tenant())))
-              .toList();
-        });
+    return taskCapabilities.discover(
+        new MapperTaskCapabilities(
+            this,
+            identity,
+            this::tx,
+            () -> directoryAvailable(identity),
+            () -> todoAvailable(identity),
+            search -> sessionAvailable(identity, search),
+            () -> traceAvailable(identity),
+            () -> priorAvailable(identity)));
   }
 
   @Override
