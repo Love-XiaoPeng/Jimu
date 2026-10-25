@@ -1552,19 +1552,13 @@ public final class JdbcLedger
     questionsEnabled = enabled;
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.directory.service.DirectoryAvailabilityService
+      directoryAvailability =
+          new io.github.lovexiaopeng.jimu.kernel.directory.service.impl
+              .DirectoryAvailabilityServiceImpl();
+
   private boolean directoryAvailable(Identity identity) {
-    if (!directoryEnabled) return false;
-    try {
-      models.requireDirectory(models.selected(identity.tenant()));
-      var installed =
-          one(
-              "SELECT plugin_version,plugin_digest FROM installation WHERE tenant_id=? AND plugin_id='working_directory'",
-              identity.tenant());
-      return directories.descriptor().version().equals(s(installed, "plugin_version"))
-          && directories.descriptor().outputSha256().equals(s(installed, "plugin_digest"));
-    } catch (TaskFailure e) {
-      return false;
-    }
+    return directoryAvailability.available(new MapperDirectoryAvailability(this, identity));
   }
 
   private boolean todoAvailable(Identity identity) {
