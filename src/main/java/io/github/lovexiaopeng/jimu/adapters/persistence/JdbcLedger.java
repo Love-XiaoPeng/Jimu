@@ -2052,15 +2052,12 @@ public final class JdbcLedger
     return leaseTx(lease, () -> fenced(lease, true).get("question_continuation_step_id") != null);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionStorageService
+      questionStorageBudget =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl.QuestionStorageServiceImpl();
+
   void questionStorage(Map<String, Object> task, long additional) {
-    if (!questionTask(task)) return;
-    long used =
-        db.queryForObject(
-            "SELECT COALESCE(OCTET_LENGTH(request_snapshot),0)+COALESCE(OCTET_LENGTH(goal),0)+COALESCE(OCTET_LENGTH(summary),0)+(SELECT COALESCE(SUM(OCTET_LENGTH(request_snapshot)+COALESCE(OCTET_LENGTH(response_snapshot),0)),0) FROM step WHERE tenant_id=t.tenant_id AND task_id=t.id)+(SELECT COALESCE(SUM(OCTET_LENGTH(input_snapshot)+COALESCE(OCTET_LENGTH(output_snapshot),0)),0) FROM invocation WHERE tenant_id=t.tenant_id AND task_id=t.id)+(SELECT COALESCE(SUM(OCTET_LENGTH(request_snapshot)+COALESCE(OCTET_LENGTH(answer_snapshot),0)+COALESCE(OCTET_LENGTH(receipt_snapshot),0)),0) FROM user_question WHERE tenant_id=t.tenant_id AND task_id=t.id) FROM task t WHERE tenant_id=? AND id=?",
-            Long.class,
-            s(task, "tenant_id"),
-            s(task, "id"));
-    if (used + additional > 2097152) throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
+    questionStorageBudget.requireCapacity(new MapperQuestionStorage(this, task), additional);
   }
 
   void maintainQuestions() {
