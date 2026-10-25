@@ -1,6 +1,9 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
@@ -18,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.asm.ClassReader;
 import org.springframework.asm.ClassVisitor;
+import org.springframework.asm.ClassWriter;
 import org.springframework.asm.MethodVisitor;
 import org.springframework.asm.Opcodes;
 
@@ -30,6 +34,80 @@ class ResponseDiagnosticObservationTest {
         SessionResponseDiagnosticScenario.class.getDeclaredMethod("exception", Throwable.class);
     method.setAccessible(true);
     return method.invoke(null, failure);
+  }
+
+  @Test
+  void phaseWrapperPreservesReturnAndImplicitException() throws Exception {
+    var transformer = new ClassFileTransformer[1];
+    var instrumentation =
+        (Instrumentation)
+            Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[] {Instrumentation.class},
+                (proxy, method, args) -> {
+                  if (method.getName().equals("addTransformer"))
+                    transformer[0] = (ClassFileTransformer) args[0];
+                  return null;
+                });
+    ResponsePhaseAgent.premain(directory.toString(), instrumentation);
+    String name = "org/springframework/jdbc/support/JdbcUtils";
+    var writer = new ClassWriter(0);
+    writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, name, null, "java/lang/Object", null);
+    var method =
+        writer.visitMethod(
+            Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+            "extractDatabaseMetaData",
+            "(Ljava/lang/Object;)Ljava/lang/Object;",
+            null,
+            null);
+    method.visitCode();
+    method.visitVarInsn(Opcodes.ALOAD, 0);
+    method.visitMethodInsn(
+        Opcodes.INVOKESTATIC,
+        "java/util/Objects",
+        "requireNonNull",
+        "(Ljava/lang/Object;)Ljava/lang/Object;",
+        false);
+    method.visitInsn(Opcodes.ARETURN);
+    method.visitMaxs(1, 1);
+    method.visitEnd();
+    writer.visitEnd();
+    byte[] observed =
+        transformer[0].transform(
+            getClass().getClassLoader(), name, null, null, writer.toByteArray());
+    class Isolated extends ClassLoader {
+      Class<?> observedClass() {
+        return defineClass(name.replace('/', '.'), observed, 0, observed.length);
+      }
+    }
+    var actual = new Isolated().observedClass().getMethod("extractDatabaseMetaData", Object.class);
+    Object value = new Object();
+    assertSame(value, actual.invoke(null, value));
+    var error =
+        assertThrows(
+            java.lang.reflect.InvocationTargetException.class,
+            () -> actual.invoke(null, new Object[] {null}));
+    assertInstanceOf(NullPointerException.class, error.getCause());
+  }
+
+  @Test
+  void phaseFilesRetainSqlStateVendorAndSuppressedGraph() throws Exception {
+    var primary = new SQLException("phase primary", "08S01", 0);
+    primary.setNextException(new SQLException("next", "40001", 1205));
+    primary.addSuppressed(new SQLException("cleanup", "08003", 99));
+    ResponsePhaseAgent.failed(primary, "unit phase failure");
+    var save = ResponsePhaseAgent.class.getDeclaredMethod("save", Path.class);
+    save.setAccessible(true);
+    save.invoke(null, directory);
+    StringBuilder all = new StringBuilder();
+    try (var files = Files.list(directory)) {
+      for (Path file : files.filter(p -> p.getFileName().toString().startsWith("error-")).toList())
+        all.append(Files.readString(file));
+    }
+    assertTrue(all.toString().contains("SQLState=08S01 vendorCode=0"));
+    assertTrue(all.toString().contains("SQLState=40001 vendorCode=1205"));
+    assertTrue(all.toString().contains("SQLState=08003 vendorCode=99"));
+    assertTrue(all.toString().contains("Suppressed:"));
   }
 
   @Test

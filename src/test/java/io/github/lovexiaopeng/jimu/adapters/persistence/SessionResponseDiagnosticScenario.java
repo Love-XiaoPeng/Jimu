@@ -81,6 +81,8 @@ public final class SessionResponseDiagnosticScenario {
   }
 
   private static void save(String prefix) {
+    outcome.put("timelineOriginNanos", timelineOrigin);
+    outcome.put("absoluteDeadlineNanos", absoluteDeadline);
     outcome.put("timeline", timeline);
     outcome.put("connectionLifecycle", lifecycle);
     // Product has ended; this observation performs no SQL and never changes any timeout.
@@ -114,7 +116,15 @@ public final class SessionResponseDiagnosticScenario {
     return new DelegatingDataSource(source) {
       @Override
       public Connection getConnection() throws SQLException {
-        var connection = super.getConnection();
+        ResponsePhaseAgent.mark("ENTER datasource.getConnection");
+        Connection connection;
+        try {
+          connection = super.getConnection();
+          ResponsePhaseAgent.mark("RETURN datasource.getConnection");
+        } catch (SQLException error) {
+          ResponsePhaseAgent.failed(error, "THROW datasource.getConnection");
+          throw error;
+        }
         return (Connection)
             Proxy.newProxyInstance(
                 getClass().getClassLoader(),
@@ -135,9 +145,13 @@ public final class SessionResponseDiagnosticScenario {
                           .contains(m.getName());
                   long connectionStart = System.nanoTime();
                   Throwable connectionError = null;
+                  if (observed) ResponsePhaseAgent.mark("ENTER connection." + m.getName());
                   try {
                     result = invoke(connection, m, args);
+                    if (observed) ResponsePhaseAgent.mark("RETURN connection." + m.getName());
                   } catch (Throwable error) {
+                    if (observed)
+                      ResponsePhaseAgent.failed(error, "THROW connection." + m.getName());
                     connectionError = error;
                     throw error;
                   } finally {
@@ -156,6 +170,25 @@ public final class SessionResponseDiagnosticScenario {
                       row.put("error", exception(connectionError));
                       lifecycle.add(row);
                     }
+                  }
+                  if (result instanceof java.sql.DatabaseMetaData metadata) {
+                    return Proxy.newProxyInstance(
+                        getClass().getClassLoader(),
+                        new Class<?>[] {java.sql.DatabaseMetaData.class},
+                        (mp, mm, ma) -> {
+                          boolean productName = mm.getName().equals("getDatabaseProductName");
+                          if (productName)
+                            ResponsePhaseAgent.mark("ENTER metadata." + mm.getName());
+                          try {
+                            Object value = invoke(metadata, mm, ma);
+                            if (productName)
+                              ResponsePhaseAgent.mark("RETURN metadata." + mm.getName());
+                            return value;
+                          } catch (Throwable error) {
+                            ResponsePhaseAgent.failed(error, "THROW metadata." + mm.getName());
+                            throw error;
+                          }
+                        });
                   }
                   if (m.getName().equals("prepareStatement")
                       && result instanceof PreparedStatement statement) {
@@ -185,9 +218,32 @@ public final class SessionResponseDiagnosticScenario {
                           if (execute && binding && ++inserts == failAt)
                             throw new SQLException("PRIVATE_BINDING_INSERT_FAILURE", "HY000", 1644);
                           long start = System.nanoTime();
+                          boolean account =
+                              execute
+                                  && sql.startsWith(
+                                      "UPDATE task_session_history SET metadata_bytes=");
+                          if (account)
+                            ResponsePhaseAgent.mark(
+                                "ENTER account UPDATE remainingNanos="
+                                    + (absoluteDeadline - start));
                           Object value;
                           try {
+                            if (account
+                                && inCall
+                                && Boolean.getBoolean("diagnostic.accountFault")) {
+                              injected++;
+                              throw new SQLException(
+                                  "PRIVATE_ACCOUNT_TRANSLATION_CONTROL",
+                                  "08S01",
+                                  0,
+                                  new java.net.SocketTimeoutException(
+                                      "PRIVATE synthetic cause; no socket changed"));
+                            }
                             value = invoke(statement, sm, sv);
+                            if (account) ResponsePhaseAgent.mark("RETURN account UPDATE");
+                          } catch (Throwable error) {
+                            if (execute) ResponsePhaseAgent.failed(error, "THROW SQL " + sql);
+                            throw error;
                           } finally {
                             if (execute)
                               timeline.add(
@@ -431,6 +487,7 @@ public final class SessionResponseDiagnosticScenario {
               timelineOrigin = System.nanoTime();
               inCall = true;
               var view = active(JdbcSessionScopes.task(task));
+              ResponsePhaseAgent.mark("ENTER driver.modelResponded");
               view.modelResponded(
                   lease,
                   (String) step.get("id"),
@@ -440,7 +497,9 @@ public final class SessionResponseDiagnosticScenario {
                   response.tokens(),
                   response.usage());
               outcome.put("production", "NORMAL_RETURN");
+              ResponsePhaseAgent.mark("RETURN driver.modelResponded");
             } catch (Throwable caught) {
+              ResponsePhaseAgent.failed(caught, "CATCH driver.modelResponded");
               errors[0] = caught;
               outcome.put(
                   "production",
@@ -455,6 +514,7 @@ public final class SessionResponseDiagnosticScenario {
               // No proof SELECT or output before rollback: leave the product's socket/deadline
               // settings untouched and collect proofs from already executed JDBC parameters.
               status.setRollbackOnly();
+              ResponsePhaseAgent.mark("RETURN outer transaction callback rollbackOnly");
             }
             return null;
           });
@@ -465,6 +525,7 @@ public final class SessionResponseDiagnosticScenario {
       outcome.put("transactionException", exception(rollbackError));
     } finally {
       outcome.put("primary", exception(errors[0]));
+      outcome.put("syntheticAccountFaults", injected);
       save(System.getProperty("diagnostic.prefix") + "-" + trial);
     }
     if (transactionError != null) {
@@ -480,8 +541,19 @@ public final class SessionResponseDiagnosticScenario {
     System.out.println(
         "ROLLBACK " + Payloads.json(Map.of("trial", trial, "before", before, "after", after)));
     if (trial.equals("success")) {
-      require(errors[0] == null, "actual response completed before immediate outer rollback");
-      proofs(response);
+      if (Boolean.getBoolean("diagnostic.accountFault")) {
+        require(
+            injected == 1, "one private account translation control; original SQL not executed");
+        require(
+            errors[0] instanceof DataAccessException,
+            "actual MyBatis translates control SQL failure");
+        require(
+            exception(errors[0]).toString().contains("PRIVATE_ACCOUNT_TRANSLATION_CONTROL"),
+            "original synthetic primary preserved");
+      } else {
+        require(errors[0] == null, "actual response completed before immediate outer rollback");
+        proofs(response);
+      }
     } else if (rejection) {
       require(
           errors[0] instanceof io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure,

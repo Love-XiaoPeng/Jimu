@@ -17,7 +17,7 @@ from xiao60_b2_normalization_verify import observed_state
 from xiao60_b2_session_response_verify import ResponseModel
 
 
-def verify(e, old, name, classes, cold, agent):
+def verify(e, old, name, classes, cold, agent, phase_agent, account_fault):
     e.prepare()
     e.fixture.RequestHandlerClass = ResponseModel
     # Trace keeps original trace-only input. Scope retains original search/self/cross triple.
@@ -97,6 +97,10 @@ def verify(e, old, name, classes, cold, agent):
                    '-Dloader.path=' + str(classes), '-cp', str(binary),
                    'org.springframework.boot.loader.launch.PropertiesLauncher',
                    str(configs[tag]), pending, str(response), prefix]
+        if phase_agent:
+            command.insert(2, '-javaagent:' + str(phase_agent.resolve()) + '=' + str(e.evidence / ('phases-' + tag)))
+        command.insert(2, '-Ddiagnostic.accountFault=' + str(account_fault).lower())
+        (e.evidence / ('command-' + tag + '.json')).write_text(json.dumps(command, indent=2))
         file = e.evidence / ('response-' + tag + '.log')
         with file.open('w') as log:
             run = subprocess.run(command, text=True, stdout=log, stderr=subprocess.STDOUT, timeout=180)
@@ -121,16 +125,37 @@ if __name__ == '__main__':
     p.add_argument('--cold', action='store_true')
     p.add_argument('--group', choices=['trace', 'scope-three', 'both'], default='both')
     p.add_argument('--source-agent', type=Path)
+    p.add_argument('--phase-agent', type=Path)
+    p.add_argument('--compiler-receipt', type=Path)
+    p.add_argument('--account-fault', action='store_true')
     a = p.parse_args()
     assert hashlib.sha256(a.old_jar.read_bytes()).hexdigest() == 'c1bf9870dff1b7f5a30e9f7d49c2e953da6d650f92e270fd9627ccbe3176522d'
     assert hashlib.sha256(a.jar.read_bytes()).hexdigest() == 'dc1d44dbf9715b0b70fd3bf7293f08d4c83eb816ac2d299d2a60b5023f9f18f0'
+    # Archive the exact execution before creating a database or entering any trial.
+    import shutil
+    archive = a.evidence / 'executed-driver'
+    archive.mkdir(parents=True, exist_ok=False)
+    shutil.copytree(a.classes, archive / 'classes')
+    source_dir = Path(__file__).resolve().parents[1] / 'src/test/java/io/github/lovexiaopeng/jimu/adapters/persistence'
+    for name in ('SessionResponseDiagnosticScenario.java', 'ResponseSourceAgent.java', 'ResponsePhaseAgent.java'):
+        shutil.copyfile(source_dir / name, archive / name)
+    shutil.copyfile(__file__, archive / Path(__file__).name)
+    for file in (a.source_agent, a.phase_agent, a.compiler_receipt):
+        if file:
+            shutil.copyfile(file, archive / file.name)
+    (archive / 'products.json').write_text(json.dumps([
+        {'role': role, 'sha256': hashlib.sha256(file.read_bytes()).hexdigest(), 'bytes': file.stat().st_size}
+        for role, file in [('old', a.old_jar), ('new', a.jar)]], indent=2))
+    (archive / 'index.json').write_text(json.dumps([
+        {'path': str(file.relative_to(archive)), 'sha256': hashlib.sha256(file.read_bytes()).hexdigest(), 'bytes': file.stat().st_size}
+        for file in sorted(archive.rglob('*')) if file.is_file()], indent=2))
     failures = []
     for name, klass in [('trace', TraceExperiment), ('scope-three', PriorExperiment)]:
         if a.group != 'both' and a.group != name:
             continue
         e = klass(a.jar, a.evidence / name)
         try:
-            verify(e, a.old_jar, name, a.classes, a.cold, a.source_agent)
+            verify(e, a.old_jar, name, a.classes, a.cold, a.source_agent, a.phase_agent, a.account_fault)
         except BaseException:
             (e.evidence / 'failure.txt').write_text(traceback.format_exc())
             failures.append(name)

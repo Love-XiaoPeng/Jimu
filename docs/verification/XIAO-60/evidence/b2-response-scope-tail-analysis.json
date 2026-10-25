@@ -1,0 +1,826 @@
+{
+  "productCodeChanged": false,
+  "oldSQLRemoved": 0,
+  "inventory": {
+    "static": 182,
+    "dynamicScannerItems": 26,
+    "binds": 587
+  },
+  "jars": {
+    "old": {
+      "sha256": "c1bf9870dff1b7f5a30e9f7d49c2e953da6d650f92e270fd9627ccbe3176522d",
+      "bytes": 44391230,
+      "productionEntryCount": 1440
+    },
+    "new": {
+      "sha256": "dc1d44dbf9715b0b70fd3bf7293f08d4c83eb816ac2d299d2a60b5023f9f18f0",
+      "bytes": 44403849,
+      "productionEntryCount": 1451
+    }
+  },
+  "rounds": {
+    "run1": {
+      "outcomes": {
+        "old": {
+          "exit": 1,
+          "production": "EXCEPTION",
+          "outerTransaction": "EXCEPTION",
+          "productionEndMicros": 2007729,
+          "restorations": 0,
+          "RESULTrows": 0
+        },
+        "new": {
+          "exit": 0,
+          "production": "NORMAL_RETURN",
+          "outerTransaction": "ROLLBACK_RETURNED",
+          "productionEndMicros": 1982703,
+          "restorations": 1,
+          "RESULTrows": 5
+        }
+      },
+      "cleanup": {
+        "containerRemoved": true,
+        "rootRemoved": true,
+        "allChildrenExited": true,
+        "fixtureStopped": true,
+        "failures": []
+      },
+      "responseSource": {
+        "sha256": "5f4741a7555fa97eccaa2cbcc5963b95a1fc8f78fcbe7e5bdc530b0ea7746ef2",
+        "bytes": 612,
+        "driverOriginalBytesEqual": true,
+        "fixtureValueEqual": true,
+        "fixtureRawEqual": false
+      }
+    },
+    "run2": {
+      "outcomes": {
+        "old": {
+          "exit": 0,
+          "production": "EXCEPTION",
+          "outerTransaction": "ROLLBACK_RETURNED",
+          "productionEndMicros": 2429221,
+          "restorations": 1,
+          "RESULTrows": 1
+        },
+        "new": {
+          "exit": 0,
+          "production": "EXCEPTION",
+          "outerTransaction": "ROLLBACK_RETURNED",
+          "productionEndMicros": 2172087,
+          "restorations": 1,
+          "RESULTrows": 1
+        }
+      },
+      "cleanup": {
+        "containerRemoved": true,
+        "rootRemoved": true,
+        "allChildrenExited": true,
+        "fixtureStopped": true,
+        "failures": []
+      },
+      "responseSource": {
+        "sha256": "b18229d31217b01c5324d5ce58d014d75263eb53e219b21f1a65d0c37a2b460b",
+        "bytes": 612,
+        "driverOriginalBytesEqual": true,
+        "fixtureValueEqual": true,
+        "fixtureRawEqual": false
+      }
+    }
+  },
+  "classes": [
+    {
+      "run": "run1",
+      "tag": "old",
+      "name": "org/mybatis/spring/MyBatisExceptionTranslator.class",
+      "sha256": "79fe0ea6cb8064b8781d46ad4f69d01b9828fa2d7401dd77ee0e32fd6500f0e9",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run1",
+      "tag": "old",
+      "name": "io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.class",
+      "sha256": "17c6bd087f5568dbc329e82c36a565e2322c1f5863e8fc29fe9f63ee499388cc",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run1",
+      "tag": "old",
+      "name": "org/springframework/transaction/support/TransactionTemplate.class",
+      "sha256": "a0bb1016b367bbc785029ee8779484d3faf57852ad095a31aceebaa552b61d84",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run1",
+      "tag": "old",
+      "name": "io/github/lovexiaopeng/jimu/adapters/persistence/transaction/SpringLedgerUnitOfWork.class",
+      "sha256": "d8a2c5fa1d16b50ad9c992a8edf518165baa8c5541fcd814e7065a4c19ed34a9",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run1",
+      "tag": "old",
+      "name": "org/springframework/jdbc/support/JdbcUtils.class",
+      "sha256": "1d3ed33992fd7a66d206702ac844f29f811a521d657b1bd9f0ddc7e50ce6dd02",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run1",
+      "tag": "new",
+      "name": "org/mybatis/spring/MyBatisExceptionTranslator.class",
+      "sha256": "79fe0ea6cb8064b8781d46ad4f69d01b9828fa2d7401dd77ee0e32fd6500f0e9",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run1",
+      "tag": "new",
+      "name": "io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.class",
+      "sha256": "2c7c34828491a2793daefd5160a4ff9b85c32cd627c518cc7a0e86af2d31b909",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run1",
+      "tag": "new",
+      "name": "org/springframework/transaction/support/TransactionTemplate.class",
+      "sha256": "a0bb1016b367bbc785029ee8779484d3faf57852ad095a31aceebaa552b61d84",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run1",
+      "tag": "new",
+      "name": "io/github/lovexiaopeng/jimu/adapters/persistence/transaction/SpringLedgerUnitOfWork.class",
+      "sha256": "d8a2c5fa1d16b50ad9c992a8edf518165baa8c5541fcd814e7065a4c19ed34a9",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run1",
+      "tag": "new",
+      "name": "org/springframework/jdbc/support/JdbcUtils.class",
+      "sha256": "1d3ed33992fd7a66d206702ac844f29f811a521d657b1bd9f0ddc7e50ce6dd02",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "old",
+      "name": "org/mybatis/spring/MyBatisExceptionTranslator.class",
+      "sha256": "79fe0ea6cb8064b8781d46ad4f69d01b9828fa2d7401dd77ee0e32fd6500f0e9",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "old",
+      "name": "io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.class",
+      "sha256": "17c6bd087f5568dbc329e82c36a565e2322c1f5863e8fc29fe9f63ee499388cc",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "old",
+      "name": "org/springframework/transaction/support/TransactionTemplate.class",
+      "sha256": "a0bb1016b367bbc785029ee8779484d3faf57852ad095a31aceebaa552b61d84",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "old",
+      "name": "io/github/lovexiaopeng/jimu/adapters/persistence/transaction/SpringLedgerUnitOfWork.class",
+      "sha256": "d8a2c5fa1d16b50ad9c992a8edf518165baa8c5541fcd814e7065a4c19ed34a9",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "old",
+      "name": "org/springframework/jdbc/support/JdbcUtils.class",
+      "sha256": "1d3ed33992fd7a66d206702ac844f29f811a521d657b1bd9f0ddc7e50ce6dd02",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "old",
+      "name": "org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.class",
+      "sha256": "e167e68023f24e80e725b1e3eff144be37495607dcd65411c351a99860441cb6",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "old",
+      "name": "org/springframework/jdbc/support/SQLErrorCodesFactory.class",
+      "sha256": "0b3c2b2e86ed4050c3a04764219087daea16b06c961138369f5569e15e9e3824",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "new",
+      "name": "org/mybatis/spring/MyBatisExceptionTranslator.class",
+      "sha256": "79fe0ea6cb8064b8781d46ad4f69d01b9828fa2d7401dd77ee0e32fd6500f0e9",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "new",
+      "name": "io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.class",
+      "sha256": "2c7c34828491a2793daefd5160a4ff9b85c32cd627c518cc7a0e86af2d31b909",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "new",
+      "name": "org/springframework/transaction/support/TransactionTemplate.class",
+      "sha256": "a0bb1016b367bbc785029ee8779484d3faf57852ad095a31aceebaa552b61d84",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "new",
+      "name": "io/github/lovexiaopeng/jimu/adapters/persistence/transaction/SpringLedgerUnitOfWork.class",
+      "sha256": "d8a2c5fa1d16b50ad9c992a8edf518165baa8c5541fcd814e7065a4c19ed34a9",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "new",
+      "name": "org/springframework/jdbc/support/JdbcUtils.class",
+      "sha256": "1d3ed33992fd7a66d206702ac844f29f811a521d657b1bd9f0ddc7e50ce6dd02",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "new",
+      "name": "org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.class",
+      "sha256": "e167e68023f24e80e725b1e3eff144be37495607dcd65411c351a99860441cb6",
+      "matchesExactJAR": true
+    },
+    {
+      "run": "run2",
+      "tag": "new",
+      "name": "org/springframework/jdbc/support/SQLErrorCodesFactory.class",
+      "sha256": "0b3c2b2e86ed4050c3a04764219087daea16b06c961138369f5569e15e9e3824",
+      "matchesExactJAR": true
+    }
+  ],
+  "naturalRoundSealVerified": true,
+  "unchangedResourceCount": 413,
+  "controlledPhaseAnalysis": {
+    "old": {
+      "production": "EXCEPTION",
+      "outerTransaction": "ROLLBACK_RETURNED",
+      "productionEndMicros": 2429221,
+      "primary": {
+        "class": "org.springframework.dao.DataAccessResourceFailureException",
+        "sqlExceptions": [
+          {
+            "class": "java.sql.SQLException",
+            "message": "PRIVATE_ACCOUNT_TRANSLATION_CONTROL",
+            "SQLState": "08S01",
+            "vendorCode": 0
+          }
+        ]
+      },
+      "transactionException": null,
+      "failureInterval": {
+        "sqlFailureToDriverCatchMicros": 695535,
+        "start": {
+          "micros": 1733679,
+          "remainingMicros": 266392,
+          "thread": 1,
+          "index": 986,
+          "phase": "THROW SQL UPDATE task_session_history SET metadata_bytes=?,held_bytes=IF(content_state='PURGED',?,held_bytes) WHERE tenant_id=? AND task_id=?"
+        },
+        "end": {
+          "micros": 2429214,
+          "remainingMicros": -429143,
+          "thread": 1,
+          "index": 1008,
+          "phase": "CATCH driver.modelResponded"
+        },
+        "stages": [
+          {
+            "micros": 1733679,
+            "remainingMicros": 266392,
+            "thread": 1,
+            "index": 986,
+            "phase": "THROW SQL UPDATE task_session_history SET metadata_bytes=?,held_bytes=IF(content_state='PURGED',?,held_bytes) WHERE tenant_id=? AND task_id=?"
+          },
+          {
+            "micros": 1740585,
+            "remainingMicros": 259486,
+            "thread": 1,
+            "index": 987,
+            "phase": "ENTER org/mybatis/spring/MyBatisExceptionTranslator.translateExceptionIfPossible(Ljava/lang/RuntimeException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 1740609,
+            "remainingMicros": 259461,
+            "thread": 1,
+            "index": 988,
+            "phase": "ENTER org/mybatis/spring/MyBatisExceptionTranslator.initExceptionTranslator()V"
+          },
+          {
+            "micros": 2419178,
+            "remainingMicros": -419108,
+            "thread": 1,
+            "index": 989,
+            "phase": "ENTER org/springframework/jdbc/support/SQLErrorCodesFactory.resolveErrorCodes(Ljavax/sql/DataSource;)Lorg/springframework/jdbc/support/SQLErrorCodes;"
+          },
+          {
+            "micros": 2422600,
+            "remainingMicros": -422529,
+            "thread": 1,
+            "index": 990,
+            "phase": "ENTER org/springframework/jdbc/support/JdbcUtils.extractDatabaseMetaData(Ljavax/sql/DataSource;Lorg/springframework/jdbc/support/DatabaseMetaDataCallback;)Ljava/lang/Object;"
+          },
+          {
+            "micros": 2422932,
+            "remainingMicros": -422861,
+            "thread": 1,
+            "index": 991,
+            "phase": "ENTER metadata.getDatabaseProductName"
+          },
+          {
+            "micros": 2423103,
+            "remainingMicros": -423032,
+            "thread": 1,
+            "index": 992,
+            "phase": "RETURN metadata.getDatabaseProductName"
+          },
+          {
+            "micros": 2423136,
+            "remainingMicros": -423065,
+            "thread": 1,
+            "index": 993,
+            "phase": "RETURN org/springframework/jdbc/support/JdbcUtils.extractDatabaseMetaData(Ljavax/sql/DataSource;Lorg/springframework/jdbc/support/DatabaseMetaDataCallback;)Ljava/lang/Object;"
+          },
+          {
+            "micros": 2423149,
+            "remainingMicros": -423079,
+            "thread": 1,
+            "index": 994,
+            "phase": "ENTER org/springframework/jdbc/support/SQLErrorCodesFactory.getErrorCodes(Ljava/lang/String;)Lorg/springframework/jdbc/support/SQLErrorCodes;"
+          },
+          {
+            "micros": 2425603,
+            "remainingMicros": -425533,
+            "thread": 1,
+            "index": 995,
+            "phase": "RETURN org/springframework/jdbc/support/SQLErrorCodesFactory.getErrorCodes(Ljava/lang/String;)Lorg/springframework/jdbc/support/SQLErrorCodes;"
+          },
+          {
+            "micros": 2425633,
+            "remainingMicros": -425562,
+            "thread": 1,
+            "index": 996,
+            "phase": "RETURN org/springframework/jdbc/support/SQLErrorCodesFactory.resolveErrorCodes(Ljavax/sql/DataSource;)Lorg/springframework/jdbc/support/SQLErrorCodes;"
+          },
+          {
+            "micros": 2425648,
+            "remainingMicros": -425577,
+            "thread": 1,
+            "index": 997,
+            "phase": "RETURN org/mybatis/spring/MyBatisExceptionTranslator.initExceptionTranslator()V"
+          },
+          {
+            "micros": 2425990,
+            "remainingMicros": -425920,
+            "thread": 1,
+            "index": 998,
+            "phase": "ENTER org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2428200,
+            "remainingMicros": -428129,
+            "thread": 1,
+            "index": 999,
+            "phase": "ENTER org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2428568,
+            "remainingMicros": -428497,
+            "thread": 1,
+            "index": 1000,
+            "phase": "ENTER org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2429066,
+            "remainingMicros": -428995,
+            "thread": 1,
+            "index": 1001,
+            "phase": "RETURN org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2429067,
+            "remainingMicros": -428997,
+            "thread": 1,
+            "index": 1002,
+            "phase": "RETURN org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2429068,
+            "remainingMicros": -428997,
+            "thread": 1,
+            "index": 1003,
+            "phase": "RETURN org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2429074,
+            "remainingMicros": -429003,
+            "thread": 1,
+            "index": 1004,
+            "phase": "RETURN org/mybatis/spring/MyBatisExceptionTranslator.translateExceptionIfPossible(Ljava/lang/RuntimeException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2429119,
+            "remainingMicros": -429048,
+            "thread": 1,
+            "index": 1005,
+            "phase": "THROW io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.account(Ljava/util/Map;Z)V"
+          },
+          {
+            "micros": 2429201,
+            "remainingMicros": -429130,
+            "thread": 1,
+            "index": 1006,
+            "phase": "THROW org/springframework/transaction/support/TransactionTemplate.execute(Lorg/springframework/transaction/support/TransactionCallback;)Ljava/lang/Object;"
+          },
+          {
+            "micros": 2429207,
+            "remainingMicros": -429136,
+            "thread": 1,
+            "index": 1007,
+            "phase": "THROW io/github/lovexiaopeng/jimu/adapters/persistence/transaction/SpringLedgerUnitOfWork.required(Ljava/util/function/Supplier;)Ljava/lang/Object;"
+          },
+          {
+            "micros": 2429214,
+            "remainingMicros": -429143,
+            "thread": 1,
+            "index": 1008,
+            "phase": "CATCH driver.modelResponded"
+          }
+        ]
+      },
+      "methodDurations": [
+        {
+          "method": "org/springframework/jdbc/support/JdbcUtils.extractDatabaseMetaData(Ljavax/sql/DataSource;Lorg/springframework/jdbc/support/DatabaseMetaDataCallback;)Ljava/lang/Object;",
+          "enterMicros": 2422600,
+          "exitMicros": 2423136,
+          "exit": "RETURN",
+          "durationMicros": 536
+        },
+        {
+          "method": "org/springframework/jdbc/support/SQLErrorCodesFactory.getErrorCodes(Ljava/lang/String;)Lorg/springframework/jdbc/support/SQLErrorCodes;",
+          "enterMicros": 2423149,
+          "exitMicros": 2425603,
+          "exit": "RETURN",
+          "durationMicros": 2454
+        },
+        {
+          "method": "org/springframework/jdbc/support/SQLErrorCodesFactory.resolveErrorCodes(Ljavax/sql/DataSource;)Lorg/springframework/jdbc/support/SQLErrorCodes;",
+          "enterMicros": 2419178,
+          "exitMicros": 2425633,
+          "exit": "RETURN",
+          "durationMicros": 6455
+        },
+        {
+          "method": "org/mybatis/spring/MyBatisExceptionTranslator.initExceptionTranslator()V",
+          "enterMicros": 1740609,
+          "exitMicros": 2425648,
+          "exit": "RETURN",
+          "durationMicros": 685039
+        },
+        {
+          "method": "org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;",
+          "enterMicros": 2428568,
+          "exitMicros": 2429066,
+          "exit": "RETURN",
+          "durationMicros": 498
+        },
+        {
+          "method": "org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;",
+          "enterMicros": 2428200,
+          "exitMicros": 2429067,
+          "exit": "RETURN",
+          "durationMicros": 867
+        },
+        {
+          "method": "org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;",
+          "enterMicros": 2425990,
+          "exitMicros": 2429068,
+          "exit": "RETURN",
+          "durationMicros": 3078
+        },
+        {
+          "method": "org/mybatis/spring/MyBatisExceptionTranslator.translateExceptionIfPossible(Ljava/lang/RuntimeException;)Lorg/springframework/dao/DataAccessException;",
+          "enterMicros": 1740585,
+          "exitMicros": 2429074,
+          "exit": "RETURN",
+          "durationMicros": 688489
+        },
+        {
+          "method": "io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.account(Ljava/util/Map;Z)V",
+          "enterMicros": 1656226,
+          "exitMicros": 2429119,
+          "exit": "THROW",
+          "durationMicros": 772893
+        },
+        {
+          "method": "org/springframework/transaction/support/TransactionTemplate.execute(Lorg/springframework/transaction/support/TransactionCallback;)Ljava/lang/Object;",
+          "enterMicros": 361749,
+          "exitMicros": 2429201,
+          "exit": "THROW",
+          "durationMicros": 2067452
+        },
+        {
+          "method": "io/github/lovexiaopeng/jimu/adapters/persistence/transaction/SpringLedgerUnitOfWork.required(Ljava/util/function/Supplier;)Ljava/lang/Object;",
+          "enterMicros": 361538,
+          "exitMicros": 2429207,
+          "exit": "THROW",
+          "durationMicros": 2067669
+        }
+      ],
+      "syntheticAccountFaults": 1,
+      "phaseCount": 1089,
+      "scope": "Observed sample only; no claim of stable/cold success, persistent commit or UNKNOWN recovery."
+    },
+    "new": {
+      "production": "EXCEPTION",
+      "outerTransaction": "ROLLBACK_RETURNED",
+      "productionEndMicros": 2172087,
+      "primary": {
+        "class": "org.springframework.dao.DataAccessResourceFailureException",
+        "sqlExceptions": [
+          {
+            "class": "java.sql.SQLException",
+            "message": "PRIVATE_ACCOUNT_TRANSLATION_CONTROL",
+            "SQLState": "08S01",
+            "vendorCode": 0
+          }
+        ]
+      },
+      "transactionException": null,
+      "failureInterval": {
+        "sqlFailureToDriverCatchMicros": 499760,
+        "start": {
+          "micros": 1672321,
+          "remainingMicros": 327769,
+          "thread": 1,
+          "index": 986,
+          "phase": "THROW SQL UPDATE task_session_history SET metadata_bytes=?,held_bytes=IF(content_state='PURGED',?,held_bytes) WHERE tenant_id=? AND task_id=?"
+        },
+        "end": {
+          "micros": 2172081,
+          "remainingMicros": -171991,
+          "thread": 1,
+          "index": 1008,
+          "phase": "CATCH driver.modelResponded"
+        },
+        "stages": [
+          {
+            "micros": 1672321,
+            "remainingMicros": 327769,
+            "thread": 1,
+            "index": 986,
+            "phase": "THROW SQL UPDATE task_session_history SET metadata_bytes=?,held_bytes=IF(content_state='PURGED',?,held_bytes) WHERE tenant_id=? AND task_id=?"
+          },
+          {
+            "micros": 1678486,
+            "remainingMicros": 321604,
+            "thread": 1,
+            "index": 987,
+            "phase": "ENTER org/mybatis/spring/MyBatisExceptionTranslator.translateExceptionIfPossible(Ljava/lang/RuntimeException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 1678514,
+            "remainingMicros": 321576,
+            "thread": 1,
+            "index": 988,
+            "phase": "ENTER org/mybatis/spring/MyBatisExceptionTranslator.initExceptionTranslator()V"
+          },
+          {
+            "micros": 2165185,
+            "remainingMicros": -165094,
+            "thread": 1,
+            "index": 989,
+            "phase": "ENTER org/springframework/jdbc/support/SQLErrorCodesFactory.resolveErrorCodes(Ljavax/sql/DataSource;)Lorg/springframework/jdbc/support/SQLErrorCodes;"
+          },
+          {
+            "micros": 2167661,
+            "remainingMicros": -167571,
+            "thread": 1,
+            "index": 990,
+            "phase": "ENTER org/springframework/jdbc/support/JdbcUtils.extractDatabaseMetaData(Ljavax/sql/DataSource;Lorg/springframework/jdbc/support/DatabaseMetaDataCallback;)Ljava/lang/Object;"
+          },
+          {
+            "micros": 2167852,
+            "remainingMicros": -167762,
+            "thread": 1,
+            "index": 991,
+            "phase": "ENTER metadata.getDatabaseProductName"
+          },
+          {
+            "micros": 2167977,
+            "remainingMicros": -167887,
+            "thread": 1,
+            "index": 992,
+            "phase": "RETURN metadata.getDatabaseProductName"
+          },
+          {
+            "micros": 2168003,
+            "remainingMicros": -167913,
+            "thread": 1,
+            "index": 993,
+            "phase": "RETURN org/springframework/jdbc/support/JdbcUtils.extractDatabaseMetaData(Ljavax/sql/DataSource;Lorg/springframework/jdbc/support/DatabaseMetaDataCallback;)Ljava/lang/Object;"
+          },
+          {
+            "micros": 2168016,
+            "remainingMicros": -167926,
+            "thread": 1,
+            "index": 994,
+            "phase": "ENTER org/springframework/jdbc/support/SQLErrorCodesFactory.getErrorCodes(Ljava/lang/String;)Lorg/springframework/jdbc/support/SQLErrorCodes;"
+          },
+          {
+            "micros": 2169652,
+            "remainingMicros": -169561,
+            "thread": 1,
+            "index": 995,
+            "phase": "RETURN org/springframework/jdbc/support/SQLErrorCodesFactory.getErrorCodes(Ljava/lang/String;)Lorg/springframework/jdbc/support/SQLErrorCodes;"
+          },
+          {
+            "micros": 2169682,
+            "remainingMicros": -169592,
+            "thread": 1,
+            "index": 996,
+            "phase": "RETURN org/springframework/jdbc/support/SQLErrorCodesFactory.resolveErrorCodes(Ljavax/sql/DataSource;)Lorg/springframework/jdbc/support/SQLErrorCodes;"
+          },
+          {
+            "micros": 2169696,
+            "remainingMicros": -169606,
+            "thread": 1,
+            "index": 997,
+            "phase": "RETURN org/mybatis/spring/MyBatisExceptionTranslator.initExceptionTranslator()V"
+          },
+          {
+            "micros": 2169817,
+            "remainingMicros": -169727,
+            "thread": 1,
+            "index": 998,
+            "phase": "ENTER org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2171216,
+            "remainingMicros": -171126,
+            "thread": 1,
+            "index": 999,
+            "phase": "ENTER org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2171618,
+            "remainingMicros": -171528,
+            "thread": 1,
+            "index": 1000,
+            "phase": "ENTER org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2171969,
+            "remainingMicros": -171879,
+            "thread": 1,
+            "index": 1001,
+            "phase": "RETURN org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2171970,
+            "remainingMicros": -171880,
+            "thread": 1,
+            "index": 1002,
+            "phase": "RETURN org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2171971,
+            "remainingMicros": -171880,
+            "thread": 1,
+            "index": 1003,
+            "phase": "RETURN org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2171979,
+            "remainingMicros": -171889,
+            "thread": 1,
+            "index": 1004,
+            "phase": "RETURN org/mybatis/spring/MyBatisExceptionTranslator.translateExceptionIfPossible(Ljava/lang/RuntimeException;)Lorg/springframework/dao/DataAccessException;"
+          },
+          {
+            "micros": 2172010,
+            "remainingMicros": -171920,
+            "thread": 1,
+            "index": 1005,
+            "phase": "THROW io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.account(Ljava/util/Map;Z)V"
+          },
+          {
+            "micros": 2172070,
+            "remainingMicros": -171980,
+            "thread": 1,
+            "index": 1006,
+            "phase": "THROW org/springframework/transaction/support/TransactionTemplate.execute(Lorg/springframework/transaction/support/TransactionCallback;)Ljava/lang/Object;"
+          },
+          {
+            "micros": 2172075,
+            "remainingMicros": -171985,
+            "thread": 1,
+            "index": 1007,
+            "phase": "THROW io/github/lovexiaopeng/jimu/adapters/persistence/transaction/SpringLedgerUnitOfWork.required(Ljava/util/function/Supplier;)Ljava/lang/Object;"
+          },
+          {
+            "micros": 2172081,
+            "remainingMicros": -171991,
+            "thread": 1,
+            "index": 1008,
+            "phase": "CATCH driver.modelResponded"
+          }
+        ]
+      },
+      "methodDurations": [
+        {
+          "method": "org/springframework/jdbc/support/JdbcUtils.extractDatabaseMetaData(Ljavax/sql/DataSource;Lorg/springframework/jdbc/support/DatabaseMetaDataCallback;)Ljava/lang/Object;",
+          "enterMicros": 2167661,
+          "exitMicros": 2168003,
+          "exit": "RETURN",
+          "durationMicros": 342
+        },
+        {
+          "method": "org/springframework/jdbc/support/SQLErrorCodesFactory.getErrorCodes(Ljava/lang/String;)Lorg/springframework/jdbc/support/SQLErrorCodes;",
+          "enterMicros": 2168016,
+          "exitMicros": 2169652,
+          "exit": "RETURN",
+          "durationMicros": 1636
+        },
+        {
+          "method": "org/springframework/jdbc/support/SQLErrorCodesFactory.resolveErrorCodes(Ljavax/sql/DataSource;)Lorg/springframework/jdbc/support/SQLErrorCodes;",
+          "enterMicros": 2165185,
+          "exitMicros": 2169682,
+          "exit": "RETURN",
+          "durationMicros": 4497
+        },
+        {
+          "method": "org/mybatis/spring/MyBatisExceptionTranslator.initExceptionTranslator()V",
+          "enterMicros": 1678514,
+          "exitMicros": 2169696,
+          "exit": "RETURN",
+          "durationMicros": 491182
+        },
+        {
+          "method": "org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;",
+          "enterMicros": 2171618,
+          "exitMicros": 2171969,
+          "exit": "RETURN",
+          "durationMicros": 351
+        },
+        {
+          "method": "org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;",
+          "enterMicros": 2171216,
+          "exitMicros": 2171970,
+          "exit": "RETURN",
+          "durationMicros": 754
+        },
+        {
+          "method": "org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator.translate(Ljava/lang/String;Ljava/lang/String;Ljava/sql/SQLException;)Lorg/springframework/dao/DataAccessException;",
+          "enterMicros": 2169817,
+          "exitMicros": 2171971,
+          "exit": "RETURN",
+          "durationMicros": 2154
+        },
+        {
+          "method": "org/mybatis/spring/MyBatisExceptionTranslator.translateExceptionIfPossible(Ljava/lang/RuntimeException;)Lorg/springframework/dao/DataAccessException;",
+          "enterMicros": 1678486,
+          "exitMicros": 2171979,
+          "exit": "RETURN",
+          "durationMicros": 493493
+        },
+        {
+          "method": "io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.account(Ljava/util/Map;Z)V",
+          "enterMicros": 1586141,
+          "exitMicros": 2172010,
+          "exit": "THROW",
+          "durationMicros": 585869
+        },
+        {
+          "method": "org/springframework/transaction/support/TransactionTemplate.execute(Lorg/springframework/transaction/support/TransactionCallback;)Ljava/lang/Object;",
+          "enterMicros": 230131,
+          "exitMicros": 2172070,
+          "exit": "THROW",
+          "durationMicros": 1941939
+        },
+        {
+          "method": "io/github/lovexiaopeng/jimu/adapters/persistence/transaction/SpringLedgerUnitOfWork.required(Ljava/util/function/Supplier;)Ljava/lang/Object;",
+          "enterMicros": 229889,
+          "exitMicros": 2172075,
+          "exit": "THROW",
+          "durationMicros": 1942186
+        }
+      ],
+      "syntheticAccountFaults": 1,
+      "phaseCount": 1089,
+      "scope": "Observed sample only; no claim of stable/cold success, persistent commit or UNKNOWN recovery."
+    }
+  },
+  "run": "01a1715a-58ea-72cc-a5fd-a79179c2259d",
+  "rule": "01a1715b-a1bf-73d1-b79d-5043ff47beb4",
+  "productValidationClosed": false
+}
