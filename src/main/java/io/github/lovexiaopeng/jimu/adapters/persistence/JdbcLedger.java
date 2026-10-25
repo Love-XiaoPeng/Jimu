@@ -1635,15 +1635,13 @@ public final class JdbcLedger
         });
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionInputService
+      questionInputs =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl.QuestionInputServiceImpl();
+
   private io.github.lovexiaopeng.jimu.plugins.builtin.interaction.AskUserQuestionPlugin.Input
       questionInput(Map<String, Object> q, Map<String, Object> task) {
-    if (n(q, "record_version") != 1
-        || n(q, "question_version") != 1
-        || !s(q, "binding_digest").equals(s(task, "question_binding_digest"))
-        || !Payloads.hash(s(q, "request_snapshot")).equals(s(q, "request_digest")))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-    return questions.input(
-        tools(task).pins().get("ask_user_question").version(), s(q, "request_snapshot"));
+    return questionInputs.input(new LedgerQuestionInput(this, q, task));
   }
 
   @Override
