@@ -590,11 +590,13 @@ public final class JdbcLedger
     }
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.directory.service.DirectoryAdmissionService
+      directoryAdmissions =
+          new io.github.lovexiaopeng.jimu.kernel.directory.service.impl
+              .DirectoryAdmissionServiceImpl();
+
   void directoryAdmission(Map<String, Object> task) {
-    if (!directoryEnabled) throw new TaskFailure(403, "DIRECTORY_FEATURE_DISABLED");
-    if (!"PRESENT".equals(s(directoryProjection(task), "content_state")))
-      throw new TaskFailure(410, "DIRECTORY_CONTENT_EXPIRED");
-    models.requireDirectory(snapshot(task));
+    directoryAdmissions.check(new MapperDirectoryAdmission(this, task));
   }
 
   void directoryStorage(Map<String, Object> task, long additional) {
