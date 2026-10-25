@@ -13,7 +13,7 @@ class ResponseModel(Handler):
         context=json.loads(body['messages'][-1]['content'])
         replies=[json.loads(m['content']) for m in body['messages'] if m['role']=='tool']
         calls=[] if goal.startswith('source binding') or replies else slots(context)
-        if calls:calls=[calls[self.server.responseSlot]]
+        if calls and self.server.responseSlot is not None:calls=[calls[self.server.responseSlot]]
         message={'role':'assistant','content':'Verified public response proof.'}
         if calls:message['tool_calls']=[{'id':c['id'],'type':c['type'],'function':{'name':c['name'],'arguments':c['arguments']}} for c in calls]
         response={'version':2,'content':message['content'],'calls':calls,'tokens':150,'usage':{'inputTokens':100,'outputTokens':50,'totalTokens':150,'cachedTokens':None,'reasoningTokens':None,'providerId':'local-response','returnedModel':None,'finishReason':'tool_calls'}}

@@ -1,0 +1,206 @@
+{
+  "baselineSource": "689d904355bb006de966e91fdcbfe431b0755205",
+  "run": "01a1713d-c26d-7856-a892-a5b2a1546a30",
+  "existingRule": "01a1713d-f51a-736a-bfaa-782476aa1d7f",
+  "groups": {
+    "trace": {
+      "drivers": {
+        "old": {
+          "exit": 0,
+          "jarSHA256": "c1bf9870dff1b7f5a30e9f7d49c2e953da6d650f92e270fd9627ccbe3176522d",
+          "production": "NORMAL_RETURN",
+          "productionEndMicros": 1929976,
+          "deadlineRemainingMicrosAtEnd": 70109,
+          "outerTransaction": "ROLLBACK_RETURNED",
+          "primaryClass": null,
+          "primarySQLExceptions": [],
+          "transactionSQLExceptions": [],
+          "lastSQL": {
+            "sql": "SELECT state,code FROM model_dispatch WHERE tenant_id=? AND id=?",
+            "durationMicros": 2155,
+            "elapsedMicros": 1923908
+          },
+          "lastNetworkTimeout": {
+            "elapsedMicros": 1920149,
+            "arguments": [
+              "io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryStatements$$Lambda/0x0000798db847bb50@1f782c05",
+              "80"
+            ]
+          },
+          "rollbackEndMicros": 1951512,
+          "rollbackDurationMicros": 21417,
+          "statementSamples": 181,
+          "resultRows": 3,
+          "factRollbackProofs": 1
+        },
+        "new": {
+          "exit": 0,
+          "jarSHA256": "dc1d44dbf9715b0b70fd3bf7293f08d4c83eb816ac2d299d2a60b5023f9f18f0",
+          "production": "NORMAL_RETURN",
+          "productionEndMicros": 1687778,
+          "deadlineRemainingMicrosAtEnd": 312289,
+          "outerTransaction": "ROLLBACK_RETURNED",
+          "primaryClass": null,
+          "primarySQLExceptions": [],
+          "transactionSQLExceptions": [],
+          "lastSQL": {
+            "elapsedMicros": 1682354,
+            "sql": "SELECT state,code FROM model_dispatch WHERE tenant_id=? AND id=?",
+            "durationMicros": 1832
+          },
+          "lastNetworkTimeout": {
+            "elapsedMicros": 1678973,
+            "arguments": [
+              "io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryStatements$$Lambda/0x00007bd3f047bb50@77b3752b",
+              "322"
+            ]
+          },
+          "rollbackEndMicros": 1710887,
+          "rollbackDurationMicros": 22988,
+          "statementSamples": 181,
+          "resultRows": 3,
+          "factRollbackProofs": 1
+        }
+      },
+      "sameSQLPrefixStatements": 181,
+      "completeSQLSamplesEqual": true,
+      "cleanup": {
+        "containerRemoved": true,
+        "rootRemoved": true,
+        "allChildrenExited": true,
+        "fixtureStopped": true,
+        "failures": []
+      },
+      "frozenSource": {
+        "dumpSHA256": "36143250d6d734bcb398ff4345bbafd47b762bd45e8397ff741fb35092b5588e",
+        "databasesCreatedBeforeTrials": [
+          "response_old",
+          "response_new"
+        ],
+        "boundary": "Same frozen source facts, separate private copies and original table-level runtime grants. Never restore/reset/re-enter an UNKNOWN database."
+      },
+      "orderedResultsJSONEqual": true
+    },
+    "scope-three": {
+      "drivers": {
+        "old": {
+          "exit": 1,
+          "jarSHA256": "c1bf9870dff1b7f5a30e9f7d49c2e953da6d650f92e270fd9627ccbe3176522d",
+          "production": "EXCEPTION",
+          "productionEndMicros": 2745532,
+          "deadlineRemainingMicrosAtEnd": -745444,
+          "outerTransaction": "EXCEPTION",
+          "primaryClass": "org.springframework.dao.RecoverableDataAccessException",
+          "primarySQLExceptions": [
+            {
+              "class": "com.mysql.cj.jdbc.exceptions.CommunicationsException",
+              "message": "Communications link failure\n\nThe last packet successfully received from the server was 6 milliseconds ago. The last packet sent successfully to the server was 7 milliseconds ago.",
+              "SQLState": "08S01",
+              "vendorCode": 0
+            }
+          ],
+          "transactionSQLExceptions": [
+            {
+              "class": "java.sql.SQLNonTransientConnectionException",
+              "message": "No operations allowed after connection closed.",
+              "SQLState": "08003",
+              "vendorCode": 0
+            }
+          ],
+          "lastSQL": {
+            "sql": "UPDATE task_session_history SET metadata_bytes=?,held_bytes=IF(content_state='PURGED',?,held_bytes) WHERE tenant_id=? AND task_id=?",
+            "elapsedMicros": 2036819,
+            "durationMicros": 35866
+          },
+          "lastNetworkTimeout": {
+            "elapsedMicros": 1999671,
+            "arguments": [
+              "io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryStatements$$Lambda/0x000076af6447e410@357bc488",
+              "1"
+            ]
+          },
+          "rollbackEndMicros": 2746059,
+          "rollbackDurationMicros": 290,
+          "statementSamples": 269,
+          "resultRows": 0,
+          "factRollbackProofs": 0
+        },
+        "new": {
+          "exit": 0,
+          "jarSHA256": "dc1d44dbf9715b0b70fd3bf7293f08d4c83eb816ac2d299d2a60b5023f9f18f0",
+          "production": "NORMAL_RETURN",
+          "productionEndMicros": 1951366,
+          "deadlineRemainingMicrosAtEnd": 48733,
+          "outerTransaction": "ROLLBACK_RETURNED",
+          "primaryClass": null,
+          "primarySQLExceptions": [],
+          "transactionSQLExceptions": [],
+          "lastSQL": {
+            "elapsedMicros": 1946268,
+            "sql": "SELECT state,code FROM model_dispatch WHERE tenant_id=? AND id=?",
+            "durationMicros": 1339
+          },
+          "lastNetworkTimeout": {
+            "elapsedMicros": 1943752,
+            "arguments": [
+              "io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryStatements$$Lambda/0x00007dacf847f630@2282400e",
+              "57"
+            ]
+          },
+          "rollbackEndMicros": 1973718,
+          "rollbackDurationMicros": 22248,
+          "statementSamples": 304,
+          "resultRows": 5,
+          "factRollbackProofs": 1
+        }
+      },
+      "sameSQLPrefixStatements": 269,
+      "completeSQLSamplesEqual": false,
+      "cleanup": {
+        "containerRemoved": true,
+        "rootRemoved": true,
+        "allChildrenExited": true,
+        "fixtureStopped": true,
+        "failures": []
+      },
+      "frozenSource": {
+        "dumpSHA256": "6e260b92eb920c668907acc94a40672f012e0c1c82e00844387926c952f053f8",
+        "databasesCreatedBeforeTrials": [
+          "response_old",
+          "response_new"
+        ],
+        "boundary": "Same frozen source facts, separate private copies and original table-level runtime grants. Never restore/reset/re-enter an UNKNOWN database."
+      }
+    }
+  },
+  "workerSource": {
+    "source": "worker original Payloads.json return; test agent pauses before ledger call",
+    "workerOrSampleSHA256": "f10ccc508052990f30f71229c5af440fa7bf4f6aa31e29d59257f1be0364e93c",
+    "bytes": 612,
+    "sampleSHA256": "01d7381b2c31aa13a5b7ce48cb6e66dae5d502499e7f7b9441f0d676fd54b87f",
+    "rawEqual": false,
+    "jsonValueEqual": true,
+    "boundary": "Original worker bytes retained without reserialization. Driver passes pending-response original bytes unchanged to actual ledger. Sample retained separately; no raw equality assumed."
+  },
+  "workerOriginalClassMatchesExactJAR": true,
+  "unchangedProductionCompiledResourceEntries": 1451,
+  "packagingOnlyJAR": {
+    "sha256": "7fa8abc36510d203a610ee76323c4eca794ab40d056e4f7a523007678201972c",
+    "bytes": 44403849,
+    "testedAsNewProduct": false
+  },
+  "verify": {
+    "exit": 0,
+    "diagnosticUnitTests": 3,
+    "evidenceContractIT": 1,
+    "actualDatabaseExperimentsDuringVerify": 0
+  },
+  "limitations": [
+    "Two actual narrow private experiments were run separately; scope-three script exit1 remains a product-path failure.",
+    "Trace run1 exact driver source/classes were not archived before the run2 compile overwrote them; original driver logs/outcome/timing/rollback/facts remain. Run2 has exact executed source/classes/agent/compiler archive; no reconstructed trace classes are presented as originals.",
+    "Trace used fixture sample -> Payloads.json(Response), not a worker-original source. Scope used original worker raw string unchanged.",
+    "Scope old reaches metadata account UPDATE timeout then failed rollback; no fact restoration proof or persisted outcome claimed for that copy.",
+    "No product code or timeout changed. No UNKNOWN recovery/replay or original slot retry. No general physical SQL/bytes/roundtrip equivalence claim.",
+    "Core final beforeCommit, cumulative/cold deadline, historical trace rollback, all prior failures and acceptance limitations remain OPEN."
+  ]
+}
