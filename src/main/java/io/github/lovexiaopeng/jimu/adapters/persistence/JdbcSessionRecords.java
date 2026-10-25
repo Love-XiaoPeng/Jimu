@@ -416,38 +416,26 @@ final class JdbcSessionRecords {
     return context.apply(task);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service
+          .SessionCheckpointPreparationService
+      checkpointPreparation =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionCheckpointPreparationServiceImpl(Payloads::hash);
+
   void prepare(Map<String, Object> task, String request, String step) {
-    var wire = Payloads.read(request, DurableAgent.Checkpoint.class);
-    if (SessionContracts.bytes(request) > 131072
-        || SessionContracts.bytes(wire.requestBody()) > 65536)
-      throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-    if (wire.messages().isEmpty()
-        || !wire.messages().getLast().role().equals("user")
-        || !wire.messages().getLast().content().equals(context(task)))
-      throw new TaskFailure(409, "SESSION_BOUNDARY_CONFLICT");
-    var h = history(task, true);
-    db.update(
-        "UPDATE step SET session_upper_seq=?,session_context_digest=?,session_binding_digest=? WHERE tenant_id=? AND id=?",
-        n(h, "next_seq") - 1,
-        Payloads.hash(wire.messages().getLast().content()),
-        s(h, "binding_digest"),
-        s(task, "tenant_id"),
-        step);
-    if (JdbcSessionScopes.task(task)) {
-      String context = wire.messages().getLast().content();
-      var scope = scopes.require(task);
-      db.update(
-          "INSERT INTO step_session_scope(tenant_id,step_id,caller_task_id,authority_digest,context_snapshot,context_digest,context_bytes) VALUES(?,?,?,?,?,?,?)",
-          s(task, "tenant_id"),
-          step,
-          s(task, "id"),
-          s(scope.row(), "authority_digest"),
-          context,
-          Payloads.hash(context),
-          SessionContracts.bytes(context));
-      body(task, SessionContracts.bytes(context));
-    }
-    body(task, SessionContracts.bytes(request));
+    checkpointPreparation.prepare(
+        new MapperSessionCheckpointPreparation(this, task, step), request);
+  }
+
+  void updatePreparedStep(Object wrapper) {
+    var args = new java.util.HashMap<String, Object>();
+    args.put("et", null);
+    args.put("ew", wrapper);
+    args.put("query", query);
+    mapperSession()
+        .update(
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryStepReadMapper.update",
+            args);
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionCallBindingService
