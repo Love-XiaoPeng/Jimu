@@ -1938,21 +1938,12 @@ public final class JdbcLedger
         });
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionPauseService
+      questionPausing =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl.QuestionPauseServiceImpl();
+
   void questionPause(Map<String, Object> task, Lease lease, String state, String continuation) {
-    if (db.update(
-            "UPDATE task_attempt SET state='PAUSED',ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND fence=? AND state='ACTIVE'",
-            lease.tenant(),
-            lease.attemptId(),
-            lease.fence())
-        != 1) throw new TaskFailure(409, "FENCE_REJECTED");
-    if (db.update(
-            "UPDATE task SET state=?,question_continuation_step_id=?,fence=fence+1,current_attempt_id=NULL,worker_id=NULL,lease_until=NULL WHERE tenant_id=? AND id=? AND fence=?",
-            state,
-            continuation,
-            lease.tenant(),
-            lease.taskId(),
-            lease.fence())
-        != 1) throw new TaskFailure(409, "FENCE_REJECTED");
+    questionPausing.pause(new MapperQuestionPause(this, lease), state, continuation);
   }
 
   private void questionToolResult(Map<String, Object> task, Map<String, Object> q, String output) {
