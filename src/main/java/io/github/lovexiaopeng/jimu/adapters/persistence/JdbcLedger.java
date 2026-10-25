@@ -1551,25 +1551,13 @@ public final class JdbcLedger
     return caps(task).contains("ask_user_question");
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionEligibilityService
+      questionEligibility =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl
+              .QuestionEligibilityServiceImpl();
+
   private void questionAccess(Map<String, Object> task) {
-    var pin = tools(task).pins().get("ask_user_question");
-    var contract = questions.contract(pin.version());
-    var installed =
-        one(
-            "SELECT * FROM installation WHERE tenant_id=? AND plugin_id='ask_user_question'",
-            s(task, "tenant_id"));
-    if (!pin.version().equals(s(installed, "plugin_version"))
-        || !pin.digest().equals(s(installed, "plugin_digest"))
-        || !pin.digest().equals(contract.descriptor().outputSha256())
-        || pin.installationEpoch() != n(installed, "epoch"))
-      throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
-    if ("PURGED".equals(s(task, "question_cleanup_state")))
-      throw new TaskFailure(410, "QUESTION_CONTENT_EXPIRED");
-    String binding = s(task, "question_binding");
-    if (binding == null
-        || !Payloads.hash(binding).equals(s(task, "question_binding_digest"))
-        || !questions.binding(pin.version()).equals(binding))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    questionEligibility.access(new MapperQuestionEligibility(this, task));
   }
 
   private Instant questionNow() {
