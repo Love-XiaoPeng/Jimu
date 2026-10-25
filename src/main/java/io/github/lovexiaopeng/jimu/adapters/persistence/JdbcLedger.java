@@ -3033,36 +3033,15 @@ public final class JdbcLedger
     return first(mappers.budgets().selectBudgetForUpdate(query, tenant));
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.task.service.TaskIdentityService taskIdentity =
+      new io.github.lovexiaopeng.jimu.kernel.task.service.impl.TaskIdentityServiceImpl();
+
   void identity(Identity identity) {
-    var result =
-        mappers
-            .session()
-            .getMapper(
-                io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskAdmissionMapper
-                    .class)
-            .lockActor(query, identity.tenant(), identity.actor());
-    if (result.isEmpty() || !Boolean.TRUE.equals(result.getFirst().get("enabled")))
-      throw new TaskFailure(403, "ACCESS_REVOKED");
+    taskIdentity.identity(new MapperTaskIdentity(this), identity);
   }
 
   long epoch(Identity identity, List<String> capabilities) {
-    identity(identity);
-    long epoch = 0;
-    for (String capability : capabilities.stream().sorted().toList()) {
-      var installed =
-          mappers
-              .session()
-              .getMapper(
-                  io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskAdmissionMapper
-                      .class)
-              .lockInstallation(query, identity.tenant(), capability);
-      if (installed.isEmpty() || !Boolean.TRUE.equals(installed.getFirst().get("enabled")))
-        throw new TaskFailure(403, "CAPABILITY_REVOKED");
-      // Each enabled capability has its own version; sum is monotonic because epochs never
-      // decrease.
-      epoch += n(installed.getFirst(), "epoch");
-    }
-    return epoch;
+    return taskIdentity.epoch(new MapperTaskIdentity(this), identity, capabilities);
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.task.service.TaskCapabilitiesService
