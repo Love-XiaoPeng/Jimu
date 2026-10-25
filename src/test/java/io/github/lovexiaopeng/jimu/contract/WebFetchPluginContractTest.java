@@ -11,7 +11,7 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.contract.BuiltinManifestLoad
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
 import io.github.lovexiaopeng.jimu.adapters.runtime.health.HttpResourceProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.web.ConfiguredOriginReader;
-import io.github.lovexiaopeng.jimu.kernel.plugin.application.PluginRegistry;
+import io.github.lovexiaopeng.jimu.kernel.plugin.service.impl.PluginCatalogServiceImpl;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchInput;
@@ -21,6 +21,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
@@ -93,9 +94,10 @@ class WebFetchPluginContractTest {
   @Test
   void registryRejectsDuplicateIdentityAndDuplicateDiscoveryName() throws Exception {
     ToolDescriptor descriptor = new BuiltinManifestLoader().load();
-    assertEquals(1, new PluginRegistry(List.of(descriptor)).descriptors().size());
+    assertEquals(1, new PluginCatalogServiceImpl(List.of(descriptor)).descriptors().size());
     assertThrows(
-        IllegalArgumentException.class, () -> new PluginRegistry(List.of(descriptor, descriptor)));
+        IllegalArgumentException.class,
+        () -> new PluginCatalogServiceImpl(List.of(descriptor, descriptor)));
     var second =
         new ToolDescriptor(
             descriptor.pluginId(),
@@ -106,7 +108,27 @@ class WebFetchPluginContractTest {
             descriptor.outputSha256(),
             descriptor.entryClass());
     assertThrows(
-        IllegalArgumentException.class, () -> new PluginRegistry(List.of(descriptor, second)));
+        IllegalArgumentException.class,
+        () -> new PluginCatalogServiceImpl(List.of(descriptor, second)));
+  }
+
+  @Test
+  void catalogPreservesDiscoveryOrderAndIsolatedImmutableSnapshot() throws Exception {
+    ToolDescriptor first = new BuiltinManifestLoader().load();
+    var second =
+        new ToolDescriptor(
+            "jimu.test.second",
+            first.version(),
+            "second_tool",
+            first.inputSchema(),
+            first.outputSchema(),
+            first.outputSha256(),
+            first.entryClass());
+    var input = new ArrayList<>(List.of(second, first));
+    var catalog = new PluginCatalogServiceImpl(input);
+    input.clear();
+    assertEquals(List.of(second, first), catalog.descriptors());
+    assertThrows(UnsupportedOperationException.class, () -> catalog.descriptors().clear());
   }
 
   @Test
