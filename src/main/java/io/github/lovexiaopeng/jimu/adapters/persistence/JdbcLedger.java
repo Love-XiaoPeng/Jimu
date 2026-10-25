@@ -1141,20 +1141,12 @@ public final class JdbcLedger
     return p;
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.todo.service.TodoEligibilityService
+      todoEligibility =
+          new io.github.lovexiaopeng.jimu.kernel.todo.service.impl.TodoEligibilityServiceImpl();
+
   private void todoAccess(Map<String, Object> task) {
-    if (!caps(task).equals(List.of("todo_write"))) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-    var pin = tools(task).pins().get("todo_write");
-    var installed =
-        one(
-            "SELECT * FROM installation WHERE tenant_id=? AND plugin_id='todo_write' FOR SHARE",
-            s(task, "tenant_id"));
-    if (!pin.version().equals(todos.descriptor().version())
-        || !pin.digest().equals(todos.descriptor().outputSha256())
-        || !pin.version().equals(s(installed, "plugin_version"))
-        || !pin.digest().equals(s(installed, "plugin_digest"))
-        || pin.installationEpoch() != n(installed, "epoch"))
-      throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
-    todoProjection(task);
+    todoEligibility.access(new MapperTodoEligibility(this, task));
   }
 
   void todoStorage(Map<String, Object> task, long additional) {

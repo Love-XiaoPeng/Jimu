@@ -45,10 +45,11 @@ class PersistencePathTrackingTest {
     assertTrue(capture.path("mapperSql").size() >= 48);
     for (var mapper : capture.path("mapperSql")) {
       assertTrue(!mapper.path("sql").asText().contains("${"));
-      // These two existing installation locks retain their original SELECT * projections.
+      // These exact installation locks retain their original SELECT * projections.
       if (java.util.Set.of(
               "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionEligibilityMapper.lockInstallation",
-              "io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.DirectoryEligibilityMapper.lockInstallation")
+              "io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.DirectoryEligibilityMapper.lockInstallation",
+              "io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoEligibilityMapper.lockInstallation")
           .contains(mapper.path("id").asText()))
         assertEquals(
             "SELECT * FROM installation WHERE tenant_id=#{tenant} AND plugin_id=#{plugin} FOR SHARE",
