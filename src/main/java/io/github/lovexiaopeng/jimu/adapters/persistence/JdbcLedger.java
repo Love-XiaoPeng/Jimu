@@ -528,6 +528,9 @@ public final class JdbcLedger
     }
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionFactService sessionFacts =
+      new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionFactServiceImpl();
+
   long sessionAppend(
       Map<String, Object> task,
       String fact,
@@ -537,99 +540,14 @@ public final class JdbcLedger
       boolean redacted,
       String sourceDigest,
       Lease lease) {
-    String changed = "history:" + fact;
-    event(task, changed, "session_history.changed", null);
-    long reliable =
-        mappers
-            .events()
-            .selectFactSequenceValue(query, s(task, "tenant_id"), s(task, "id"), changed);
-    long seq =
-        sessions.append(task, fact, type, source, data, redacted, sourceDigest, lease, reliable);
-    sessions.account(task, type.equals("turn.ended"));
-    return seq;
+    return sessionFacts.append(
+        fact,
+        MapperSessionFacts.append(
+            this, task, fact, type, source, data, redacted, sourceDigest, lease));
   }
 
   private void sessionFact(Map<String, Object> task, String fact) {
-    if (!JdbcSessionRecords.task(task)) return;
-    if (fact.equals("accepted")) {
-      var text = sessions.contracts.publicText(s(task, "goal"), sessions.sensitive());
-      sessionAppend(
-          task,
-          "accepted-user",
-          "user.message",
-          sessions.source("request", null, null),
-          Map.of("content", text.content()),
-          text.redacted(),
-          s(task, "request_digest"),
-          null);
-    } else if (fact.startsWith("prepared:") || fact.startsWith("response:")) {
-      boolean model = fact.startsWith("response:");
-      String stepId = fact.substring(fact.indexOf(':') + 1);
-      var st =
-          one(
-              "SELECT * FROM step WHERE tenant_id=? AND id=? AND task_id=?",
-              s(task, "tenant_id"),
-              stepId,
-              s(task, "id"));
-      if (model && !"RESPONDED".equals(s(st, "state"))) return;
-      var attempt =
-          one(
-              "SELECT * FROM task_attempt WHERE tenant_id=? AND id=? AND task_id=?",
-              s(task, "tenant_id"),
-              s(task, "current_attempt_id"),
-              s(task, "id"));
-      Lease lease =
-          new Lease(
-              s(task, "tenant_id"),
-              s(task, "owner_actor_id"),
-              s(task, "id"),
-              s(attempt, "id"),
-              n(attempt, "fence"),
-              s(task, "worker_id"),
-              time(task, "deadline"),
-              s(task, "goal"),
-              caps(task),
-              n(task, "installation_epoch"));
-      Map<String, Object> data;
-      boolean redacted = false;
-      if (model) {
-        var response =
-            Payloads.read(
-                s(st, "response_snapshot"),
-                io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Response.class);
-        var text = sessions.contracts.publicText(response.content(), sessions.sensitive());
-        var projected = sessions.projectedCalls(task, response.calls());
-        redacted = text.redacted() || projected.redacted();
-        data = Map.of("content", text.content(), "calls", projected.calls());
-      } else data = Map.of("ordinal", n(st, "ordinal"));
-      sessionAppend(
-          task,
-          (model ? "response:" : "step:") + stepId,
-          model ? "model.response" : "step.started",
-          sessions.source(model ? "model" : "step", stepId, null),
-          data,
-          redacted,
-          s(st, model ? "response_digest" : "request_digest"),
-          lease);
-    } else if (fact.equals("terminal")) {
-      var terminal =
-          one(
-              "SELECT event_id,type,status,code FROM event WHERE tenant_id=? AND task_id=? AND fact_id='terminal'",
-              s(task, "tenant_id"),
-              s(task, "id"));
-      var data = new java.util.LinkedHashMap<String, Object>();
-      data.put("state", terminal.get("status"));
-      data.put("code", terminal.get("code"));
-      sessionAppend(
-          task,
-          "terminal",
-          "turn.ended",
-          sessions.source("task", null, null),
-          data,
-          false,
-          Payloads.hash(Payloads.json(terminal)),
-          null);
-    }
+    sessionFacts.record(fact, new MapperSessionFacts(this, task));
   }
 
   @Override

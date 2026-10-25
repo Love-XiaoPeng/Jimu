@@ -131,6 +131,7 @@ const entries=capture.baseline.entries.map((e,index)=>{
 });
 if(entries.some(e=>!e.currentEntry))throw Error('Unmapped baseline entry');
 const dynamic=capture.current.dynamicSql.map(s=>({...s,review:
+ /^io\.github\.lovexiaopeng\.jimu\.adapters\.persistence\.MapperSessionFacts#(?:step\(java\.lang\.String\)|attempt\(\)|terminal\(\))$/.test(s.method)&&['SessionFactStepMapper.class','SessionFactAttemptMapper.class','SessionFactTerminalMapper.class'].includes(s.arguments[0])?'FIXED_BASE_MAPPER_FACT_READ; three private trusted call sites, full tenant/id/task or tenant/task/fact keys, original SELECT * step/attempt and four terminal columns; explicit query without additional meter, original first-row/404':
  s.method==='io.github.lovexiaopeng.jimu.adapters.persistence.JdbcSessionRecords#updatePreparedStep(java.lang.Object)'&&s.arguments[0]==='"io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryStepReadMapper.update"'?'FIXED_BASE_MAPPER_UPDATE; original three step projection fields and tenant/id LambdaUpdateWrapper, explicit query; runtime prepare/checkpoint and fault rollback evidence required':
  s.method==='io.github.lovexiaopeng.jimu.adapters.persistence.MapperWorkerRecords#markWorkerStopped(java.lang.String)'&&s.arguments[0]==='null'&&s.arguments[1]?.includes('WorkerProcessEntity::getId, worker')?'BASE_MAPPER_LAMBDA; fixed worker_process stopped=TRUE by sole primary key id; cross-tenant host metadata, no external SQL':
  !s.arguments.length?'NON_SQL_VALUE_ACCESSOR_OR_RECORD_COUNTER':
