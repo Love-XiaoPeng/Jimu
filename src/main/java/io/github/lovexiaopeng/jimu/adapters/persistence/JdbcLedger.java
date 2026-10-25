@@ -1138,15 +1138,12 @@ public final class JdbcLedger
     todoEligibility.access(new MapperTodoEligibility(this, task));
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.todo.service.TodoStorageService
+      todoStorageBudget =
+          new io.github.lovexiaopeng.jimu.kernel.todo.service.impl.TodoStorageServiceImpl();
+
   void todoStorage(Map<String, Object> task, long additional) {
-    if (!todoTask(task)) return;
-    long bytes =
-        db.queryForObject(
-            "SELECT COALESCE(OCTET_LENGTH(t.request_snapshot),0)+COALESCE(OCTET_LENGTH(t.goal),0)+COALESCE(OCTET_LENGTH(t.summary),0)+COALESCE(OCTET_LENGTH(t.model_snapshot),0)+COALESCE(OCTET_LENGTH(t.tools_snapshot),0)+(SELECT OCTET_LENGTH(binding_snapshot)+COALESCE(OCTET_LENGTH(retained_digests),0) FROM task_todo_projection WHERE tenant_id=t.tenant_id AND task_id=t.id)+(SELECT COALESCE(SUM(OCTET_LENGTH(request_snapshot)+COALESCE(OCTET_LENGTH(response_snapshot),0)),0) FROM step WHERE tenant_id=t.tenant_id AND task_id=t.id)+(SELECT COALESCE(SUM(OCTET_LENGTH(input_snapshot)+COALESCE(OCTET_LENGTH(output_snapshot),0)),0) FROM invocation WHERE tenant_id=t.tenant_id AND task_id=t.id)+(SELECT COALESCE(SUM(COALESCE(OCTET_LENGTH(usage_snapshot),0)),0) FROM model_dispatch WHERE tenant_id=t.tenant_id AND task_id=t.id) FROM task t WHERE tenant_id=? AND id=?",
-            Long.class,
-            s(task, "tenant_id"),
-            s(task, "id"));
-    if (bytes + additional + 65536 > 2097152) throw new TaskFailure(429, "TODO_STORAGE_LIMIT");
+    todoStorageBudget.requireCapacity(new MapperTodoStorage(this, task), additional);
   }
 
   void todoCommitFence(Lease lease) {
