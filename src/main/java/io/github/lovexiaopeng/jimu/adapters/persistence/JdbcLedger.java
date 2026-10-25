@@ -1561,22 +1561,12 @@ public final class JdbcLedger
     return directoryAvailability.available(new MapperDirectoryAvailability(this, identity));
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.todo.service.TodoAvailabilityService
+      todoAvailability =
+          new io.github.lovexiaopeng.jimu.kernel.todo.service.impl.TodoAvailabilityServiceImpl();
+
   private boolean todoAvailable(Identity identity) {
-    if (!todosEnabled) return false;
-    try {
-      models.requireTodo(models.selected(identity.tenant()));
-      var installed =
-          one(
-              "SELECT plugin_version,plugin_digest FROM installation WHERE tenant_id=? AND plugin_id='todo_write'",
-              identity.tenant());
-      return todos.descriptor().version().equals(s(installed, "plugin_version"))
-          && todos.descriptor().outputSha256().equals(s(installed, "plugin_digest"))
-          && models.businessPolicy() == null
-          && models.scopeRequirement() == null
-          && models.evaluationRunId() == null;
-    } catch (TaskFailure e) {
-      return false;
-    }
+    return todoAvailability.available(new MapperTodoAvailability(this, identity));
   }
 
   private void releaseQuestionTask(Map<String, Object> task) {
