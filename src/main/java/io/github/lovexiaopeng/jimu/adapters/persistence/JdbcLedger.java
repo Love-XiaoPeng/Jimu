@@ -1425,26 +1425,12 @@ public final class JdbcLedger
                     }));
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.todo.service.TodoResultSourceService
+      todoResultSources =
+          new io.github.lovexiaopeng.jimu.kernel.todo.service.impl.TodoResultSourceServiceImpl();
+
   private void todoResultSource(Map<String, Object> task, Map<String, Object> i) {
-    if (i.get("todo_applied_revision") == null
-        || n(i, "todo_applied_revision") != n(i, "todo_expected_revision") + 1
-        || !"SUCCEEDED".equals(s(i, "state"))
-        || !"todo_write".equals(s(i, "tool"))
-        || i.get("todo_committed_attempt_id") == null
-        || i.get("todo_committed_fence") == null
-        || i.get("todo_event_seq") == null
-        || i.get("todo_committed_at") == null) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-    var attempt =
-        rows(
-            "SELECT id FROM task_attempt WHERE tenant_id=? AND task_id=? AND id=? AND fence=?",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            s(i, "todo_committed_attempt_id"),
-            n(i, "todo_committed_fence"));
-    if (attempt.size() != 1) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-    if (!"PURGED".equals(s(i, "content_state"))
-        && !Payloads.hash(s(i, "output_snapshot")).equals(s(i, "output_digest")))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    todoResultSources.require(new MapperTodoResultSources(this, task, i));
   }
 
   @Override
