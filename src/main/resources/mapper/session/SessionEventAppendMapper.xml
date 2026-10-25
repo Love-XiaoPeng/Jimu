@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionEventAppendMapper">
+  <select id="clock" resultType="java.time.LocalDateTime">SELECT CURRENT_TIMESTAMP(6)</select>
+  <update id="advance">UPDATE task_session_history SET next_seq=next_seq+1 WHERE tenant_id=#{tenant} AND task_id=#{taskId}</update>
+</mapper>

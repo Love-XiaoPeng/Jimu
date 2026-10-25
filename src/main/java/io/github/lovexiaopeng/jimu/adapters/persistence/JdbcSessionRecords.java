@@ -338,6 +338,23 @@ final class JdbcSessionRecords {
     return source;
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionEventAppendService
+      eventAppends =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionEventAppendServiceImpl();
+
+  io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionEventAppendMapper
+      eventAppendMapper() {
+    return mapperSession()
+        .getMapper(
+            io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionEventAppendMapper
+                .class);
+  }
+
+  io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext appendQuery() {
+    return query;
+  }
+
   long append(
       Map<String, Object> task,
       String fact,
@@ -348,68 +365,9 @@ final class JdbcSessionRecords {
       String sourceDigest,
       Lease lease,
       long reliable) {
-    var h = history(task, !type.equals("turn.ended"));
-    var prior =
-        rows(
-            "SELECT seq FROM session_public_event WHERE tenant_id=? AND task_id=? AND fact_key=?",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            fact);
-    if (!prior.isEmpty()) return n(prior.getFirst(), "seq");
-    long seq = n(h, "next_seq");
-    if (seq >= (type.equals("turn.ended") ? 128 : 126))
-      throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-    LocalDateTime time = db.queryForObject("SELECT CURRENT_TIMESTAMP(6)", LocalDateTime.class);
-    var value = new LinkedHashMap<String, Object>();
-    value.put("version", version(task));
-    value.put("session_id", s(task, "id"));
-    value.put("seq", seq);
-    value.put("type", type);
-    value.put("time", UTC.format(time));
-    value.put("source", source);
-    value.put("content_policy", "public-v1");
-    value.put("redacted", redacted);
-    value.put("data", data);
-    if (JdbcSessionScopes.task(task))
-      value.put(
-          "source_event_refs",
-          type.equals("session.read")
-              ? scopeReadRefs(task, source.get("invocation_id").toString())
-              : List.of());
-    if (traceTask(task))
-      value.put(
-          "source_event_seqs",
-          type.equals("session.read")
-              ? readSources(task, source.get("invocation_id").toString()).stream()
-                  .map(v -> v.path("seq").asLong())
-                  .toList()
-              : List.of());
-    String raw = Payloads.json(value);
-    contract(task).event(raw);
-    body(task, SessionContracts.bytes(raw));
-    db.update(
-        "INSERT INTO session_public_event(tenant_id,task_id,event_version,seq,fact_key,type,occurred_at,event_snapshot,event_digest,event_bytes,source_digest,source_step_id,source_invocation_id,committed_attempt_id,committed_fence,reliable_event_seq) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        s(task, "tenant_id"),
-        s(task, "id"),
-        version(task),
-        seq,
-        fact,
-        type,
-        time,
-        raw,
-        Payloads.hash(raw),
-        SessionContracts.bytes(raw),
-        sourceDigest,
-        source.get("step_id"),
-        source.get("invocation_id"),
-        lease == null ? null : lease.attemptId(),
-        lease == null ? null : lease.fence(),
-        reliable);
-    db.update(
-        "UPDATE task_session_history SET next_seq=next_seq+1 WHERE tenant_id=? AND task_id=?",
-        s(task, "tenant_id"),
-        s(task, "id"));
-    return seq;
+    return eventAppends.append(
+        new MapperSessionEventAppend(
+            this, task, fact, type, source, data, redacted, sourceDigest, lease, reliable));
   }
 
   List<Map<String, Object>> recent(Map<String, Object> task, long upper) {

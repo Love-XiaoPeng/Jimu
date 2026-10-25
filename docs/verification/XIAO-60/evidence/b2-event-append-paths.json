@@ -1,0 +1,47 @@
+{
+  "base": "c1315171af510a5251483e941c4cfb12bb156ea7",
+  "inventory": {
+    "static": 186,
+    "dynamicScannerItems": 25,
+    "literalBinds": 608
+  },
+  "removedStaticJdbc": 4,
+  "unchanged": [
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sha256": "d713918eb5e16e78e52bf2e3170bf35beb2f123f85b96d8d3c24e3e6966c262f"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionReads.java",
+      "sha256": "4858e158318417179545d2af612344173b7af539085459052f139c9289c4668c"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeQueries.java",
+      "sha256": "ac1b22517184b2b2a4445c5aae2124903697f016238cd732ecc607f8f47db8b9"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeReadRefs.java",
+      "sha256": "cff7dd30d01d8faff45b5ef0220fe27c7157d738cd125a09be238e34cc99713a"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionReadRelationProofs.java",
+      "sha256": "f0139c255845c2cf64dbf856a5cc90119115af1116ee9b6f0028c2883ac06f18"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionContracts.java",
+      "sha256": "ea01cbacfd2188d47f37783e0c92938ddfef4f32a463e5a483f563a730655eed"
+    }
+  ],
+  "unchangedResources": 409,
+  "entries": [
+    "JdbcLedger.sessionFact accepted/step/model/terminal -> sessionAppend reliable history.changed -> reliable seq -> JdbcSessionRecords.append -> Service/typed adapter -> real MP prior/INSERT and parameterized DB clock/cursor -> caller account",
+    "MapperSessionReads.Record.appendRead and MapperSessionScopeQueries.Record.appendRead -> same ledger append chain"
+  ],
+  "preserved": [
+    "history(readable=!terminal) lock -> complete-key first prior seq early return -> next/cap126/128 -> DB microsecond clock -> original LinkedHashMap -> scope refs then trace sources -> codec -> body ->16-column MP INSERT -> original cursor increment",
+    "idempotent return skips clock/source/JSON/body/INSERT/cursor while caller account remains",
+    "same source JSON field construction byte-for-byte; explicit nullable lease/source fields; other DB defaults omitted; original ignored update counts",
+    "same DS/UoW/query/deadline, original reliable event/account/metadata order, no new queries/transactions/CAS/dual write"
+  ],
+  "limits": "Developer audit only. Partial B2; staged trials not durable/whole task/DB rollback or independent afterCompletion acceptance. Existing failures/cold locks/core final-beforeCommit/FAILED read remain OPEN."
+}
