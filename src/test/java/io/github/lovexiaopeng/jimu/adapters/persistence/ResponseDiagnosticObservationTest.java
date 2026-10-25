@@ -91,6 +91,52 @@ class ResponseDiagnosticObservationTest {
   }
 
   @Test
+  void lifecycleProbesKeepConstructorInitializationAndExceptionIdentity() throws Exception {
+    var lifecycle =
+        ResponsePhaseAgent.class.getDeclaredMethod("lifecycle", MethodVisitor.class, String.class);
+    lifecycle.setAccessible(true);
+    String name = "privatefixture/Lifecycle";
+    var writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+    writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, name, null, "java/lang/Object", null);
+    var method =
+        (MethodVisitor)
+            lifecycle.invoke(
+                null,
+                writer.visitMethod(
+                    Opcodes.ACC_PUBLIC, "<init>", "(Ljava/lang/RuntimeException;)V", null, null),
+                name + ".<init>(Ljava/lang/RuntimeException;)V");
+    method.visitCode();
+    method.visitVarInsn(Opcodes.ALOAD, 0);
+    method.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+    method.visitVarInsn(Opcodes.ALOAD, 1);
+    var end = new org.springframework.asm.Label();
+    method.visitJumpInsn(Opcodes.IFNULL, end);
+    method.visitVarInsn(Opcodes.ALOAD, 1);
+    method.visitInsn(Opcodes.ATHROW);
+    method.visitLabel(end);
+    method.visitFrame(
+        Opcodes.F_FULL, 2, new Object[] {name, "java/lang/RuntimeException"}, 0, null);
+    method.visitInsn(Opcodes.RETURN);
+    method.visitMaxs(0, 0);
+    method.visitEnd();
+    writer.visitEnd();
+    byte[] bytes = writer.toByteArray();
+    class Isolated extends ClassLoader {
+      Class<?> loadFixture() {
+        return defineClass(name.replace('/', '.'), bytes, 0, bytes.length);
+      }
+    }
+    var constructor = new Isolated().loadFixture().getConstructor(RuntimeException.class);
+    assertInstanceOf(Object.class, constructor.newInstance(new Object[] {null}));
+    var original = new IllegalStateException("original constructor failure");
+    var thrown =
+        assertThrows(
+            java.lang.reflect.InvocationTargetException.class,
+            () -> constructor.newInstance(original));
+    assertSame(original, thrown.getCause());
+  }
+
+  @Test
   void phaseFilesRetainSqlStateVendorAndSuppressedGraph() throws Exception {
     var primary = new SQLException("phase primary", "08S01", 0);
     primary.setNextException(new SQLException("next", "40001", 1205));

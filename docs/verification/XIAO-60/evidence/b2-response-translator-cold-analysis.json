@@ -1,0 +1,105 @@
+{
+  "products": {
+    "old": {
+      "sha256": "c1bf9870dff1b7f5a30e9f7d49c2e953da6d650f92e270fd9627ccbe3176522d",
+      "bytes": 44391230,
+      "productionEntries": 1440
+    },
+    "new": {
+      "sha256": "dc1d44dbf9715b0b70fd3bf7293f08d4c83eb816ac2d299d2a60b5023f9f18f0",
+      "bytes": 44403849,
+      "productionEntries": 1451
+    }
+  },
+  "unchangedResources": 413,
+  "exactOriginalClasses": 34,
+  "productionChanged": false,
+  "productValidationClosed": false,
+  "oldSQLRemoved": 0,
+  "controlDetails": {
+    "old": {
+      "firstBeanFactoryDefinitionReturnToClinitEntryMicros": 120242,
+      "sqlFailureToDriverCatchMicros": 696877,
+      "extraDatasourceAcquisitionsInFailureInterval": 0
+    },
+    "new": {
+      "firstBeanFactoryDefinitionReturnToClinitEntryMicros": 110431,
+      "sqlFailureToDriverCatchMicros": 562789,
+      "extraDatasourceAcquisitionsInFailureInterval": 0
+    }
+  },
+  "rounds": {
+    "run1": {
+      "sides": {
+        "old": {
+          "production": "EXCEPTION",
+          "outerTransaction": "EXCEPTION",
+          "productionEndMicros": 2009380,
+          "driverEntryMicrosIncludingQueryView": 423513,
+          "remainingAtDriverEntryMicros": 1576564,
+          "restorations": 0,
+          "RESULTrows": 0
+        },
+        "new": {
+          "production": "NORMAL_RETURN",
+          "outerTransaction": "ROLLBACK_RETURNED",
+          "productionEndMicros": 1976603,
+          "driverEntryMicrosIncludingQueryView": 264120,
+          "remainingAtDriverEntryMicros": 1736013,
+          "restorations": 1,
+          "RESULTrows": 5
+        }
+      },
+      "workerResponse": {
+        "bytes": 612,
+        "sha256": "74ae8646db8bfb4507153954e268a80f30e33b4b4c84e0c9a88cc9b77ef5b407",
+        "driverRawEqual": true,
+        "sampleValueEqual": true,
+        "sampleRawEqual": false
+      },
+      "cleanup": {
+        "containerRemoved": true,
+        "rootRemoved": true,
+        "allChildrenExited": true,
+        "fixtureStopped": true,
+        "failures": []
+      }
+    },
+    "run3": {
+      "sides": {
+        "old": {
+          "production": "EXCEPTION",
+          "outerTransaction": "ROLLBACK_RETURNED",
+          "productionEndMicros": 2436206,
+          "driverEntryMicrosIncludingQueryView": 410884,
+          "remainingAtDriverEntryMicros": 1589192,
+          "restorations": 1,
+          "RESULTrows": 1
+        },
+        "new": {
+          "production": "EXCEPTION",
+          "outerTransaction": "ROLLBACK_RETURNED",
+          "productionEndMicros": 2256226,
+          "driverEntryMicrosIncludingQueryView": 278864,
+          "remainingAtDriverEntryMicros": 1721226,
+          "restorations": 1,
+          "RESULTrows": 1
+        }
+      },
+      "workerResponse": {
+        "bytes": 612,
+        "sha256": "99dd6c32ad71d2f78e9f66d1e3a99b7b4fb99abc7ecbc3911bb55dfb2d51953a",
+        "driverRawEqual": true,
+        "sampleValueEqual": true,
+        "sampleRawEqual": false
+      },
+      "cleanup": {
+        "containerRemoved": true,
+        "rootRemoved": true,
+        "allChildrenExited": true,
+        "fixtureStopped": true,
+        "failures": []
+      }
+    }
+  }
+}

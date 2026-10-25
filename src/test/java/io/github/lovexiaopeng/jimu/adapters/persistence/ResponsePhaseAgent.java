@@ -22,21 +22,52 @@ public final class ResponsePhaseAgent {
   private static final ConcurrentLinkedQueue<Mark> MARKS = new ConcurrentLinkedQueue<>();
   private static final ConcurrentLinkedQueue<Artifact> CLASSES = new ConcurrentLinkedQueue<>();
   private static final Map<String, List<String>> METHODS =
-      Map.of(
-          "io/github/lovexiaopeng/jimu/adapters/persistence/transaction/SpringLedgerUnitOfWork",
-          List.of("required"),
-          "io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords",
-          List.of("account"),
-          "org/springframework/transaction/support/TransactionTemplate",
-          List.of("execute"),
-          "org/mybatis/spring/MyBatisExceptionTranslator",
-          List.of("translateExceptionIfPossible", "initExceptionTranslator"),
-          "org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator",
-          List.of("translate"),
-          "org/springframework/jdbc/support/SQLErrorCodesFactory",
-          List.of("resolveErrorCodes", "getErrorCodes"),
-          "org/springframework/jdbc/support/JdbcUtils",
-          List.of("extractDatabaseMetaData"));
+      Map.ofEntries(
+          Map.entry(
+              "io/github/lovexiaopeng/jimu/adapters/persistence/transaction/SpringLedgerUnitOfWork",
+              List.of("required")),
+          Map.entry(
+              "io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords",
+              List.of("account")),
+          Map.entry(
+              "org/springframework/transaction/support/TransactionTemplate", List.of("execute")),
+          Map.entry(
+              "org/mybatis/spring/MyBatisExceptionTranslator",
+              List.of("translateExceptionIfPossible", "initExceptionTranslator", "lambda$new$0")),
+          Map.entry(
+              "org/springframework/jdbc/support/AbstractFallbackSQLExceptionTranslator",
+              List.of("translate", "<init>", "<clinit>")),
+          Map.entry(
+              "org/springframework/jdbc/support/SQLErrorCodeSQLExceptionTranslator",
+              List.of("<init>", "<clinit>", "setDataSource", "lambda$setDataSource$0")),
+          Map.entry(
+              "org/springframework/jdbc/support/SQLErrorCodesFactory",
+              List.of(
+                  "<init>",
+                  "<clinit>",
+                  "getInstance",
+                  "loadResource",
+                  "resolveErrorCodes",
+                  "getErrorCodes")),
+          Map.entry(
+              "org/springframework/beans/factory/support/DefaultListableBeanFactory",
+              List.of("<init>", "<clinit>", "getBeansOfType")),
+          Map.entry(
+              "org/springframework/beans/factory/xml/XmlBeanDefinitionReader",
+              List.of(
+                  "<init>",
+                  "<clinit>",
+                  "loadBeanDefinitions",
+                  "doLoadDocument",
+                  "registerBeanDefinitions")),
+          Map.entry(
+              "org/springframework/beans/factory/xml/DefaultDocumentLoader",
+              List.of("<init>", "<clinit>", "loadDocument")),
+          Map.entry(
+              "org/springframework/core/io/ClassPathResource",
+              List.of("exists", "getInputStream", "resolveURL")),
+          Map.entry(
+              "org/springframework/jdbc/support/JdbcUtils", List.of("extractDatabaseMetaData")));
 
   private record Mark(long nanos, long thread, String phase, Throwable error) {}
 
@@ -65,6 +96,7 @@ public final class ResponsePhaseAgent {
               ProtectionDomain domain,
               byte[] bytes) {
             if (!METHODS.containsKey(name)) return null;
+            mark("TRANSFORM_ENTER " + name);
             var reader = new ClassReader(bytes);
             var writer = new ClassWriter(reader, ClassWriter.COMPUTE_MAXS);
             var methods = new ArrayList<Method>();
@@ -79,6 +111,11 @@ public final class ResponsePhaseAgent {
                       String[] errors) {
                     if (METHODS.get(name).contains(method)
                         && (access & (Opcodes.ACC_ABSTRACT | Opcodes.ACC_NATIVE)) == 0) {
+                      if (method.equals("<init>") || method.equals("<clinit>")) {
+                        return lifecycle(
+                            super.visitMethod(access, method, descriptor, signature, errors),
+                            name + "." + method + descriptor);
+                      }
                       methods.add(new Method(access, method, descriptor, signature, errors));
                       return super.visitMethod(
                           access, method + "$phaseObserved", descriptor, signature, errors);
@@ -95,9 +132,34 @@ public final class ResponsePhaseAgent {
                 0);
             byte[] observed = writer.toByteArray();
             CLASSES.add(new Artifact(name, bytes.clone(), observed.clone()));
+            mark("TRANSFORM_RETURN " + name);
             return observed;
           }
         });
+  }
+
+  // Constructors retain their original name and frames. Never pass uninitialized this to a probe.
+  // Exceptional constructor exits are observed by the enclosing original caller, not fabricated
+  // here.
+  private static MethodVisitor lifecycle(MethodVisitor target, String label) {
+    return new MethodVisitor(Opcodes.ASM9, target) {
+      private void emit(String phase) {
+        super.visitLdcInsn(phase + " " + label);
+        super.visitMethodInsn(Opcodes.INVOKESTATIC, SELF, "mark", "(Ljava/lang/String;)V", false);
+      }
+
+      @Override
+      public void visitCode() {
+        super.visitCode();
+        emit("ENTER");
+      }
+
+      @Override
+      public void visitInsn(int opcode) {
+        if (opcode == Opcodes.RETURN) emit("RETURN");
+        super.visitInsn(opcode);
+      }
+    };
   }
 
   private static void wrapper(ClassWriter writer, String owner, Method method) {
