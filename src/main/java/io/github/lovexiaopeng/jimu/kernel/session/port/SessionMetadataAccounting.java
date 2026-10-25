@@ -1,0 +1,35 @@
+package io.github.lovexiaopeng.jimu.kernel.session.port;
+
+/** Ordered metadata rows and fixed-point counters in the caller's existing unit of work. */
+public interface SessionMetadataAccounting {
+  enum Table {
+    TASK,
+    TASK_SESSION_HISTORY,
+    SESSION_PUBLIC_EVENT,
+    INVOCATION_SESSION_READ,
+    INVOCATION_SESSION_SEARCH,
+    INVOCATION_SESSION_TRACE,
+    TASK_SESSION_SCOPE,
+    TASK_SESSION_SCOPE_TARGET,
+    STEP_SESSION_SCOPE,
+    INVOCATION_SESSION_SCOPE_QUERY,
+    TASK_ATTEMPT,
+    STEP,
+    INVOCATION,
+    MODEL_DISPATCH,
+    RESERVATION,
+    EVENT
+  }
+
+  interface Row {
+    Iterable<?> values();
+  }
+
+  boolean session();
+
+  Iterable<? extends Row> rows(Table table);
+
+  long metadataBytes();
+
+  void account(long bytes);
+}

@@ -1,0 +1,114 @@
+{
+  "base": "410067e3f36848aaf5108f4ff5befa856568f202",
+  "tables": [
+    "task",
+    "task_session_history",
+    "session_public_event",
+    "invocation_session_read",
+    "invocation_session_search",
+    "invocation_session_trace",
+    "task_session_scope",
+    "task_session_scope_target",
+    "step_session_scope",
+    "invocation_session_scope_query",
+    "task_attempt",
+    "step",
+    "invocation",
+    "model_dispatch",
+    "reservation",
+    "event"
+  ],
+  "inventory": {
+    "static": 182,
+    "dynamicScannerItems": 26,
+    "binds": 587
+  },
+  "oldSQLRemoved": 0,
+  "unchangedResources": 413,
+  "unchanged": [
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sha256": "246356b1e4c2a7d09a4a36b3455b5d22c0e90c7be70d036fc9ce6c1c220149fa"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sha256": "ee5dd85dda1a799c4ebf049c4843358ba00fb8e92b418e2ea0d2361574bcccf8"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTaskAdmissions.java",
+      "sha256": "d28d5a220d462ab86e672e505532f50092ccbeb4ca901023531eb00ffb92bf39"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperModelWorkflows.java",
+      "sha256": "02de9666c7d2f87501adacf545e6cd91fe4174e562b7928963376b010825844b"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/StoredSessionResponsePreflight.java",
+      "sha256": "ebefceac8b2f4051a7b9a214b8a2477a9b4ed4d46ac61e2d21aeaec6ec8cb689"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionContexts.java",
+      "sha256": "b2b3ba3badc96282e074d72715cf7fdeca82da35da065500d2bc9b6d7f89e35d"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionReads.java",
+      "sha256": "4858e158318417179545d2af612344173b7af539085459052f139c9289c4668c"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeQueries.java",
+      "sha256": "ac1b22517184b2b2a4445c5aae2124903697f016238cd732ecc607f8f47db8b9"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionTraces.java",
+      "sha256": "509533050ca1d5bb5f36b6ff044bf960b166b9988297cd289d1fd225772bcdaf"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionSearches.java",
+      "sha256": "e24c99cf43feab7a044eca7d26cdabd76e0471aaa2d3be4a6a8f29a5e0ea8044"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeMaintenanceRecords.java",
+      "sha256": "880d7dbce97fede6a0bdaafca266cb83298e1c84b4ac6e6f73f4e21beccd3d0a"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeRevocations.java",
+      "sha256": "eea894c7bd67db31f3c6c91b197cf2126420624eed2e3d9ca5471f5a83d520e2"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionHistoryRetentions.java",
+      "sha256": "10874d23c0d1190f849bc16209b175f0c89cdd4e502922601164fdf2f551f1cf"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+      "sha256": "3e24b7ea60ef01fb9a7bc3345496617721b2415b52c376c1a68f7e8c34767455"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/HostInvocationGateway.java",
+      "sha256": "aaf6ba79fe4780a27b7085ca4426b6c6d8aab63d436790e6c7b7be61c7417039"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java",
+      "sha256": "b5e5af32e0542faab38ddebd01549fb53cf6f49d6f02bf7d8d38301cad50bfc2"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskController.java",
+      "sha256": "83d34726254e30ce23e3b539663042bb96f689597ee421cb6cb72891aa6c9f98"
+    }
+  ],
+  "otherRecordsMethodsUnchanged": true,
+  "allExistingMapperXMLUnchanged": true,
+  "actualPaths": [
+    "admission accepted/sessionAppend -> account Service -> typed lazy rows -> existing 16 metadata Mapper statements -> original metadataBytes/getFirst -> original conditional account Mapper",
+    "JdbcLedger.sessionContext original queryView -> context Service -> MapperSessionContexts.account -> same accounting Service/Mapper",
+    "task cancellation/terminal -> reliable event -> sessionAppend -> account(closing), same UoW",
+    "response reserve, native/scope read/search/trace and maintenance callers unchanged; do not claim all executed"
+  ],
+  "preserved": [
+    "table/row/value traversal and scalar timing",
+    "original int 8+scalarBytes then long sum",
+    "closing limit before nonclosing cleanup+planned check, original overflow",
+    "four rounds, equality return, ignored update count and no fifth read",
+    "original tenant/task keys, IF(PURGED), SQL/NULL and query meter, no new transaction/query/CAS"
+  ],
+  "limits": "Developer source checks only. No independent QA, final-beforeCommit or full migration acceptance."
+}

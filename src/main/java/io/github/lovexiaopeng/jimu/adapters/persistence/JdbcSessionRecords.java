@@ -7,7 +7,6 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionEventPort;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -131,24 +130,6 @@ final class JdbcSessionRecords {
   private List<String> sensitive;
   static final DateTimeFormatter UTC =
       DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
-  private static final List<String> TABLES =
-      List.of(
-          "task",
-          "task_session_history",
-          "session_public_event",
-          "invocation_session_read",
-          "invocation_session_search",
-          "invocation_session_trace",
-          "task_session_scope",
-          "task_session_scope_target",
-          "step_session_scope",
-          "invocation_session_scope_query",
-          "task_attempt",
-          "step",
-          "invocation",
-          "model_dispatch",
-          "reservation",
-          "event");
 
   JdbcSessionRecords(JdbcTemplate db) {
     this(db, null);
@@ -272,56 +253,18 @@ final class JdbcSessionRecords {
     return metadata(task, closing, 0);
   }
 
-  long metadata(Map<String, Object> task, boolean closing, long planned) {
-    long total = 0;
-    long cleanupHeadroom = 1024;
-    for (String table : TABLES) {
-      String operation =
-          "SessionHistoryRetentionMapper.metadata"
-              + java.util.Arrays.stream(table.split("_"))
-                  .map(p -> Character.toUpperCase(p.charAt(0)) + p.substring(1))
-                  .collect(java.util.stream.Collectors.joining());
-      for (var row : mapperRows(operation, task)) {
-        cleanupHeadroom +=
-            switch (table) {
-              case "task" -> 768;
-              case "step", "invocation", "invocation_session_search" -> 512;
-              case "model_dispatch", "session_public_event" -> 256;
-              default -> 0;
-            };
-        total += 32;
-        for (Object value : row.values()) total += 8 + scalarBytes(value);
-      }
-    }
-    if (total > (closing ? 65536 : 61440)) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-    // Hash/length cleanup receipts add metadata when bodies are removed. Reserve that capacity
-    // before accepting more facts, without charging hypothetical bytes as actual stored bytes.
-    if (!closing && total + cleanupHeadroom + planned > 61440)
-      throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-    return total;
-  }
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionMetadataAccountingService
+      metadataAccounting =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionMetadataAccountingServiceImpl();
 
-  private static int scalarBytes(Object value) {
-    if (value == null) return 1;
-    if (value instanceof LocalDateTime time) return SessionContracts.bytes(UTC.format(time));
-    return SessionContracts.bytes(value.toString());
+  long metadata(Map<String, Object> task, boolean closing, long planned) {
+    return metadataAccounting.metadata(
+        new MapperSessionMetadataAccounting(this, task), closing, planned);
   }
 
   void account(Map<String, Object> task, boolean closing) {
-    if (!task(task)) return;
-    // Counters themselves have variable-width decimal scalars; converge before recording them.
-    for (int i = 0; i < 4; i++) {
-      long bytes = metadata(task, closing);
-      long old =
-          n(mapperRows("SessionContextMapper.metadataBytes", task).getFirst(), "metadata_bytes");
-      if (old == bytes) return;
-      mapperSession()
-          .getMapper(
-              io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionContextMapper
-                  .class)
-          .account(query, bytes, s(task, "tenant_id"), s(task, "id"));
-    }
-    throw corrupt();
+    metadataAccounting.account(new MapperSessionMetadataAccounting(this, task), closing);
   }
 
   Map<String, Object> source(String kind, String step, String invocation) {

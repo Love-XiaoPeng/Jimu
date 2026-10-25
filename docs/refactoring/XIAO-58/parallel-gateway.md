@@ -24,7 +24,7 @@ Windows / JDK 21.0.12，Maven Wrapper 3.9.9。命令在本片独立 worktree 执
 
 此轮打包 JAR SHA256：`ef5ceafb4ea121b74510d5e704837de1d8af46c2114658a5956a78590fb0d043`；仅作为打包记录，不声称真实业务验收通过。`git diff --check` exit 0。
 
-新增 5 项风险测试通过真实 DurableAgent.run、唯一 advisor 和原生工具管理器回调执行：同名 todo 两槽按序、原 provider ID/lease/step/pin/输入和输出；question 暂停直达 QUESTION_PAUSED；todo DataAccessException 直达 TODO_UNCONFIRMED 且无下一模型步骤；session 不确定异常保持同一实例；输入不匹配不消费原槽。使用 paid=false 测试 profile 与冻结模型响应重放、内存账本替身，不进行模型网络请求，**不是实际数据库、HTTP 模型或全量业务验收**。
+新增 5 项风险测试覆盖三项真实advisor＋两项网关直测：前三项通过真实 DurableAgent.run、唯一 advisor 和原生工具管理器回调执行同名 todo 两槽按序、原 provider ID/lease/step/pin/输入和输出，question 暂停直达 QUESTION_PAUSED，以及 todo DataAccessException 直达 TODO_UNCONFIRMED 且无下一模型步骤；后两项直测 session 不确定异常保持同一实例和输入不匹配不消费原槽。使用 paid=false 测试 profile 与冻结模型响应重放、内存账本替身，不进行模型网络请求，**不是实际数据库、HTTP 模型或全量业务验收**。
 
 本机未配置 Linux Java21 与历史 V15/V16 制品，不借用其他开发者的私有 DB/容器。后续在集成私有实例核对必要 paid=false HTTP/真实槽恢复与暂停/提交不确定分支；不重跑无变化历史完整矩阵。
 
