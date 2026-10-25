@@ -1,11 +1,11 @@
 package io.github.lovexiaopeng.jimu.api;
 
+import io.github.lovexiaopeng.jimu.api.task.dto.TaskEventCursor;
+import io.github.lovexiaopeng.jimu.api.task.dto.TaskRequestDecoder;
 import io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.EventFeed;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
-import io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages;
-import io.github.lovexiaopeng.jimu.kernel.task.api.TaskSubmission;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
 import io.github.lovexiaopeng.jimu.kernel.task.service.TaskService;
 import java.io.IOException;
@@ -28,26 +28,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @ConditionalOnExpression(
     "'${jimu.durable.enabled:false}' == 'true' and '${jimu.role}' == 'control'")
 public final class TaskController {
-  public record BudgetRequest(
-      Integer deadlineSeconds,
-      Integer maxModelRequests,
-      Integer maxToolInvocations,
-      Long maxCostMicros) {}
-
-  public record SubmitRequest(
-      String goal,
-      List<String> capabilityIds,
-      List<String> resourceIds,
-      BudgetRequest budget,
-      List<TaskImages.Input> images) {}
-
-  private static final com.fasterxml.jackson.databind.ObjectMapper STRICT =
-      new com.fasterxml.jackson.databind.ObjectMapper()
-          .disable(com.fasterxml.jackson.databind.DeserializationFeature.ACCEPT_FLOAT_AS_INT)
-          .disable(com.fasterxml.jackson.databind.MapperFeature.ALLOW_COERCION_OF_SCALARS)
-          .enable(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
-          .enable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
-
   private final TaskService tasks;
   private final Authenticator authentication;
   private final ArtifactService artifacts;
@@ -68,37 +48,8 @@ public final class TaskController {
       jakarta.servlet.http.HttpServletRequest http)
       throws IOException {
     var identity = authentication.authenticate(authorization);
-    byte[] body = http.getInputStream().readNBytes(6291457);
-    if (body.length > 6291456) throw new TaskFailure(413, "REQUEST_TOO_LARGE");
-    SubmitRequest request;
-    try {
-      request = STRICT.readValue(body, SubmitRequest.class);
-    } catch (com.fasterxml.jackson.core.JsonProcessingException invalid) {
-      boolean image =
-          invalid instanceof com.fasterxml.jackson.databind.JsonMappingException mapping
-              && mapping.getPath().stream()
-                  .anyMatch(reference -> "images".equals(reference.getFieldName()));
-      throw new TaskFailure(400, image ? "INVALID_IMAGE_INPUT" : "INVALID_REQUEST");
-    }
-    var budget = request == null ? null : request.budget();
-    var result =
-        tasks.submit(
-            identity,
-            key,
-            request == null
-                ? null
-                : new TaskSubmission(
-                    request.goal(),
-                    request.capabilityIds(),
-                    request.resourceIds(),
-                    budget == null
-                        ? null
-                        : new TaskSubmission.BudgetInput(
-                            budget.deadlineSeconds(),
-                            budget.maxModelRequests(),
-                            budget.maxToolInvocations(),
-                            budget.maxCostMicros()),
-                    request.images()));
+    var request = TaskRequestDecoder.decode(http.getInputStream());
+    var result = tasks.submit(identity, key, request);
     return ResponseEntity.accepted()
         .location(URI.create("/api/tasks/" + result.taskId()))
         .body(result);
@@ -173,16 +124,7 @@ public final class TaskController {
       @RequestHeader(value = "Last-Event-ID", required = false) String last) {
     var identity = authentication.authenticate(authorization);
     tasks.get(identity, taskId(id));
-    long cursor = 0;
-    if (last != null) {
-      if (!last.matches(java.util.regex.Pattern.quote(id) + ":[1-9][0-9]{0,18}"))
-        throw new TaskFailure(400, "INVALID_CURSOR");
-      try {
-        cursor = Long.parseLong(last.substring(id.length() + 1));
-      } catch (NumberFormatException e) {
-        throw new TaskFailure(400, "INVALID_CURSOR");
-      }
-    }
+    long cursor = TaskEventCursor.parse(id, last);
     SseEmitter emitter = new SseEmitter(30000L);
     var subscription =
         feed.subscribe(
