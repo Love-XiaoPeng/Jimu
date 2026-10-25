@@ -68,6 +68,11 @@ function capture(graph,label) {
  const roots=Object.values(graph).filter(m=>(m.modifiers.includes('public') && (/\/adapters\/persistence\//.test(m.file)||/\/api\/.*Controller.java$/.test(m.file)||/ExecutionScopeOperator/.test(m.file)) || /\/(WorkerLoop|LedgerMaintenance|ZombieReaper).java$/.test(m.file) && /^(tick|run|start)$/.test(name(m.id))) && !/#(Jdbc|<init>)/.test(m.id));
  const entries=roots.map(m=>{const nodes=reachable(m.id),statements=sql.filter(s=>nodes.includes(s.method));return {entry:m.id,file:m.file,line:m.line,entryKind:/\/api\//.test(m.file)?'HTTP_ADAPTER':/\/adapters\/runtime\//.test(m.file)?'RUNTIME_ENTRY':m.id.includes('$')?'NESTED_CALLBACK_OR_VALUE':'PERSISTENCE_PUBLIC_DECLARATION',targetService:owner(m.id),reachable:nodes,sql:statements.map(s=>s.id),transactionNodes:nodes.filter(id=>/#(tx|leaseTx|sessionTransaction|sessionOwnerRead|sessionSearchOwnerRead|required|requiresNew|directoryTransaction)\(/.test(id)),locks:statements.filter(s=>s.lock!=='read').map(s=>s.id),verification:owner(m.id).startsWith('Session')?['V07','V08','V09','V10','V12']:owner(m.id)==='ModelDispatchService'?['V03','V04','V06','V12']:['V03','V05','V06','V10','V12'],state:'TRACKED; MIGRATION_OPEN',notes:'Ordered per-method calls and conditions are in graph; do not flatten alternatives into one claimed lock order.'};});
  const keep=new Set(entries.flatMap(e=>e.reachable));
+ // The baseline nested readiness response constructor was a public declaration in a
+ // Controller file. Retain its actual javac symbol after the pure VO moves out;
+ // this does not create a runtime edge or promote the VO to a SQL entry.
+ for(const method of Object.values(graph))
+   if(method.file==='src/main/java/io/github/lovexiaopeng/jimu/api/readiness/vo/ReadinessResponse.java')keep.add(method.id);
  const graphSubset=Object.fromEntries([...keep].sort().map(id=>[id,graph[id]]));
  return {label,entries,sql,dynamicSql,bindings,graph:graphSubset};
 }

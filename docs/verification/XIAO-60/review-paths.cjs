@@ -91,7 +91,12 @@ function sqlReview(s){
    lockOwner:'Follow entry policy plus ordered method call plan; row mutation locks are inherited from parent transaction, never inferred from this statement alone.',
    mapperCutover:'OPEN',runtimeCoverage:'Mapped at entry/family level; not every source statement was executed in this batch.'};
 }
-const replacements={'io.github.lovexiaopeng.jimu.adapters.persistence.Payloads':'io.github.lovexiaopeng.jimu.adapters.codec.Payloads','io.github.lovexiaopeng.jimu.adapters.persistence.ModelCosts':'io.github.lovexiaopeng.jimu.kernel.budget.domain.ModelCosts'};
+const replacements={
+  'io.github.lovexiaopeng.jimu.adapters.persistence.Payloads':'io.github.lovexiaopeng.jimu.adapters.codec.Payloads',
+  'io.github.lovexiaopeng.jimu.adapters.persistence.ModelCosts':'io.github.lovexiaopeng.jimu.kernel.budget.domain.ModelCosts',
+  'io.github.lovexiaopeng.jimu.api.ReadinessController$ReadinessResponse':'io.github.lovexiaopeng.jimu.api.readiness.vo.ReadinessResponse',
+  'io.github.lovexiaopeng.jimu.api.ReadinessController':'io.github.lovexiaopeng.jimu.api.readiness.controller.ReadinessController'
+};
 const methods=capture.current.graph;
 const movedCallback={
   'io.github.lovexiaopeng.jimu.adapters.persistence.JdbcLedger$1#afterCompletion(int)':'io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction$1#afterCompletion(int)',
