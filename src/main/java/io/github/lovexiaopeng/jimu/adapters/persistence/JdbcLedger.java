@@ -1146,15 +1146,12 @@ public final class JdbcLedger
     todoStorageBudget.requireCapacity(new MapperTodoStorage(this, task), additional);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.execution.service.CommitFenceService
+      commitFenceService =
+          new io.github.lovexiaopeng.jimu.kernel.execution.service.impl.CommitFenceServiceImpl();
+
   void todoCommitFence(Lease lease) {
-    if (db.update(
-            "UPDATE task SET updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND current_attempt_id=? AND worker_id=? AND fence=? AND lease_until>CURRENT_TIMESTAMP(6) AND deadline>CURRENT_TIMESTAMP(6) AND cancel_requested_at IS NULL AND state='RUNNING'",
-            lease.tenant(),
-            lease.taskId(),
-            lease.attemptId(),
-            lease.worker(),
-            lease.fence())
-        != 1) throw new TaskFailure(409, "FENCE_REJECTED");
+    commitFenceService.require(new MapperCommitFence(this, lease));
   }
 
   private void directoryMetadata(Map<String, Object> task, boolean closing) {

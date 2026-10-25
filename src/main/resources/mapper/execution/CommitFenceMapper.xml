@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.CommitFenceMapper">
+  <update id="commitFence">UPDATE task SET updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{task} AND current_attempt_id=#{attempt} AND worker_id=#{worker} AND fence=#{fence} AND lease_until&gt;CURRENT_TIMESTAMP(6) AND deadline&gt;CURRENT_TIMESTAMP(6) AND cancel_requested_at IS NULL AND state='RUNNING'</update>
+</mapper>
