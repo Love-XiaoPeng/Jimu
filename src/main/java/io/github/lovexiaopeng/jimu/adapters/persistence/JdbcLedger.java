@@ -1974,14 +1974,12 @@ public final class JdbcLedger
     event(task, "tool:" + invocation, "tool.completed", null);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionResumeService
+      questionResumption =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl.QuestionResumeServiceImpl();
+
   private void questionResume(Map<String, Object> task, String requestId) {
-    if (db.update(
-            "UPDATE task SET state='RESUME_READY',waiting_question_id=NULL WHERE tenant_id=? AND id=? AND state='WAITING_USER' AND waiting_question_id=?",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            requestId)
-        != 1) throw new TaskFailure(409, "QUESTION_BINDING_MISMATCH");
-    event(task, "question-resume:" + requestId, "task.resumable", null);
+    questionResumption.resume(new MapperQuestionResume(this, task), requestId);
   }
 
   private void continueQuestion(Map<String, Object> task, Map<String, Object> q) {
