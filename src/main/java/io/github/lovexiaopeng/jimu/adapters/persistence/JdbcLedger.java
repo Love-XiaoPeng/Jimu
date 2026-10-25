@@ -135,77 +135,21 @@ public final class JdbcLedger
     sessionEligibility.admission(new MapperSessionEligibility(this, task).admission());
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionAvailabilityService
+      sessionAvailability =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionAvailabilityServiceImpl();
+
   private boolean traceAvailable(Identity identity) {
-    if (!sessionReadEnabled || !sessionSearchEnabled || !sessionTraceEnabled) return false;
-    try {
-      models.requireSessionTrace(models.selected(identity.tenant()));
-      for (var descriptor :
-          List.of(
-              sessions.v3.descriptor(),
-              sessions.searchV3.descriptor(),
-              sessions.trace.descriptor())) {
-        var installed =
-            rows(
-                "SELECT plugin_version,plugin_digest FROM installation WHERE tenant_id=? AND plugin_id=? AND enabled=TRUE",
-                identity.tenant(),
-                descriptor.capability());
-        if (installed.size() != 1
-            || !descriptor.version().equals(s(installed.getFirst(), "plugin_version"))
-            || !descriptor.outputSha256().equals(s(installed.getFirst(), "plugin_digest")))
-          return false;
-      }
-      return true;
-    } catch (TaskFailure rejected) {
-      return false;
-    }
+    return sessionAvailability.trace(new MapperSessionAvailability(this, identity));
   }
 
   private boolean priorAvailable(Identity identity) {
-    if (!sessionReadEnabled || !priorSessionSearchEnabled) return false;
-    try {
-      models.requireSessionSearch(models.selected(identity.tenant()));
-      for (var descriptor :
-          List.of(sessions.v4.descriptor(), sessionScopes.contracts.descriptor())) {
-        var found =
-            rows(
-                "SELECT plugin_version,plugin_digest FROM installation WHERE tenant_id=? AND plugin_id=? AND enabled=TRUE",
-                identity.tenant(),
-                descriptor.capability());
-        if (found.size() != 1
-            || !descriptor.version().equals(s(found.getFirst(), "plugin_version"))
-            || !descriptor.outputSha256().equals(s(found.getFirst(), "plugin_digest")))
-          return false;
-      }
-      return true;
-    } catch (TaskFailure failure) {
-      return false;
-    }
+    return sessionAvailability.prior(new MapperSessionAvailability(this, identity));
   }
 
   private boolean sessionAvailable(Identity identity, boolean search) {
-    if (!search && priorAvailable(identity)) return true;
-    if (!sessionReadEnabled || search && !sessionSearchEnabled) return false;
-    try {
-      if (search) models.requireSessionSearch(models.selected(identity.tenant()));
-      else models.requireSessionRead(models.selected(identity.tenant()));
-      var read =
-          one(
-              "SELECT plugin_version,plugin_digest FROM installation WHERE tenant_id=? AND plugin_id='session_event_read' AND enabled=TRUE",
-              identity.tenant());
-      var descriptor = (search ? sessions.v2 : sessions.contracts).descriptor();
-      if (!descriptor.version().equals(s(read, "plugin_version"))
-          || !descriptor.outputSha256().equals(s(read, "plugin_digest")))
-        return search ? traceAvailable(identity) : sessionAvailable(identity, true);
-      if (!search) return true;
-      var installed =
-          one(
-              "SELECT plugin_version,plugin_digest FROM installation WHERE tenant_id=? AND plugin_id='session_event_search' AND enabled=TRUE",
-              identity.tenant());
-      return sessions.search.descriptor().version().equals(s(installed, "plugin_version"))
-          && sessions.search.descriptor().outputSha256().equals(s(installed, "plugin_digest"));
-    } catch (TaskFailure rejected) {
-      return false;
-    }
+    return sessionAvailability.session(new MapperSessionAvailability(this, identity), search);
   }
 
   private <T> T sessionTransaction(java.util.function.Supplier<T> work) {
