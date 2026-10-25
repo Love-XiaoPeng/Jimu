@@ -2,6 +2,8 @@ package io.github.lovexiaopeng.jimu.api;
 
 import io.github.lovexiaopeng.jimu.api.task.dto.TaskEventCursor;
 import io.github.lovexiaopeng.jimu.api.task.dto.TaskRequestDecoder;
+import io.github.lovexiaopeng.jimu.api.task.vo.ArtifactDownloadResponse;
+import io.github.lovexiaopeng.jimu.api.task.vo.TaskEventResponse;
 import io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.EventFeed;
@@ -10,11 +12,9 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
 import io.github.lovexiaopeng.jimu.kernel.task.service.TaskService;
 import java.io.IOException;
 import java.net.URI;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -90,32 +90,8 @@ public final class TaskController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable String id) {
     var result = artifacts.download(authentication.authenticate(authorization), taskId(id));
-    byte[] bytes = result.bytes();
-    return ResponseEntity.ok()
-        .contentType(MediaType.parseMediaType(result.artifact().mediaType()))
-        .contentLength(bytes.length)
-        .header(
-            HttpHeaders.CONTENT_DISPOSITION,
-            "attachment; filename=\""
-                + result.artifact().artifactId()
-                + (result.artifact().mediaType().equals("text/markdown; charset=utf-8")
-                    ? ".md\""
-                    : ".txt\""))
-        .header("X-Content-Type-Options", "nosniff")
-        .eTag(result.artifact().sha256())
-        .body(bytes);
+    return ArtifactDownloadResponse.from(result);
   }
-
-  public record Envelope(
-      int eventVersion,
-      String eventId,
-      String taskId,
-      long seq,
-      String type,
-      Instant occurredAt,
-      String status,
-      String code,
-      List<String> artifactIds) {}
 
   @GetMapping(value = "/api/tasks/{id}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
   public SseEmitter events(
@@ -137,17 +113,7 @@ public final class TaskController {
                     SseEmitter.event()
                         .id(event.eventId())
                         .name(event.type())
-                        .data(
-                            new Envelope(
-                                1,
-                                event.eventId(),
-                                event.taskId(),
-                                event.seq(),
-                                event.type(),
-                                event.occurredAt(),
-                                event.status(),
-                                event.code(),
-                                event.artifactIds())));
+                        .data(TaskEventResponse.from(event)));
               } catch (IOException e) {
                 throw new IllegalStateException("Subscriber disconnected", e);
               }
