@@ -122,38 +122,17 @@ public final class JdbcLedger
     sessions.sensitive(sensitive);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionEligibilityService
+      sessionEligibility =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionEligibilityServiceImpl();
+
   private void sessionAccess(Map<String, Object> task) {
-    if (!JdbcSessionRecords.task(task)) throw new TaskFailure(409, "SESSION_HISTORY_UNAVAILABLE");
-    sessions.history(task, false);
-    for (String name : caps(task).stream().sorted().toList()) {
-      var descriptor = sessions.descriptor(task, name);
-      var pin = tools(task).pins().get(name);
-      var installed =
-          one(
-              "SELECT * FROM installation WHERE tenant_id=? AND plugin_id=? FOR SHARE",
-              s(task, "tenant_id"),
-              name);
-      if (!pin.version().equals(s(installed, "plugin_version"))
-          || !pin.digest().equals(s(installed, "plugin_digest"))
-          || pin.installationEpoch() != n(installed, "epoch")
-          || !pin.version().equals(descriptor.version())
-          || !pin.digest().equals(descriptor.outputSha256()))
-        throw new TaskFailure(403, "CAPABILITY_REVOKED");
-    }
+    sessionEligibility.access(new MapperSessionEligibility(this, task));
   }
 
   void sessionAdmission(Map<String, Object> task) {
-    if (!sessionReadEnabled) throw new TaskFailure(403, "SESSION_READ_DISABLED");
-    if (JdbcSessionScopes.task(task) && !priorSessionSearchEnabled)
-      throw new TaskFailure(403, "SESSION_SEARCH_DISABLED");
-    if (JdbcSessionRecords.searchTask(task) && !sessionSearchEnabled)
-      throw new TaskFailure(403, "SESSION_SEARCH_DISABLED");
-    if (JdbcSessionRecords.traceTask(task) && !sessionTraceEnabled)
-      throw new TaskFailure(403, "SESSION_TRACE_DISABLED");
-    sessions.history(task, true);
-    if (JdbcSessionRecords.traceTask(task)) models.requireSessionTrace(snapshot(task));
-    else if (JdbcSessionRecords.searchTask(task)) models.requireSessionSearch(snapshot(task));
-    else models.requireSessionRead(snapshot(task));
+    sessionEligibility.admission(new MapperSessionEligibility(this, task).admission());
   }
 
   private boolean traceAvailable(Identity identity) {
