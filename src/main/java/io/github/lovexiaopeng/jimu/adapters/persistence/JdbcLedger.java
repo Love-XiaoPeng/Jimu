@@ -571,29 +571,13 @@ public final class JdbcLedger
     return p;
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.directory.service.DirectoryEligibilityService
+      directoryEligibility =
+          new io.github.lovexiaopeng.jimu.kernel.directory.service.impl
+              .DirectoryEligibilityServiceImpl();
+
   private void directoryAccess(Map<String, Object> task) {
-    if (!new java.util.HashSet<>(caps(task))
-        .equals(java.util.Set.of("working_directory", "read", "write", "edit")))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-    for (String name : caps(task)) {
-      var pin = tools(task).pins().get(name);
-      var installed =
-          one(
-              "SELECT * FROM installation WHERE tenant_id=? AND plugin_id=? FOR SHARE",
-              s(task, "tenant_id"),
-              name);
-      var descriptor =
-          name.equals("working_directory")
-              ? directories.descriptor()
-              : directoryFileContract(name).descriptor();
-      if (!pin.version().equals(descriptor.version())
-          || !pin.digest().equals(descriptor.outputSha256())
-          || !pin.version().equals(s(installed, "plugin_version"))
-          || !pin.digest().equals(s(installed, "plugin_digest"))
-          || pin.installationEpoch() != n(installed, "epoch"))
-        throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
-    }
-    directoryProjection(task);
+    directoryEligibility.access(new MapperDirectoryEligibility(this, task));
   }
 
   io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceContracts.Contract
