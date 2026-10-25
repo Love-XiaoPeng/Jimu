@@ -227,31 +227,25 @@ final class JdbcSessionRecords {
     return proof.historyRow();
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionHistoryStorageService
+      historyStorage =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+              .SessionHistoryStorageServiceImpl();
+
   void create(Map<String, Object> task) {
-    String tenant = s(task, "tenant_id"), id = s(task, "id"), binding = contract(task).binding();
-    contracts.publicText(s(task, "goal"), sensitive());
-    db.update(
-        "INSERT INTO task_session_history(tenant_id,task_id,history_version,binding_snapshot,binding_digest,retain_until) SELECT tenant_id,id,?,?,?,TIMESTAMPADD(SECOND,604800,created_at) FROM task WHERE tenant_id=? AND id=?",
-        version(task),
-        binding,
-        Payloads.hash(binding),
-        tenant,
-        id);
-    body(
-        task,
-        SessionContracts.bytes(s(task, "goal"))
-            + SessionContracts.bytes(s(task, "request_snapshot")));
+    historyStorage.create(new MapperSessionHistoryStorage(this, task));
   }
 
   void body(Map<String, Object> task, long additional) {
-    if (!task(task)) return;
-    if (db.update(
-            "UPDATE task_session_history SET body_bytes=body_bytes+? WHERE tenant_id=? AND task_id=? AND content_state='PRESENT' AND body_bytes+? BETWEEN 0 AND 7340032",
-            additional,
-            s(task, "tenant_id"),
-            s(task, "id"),
-            additional)
-        != 1) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    historyStorage.body(new MapperSessionHistoryStorage(this, task), additional);
+  }
+
+  io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryStorageMapper
+      historyStorageMapper() {
+    return mapperSession()
+        .getMapper(
+            io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper
+                .SessionHistoryStorageMapper.class);
   }
 
   private org.mybatis.spring.SqlSessionTemplate mapperSession() {

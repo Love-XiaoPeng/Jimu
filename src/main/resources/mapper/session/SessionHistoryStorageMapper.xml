@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryStorageMapper">
+  <insert id="create">INSERT INTO task_session_history(tenant_id,task_id,history_version,binding_snapshot,binding_digest,retain_until) SELECT tenant_id,id,#{version},#{binding},#{digest},TIMESTAMPADD(SECOND,604800,created_at) FROM task WHERE tenant_id=#{tenant} AND id=#{taskId}</insert>
+  <update id="body">UPDATE task_session_history SET body_bytes=body_bytes+#{additional} WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND content_state='PRESENT' AND body_bytes+#{additional} BETWEEN 0 AND 7340032</update>
+</mapper>
