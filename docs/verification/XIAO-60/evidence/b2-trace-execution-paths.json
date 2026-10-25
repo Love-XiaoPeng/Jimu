@@ -1,0 +1,52 @@
+{
+  "base": "4cf3e8d1c4a52a26987eeff932b0d691464ac5e1",
+  "inventory": {
+    "static": 190,
+    "dynamicScannerItems": 25,
+    "literalBinds": 629
+  },
+  "removedStaticJdbc": 3,
+  "unchanged": [
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sha256": "d713918eb5e16e78e52bf2e3170bf35beb2f123f85b96d8d3c24e3e6966c262f"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionTraces.java",
+      "sha256": "509533050ca1d5bb5f36b6ff044bf960b166b9988297cd289d1fd225772bcdaf"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionTraceContracts.java",
+      "sha256": "a4e1353a37443e1d8d33b4397662c4e646912d1f39aa874333cc9d7e4b707add"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionTraceServiceImpl.java",
+      "sha256": "c3329cc97f812b84eb3ebb7405fd0a908c599fc2d23493118e64c120d8282a7a"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionNativeSearchExecution.java",
+      "sha256": "5bbccb3e4397c7dda364d726e0390f58efc98f593d2f1ecb83a56e58b626da43"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionNativeSearchExecutionServiceImpl.java",
+      "sha256": "caf23164d0b38c63c16b95cd1faa15ecfa4e3de56fb6b409f50bddce9ee5df6b"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionReadRelationProofs.java",
+      "sha256": "f0139c255845c2cf64dbf856a5cc90119115af1116ee9b6f0028c2883ac06f18"
+    }
+  ],
+  "unchangedResources": 409,
+  "entries": [
+    "MapperSessionTraces.Record.trace -> JdbcSessionRecords.trace -> SessionNativeTraceExecutionService -> typed adapter -> existing bounded parameterized native scan and real MP target/receipt reads",
+    "JdbcLedger.sessionTrace -> original owner/history/input/deadline -> same execution Service"
+  ],
+  "preserved": [
+    "history -> available ->404 -> upper/next -> probe -> trace budget",
+    "deadline -> seq -> snapshot bytes/2MiB -> verify -> original Map.of scan/target -> read relations",
+    "receipt20/edges180/source before current+within records/derived20; original two operation counters1048576",
+    "summary2048/prefix/field/source/derived order; output validation then final deadline",
+    "original Map.of scan/relations original raw digest,8MiB budget/scratch class unchanged;finally clear"
+  ],
+  "limits": "B2 partial; independent afterCompletion, whole task/DB rollback, cold/full locks/core final-beforeCommit/FAILED read and historical503/dispatch/read original slot failures OPEN. Developer audit only."
+}

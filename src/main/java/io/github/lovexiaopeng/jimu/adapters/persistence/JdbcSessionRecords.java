@@ -9,7 +9,6 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionEventPort;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -713,116 +712,42 @@ final class JdbcSessionRecords {
       int eventBytes,
       int edges) {}
 
+  io.github.lovexiaopeng.jimu.kernel.session.port.SessionNativeTraceExecution.Budget
+      nativeTraceBudget(Runnable deadline) {
+    var budget = new SearchBudget(deadline, true);
+    searchBudget = budget;
+    return new io.github.lovexiaopeng.jimu.kernel.session.port.SessionNativeTraceExecution
+        .Budget() {
+      public void operation(long amount) {
+        budget.operation(amount);
+      }
+
+      public void close() {
+        searchBudget = null;
+      }
+    };
+  }
+
   Trace trace(
       Map<String, Object> task,
       io.github.lovexiaopeng.jimu.plugin.api.SessionEventTracePort.Input input,
       long upper,
       String boundary,
       Runnable deadline) {
-    var h = history(task, true);
-    if (!traceTask(task)) throw new TaskFailure(409, "SESSION_TRACE_UNAVAILABLE");
-    if (input.sessionId() != null && !input.sessionId().equals(s(task, "id"))
-        || input.seq() > upper) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
-    if (upper < 0 || upper >= 128 || n(h, "next_seq") > 128 || upper >= n(h, "next_seq"))
-      throw corrupt();
-    if (rows(
-            "SELECT seq FROM session_public_event WHERE tenant_id=? AND task_id=? AND seq=?",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            input.seq())
-        .isEmpty()) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
-    var budget = new SearchBudget(deadline, true);
-    searchBudget = budget;
-    try {
-      var records =
-          rows(
-              "SELECT * FROM session_public_event FORCE INDEX (PRIMARY) WHERE tenant_id=? AND task_id=? AND seq BETWEEN 0 AND ? ORDER BY seq LIMIT 128",
-              s(task, "tenant_id"),
-              s(task, "id"),
-              upper);
-      if (records.size() != upper + 1) throw corrupt();
-      var scanned = new ArrayList<Map<String, Object>>();
-      var relations = new ArrayList<Map<String, Object>>();
-      var derived = new ArrayList<Long>();
-      JsonNode target = null;
-      String targetDigest = null;
-      int eventBytes = 0, edges = 0, receipts = 0;
-      long operations = 0;
-      for (int index = 0; index < records.size(); index++) {
-        deadline.run();
-        var r = records.get(index);
-        if (n(r, "seq") != index) throw corrupt();
-        eventBytes += SessionContracts.bytes(s(r, "event_snapshot"));
-        if (eventBytes > 2097152) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-        var value = verify(task, r);
-        scanned.add(Map.of("seq", index, "event_sha256", s(r, "event_digest")));
-        if (index == input.seq()) {
-          target = value;
-          targetDigest = s(r, "event_digest");
-        }
-        if ("session.read".equals(s(r, "type"))) {
-          var b =
-              one(
-                  "SELECT read_sources_digest,outcome FROM invocation_session_read WHERE tenant_id=? AND task_id=? AND invocation_id=?",
-                  s(task, "tenant_id"),
-                  s(task, "id"),
-                  s(r, "source_invocation_id"));
-          relations.add(Map.of("seq", index, "read_sources_sha256", s(b, "read_sources_digest")));
-          if ("SUCCEEDED".equals(s(b, "outcome")) && ++receipts > 20)
-            throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-          for (var source : value.path("source_event_seqs")) {
-            operations++;
-            if (++edges > 180) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-            long seq = source.asLong();
-            if (seq < 0 || seq >= index || seq >= records.size()) throw corrupt();
-            if (seq == input.seq()) derived.add((long) index);
-          }
-        }
-        operations += 32L + s(r, "event_snapshot").length();
-        budget.operation(
-            32L + s(r, "event_snapshot").length() + value.path("source_event_seqs").size());
-        if (operations > 1048576) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-      }
-      if (target == null) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
-      if (derived.size() > 20) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-      var summary = new LinkedHashMap<String, Object>();
-      for (String key : List.of("seq", "type", "time", "source", "redacted"))
-        summary.put(key, target.get(key));
-      String text = target.path("data").path("content").asText(""),
-          prefix = SessionContracts.prefix(text);
-      summary.put("text", prefix);
-      summary.put("summary_truncated", !text.equals(prefix));
-      summary.put("event_sha256", targetDigest);
-      if (SessionContracts.bytes(Payloads.json(summary)) > 2048)
-        throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-      var output = new LinkedHashMap<String, Object>();
-      output.put("version", 1);
-      output.put("session_id", s(task, "id"));
-      output.put("history_version", 3);
-      output.put("content_policy", "public-v1");
-      output.put("boundary", boundary);
-      output.put("upper_seq", upper);
-      output.put(
-          "relation_policy",
-          io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTraceContracts.POLICY);
-      output.put("replacement_policy", "unsupported");
-      output.put("target", summary);
-      output.put("source_event_seqs", target.path("source_event_seqs"));
-      output.put("derived_event_seqs", derived);
-      String raw = Payloads.json(output);
-      trace.output(raw);
-      deadline.run();
-      return new Trace(
-          raw,
-          Payloads.hash(Payloads.json(scanned)),
-          Payloads.hash(Payloads.json(relations)),
-          targetDigest,
-          records.size(),
-          eventBytes,
-          edges);
-    } finally {
-      searchBudget = null;
-    }
+    var result =
+        new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+                .SessionNativeTraceExecutionServiceImpl()
+            .trace(
+                new MapperSessionNativeTraceExecution(
+                    this, task, input, upper, boundary, deadline));
+    return new Trace(
+        result.output(),
+        result.scanDigest(),
+        result.relationsDigest(),
+        result.targetDigest(),
+        result.rows(),
+        result.eventBytes(),
+        result.edges());
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionReceiptService receipts =
