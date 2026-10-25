@@ -1565,18 +1565,13 @@ public final class JdbcLedger
         .toInstant(java.time.ZoneOffset.UTC);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionVisibilityService
+      questionVisibility =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl
+              .QuestionVisibilityServiceImpl();
+
   private Map<String, Object> questionVisible(Identity identity, String taskId) {
-    identity(identity);
-    var found =
-        rows(
-            "SELECT id FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=?",
-            identity.tenant(),
-            taskId,
-            identity.actor());
-    if (found.isEmpty()) throw new TaskFailure(404, "TASK_NOT_FOUND");
-    var task = locked(identity.tenant(), taskId);
-    access(task);
-    return task;
+    return questionVisibility.visible(new MapperQuestionVisibility(this, identity, taskId));
   }
 
   @Override
