@@ -129,7 +129,7 @@ final class JdbcSessionRecords {
   }
 
   private List<String> sensitive;
-  private static final DateTimeFormatter UTC =
+  static final DateTimeFormatter UTC =
       DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
   private static final List<String> TABLES =
       List.of(
@@ -248,7 +248,7 @@ final class JdbcSessionRecords {
                 .SessionHistoryStorageMapper.class);
   }
 
-  private org.mybatis.spring.SqlSessionTemplate mapperSession() {
+  org.mybatis.spring.SqlSessionTemplate mapperSession() {
     if (mapperSession == null)
       mapperSession =
           io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure.LedgerMapperSessions
@@ -364,52 +364,17 @@ final class JdbcSessionRecords {
             this, task, fact, type, source, data, redacted, sourceDigest, lease, reliable));
   }
 
+  final io.github.lovexiaopeng.jimu.kernel.session.service.SessionHistoryViewService historyViews =
+      new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionHistoryViewServiceImpl();
+
+  io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.MeterScope recentMeter() {
+    return query == null ? null : query.meter(searchBudget);
+  }
+
   List<Map<String, Object>> recent(Map<String, Object> task, long upper) {
-    var wrapper =
-        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
-                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
-                    .ScopeQueryNativeEntity>()
-            .select(
-                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
-                        .ScopeQueryNativeEntity
-                    ::getSeq,
-                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
-                        .ScopeQueryNativeEntity
-                    ::getType)
-            .eq(
-                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
-                        .ScopeQueryNativeEntity
-                    ::getTenantId,
-                s(task, "tenant_id"))
-            .eq(
-                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
-                        .ScopeQueryNativeEntity
-                    ::getTaskId,
-                s(task, "id"))
-            .between(
-                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
-                        .ScopeQueryNativeEntity
-                    ::getSeq,
-                Math.max(0, upper - 7),
-                upper)
-            .orderByAsc(
-                io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
-                        .ScopeQueryNativeEntity
-                    ::getSeq)
-            .last("LIMIT 8");
-    var args = new java.util.HashMap<String, Object>();
-    args.put("query", query);
-    args.put("ew", wrapper);
-    List<Map<String, Object>> result;
-    try (var ignored = query == null ? null : query.meter(searchBudget)) {
-      result =
-          mapperSession()
-              .selectList(
-                  "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryNativeReadMapper.selectMaps",
-                  args);
-    }
-    if (result.size() != Math.min(8, upper + 1)) throw corrupt();
-    return result;
+    return ((MapperSessionRecentEvents.Result)
+            historyViews.recent(new MapperSessionRecentEvents(this, task), upper))
+        .values();
   }
 
   String context(Map<String, Object> task) {
@@ -463,27 +428,7 @@ final class JdbcSessionRecords {
   }
 
   String metadataView(Map<String, Object> task) {
-    var h = history(task, false);
-    long upper = n(h, "next_seq") - 1;
-    boolean readable = "PRESENT".equals(s(h, "content_state")) && n(h, "retained") == 1;
-    var value = new LinkedHashMap<String, Object>();
-    value.put("version", version(task));
-    value.put("session_id", s(task, "id"));
-    value.put("content_state", s(h, "content_state"));
-    value.put("upper_seq", upper);
-    value.put("recent", readable ? recent(task, upper) : List.of());
-    value.put("user_message_seq", 0);
-    value.put("as_of_sse_seq", n(task, "next_event_seq"));
-    value.put("retain_until", UTC.format((LocalDateTime) h.get("retain_until")));
-    value.put("readable", readable);
-    if (JdbcSessionScopes.task(task)) {
-      var scope = scopes.require(task);
-      value.put("scope_sha256", s(scope.row(), "authority_digest"));
-      value.put("scope_state", s(scope.row(), "grant_state"));
-    }
-    String raw = Payloads.json(value);
-    contract(task).owner(raw);
-    return raw;
+    return historyViews.metadata(new MapperSessionHistoryViews(this, task));
   }
 
   record Read(

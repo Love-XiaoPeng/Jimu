@@ -372,7 +372,7 @@ public final class JdbcLedger
     return sessionContexts.context(lease);
   }
 
-  private Map<String, Object> sessionOwner(Identity identity, String taskId) {
+  Map<String, Object> sessionOwner(Identity identity, String taskId) {
     if (!taskId.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))
       throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
     // Same lock order as worker commits: bucket -> task -> actor/installation -> history.
@@ -410,7 +410,7 @@ public final class JdbcLedger
   public String sessionHistory(Identity identity, String taskId) {
     if (query == null)
       return queryView(System.nanoTime() + 2_000_000_000L, null).sessionHistory(identity, taskId);
-    return sessionOwnerRead(() -> sessions.metadataView(sessionOwner(identity, taskId)));
+    return sessions.historyViews.owner(MapperSessionHistoryViews.owner(this, identity, taskId));
   }
 
   @Override
