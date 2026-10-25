@@ -1122,23 +1122,12 @@ public final class JdbcLedger
     return caps(task).contains("todo_write");
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.todo.service.TodoProjectionService
+      todoProjections =
+          new io.github.lovexiaopeng.jimu.kernel.todo.service.impl.TodoProjectionServiceImpl();
+
   Map<String, Object> todoProjection(Map<String, Object> task) {
-    var p =
-        one(
-            "SELECT * FROM task_todo_projection WHERE tenant_id=? AND task_id=?",
-            s(task, "tenant_id"),
-            s(task, "id"));
-    if (n(p, "record_version") != 1 || n(p, "todo_version") != 1)
-      throw new TaskFailure(409, "TODO_BINDING_UNSUPPORTED");
-    if (!Payloads.hash(s(p, "binding_snapshot")).equals(s(p, "binding_digest")))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-    var binding =
-        Payloads.read(s(p, "binding_snapshot"), com.fasterxml.jackson.databind.JsonNode.class);
-    if (binding.path("version").asInt() != 1 || binding.path("todoVersion").asInt() != 1)
-      throw new TaskFailure(409, "TODO_BINDING_UNSUPPORTED");
-    if (!todos.binding().equals(s(p, "binding_snapshot")))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-    return p;
+    return todoProjections.projection(new MapperTodoProjections(this, task)).values();
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.todo.service.TodoEligibilityService
