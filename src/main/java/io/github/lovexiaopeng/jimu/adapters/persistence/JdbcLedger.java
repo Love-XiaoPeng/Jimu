@@ -2475,15 +2475,14 @@ public final class JdbcLedger
     sessions.account(task, false);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.artifact.service.ImageAvailabilityService
+      imageAvailability =
+          new io.github.lovexiaopeng.jimu.kernel.artifact.service.impl
+              .ImageAvailabilityServiceImpl();
+
   boolean imagesAvailable() {
-    if (imageStore == null) return false;
-    try {
-      imageStore.check();
-      io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageNormalizer.available();
-      return true;
-    } catch (io.github.lovexiaopeng.jimu.plugin.api.FileFailure unavailable) {
-      return false;
-    }
+    return imageAvailability.available(
+        new LedgerImageAvailability(() -> imageStore != null, () -> imageStore.check()));
   }
 
   public void nativeSearchAvailability(java.util.function.BooleanSupplier availability) {
