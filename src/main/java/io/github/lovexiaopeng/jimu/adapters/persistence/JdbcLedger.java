@@ -2014,30 +2014,26 @@ public final class JdbcLedger
     return leaseTx(lease, () -> questionMessages(fenced(lease, true)).values().stream().toList());
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionMessagesService
+      pendingQuestionReplies =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl
+              .QuestionMessagesServiceImpl();
+
   Map<String, String> questionMessages(Map<String, Object> task) {
-    var result = new java.util.LinkedHashMap<String, String>();
-    if (!questionTask(task)) return result;
-    for (var q :
-        rows(
-            "SELECT q.*,i.provider_id FROM user_question q JOIN invocation i ON i.tenant_id=q.tenant_id AND i.id=q.invocation_id WHERE q.tenant_id=? AND q.task_id=? AND q.delivery_state='PENDING' ORDER BY q.accepted_seq",
-            s(task, "tenant_id"),
-            s(task, "id"))) {
-      if (!Payloads.hash(s(q, "answer_snapshot")).equals(s(q, "answer_digest")))
-        throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-      result.put(
-          s(q, "id"),
-          Payloads.json(
-              new LateQuestionReply(
-                  1,
-                  "answer_to_pending_question",
-                  "ask_user_question",
-                  s(q, "id"),
-                  s(q, "provider_id"),
-                  questionInput(q, task).questions(),
-                  Payloads.read(
-                      s(q, "answer_snapshot"), com.fasterxml.jackson.databind.JsonNode.class))));
-    }
-    return result;
+    return pendingQuestionReplies.messages(
+        new MapperQuestionMessages(this, task, q -> questionInput(q, task).questions()));
+  }
+
+  String encodeQuestionReply(
+      int version,
+      String kind,
+      String tool,
+      String requestId,
+      String callId,
+      java.util.List<io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.Question> questions,
+      com.fasterxml.jackson.databind.JsonNode answers) {
+    return Payloads.json(
+        new LateQuestionReply(version, kind, tool, requestId, callId, questions, answers));
   }
 
   @Override

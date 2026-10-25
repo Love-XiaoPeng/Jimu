@@ -54,6 +54,14 @@ class PersistencePathTrackingTest {
         assertEquals(
             "SELECT * FROM installation WHERE tenant_id=#{tenant} AND plugin_id=#{plugin} FOR SHARE",
             mapper.path("sql").asText());
+      else if (mapper
+          .path("id")
+          .asText()
+          .equals(
+              "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionMessagesMapper.pending"))
+        assertEquals(
+            "SELECT q.*,i.provider_id FROM user_question q JOIN invocation i ON i.tenant_id=q.tenant_id AND i.id=q.invocation_id WHERE q.tenant_id=#{tenant} AND q.task_id=#{task} AND q.delivery_state='PENDING' ORDER BY q.accepted_seq",
+            mapper.path("sql").asText());
       else assertTrue(!mapper.path("sql").asText().matches("(?is).*SELECT\\s+(?:\\w+\\.)?\\*.*"));
     }
     for (var entry : capture.path("baseline").path("entries")) {
