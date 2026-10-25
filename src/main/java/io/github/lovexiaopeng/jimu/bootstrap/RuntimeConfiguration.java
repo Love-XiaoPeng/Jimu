@@ -7,10 +7,10 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.health.HttpResourceProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.web.ConfiguredOriginReader;
 import io.github.lovexiaopeng.jimu.adapters.runtime.web.FetchRuntime;
 import io.github.lovexiaopeng.jimu.kernel.plugin.api.PluginCatalog;
-import io.github.lovexiaopeng.jimu.kernel.plugin.application.PluginRegistry;
+import io.github.lovexiaopeng.jimu.kernel.plugin.service.impl.PluginCatalogServiceImpl;
 import io.github.lovexiaopeng.jimu.kernel.readiness.api.Readiness;
-import io.github.lovexiaopeng.jimu.kernel.readiness.application.ReadinessService;
 import io.github.lovexiaopeng.jimu.kernel.readiness.port.ResourceProbe;
+import io.github.lovexiaopeng.jimu.kernel.readiness.service.impl.ReadinessServiceImpl;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.WebFetchPlugin;
 import java.io.IOException;
@@ -61,7 +61,7 @@ public class RuntimeConfiguration {
                 .descriptor());
       }
     }
-    return new PluginRegistry(descriptors);
+    return new PluginCatalogServiceImpl(descriptors);
   }
 
   @Bean(destroyMethod = "close")
@@ -85,7 +85,7 @@ public class RuntimeConfiguration {
 
   @Bean
   Readiness readiness(Environment environment, PluginCatalog catalog, ResourceProbe probe) {
-    return new ReadinessService(environment.getRequiredProperty("jimu.role"), catalog, probe);
+    return new ReadinessServiceImpl(environment.getRequiredProperty("jimu.role"), catalog, probe);
   }
 
   @Bean(destroyMethod = "close")

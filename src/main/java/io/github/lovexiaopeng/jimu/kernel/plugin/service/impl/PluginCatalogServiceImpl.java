@@ -1,15 +1,15 @@
-package io.github.lovexiaopeng.jimu.kernel.plugin.application;
+package io.github.lovexiaopeng.jimu.kernel.plugin.service.impl;
 
 import io.github.lovexiaopeng.jimu.kernel.plugin.api.PluginCatalog;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
 import java.util.HashSet;
 import java.util.List;
 
-/** Immutable discovery set. Different versions belong in distinct task discovery sets. */
-public final class PluginRegistry implements PluginCatalog {
+/** 保留发现顺序的不可变目录；拒绝重复标识和能力，不同版本应属于不同任务发现集。 */
+public final class PluginCatalogServiceImpl implements PluginCatalog {
   private final List<ToolDescriptor> descriptors;
 
-  public PluginRegistry(List<ToolDescriptor> descriptors) {
+  public PluginCatalogServiceImpl(List<ToolDescriptor> descriptors) {
     var identities = new HashSet<String>();
     var capabilities = new HashSet<String>();
     for (ToolDescriptor descriptor : descriptors) {
