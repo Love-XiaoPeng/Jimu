@@ -1,0 +1,72 @@
+{
+  "base": "2efa699ebe025f9e47862b13cb39e8f7fe228584",
+  "inventory": {
+    "static": 182,
+    "dynamicScannerItems": 26,
+    "literalBinds": 587
+  },
+  "removedStaticJdbc": 0,
+  "unchanged": [
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "sha256": "d713918eb5e16e78e52bf2e3170bf35beb2f123f85b96d8d3c24e3e6966c262f"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionRecords.java",
+      "sha256": "e61bdf0fa3beae29192d7ad9d0e1a32d809bc288604a7396892dcebb29e45a3a"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "sha256": "ee5dd85dda1a799c4ebf049c4843358ba00fb8e92b418e2ea0d2361574bcccf8"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTaskAdmissions.java",
+      "sha256": "d28d5a220d462ab86e672e505532f50092ccbeb4ca901023531eb00ffb92bf39"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperModelWorkflows.java",
+      "sha256": "02de9666c7d2f87501adacf545e6cd91fe4174e562b7928963376b010825844b"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionCallBindings.java",
+      "sha256": "e78619287f658918ce882047f8c5e54e571d72a85fb8457f37479a0b7d61a9c6"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionEventAppend.java",
+      "sha256": "20986ca2780ce1f5dbd2d427c00894082053de0b8c00cab21a6f092b451e8691"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionHistoryStorage.java",
+      "sha256": "09292204930a6f74c5f3b78519466297935c55ce1c4b31f035bb26e613e9d3e9"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionReads.java",
+      "sha256": "4858e158318417179545d2af612344173b7af539085459052f139c9289c4668c"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeQueries.java",
+      "sha256": "ac1b22517184b2b2a4445c5aae2124903697f016238cd732ecc607f8f47db8b9"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionSearches.java",
+      "sha256": "e24c99cf43feab7a044eca7d26cdabd76e0471aaa2d3be4a6a8f29a5e0ea8044"
+    },
+    {
+      "path": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionTraces.java",
+      "sha256": "509533050ca1d5bb5f36b6ff044bf960b166b9988297cd289d1fd225772bcdaf"
+    }
+  ],
+  "unchangedModelDispatchService": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/service/impl/ModelDispatchServiceImpl.java",
+  "unchangedResources": 413,
+  "entries": [
+    "JdbcLedger.modelResponded -> ModelDispatchServiceImpl.responded -> MapperModelWorkflows.lockResponse/validatePayload -> JdbcSessionRecords.response -> SessionResponseServiceImpl -> StoredSessionResponsePreflight -> original metadata/input/projection/contract ports",
+    "Original success storeResponse/token settlement/qualifications/slot inserts/bindCalls/responded/sessionFact/account and known TaskFailure settlement + recorded rejection + outside-inner-transaction outcome error unchanged"
+  ],
+  "preserved": [
+    "metadata2048L+calls*4096L before bytes16384/calls4 and codec; version2/count corrupt short circuit",
+    "per-item actual Call then lazy wire id/id/name/arguments; equals then function then read/scope/search/trace qualification; callId before validateInput; outside second validateInput unchanged",
+    "publicText -> LinkedHashMap version/session/seq127/type/time/source/content_policy -> original projection -> redacted OR -> original Map.of content/calls -> trace then scope empty source fields -> original event validation",
+    "original codec/NULL/exceptions, frozen types/bytes/digests, query and same DS/UoW, no new SQL/transaction/dual write"
+  ],
+  "limits": "Developer audit only. B2 partial. Actual response outer rollback is not persistent rejection/read/full-task acceptance. Separate preflight warmup does not close cold lock or historical failures. Scope full successful read/independent afterCompletion/core final beforeCommit remain OPEN."
+}

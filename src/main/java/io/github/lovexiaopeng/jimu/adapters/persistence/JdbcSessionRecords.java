@@ -451,48 +451,15 @@ final class JdbcSessionRecords {
     historyProofs.validateStep(new MapperSessionHistoryProofs(this, task, st));
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionResponseService
+      responsePreflight =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionResponseServiceImpl();
+
   void response(
       Map<String, Object> task,
       String response,
       List<io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call> calls) {
-    // Include future slot bindings/reservations/receipts before M2 accepts a response. A capacity
-    // rejection is caught by M2's known-usage settlement path, rather than rolling it back later.
-    metadata(task, false, 2048L + calls.size() * 4096L);
-    if (SessionContracts.bytes(response) > 16384 || calls.size() > 4)
-      throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-    var parsed = Payloads.read(response, DurableAgent.Response.class);
-    if (parsed.version() != 2 || parsed.calls().size() != calls.size()) throw corrupt();
-    for (int index = 0; index < calls.size(); index++) {
-      var call = calls.get(index);
-      var wire = parsed.calls().get(index);
-      if (!new io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call(
-                  index + ":" + wire.id(), wire.id(), wire.name(), wire.arguments())
-              .equals(call)
-          || !"function".equals(wire.type())
-          || !(SessionContracts.NAME.equals(call.tool())
-              || JdbcSessionScopes.task(task) && call.tool().equals("session_search")
-              || searchTask(task) && call.tool().equals("session_event_search")
-              || traceTask(task) && call.tool().equals("session_event_trace")))
-        throw new TaskFailure(400, "TOOL_INPUT_INVALID");
-      contracts.callId(call.providerId(), sensitive());
-      validateInput(task, call);
-    }
-    // Validate the complete projected event before admitting any response or tool slots.
-    var text = contracts.publicText(parsed.content(), sensitive());
-    var preview = new LinkedHashMap<String, Object>();
-    preview.put("version", version(task));
-    preview.put("session_id", s(task, "id"));
-    preview.put("seq", 127);
-    preview.put("type", "model.response");
-    preview.put("time", "2026-10-23T00:00:00.000000Z");
-    preview.put("source", source("model", "00000000-0000-4000-8000-000000000000", null));
-    preview.put("content_policy", "public-v1");
-    var projected = projectedCalls(task, parsed.calls());
-    preview.put("redacted", text.redacted() || projected.redacted());
-    preview.put("data", Map.of("content", text.content(), "calls", projected.calls()));
-    if (traceTask(task)) preview.put("source_event_seqs", List.of());
-    if (JdbcSessionScopes.task(task)) preview.put("source_event_refs", List.of());
-    contract(task).event(Payloads.json(preview));
+    responsePreflight.validate(new StoredSessionResponsePreflight(this, task), response, calls);
   }
 
   String metadataView(Map<String, Object> task) {
