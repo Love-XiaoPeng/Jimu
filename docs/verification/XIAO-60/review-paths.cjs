@@ -92,6 +92,10 @@ function sqlReview(s){
    mapperCutover:'OPEN',runtimeCoverage:'Mapped at entry/family level; not every source statement was executed in this batch.'};
 }
 const replacements={
+  'io.github.lovexiaopeng.jimu.api.TaskController$BudgetRequest':'io.github.lovexiaopeng.jimu.api.task.dto.BudgetRequest',
+  'io.github.lovexiaopeng.jimu.api.TaskController$SubmitRequest':'io.github.lovexiaopeng.jimu.api.task.dto.SubmitRequest',
+  'io.github.lovexiaopeng.jimu.api.TaskController.BudgetRequest':'io.github.lovexiaopeng.jimu.api.task.dto.BudgetRequest',
+  'io.github.lovexiaopeng.jimu.api.TaskController$Envelope#Envelope':'io.github.lovexiaopeng.jimu.api.task.vo.TaskEventResponse#TaskEventResponse',
   'io.github.lovexiaopeng.jimu.adapters.persistence.Payloads':'io.github.lovexiaopeng.jimu.adapters.codec.Payloads',
   'io.github.lovexiaopeng.jimu.adapters.persistence.ModelCosts':'io.github.lovexiaopeng.jimu.kernel.budget.domain.ModelCosts',
   'io.github.lovexiaopeng.jimu.api.ReadinessController$ReadinessResponse':'io.github.lovexiaopeng.jimu.api.readiness.vo.ReadinessResponse',
