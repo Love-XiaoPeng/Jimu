@@ -1,6 +1,30 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.artifact.mapper.ArtifactMapper">
+  <select id="selectTaskArtifacts" resultType="map">
+    SELECT tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,snapshot_key,sha256,size,media_type,created_at,updated_at,expires_at,record_version,file_receipt,receipt_digest FROM artifact WHERE tenant_id=#{tenant} AND task_id=#{task}
+  </select>
+  <select id="selectLastSucceededInvocation" resultType="map">
+    SELECT id FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{task} AND state='SUCCEEDED' ORDER BY ordinal DESC LIMIT 1
+  </select>
+  <insert id="insertStaging">
+    INSERT INTO artifact(tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,sha256,size) VALUES(#{tenant},#{artifact},#{task},#{producer},#{upload},#{fence},'STAGING',#{hash},#{size})
+  </insert>
+  <update id="holdStorage">
+    UPDATE tenant_budget SET storage_held=storage_held+#{size} WHERE tenant_id=#{tenant}
+  </update>
+  <update id="markVerified">
+    UPDATE artifact SET state='VERIFIED',snapshot_key=#{key},production_fence=#{fence},updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{artifact} AND task_id=#{task} AND state='STAGING'
+  </update>
+  <select id="selectTaskArtifact" resultType="map">
+    SELECT tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,snapshot_key,sha256,size,media_type,created_at,updated_at,expires_at,record_version,file_receipt,receipt_digest FROM artifact WHERE tenant_id=#{tenant} AND id=#{artifact} AND task_id=#{task}
+  </select>
+  <update id="markPublished">
+    UPDATE artifact SET state='PUBLISHED',production_fence=#{fence},updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{artifact}
+  </update>
+  <update id="settleStorage">
+    UPDATE reservation SET state='SETTLED',actual=amount WHERE tenant_id=#{tenant} AND id=#{artifact}
+  </update>
   <select id="selectOwnedRetained" resultType="map">
     <![CDATA[SELECT a.tenant_id,a.id,a.task_id,a.producer_invocation,a.upload_id,a.production_fence,a.state,a.snapshot_key,a.sha256,a.size,a.media_type,a.created_at,a.updated_at,a.expires_at,a.record_version,a.file_receipt,a.receipt_digest FROM artifact a JOIN task t ON a.tenant_id=t.tenant_id AND a.task_id=t.id WHERE a.tenant_id=#{tenant} AND a.id=#{artifactId} AND t.owner_actor_id=#{actor} AND a.state IN ('PUBLISHED','EXPIRED')]]>
   </select>

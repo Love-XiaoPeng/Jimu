@@ -4388,103 +4388,24 @@ public final class JdbcLedger
     invocationService.failed(lease, invocationId, code);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactPublicationService
+      artifactPublications =
+          new io.github.lovexiaopeng.jimu.kernel.artifact.service.impl
+              .ArtifactPublicationServiceImpl(new MapperArtifactPublications(this));
+
   @Override
   public Upload stage(Lease lease, String hash, long size) {
-    return leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, true);
-          if (publicReport(task)) throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
-          var budget = bucket(lease.tenant());
-          var existing =
-              rows(
-                  "SELECT * FROM artifact WHERE tenant_id=? AND task_id=?",
-                  lease.tenant(),
-                  lease.taskId());
-          if (!existing.isEmpty()) {
-            var a = existing.getFirst();
-            if (!hash.equals(s(a, "sha256")) || size != n(a, "size"))
-              throw new TaskFailure(409, "ARTIFACT_MISMATCH");
-            return new Upload(
-                s(a, "id"), s(a, "upload_id"), s(a, "state"), hash, size, s(a, "snapshot_key"));
-          }
-          String producer =
-              s(
-                  one(
-                      "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND state='SUCCEEDED' ORDER BY ordinal DESC LIMIT 1",
-                      lease.tenant(),
-                      lease.taskId()),
-                  "id");
-          if (size > 1048576 || storageHeld(budget) + size > n(budget, "storage_limit"))
-            throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
-          String artifact = id(), upload = id();
-          db.update(
-              "INSERT INTO artifact(tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,sha256,size) VALUES(?,?,?,?,?,?,'STAGING',?,?)",
-              lease.tenant(),
-              artifact,
-              lease.taskId(),
-              producer,
-              upload,
-              lease.fence(),
-              hash,
-              size);
-          db.update(
-              "UPDATE tenant_budget SET storage_held=storage_held+? WHERE tenant_id=?",
-              size,
-              lease.tenant());
-          reserve(
-              lease.tenant(), lease.taskId(), artifact, null, "STORAGE", size, "RESERVED", "KNOWN");
-          event(task, "staging:" + artifact, "artifact.staging", null);
-          return new Upload(artifact, upload, "STAGING", hash, size, null);
-        });
+    return artifactPublications.stage(lease, hash, size);
   }
 
   @Override
   public void verified(Lease lease, String artifactId, String key) {
-    leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, true);
-          db.update(
-              "UPDATE artifact SET state='VERIFIED',snapshot_key=?,production_fence=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=? AND task_id=? AND state='STAGING'",
-              key,
-              lease.fence(),
-              lease.tenant(),
-              artifactId,
-              lease.taskId());
-          event(task, "verified:" + artifactId, "artifact.verified", null);
-          return null;
-        });
+    artifactPublications.verified(lease, artifactId, key);
   }
 
   @Override
   public void publish(Lease lease, String artifactId) {
-    leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, true);
-          if (publicReport(task)) throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
-          var artifact =
-              one(
-                  "SELECT * FROM artifact WHERE tenant_id=? AND id=? AND task_id=?",
-                  lease.tenant(),
-                  artifactId,
-                  lease.taskId());
-          if ("PUBLISHED".equals(s(artifact, "state"))) return null;
-          if (!"VERIFIED".equals(s(artifact, "state")) || artifact.get("snapshot_key") == null)
-            throw new TaskFailure(409, "ARTIFACT_UNVERIFIED");
-          db.update(
-              "UPDATE artifact SET state='PUBLISHED',production_fence=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
-              lease.fence(),
-              lease.tenant(),
-              artifactId);
-          db.update(
-              "UPDATE reservation SET state='SETTLED',actual=amount WHERE tenant_id=? AND id=?",
-              lease.tenant(),
-              artifactId);
-          event(task, "published:" + artifactId, "artifact.created", null);
-          return null;
-        });
+    artifactPublications.publish(lease, artifactId);
   }
 
   @Override
