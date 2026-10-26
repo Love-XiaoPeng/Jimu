@@ -40,4 +40,11 @@ public interface TenantBudgetMapper {
       @Param("tenant") String tenant);
 
   int reserveToolUnit(@Param("query") SessionQueryContext query, @Param("tenant") String tenant);
+
+  int holdImageStorage(@Param("query") SessionQueryContext query, @Param("tenant") String tenant);
+
+  int releaseImageStorage(
+      @Param("query") SessionQueryContext query,
+      @Param("bytes") long bytes,
+      @Param("tenant") String tenant);
 }

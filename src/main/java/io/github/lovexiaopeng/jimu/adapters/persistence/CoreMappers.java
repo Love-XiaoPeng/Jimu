@@ -17,6 +17,11 @@ record CoreMappers(
     io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper steps,
     io.github.lovexiaopeng.jimu.adapters.persistence.artifact.mapper.ArtifactMapper artifacts,
     io.github.lovexiaopeng.jimu.adapters.persistence.model.mapper.ModelDispatchMapper dispatches) {
+  io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageInputMapper imageInputs() {
+    return session.getMapper(
+        io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageInputMapper.class);
+  }
+
   io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageObjectMapper imageObjects() {
     return session.getMapper(
         io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageObjectMapper.class);

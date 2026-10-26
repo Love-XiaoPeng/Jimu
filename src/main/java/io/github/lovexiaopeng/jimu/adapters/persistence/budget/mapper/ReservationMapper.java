@@ -101,4 +101,10 @@ public interface ReservationMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("reservationId") String reservationId);
+
+  int settleImageReservation(
+      @Param("query") SessionQueryContext query,
+      @Param("actual") long actual,
+      @Param("tenant") String tenant,
+      @Param("image") String image);
 }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageInputMapper">
+  <insert id="insertInput"><![CDATA[INSERT INTO task_image_input(tenant_id,task_id,input_id,logical_path,raw_sha256,raw_size,raw_base64) VALUES(#{tenant},#{task},#{inputId},#{logicalPath},#{sha256},#{size},#{rawBase64})]]></insert>
+  <select id="selectInputIds" resultType="map"><![CDATA[SELECT input_id FROM task_image_input WHERE tenant_id=#{tenant} AND task_id=#{task}]]></select>
+  <select id="selectImageInput" resultType="map"><![CDATA[SELECT tenant_id,task_id,input_id,logical_path,raw_sha256,raw_size,raw_base64,expires_at,revoked_at,expires_at>CURRENT_TIMESTAMP(6) AS valid FROM task_image_input WHERE tenant_id=#{tenant} AND task_id=#{task} AND input_id=#{inputId}]]></select>
+</mapper>

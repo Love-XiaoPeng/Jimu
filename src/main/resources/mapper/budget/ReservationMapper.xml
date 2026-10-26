@@ -50,4 +50,5 @@
     <![CDATA[UPDATE reservation SET state='HELD_UNKNOWN' WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
   </update>
   <update id="settleToolUnit"><![CDATA[UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=#{tenant} AND id=#{reservationId}]]></update>
+  <update id="settleImageReservation"><![CDATA[UPDATE reservation SET state='SETTLED',actual=#{actual} WHERE tenant_id=#{tenant} AND id=#{image} AND category='MEDIA_STORAGE' AND state='RESERVED']]></update>
 </mapper>

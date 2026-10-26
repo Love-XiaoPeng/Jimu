@@ -87,6 +87,8 @@ public final class JdbcLedger
   final JdbcExecutionScopes executionScopes;
   java.util.function.BooleanSupplier searchAvailable = () -> false;
   final JdbcImageRecords images;
+  private final io.github.lovexiaopeng.jimu.kernel.media.service.ImagePersistenceService
+      imageService;
   final JdbcMcpRecords mcp;
   private ArtifactStore imageStore;
   final io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts questions =
@@ -2199,7 +2201,11 @@ public final class JdbcLedger
             new MapperSessionTraces(this));
     sessions.scopes = sessionScopes;
     sessionScopes.invalidated = this::invalidateScopeAfterTransaction;
-    images = new JdbcImageRecords(db);
+    var imageRecords = new MapperImageRecords(this);
+    imageService =
+        new io.github.lovexiaopeng.jimu.kernel.media.service.impl.ImagePersistenceServiceImpl(
+            imageRecords);
+    images = new JdbcImageRecords(imageService, imageRecords);
     mcp = new JdbcMcpRecords(db);
     db.setQueryTimeout(5);
     executionScopes = new JdbcExecutionScopes(db, models);
@@ -2361,47 +2367,18 @@ public final class JdbcLedger
   @Override
   public io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages.Snapshot mediaSnapshot(
       Lease lease) {
-    return leaseTx(lease, () -> images.snapshot(fenced(lease, true)));
+    return imageService.mediaSnapshot(lease);
   }
 
   @Override
   public io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.Raw imageInput(
       Lease lease, String path) {
-    return leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, true);
-          io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelImages.require(snapshot(task));
-          return images.raw(task, path);
-        });
+    return imageService.imageInput(lease, path);
   }
 
   @Override
   public String reserveImage(Lease lease, String invocation, String inputId) {
-    return leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, true);
-          // fenced holds evaluation -> budget -> task; only re-read our already locked budget.
-          var budget = bucket(lease.tenant());
-          if (1048576 > n(budget, "storage_limit") - storageHeld(budget))
-            throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
-          String image = id();
-          images.reserve(task, invocation, image, inputId);
-          db.update(
-              "UPDATE tenant_budget SET storage_held=storage_held+1048576 WHERE tenant_id=?",
-              lease.tenant());
-          reserve(
-              lease.tenant(),
-              lease.taskId(),
-              image,
-              null,
-              "MEDIA_STORAGE",
-              1048576,
-              "RESERVED",
-              "KNOWN");
-          return image;
-        });
+    return imageService.reserveImage(lease, invocation, inputId);
   }
 
   @Override
@@ -2410,50 +2387,24 @@ public final class JdbcLedger
       String invocation,
       String key,
       io.github.lovexiaopeng.jimu.plugin.api.ImagePort.Result result) {
-    leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, true);
-          images.succeeded(task, invocation, key, result);
-          db.update(
-              "UPDATE reservation SET state='SETTLED',actual=? WHERE tenant_id=? AND id=? AND category='MEDIA_STORAGE' AND state='RESERVED'",
-              result.image().size(),
-              lease.tenant(),
-              result.image().imageId());
-          db.update(
-              "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
-              1048576 - result.image().size(),
-              lease.tenant());
-          toolSucceeded(lease, invocation, Payloads.json(result));
-          return null;
-        });
+    imageService.imageSucceeded(lease, invocation, key, result);
   }
 
   @Override
   public io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ObjectValue imageObject(
       Lease lease, io.github.lovexiaopeng.jimu.plugin.api.ImagePort.Result ref) {
-    return leaseTx(lease, () -> images.object(fenced(lease, true), ref));
+    return imageService.imageObject(lease, ref);
   }
 
   @Override
   public List<io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ObjectValue> stepImages(
       Lease lease, String step) {
-    return leaseTx(lease, () -> images.step(fenced(lease, true), step));
+    return imageService.stepImages(lease, step);
   }
 
   @Override
   public void imageDecodeTimedOut(Lease lease) {
-    leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, false);
-          db.update(
-              "UPDATE task SET state='CANCEL_REQUESTED',cancel_requested_at=COALESCE(cancel_requested_at,CURRENT_TIMESTAMP(6)),code=COALESCE(code,'IMAGE_DECODE_TIMEOUT') WHERE tenant_id=? AND id=?",
-              lease.tenant(),
-              lease.taskId());
-          event(task, "image-decode-timeout", "task.cancel_requested", "IMAGE_DECODE_TIMEOUT");
-          return null;
-        });
+    imageService.imageDecodeTimedOut(lease);
   }
 
   String requireScope(

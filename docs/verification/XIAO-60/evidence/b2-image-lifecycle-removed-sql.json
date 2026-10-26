@@ -1,0 +1,1051 @@
+{
+  "base": "26522f0fa1bf6ec373a62473d9a7898f07be7777",
+  "sites": 15,
+  "binds": 56,
+  "columns": {
+    "tenant_budget": [
+      "tenant_id",
+      "queue_limit",
+      "running_limit",
+      "model_limit",
+      "tool_limit",
+      "token_limit",
+      "storage_limit",
+      "queued",
+      "running",
+      "model_used",
+      "tool_used",
+      "token_held",
+      "storage_held",
+      "cost_held",
+      "cost_limit",
+      "media_checkpoint_held",
+      "question_tasks_held",
+      "question_tasks_limit",
+      "todo_storage_held",
+      "todo_storage_limit",
+      "directory_storage_held",
+      "directory_storage_limit",
+      "history_storage_held",
+      "history_storage_limit"
+    ],
+    "actor_access": [
+      "tenant_id",
+      "actor_id",
+      "enabled",
+      "permission_version"
+    ],
+    "installation": [
+      "tenant_id",
+      "plugin_id",
+      "enabled",
+      "epoch",
+      "plugin_version",
+      "plugin_digest"
+    ],
+    "task": [
+      "tenant_id",
+      "id",
+      "owner_actor_id",
+      "idempotency_key",
+      "request_digest",
+      "request_snapshot",
+      "goal",
+      "capabilities",
+      "installation_epoch",
+      "policy_version",
+      "record_version",
+      "state",
+      "revision",
+      "created_at",
+      "updated_at",
+      "deadline",
+      "ready_at",
+      "cancel_requested_at",
+      "current_attempt_id",
+      "worker_id",
+      "fence",
+      "lease_until",
+      "next_event_seq",
+      "max_models",
+      "max_tools",
+      "models_used",
+      "tools_used",
+      "token_held",
+      "max_tokens",
+      "code",
+      "summary",
+      "model_snapshot",
+      "model_digest",
+      "evaluation_run_id",
+      "cost_held",
+      "max_cost_micros",
+      "tools_snapshot",
+      "tools_digest",
+      "report_time",
+      "evaluation_snapshot",
+      "evaluation_digest",
+      "evaluation_phase",
+      "evaluation_sample",
+      "evaluation_model",
+      "material_snapshot",
+      "material_digest",
+      "material_system_digest",
+      "material_file_snapshot",
+      "material_file_digest",
+      "execution_scope_digest",
+      "business_policy_snapshot",
+      "business_policy_digest",
+      "media_snapshot",
+      "media_digest",
+      "media_cleanup_state",
+      "mcp_snapshot",
+      "mcp_digest",
+      "question_binding",
+      "question_binding_digest",
+      "waiting_question_id",
+      "question_continuation_step_id",
+      "question_cleanup_state",
+      "question_retained_digests"
+    ],
+    "task_attempt": [
+      "tenant_id",
+      "id",
+      "task_id",
+      "worker_id",
+      "fence",
+      "state",
+      "started_at",
+      "ended_at",
+      "record_version",
+      "quiescent"
+    ],
+    "step": [
+      "tenant_id",
+      "id",
+      "task_id",
+      "attempt_id",
+      "ordinal",
+      "state",
+      "request_snapshot",
+      "request_digest",
+      "response_snapshot",
+      "response_digest",
+      "dispatch_id",
+      "dispatches",
+      "model_version",
+      "record_version",
+      "request_cleanup_state",
+      "retained_request_digest",
+      "directory_revision",
+      "directory_cwd",
+      "directory_binding_digest",
+      "session_upper_seq",
+      "session_context_digest",
+      "session_binding_digest"
+    ],
+    "invocation": [
+      "tenant_id",
+      "id",
+      "task_id",
+      "step_id",
+      "attempt_id",
+      "ordinal",
+      "slot",
+      "provider_id",
+      "effect_intent_id",
+      "tool",
+      "plugin_version",
+      "plugin_digest",
+      "installation_epoch",
+      "input_snapshot",
+      "input_digest",
+      "state",
+      "output_snapshot",
+      "output_digest",
+      "projection_version",
+      "updated_at",
+      "record_version",
+      "todo_expected_revision",
+      "todo_applied_revision",
+      "todo_committed_attempt_id",
+      "todo_committed_fence",
+      "todo_event_seq",
+      "todo_committed_at"
+    ],
+    "event": [
+      "tenant_id",
+      "task_id",
+      "seq",
+      "event_id",
+      "fact_id",
+      "type",
+      "code",
+      "status",
+      "artifact_id",
+      "occurred_at",
+      "payload_version"
+    ],
+    "reservation": [
+      "tenant_id",
+      "id",
+      "task_id",
+      "dispatch_id",
+      "category",
+      "amount",
+      "actual",
+      "usage_quality",
+      "cost_quality",
+      "state",
+      "record_version"
+    ],
+    "artifact": [
+      "tenant_id",
+      "id",
+      "task_id",
+      "producer_invocation",
+      "upload_id",
+      "production_fence",
+      "state",
+      "snapshot_key",
+      "sha256",
+      "size",
+      "media_type",
+      "created_at",
+      "updated_at",
+      "expires_at",
+      "record_version",
+      "file_receipt",
+      "receipt_digest"
+    ],
+    "worker_process": [
+      "id",
+      "host_id",
+      "pid",
+      "start_ticks",
+      "stopped",
+      "registered_at",
+      "boot_id",
+      "observer_pid_namespace"
+    ],
+    "evaluation_budget": [
+      "tenant_id",
+      "id",
+      "max_requests",
+      "requests_used",
+      "max_cost_micros",
+      "cost_held",
+      "state",
+      "policy_version",
+      "plan_snapshot",
+      "plan_digest",
+      "phase_b_snapshot",
+      "phase_b_digest"
+    ],
+    "model_dispatch": [
+      "tenant_id",
+      "id",
+      "task_id",
+      "step_id",
+      "config_digest",
+      "request_digest",
+      "state",
+      "code",
+      "started_at",
+      "ended_at",
+      "input_tokens",
+      "output_tokens",
+      "total_tokens",
+      "usage_snapshot",
+      "price_version",
+      "currency",
+      "reserved_cost",
+      "actual_cost",
+      "cost_quality"
+    ],
+    "evaluation_execution_scope": [
+      "tenant_id",
+      "run_id",
+      "record_version",
+      "scope_snapshot",
+      "scope_digest",
+      "bound_at_utc",
+      "bound_by"
+    ],
+    "native_search_run": [
+      "tenant_id",
+      "root_invocation",
+      "task_id",
+      "effect_id",
+      "attempt_id",
+      "worker_id",
+      "host_id",
+      "runtime_directory",
+      "snapshot_digest",
+      "query_digest",
+      "tool_pin",
+      "phase",
+      "process_identity",
+      "storage_removed",
+      "result_hash",
+      "result_size",
+      "cursor_index",
+      "created_at",
+      "stopped_at",
+      "expires_at",
+      "record_version"
+    ],
+    "native_search_stop": [
+      "tenant_id",
+      "root_invocation",
+      "identity_digest",
+      "process_identity",
+      "observed_at",
+      "record_version"
+    ],
+    "task_image_input": [
+      "tenant_id",
+      "task_id",
+      "input_id",
+      "logical_path",
+      "raw_sha256",
+      "raw_size",
+      "raw_base64",
+      "expires_at",
+      "revoked_at"
+    ],
+    "task_image_object": [
+      "tenant_id",
+      "task_id",
+      "image_id",
+      "producer_invocation",
+      "input_id",
+      "normalizer_version",
+      "snapshot_key",
+      "sha256",
+      "size",
+      "width",
+      "height",
+      "original_width",
+      "original_height",
+      "phase",
+      "cleanup_state",
+      "expires_at"
+    ],
+    "mcp_server": [
+      "tenant_id",
+      "server_id",
+      "enabled",
+      "epoch",
+      "profile_snapshot",
+      "profile_digest"
+    ],
+    "mcp_io": [
+      "tenant_id",
+      "task_id",
+      "invocation_id",
+      "ordinal",
+      "request_id",
+      "method",
+      "kind",
+      "phase",
+      "request_digest",
+      "error_code"
+    ],
+    "mcp_result": [
+      "tenant_id",
+      "task_id",
+      "root_invocation_id",
+      "version",
+      "server",
+      "method",
+      "binding_digest",
+      "projection_digest",
+      "body",
+      "body_digest",
+      "byte_size",
+      "expires_at",
+      "state"
+    ],
+    "mcp_cursor": [
+      "tenant_id",
+      "task_id",
+      "token_digest",
+      "root_invocation_id",
+      "page_index",
+      "query_digest",
+      "expires_at"
+    ],
+    "user_question": [
+      "tenant_id",
+      "id",
+      "task_id",
+      "owner_actor_id",
+      "invocation_id",
+      "ordinal",
+      "record_version",
+      "question_version",
+      "revision",
+      "binding_digest",
+      "mode",
+      "effective_timeout",
+      "phase",
+      "request_snapshot",
+      "request_digest",
+      "created_at",
+      "foreground_due_at",
+      "answer_expires_at",
+      "retain_until",
+      "close_code",
+      "answer_id",
+      "answered_actor_id",
+      "answered_at",
+      "accepted_seq",
+      "answer_snapshot",
+      "answer_digest",
+      "answer_key",
+      "answer_request_digest",
+      "answer_source_revision",
+      "receipt_snapshot",
+      "delivery_state",
+      "delivery_step_id",
+      "retained_digests"
+    ],
+    "task_todo_projection": [
+      "tenant_id",
+      "task_id",
+      "record_version",
+      "todo_version",
+      "binding_snapshot",
+      "binding_digest",
+      "revision",
+      "content_state",
+      "source_invocation_id",
+      "source_step_id",
+      "committed_attempt_id",
+      "committed_fence",
+      "updated_seq",
+      "pending_count",
+      "in_progress_count",
+      "completed_count",
+      "output_digest",
+      "updated_at",
+      "retain_until",
+      "reserved_bytes",
+      "retained_digests"
+    ],
+    "task_directory": [
+      "tenant_id",
+      "task_id",
+      "record_version",
+      "directory_version",
+      "path_policy_version",
+      "binding_snapshot",
+      "binding_digest",
+      "namespace_digest",
+      "revision",
+      "content_state",
+      "cwd",
+      "source_invocation_id",
+      "workspace_state",
+      "updated_at",
+      "retain_until",
+      "reserved_bytes",
+      "cleanup_generation",
+      "retained_digests",
+      "filesystem_receipt"
+    ],
+    "invocation_path_binding": [
+      "tenant_id",
+      "invocation_id",
+      "task_id",
+      "step_id",
+      "record_version",
+      "path_policy_version",
+      "binding_digest",
+      "namespace_digest",
+      "slot_index",
+      "mode",
+      "base_revision",
+      "base_cwd",
+      "target_cwd",
+      "canonical_paths_snapshot",
+      "canonical_paths_digest",
+      "input_digest",
+      "applied_revision",
+      "changed",
+      "committed_attempt_id",
+      "committed_fence",
+      "changed_event_seq",
+      "committed_at",
+      "directory_evidence_snapshot",
+      "content_state"
+    ],
+    "task_session_history": [
+      "tenant_id",
+      "task_id",
+      "record_version",
+      "history_version",
+      "binding_snapshot",
+      "binding_digest",
+      "content_state",
+      "next_seq",
+      "body_bytes",
+      "metadata_bytes",
+      "reserved_bytes",
+      "held_bytes",
+      "retain_until",
+      "cleanup_receipt"
+    ],
+    "session_public_event": [
+      "tenant_id",
+      "task_id",
+      "seq",
+      "record_version",
+      "event_version",
+      "fact_key",
+      "type",
+      "occurred_at",
+      "event_snapshot",
+      "event_digest",
+      "event_bytes",
+      "source_digest",
+      "source_step_id",
+      "source_invocation_id",
+      "committed_attempt_id",
+      "committed_fence",
+      "reliable_event_seq",
+      "content_state"
+    ],
+    "invocation_session_read": [
+      "tenant_id",
+      "invocation_id",
+      "task_id",
+      "step_id",
+      "record_version",
+      "binding_digest",
+      "input_digest",
+      "upper_seq",
+      "target_seq",
+      "before_count",
+      "after_count",
+      "outcome",
+      "failure_code",
+      "window_start",
+      "window_end",
+      "target_digest",
+      "output_digest",
+      "output_bytes",
+      "receipt_seq",
+      "committed_attempt_id",
+      "committed_fence",
+      "committed_at",
+      "content_state",
+      "relation_version",
+      "read_sources_snapshot",
+      "read_sources_digest",
+      "read_sources_bytes"
+    ],
+    "invocation_session_search": [
+      "tenant_id",
+      "invocation_id",
+      "task_id",
+      "step_id",
+      "record_version",
+      "binding_digest",
+      "input_digest",
+      "upper_seq",
+      "normalized_query_snapshot",
+      "normalized_query_digest",
+      "normalized_query_bytes",
+      "outcome",
+      "failure_code",
+      "scan_digest",
+      "scan_rows",
+      "scan_event_bytes",
+      "output_digest",
+      "output_bytes",
+      "receipt_event_seq",
+      "committed_attempt_id",
+      "committed_fence",
+      "committed_at",
+      "content_state"
+    ],
+    "invocation_session_trace": [
+      "tenant_id",
+      "invocation_id",
+      "task_id",
+      "step_id",
+      "record_version",
+      "binding_digest",
+      "input_digest",
+      "upper_seq",
+      "target_seq",
+      "relation_policy",
+      "outcome",
+      "failure_code",
+      "scan_digest",
+      "relations_digest",
+      "target_digest",
+      "scan_rows",
+      "scan_event_bytes",
+      "relation_edges",
+      "output_digest",
+      "output_bytes",
+      "receipt_event_seq",
+      "committed_attempt_id",
+      "committed_fence",
+      "committed_at",
+      "content_state"
+    ],
+    "task_session_scope": [
+      "tenant_id",
+      "caller_task_id",
+      "record_version",
+      "authority_version",
+      "owner_actor_id",
+      "caller_binding_digest",
+      "caller_tools_digest",
+      "authority_snapshot",
+      "authority_digest",
+      "authority_bytes",
+      "candidate_count",
+      "grant_state",
+      "created_at",
+      "retain_until",
+      "revoked_at",
+      "invalidated_at",
+      "next_validation_at",
+      "content_state"
+    ],
+    "task_session_scope_target": [
+      "tenant_id",
+      "caller_task_id",
+      "ordinal",
+      "record_version",
+      "source_task_id",
+      "target_snapshot",
+      "target_digest",
+      "target_bytes",
+      "content_state"
+    ],
+    "step_session_scope": [
+      "tenant_id",
+      "step_id",
+      "caller_task_id",
+      "record_version",
+      "authority_digest",
+      "context_snapshot",
+      "context_digest",
+      "context_bytes",
+      "content_state"
+    ],
+    "invocation_session_scope_query": [
+      "tenant_id",
+      "invocation_id",
+      "caller_task_id",
+      "step_id",
+      "record_version",
+      "operation",
+      "binding_digest",
+      "input_digest",
+      "authority_digest",
+      "context_digest",
+      "normalized_snapshot",
+      "normalized_digest",
+      "normalized_bytes",
+      "outcome",
+      "failure_code",
+      "scan_digest",
+      "scan_rows",
+      "scan_event_bytes",
+      "read_refs_snapshot",
+      "read_refs_digest",
+      "read_refs_bytes",
+      "output_digest",
+      "output_bytes",
+      "receipt_event_seq",
+      "native_read_seq",
+      "committed_attempt_id",
+      "committed_fence",
+      "committed_at",
+      "content_state"
+    ]
+  },
+  "operations": [
+    {
+      "name": "insertInput",
+      "domain": "media",
+      "mapper": "ImageInputMapper",
+      "args": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        },
+        {
+          "name": "inputId",
+          "type": "String"
+        },
+        {
+          "name": "logicalPath",
+          "type": "String"
+        },
+        {
+          "name": "sha256",
+          "type": "String"
+        },
+        {
+          "name": "size",
+          "type": "long"
+        },
+        {
+          "name": "rawBase64",
+          "type": "String"
+        }
+      ],
+      "sql": "INSERT INTO task_image_input(tenant_id,task_id,input_id,logical_path,raw_sha256,raw_size,raw_base64) VALUES(#{tenant},#{task},#{inputId},#{logicalPath},#{sha256},#{size},#{rawBase64})",
+      "original": "INSERT INTO task_image_input(tenant_id,task_id,input_id,logical_path,raw_sha256,raw_size,raw_base64) VALUES(?,?,?,?,?,?,?)",
+      "select": false
+    },
+    {
+      "name": "saveMediaSnapshot",
+      "domain": "task",
+      "mapper": "TaskMapper",
+      "args": [
+        {
+          "name": "snapshot",
+          "type": "String"
+        },
+        {
+          "name": "digest",
+          "type": "String"
+        },
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        }
+      ],
+      "sql": "UPDATE task SET record_version=3,media_snapshot=#{snapshot},media_digest=#{digest},media_cleanup_state='RETAINED' WHERE tenant_id=#{tenant} AND id=#{task}",
+      "original": "UPDATE task SET record_version=3,media_snapshot=?,media_digest=?,media_cleanup_state='RETAINED' WHERE tenant_id=? AND id=?",
+      "select": false
+    },
+    {
+      "name": "selectInputIds",
+      "domain": "media",
+      "mapper": "ImageInputMapper",
+      "args": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        }
+      ],
+      "sql": "SELECT input_id FROM task_image_input WHERE tenant_id=#{tenant} AND task_id=#{task}",
+      "original": "SELECT input_id FROM task_image_input WHERE tenant_id=? AND task_id=?",
+      "select": true
+    },
+    {
+      "name": "selectImageInput",
+      "domain": "media",
+      "mapper": "ImageInputMapper",
+      "args": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        },
+        {
+          "name": "inputId",
+          "type": "String"
+        }
+      ],
+      "sql": "SELECT tenant_id,task_id,input_id,logical_path,raw_sha256,raw_size,raw_base64,expires_at,revoked_at,expires_at>CURRENT_TIMESTAMP(6) AS valid FROM task_image_input WHERE tenant_id=#{tenant} AND task_id=#{task} AND input_id=#{inputId}",
+      "original": "SELECT *,expires_at>CURRENT_TIMESTAMP(6) AS valid FROM task_image_input WHERE tenant_id=? AND task_id=? AND input_id=?",
+      "select": true
+    },
+    {
+      "name": "selectRunningImageInvocation",
+      "domain": "invocation",
+      "mapper": "InvocationMapper",
+      "args": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        },
+        {
+          "name": "invocation",
+          "type": "String"
+        }
+      ],
+      "sql": "SELECT tenant_id,id,task_id,step_id,attempt_id,ordinal,slot,provider_id,effect_intent_id,tool,plugin_version,plugin_digest,installation_epoch,input_snapshot,input_digest,state,output_snapshot,output_digest,projection_version,updated_at,record_version,todo_expected_revision,todo_applied_revision,todo_committed_attempt_id,todo_committed_fence,todo_event_seq,todo_committed_at FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{task} AND id=#{invocation} AND tool='read_image' AND state='RUNNING'",
+      "original": "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND tool='read_image' AND state='RUNNING'",
+      "select": true
+    },
+    {
+      "name": "selectProducerImages",
+      "domain": "media",
+      "mapper": "ImageObjectMapper",
+      "args": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "invocation",
+          "type": "String"
+        }
+      ],
+      "sql": "SELECT image_id FROM task_image_object WHERE tenant_id=#{tenant} AND producer_invocation=#{invocation}",
+      "original": "SELECT image_id FROM task_image_object WHERE tenant_id=? AND producer_invocation=?",
+      "select": true
+    },
+    {
+      "name": "reserveImageObject",
+      "domain": "media",
+      "mapper": "ImageObjectMapper",
+      "args": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        },
+        {
+          "name": "image",
+          "type": "String"
+        },
+        {
+          "name": "invocation",
+          "type": "String"
+        },
+        {
+          "name": "inputId",
+          "type": "String"
+        },
+        {
+          "name": "normalizer",
+          "type": "String"
+        }
+      ],
+      "sql": "INSERT INTO task_image_object(tenant_id,task_id,image_id,producer_invocation,input_id,normalizer_version,phase) VALUES(#{tenant},#{task},#{image},#{invocation},#{inputId},#{normalizer},'RESERVED')",
+      "original": "INSERT INTO task_image_object(tenant_id,task_id,image_id,producer_invocation,input_id,normalizer_version,phase) VALUES(?,?,?,?,?,?,'RESERVED')",
+      "select": false
+    },
+    {
+      "name": "commitImageObject",
+      "domain": "media",
+      "mapper": "ImageObjectMapper",
+      "args": [
+        {
+          "name": "key",
+          "type": "String"
+        },
+        {
+          "name": "sha256",
+          "type": "String"
+        },
+        {
+          "name": "size",
+          "type": "long"
+        },
+        {
+          "name": "width",
+          "type": "int"
+        },
+        {
+          "name": "height",
+          "type": "int"
+        },
+        {
+          "name": "originalWidth",
+          "type": "int"
+        },
+        {
+          "name": "originalHeight",
+          "type": "int"
+        },
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        },
+        {
+          "name": "image",
+          "type": "String"
+        },
+        {
+          "name": "invocation",
+          "type": "String"
+        },
+        {
+          "name": "inputId",
+          "type": "String"
+        }
+      ],
+      "sql": "UPDATE task_image_object SET snapshot_key=#{key},sha256=#{sha256},size=#{size},width=#{width},height=#{height},original_width=#{originalWidth},original_height=#{originalHeight},phase='COMMITTED' WHERE tenant_id=#{tenant} AND task_id=#{task} AND image_id=#{image} AND producer_invocation=#{invocation} AND input_id=#{inputId} AND phase='RESERVED'",
+      "original": "UPDATE task_image_object SET snapshot_key=?,sha256=?,size=?,width=?,height=?,original_width=?,original_height=?,phase='COMMITTED' WHERE tenant_id=? AND task_id=? AND image_id=? AND producer_invocation=? AND input_id=? AND phase='RESERVED'",
+      "select": false
+    },
+    {
+      "name": "selectRetainedImageObject",
+      "domain": "media",
+      "mapper": "ImageObjectMapper",
+      "args": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        },
+        {
+          "name": "image",
+          "type": "String"
+        }
+      ],
+      "sql": "SELECT tenant_id,task_id,image_id,producer_invocation,input_id,normalizer_version,snapshot_key,sha256,size,width,height,original_width,original_height,phase,cleanup_state,expires_at FROM task_image_object WHERE tenant_id=#{tenant} AND task_id=#{task} AND image_id=#{image} AND phase='COMMITTED' AND cleanup_state='RETAINED' AND expires_at>CURRENT_TIMESTAMP(6)",
+      "original": "SELECT * FROM task_image_object WHERE tenant_id=? AND task_id=? AND image_id=? AND phase='COMMITTED' AND cleanup_state='RETAINED' AND expires_at>CURRENT_TIMESTAMP(6)",
+      "select": true
+    },
+    {
+      "name": "selectSucceededImageInvocation",
+      "domain": "invocation",
+      "mapper": "InvocationMapper",
+      "args": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        },
+        {
+          "name": "invocation",
+          "type": "String"
+        }
+      ],
+      "sql": "SELECT tenant_id,id,task_id,step_id,attempt_id,ordinal,slot,provider_id,effect_intent_id,tool,plugin_version,plugin_digest,installation_epoch,input_snapshot,input_digest,state,output_snapshot,output_digest,projection_version,updated_at,record_version,todo_expected_revision,todo_applied_revision,todo_committed_attempt_id,todo_committed_fence,todo_event_seq,todo_committed_at FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{task} AND id=#{invocation} AND tool='read_image' AND state='SUCCEEDED'",
+      "original": "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND tool='read_image' AND state='SUCCEEDED'",
+      "select": true
+    },
+    {
+      "name": "selectStepImageOutputs",
+      "domain": "invocation",
+      "mapper": "InvocationMapper",
+      "args": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        },
+        {
+          "name": "step",
+          "type": "String"
+        }
+      ],
+      "sql": "SELECT output_snapshot FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{task} AND step_id=#{step} AND tool='read_image' AND state='SUCCEEDED' ORDER BY CAST(SUBSTRING_INDEX(slot,':',1) AS UNSIGNED)",
+      "original": "SELECT output_snapshot FROM invocation WHERE tenant_id=? AND task_id=? AND step_id=? AND tool='read_image' AND state='SUCCEEDED' ORDER BY CAST(SUBSTRING_INDEX(slot,':',1) AS UNSIGNED)",
+      "select": true
+    },
+    {
+      "name": "holdImageStorage",
+      "domain": "budget",
+      "mapper": "TenantBudgetMapper",
+      "args": [
+        {
+          "name": "tenant",
+          "type": "String"
+        }
+      ],
+      "sql": "UPDATE tenant_budget SET storage_held=storage_held+1048576 WHERE tenant_id=#{tenant}",
+      "original": "UPDATE tenant_budget SET storage_held=storage_held+1048576 WHERE tenant_id=?",
+      "select": false
+    },
+    {
+      "name": "settleImageReservation",
+      "domain": "budget",
+      "mapper": "ReservationMapper",
+      "args": [
+        {
+          "name": "actual",
+          "type": "long"
+        },
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "image",
+          "type": "String"
+        }
+      ],
+      "sql": "UPDATE reservation SET state='SETTLED',actual=#{actual} WHERE tenant_id=#{tenant} AND id=#{image} AND category='MEDIA_STORAGE' AND state='RESERVED'",
+      "original": "UPDATE reservation SET state='SETTLED',actual=? WHERE tenant_id=? AND id=? AND category='MEDIA_STORAGE' AND state='RESERVED'",
+      "select": false
+    },
+    {
+      "name": "releaseImageStorage",
+      "domain": "budget",
+      "mapper": "TenantBudgetMapper",
+      "args": [
+        {
+          "name": "bytes",
+          "type": "long"
+        },
+        {
+          "name": "tenant",
+          "type": "String"
+        }
+      ],
+      "sql": "UPDATE tenant_budget SET storage_held=storage_held-#{bytes} WHERE tenant_id=#{tenant}",
+      "original": "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
+      "select": false
+    },
+    {
+      "name": "cancelImageDecode",
+      "domain": "task",
+      "mapper": "TaskMapper",
+      "args": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        }
+      ],
+      "sql": "UPDATE task SET state='CANCEL_REQUESTED',cancel_requested_at=COALESCE(cancel_requested_at,CURRENT_TIMESTAMP(6)),code=COALESCE(code,'IMAGE_DECODE_TIMEOUT') WHERE tenant_id=#{tenant} AND id=#{task}",
+      "original": "UPDATE task SET state='CANCEL_REQUESTED',cancel_requested_at=COALESCE(cancel_requested_at,CURRENT_TIMESTAMP(6)),code=COALESCE(code,'IMAGE_DECODE_TIMEOUT') WHERE tenant_id=? AND id=?",
+      "select": false
+    }
+  ]
+}

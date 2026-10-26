@@ -2,4 +2,8 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageObjectMapper">
   <select id="selectCommittedProducer" resultType="map"><![CDATA[SELECT image_id FROM task_image_object WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND producer_invocation=#{invocationId} AND phase='COMMITTED']]></select>
+  <select id="selectProducerImages" resultType="map"><![CDATA[SELECT image_id FROM task_image_object WHERE tenant_id=#{tenant} AND producer_invocation=#{invocation}]]></select>
+  <insert id="reserveImageObject"><![CDATA[INSERT INTO task_image_object(tenant_id,task_id,image_id,producer_invocation,input_id,normalizer_version,phase) VALUES(#{tenant},#{task},#{image},#{invocation},#{inputId},#{normalizer},'RESERVED')]]></insert>
+  <update id="commitImageObject"><![CDATA[UPDATE task_image_object SET snapshot_key=#{key},sha256=#{sha256},size=#{size},width=#{width},height=#{height},original_width=#{originalWidth},original_height=#{originalHeight},phase='COMMITTED' WHERE tenant_id=#{tenant} AND task_id=#{task} AND image_id=#{image} AND producer_invocation=#{invocation} AND input_id=#{inputId} AND phase='RESERVED']]></update>
+  <select id="selectRetainedImageObject" resultType="map"><![CDATA[SELECT tenant_id,task_id,image_id,producer_invocation,input_id,normalizer_version,snapshot_key,sha256,size,width,height,original_width,original_height,phase,cleanup_state,expires_at FROM task_image_object WHERE tenant_id=#{tenant} AND task_id=#{task} AND image_id=#{image} AND phase='COMMITTED' AND cleanup_state='RETAINED' AND expires_at>CURRENT_TIMESTAMP(6)]]></select>
 </mapper>

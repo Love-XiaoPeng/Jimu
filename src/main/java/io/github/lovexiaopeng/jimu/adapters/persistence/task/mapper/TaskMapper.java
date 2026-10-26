@@ -136,4 +136,16 @@ public interface TaskMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("taskId") String taskId);
+
+  int saveMediaSnapshot(
+      @Param("query") SessionQueryContext query,
+      @Param("snapshot") String snapshot,
+      @Param("digest") String digest,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  int cancelImageDecode(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
 }

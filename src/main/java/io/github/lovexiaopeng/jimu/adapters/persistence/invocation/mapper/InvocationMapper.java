@@ -125,4 +125,22 @@ public interface InvocationMapper
       @Param("tenant") String tenant,
       @Param("taskId") String taskId,
       @Param("invocationId") String invocationId);
+
+  List<Map<String, Object>> selectRunningImageInvocation(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("invocation") String invocation);
+
+  List<Map<String, Object>> selectSucceededImageInvocation(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("invocation") String invocation);
+
+  List<Map<String, Object>> selectStepImageOutputs(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("step") String step);
 }
