@@ -108,4 +108,21 @@ public interface InvocationMapper
       @Param("taskId") String taskId,
       @Param("invocationId") String invocationId,
       @Param("tool") String tool);
+
+  List<Map<String, Object>> selectWebDiagnosticBindings(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId,
+      @Param("invocationId") String invocationId,
+      @Param("attemptId") String attemptId,
+      @Param("worker") String worker,
+      @Param("fence") long fence);
+
+  int preserveWebResult(
+      @Param("query") SessionQueryContext query,
+      @Param("output") String output,
+      @Param("digest") String digest,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId,
+      @Param("invocationId") String invocationId);
 }

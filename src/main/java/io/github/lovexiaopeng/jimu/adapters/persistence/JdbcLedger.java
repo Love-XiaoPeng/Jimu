@@ -2337,7 +2337,7 @@ public final class JdbcLedger
         metered ? new QueryResources(0, 0, 0) : null);
   }
 
-  private <T> T tx(Supplier<T> work) {
+  <T> T tx(Supplier<T> work) {
     AdmissionResult<T> result =
         unitOfWork.required(
             () -> {
@@ -3629,120 +3629,19 @@ public final class JdbcLedger
     return invocationService.admit(lease, stepId, call, pluginVersion, pluginDigest);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.invocation.service.WebFetchService
+      webFetchService =
+          new io.github.lovexiaopeng.jimu.kernel.invocation.service.impl.WebFetchServiceImpl(
+              new MapperWebFetchRecords(this));
+
   @Override
   public void observeWebFetch(Lease lease, String invocationId, WebFetchObservation observation) {
-    tx(
-        () -> {
-          if (observation.cancellation() != null) {
-            observeWebCancellation(lease, invocationId, observation);
-            return null;
-          }
-          var task = fenced(lease, false);
-          var invocation =
-              one(
-                  "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
-                  lease.tenant(),
-                  lease.taskId(),
-                  invocationId);
-          if (!"web_fetch".equals(invocation.get("tool"))
-              || !"0.3.0".equals(invocation.get("plugin_version"))
-              || !"RUNNING".equals(invocation.get("state")))
-            throw new TaskFailure(409, "INVOCATION_STATE");
-          boolean failed = observation.failure() != WebFetchObservation.Failure.NONE;
-          event(
-              task,
-              (failed ? "web-failure:" : "web-phase:") + invocationId + ":" + observation.phase(),
-              failed ? "web.fetch_failed" : "web.fetch_phase",
-              observation.phase() + "_" + observation.failure());
-          return null;
-        });
-  }
-
-  /** Diagnostic append only: an expired original fence cannot authorize execution or settlement. */
-  private void observeWebCancellation(
-      Lease lease, String invocationId, WebFetchObservation observation) {
-    var cancellation = observation.cancellation();
-    var task =
-        one(
-            "SELECT * FROM task WHERE tenant_id=? AND id=? FOR UPDATE",
-            lease.tenant(),
-            lease.taskId());
-    var bindings =
-        rows(
-            "SELECT i.id FROM invocation i JOIN task_attempt a ON a.tenant_id=i.tenant_id AND a.task_id=i.task_id AND a.id=i.attempt_id WHERE i.tenant_id=? AND i.task_id=? AND i.id=? AND i.attempt_id=? AND a.worker_id=? AND a.fence=? AND i.tool='web_fetch' AND i.plugin_version='0.3.0' AND i.state IN ('RUNNING','OUTCOME_UNKNOWN')",
-            lease.tenant(),
-            lease.taskId(),
-            invocationId,
-            lease.attemptId(),
-            lease.worker(),
-            lease.fence());
-    if (bindings.size() != 1) throw new TaskFailure(409, "WEB_OBSERVATION_BINDING_REJECTED");
-    String fact = "web-cancel:" + invocationId + ":" + lease.fence();
-    if (!mappers.events().selectFactSequence(query, lease.tenant(), lease.taskId(), fact).isEmpty())
-      return;
-    event(task, fact, "web.fetch_cancelled", cancellation.phase() + "_" + cancellation.reason());
-    event(
-        task,
-        fact + ":elapsed",
-        "web.cancel_elapsed_ms",
-        Long.toString(cancellation.elapsedMillis()));
-    event(
-        task,
-        fact + ":checkpoint",
-        "web.checkpoint_rejected",
-        cancellation.checkpointCode() + ":" + cancellation.checkpointMillis());
-    event(
-        task,
-        "web-failure:" + invocationId + ":" + observation.phase(),
-        "web.fetch_failed",
-        observation.phase() + "_" + observation.failure());
+    webFetchService.observe(lease, invocationId, observation);
   }
 
   @Override
   public void preserveWebFetchResult(Lease lease, String invocationId, String output) {
-    tx(
-        () -> {
-          var task = fenced(lease, false);
-          var invocation =
-              one(
-                  "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
-                  lease.tenant(),
-                  lease.taskId(),
-                  invocationId);
-          if (!"RUNNING".equals(invocation.get("state")))
-            throw new TaskFailure(409, "INVOCATION_STATE");
-          var step =
-              one(
-                  "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=?",
-                  lease.tenant(),
-                  lease.taskId(),
-                  invocation.get("step_id"));
-          String digest = WebFetchReceipts.digest(task, step, invocation, output);
-          var existing =
-              rows(
-                  "SELECT code FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
-                  lease.tenant(),
-                  lease.taskId(),
-                  "web-result:" + invocationId);
-          if (!existing.isEmpty()) {
-            if (!digest.equals(existing.getFirst().get("code"))
-                || !output.equals(invocation.get("output_snapshot"))
-                || !Payloads.hash(output).equals(invocation.get("output_digest")))
-              throw new TaskFailure(409, "WEB_RESULT_PROOF_INVALID");
-            return null;
-          }
-          if (invocation.get("output_snapshot") != null || invocation.get("output_digest") != null)
-            throw new TaskFailure(409, "WEB_RESULT_PROOF_INVALID");
-          db.update(
-              "UPDATE invocation SET output_snapshot=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND task_id=? AND id=?",
-              output,
-              Payloads.hash(output),
-              lease.tenant(),
-              lease.taskId(),
-              invocationId);
-          event(task, "web-result:" + invocationId, "web.result_preserved", digest);
-          return null;
-        });
+    webFetchService.preserve(lease, invocationId, output);
   }
 
   @Override

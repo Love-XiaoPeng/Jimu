@@ -1,0 +1,288 @@
+{
+  "parent": "4929a7f7bb380d70d90682e550db2eabfeee2d64",
+  "removed": [
+    {
+      "module": "invocation",
+      "mapper": "InvocationMapper",
+      "method": "selectTaskInvocation",
+      "originalSql": "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
+      "expandedSql": "SELECT tenant_id,id,task_id,step_id,attempt_id,ordinal,slot,provider_id,effect_intent_id,tool,plugin_version,plugin_digest,installation_epoch,input_snapshot,input_digest,state,output_snapshot,output_digest,projection_version,updated_at,record_version,todo_expected_revision,todo_applied_revision,todo_committed_attempt_id,todo_committed_fence,todo_event_seq,todo_committed_at FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND id=#{invocationId}",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "taskId",
+          "type": "String"
+        },
+        {
+          "name": "invocationId",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "module": "task",
+      "mapper": "TaskMapper",
+      "method": "selectWebDiagnosticTask",
+      "originalSql": "SELECT * FROM task WHERE tenant_id=? AND id=? FOR UPDATE",
+      "expandedSql": "SELECT tenant_id,id,owner_actor_id,idempotency_key,request_digest,request_snapshot,goal,capabilities,installation_epoch,policy_version,record_version,state,revision,created_at,updated_at,deadline,ready_at,cancel_requested_at,current_attempt_id,worker_id,fence,lease_until,next_event_seq,max_models,max_tools,models_used,tools_used,token_held,max_tokens,code,summary,model_snapshot,model_digest,evaluation_run_id,cost_held,max_cost_micros,tools_snapshot,tools_digest,report_time,evaluation_snapshot,evaluation_digest,evaluation_phase,evaluation_sample,evaluation_model,material_snapshot,material_digest,material_system_digest,material_file_snapshot,material_file_digest,execution_scope_digest,business_policy_snapshot,business_policy_digest,media_snapshot,media_digest,media_cleanup_state,mcp_snapshot,mcp_digest,question_binding,question_binding_digest,waiting_question_id,question_continuation_step_id,question_cleanup_state,question_retained_digests FROM task WHERE tenant_id=#{tenant} AND id=#{taskId} FOR UPDATE",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "taskId",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "module": "invocation",
+      "mapper": "InvocationMapper",
+      "method": "selectWebDiagnosticBindings",
+      "originalSql": "SELECT i.id FROM invocation i JOIN task_attempt a ON a.tenant_id=i.tenant_id AND a.task_id=i.task_id AND a.id=i.attempt_id WHERE i.tenant_id=? AND i.task_id=? AND i.id=? AND i.attempt_id=? AND a.worker_id=? AND a.fence=? AND i.tool='web_fetch' AND i.plugin_version='0.3.0' AND i.state IN ('RUNNING','OUTCOME_UNKNOWN')",
+      "expandedSql": "SELECT i.id FROM invocation i JOIN task_attempt a ON a.tenant_id=i.tenant_id AND a.task_id=i.task_id AND a.id=i.attempt_id WHERE i.tenant_id=#{tenant} AND i.task_id=#{taskId} AND i.id=#{invocationId} AND i.attempt_id=#{attemptId} AND a.worker_id=#{worker} AND a.fence=#{fence} AND i.tool='web_fetch' AND i.plugin_version='0.3.0' AND i.state IN ('RUNNING','OUTCOME_UNKNOWN')",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "taskId",
+          "type": "String"
+        },
+        {
+          "name": "invocationId",
+          "type": "String"
+        },
+        {
+          "name": "attemptId",
+          "type": "String"
+        },
+        {
+          "name": "worker",
+          "type": "String"
+        },
+        {
+          "name": "fence",
+          "type": "long"
+        }
+      ]
+    },
+    {
+      "module": "invocation",
+      "mapper": "InvocationMapper",
+      "method": "selectTaskInvocation",
+      "originalSql": "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
+      "expandedSql": "SELECT tenant_id,id,task_id,step_id,attempt_id,ordinal,slot,provider_id,effect_intent_id,tool,plugin_version,plugin_digest,installation_epoch,input_snapshot,input_digest,state,output_snapshot,output_digest,projection_version,updated_at,record_version,todo_expected_revision,todo_applied_revision,todo_committed_attempt_id,todo_committed_fence,todo_event_seq,todo_committed_at FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND id=#{invocationId}",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "taskId",
+          "type": "String"
+        },
+        {
+          "name": "invocationId",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "module": "execution",
+      "mapper": "StepMapper",
+      "method": "selectWebReceiptStep",
+      "originalSql": "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=?",
+      "expandedSql": "SELECT tenant_id,id,task_id,attempt_id,ordinal,state,request_snapshot,request_digest,response_snapshot,response_digest,dispatch_id,dispatches,model_version,record_version,request_cleanup_state,retained_request_digest,directory_revision,directory_cwd,directory_binding_digest,session_upper_seq,session_context_digest,session_binding_digest FROM step WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND id=#{stepId}",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "taskId",
+          "type": "String"
+        },
+        {
+          "name": "stepId",
+          "type": "Object"
+        }
+      ]
+    },
+    {
+      "module": "event",
+      "mapper": "EventMapper",
+      "method": "selectFactCode",
+      "originalSql": "SELECT code FROM event WHERE tenant_id=? AND task_id=? AND fact_id=?",
+      "expandedSql": "SELECT code FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND fact_id=#{factId}",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "taskId",
+          "type": "String"
+        },
+        {
+          "name": "factId",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "module": "invocation",
+      "mapper": "InvocationMapper",
+      "method": "preserveWebResult",
+      "originalSql": "UPDATE invocation SET output_snapshot=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND task_id=? AND id=?",
+      "expandedSql": "UPDATE invocation SET output_snapshot=#{output},output_digest=#{digest},updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND id=#{invocationId}",
+      "parameters": [
+        {
+          "name": "output",
+          "type": "String"
+        },
+        {
+          "name": "digest",
+          "type": "String"
+        },
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "taskId",
+          "type": "String"
+        },
+        {
+          "name": "invocationId",
+          "type": "String"
+        }
+      ]
+    }
+  ],
+  "columns": {
+    "invocation": [
+      "tenant_id",
+      "id",
+      "task_id",
+      "step_id",
+      "attempt_id",
+      "ordinal",
+      "slot",
+      "provider_id",
+      "effect_intent_id",
+      "tool",
+      "plugin_version",
+      "plugin_digest",
+      "installation_epoch",
+      "input_snapshot",
+      "input_digest",
+      "state",
+      "output_snapshot",
+      "output_digest",
+      "projection_version",
+      "updated_at",
+      "record_version",
+      "todo_expected_revision",
+      "todo_applied_revision",
+      "todo_committed_attempt_id",
+      "todo_committed_fence",
+      "todo_event_seq",
+      "todo_committed_at"
+    ],
+    "task": [
+      "tenant_id",
+      "id",
+      "owner_actor_id",
+      "idempotency_key",
+      "request_digest",
+      "request_snapshot",
+      "goal",
+      "capabilities",
+      "installation_epoch",
+      "policy_version",
+      "record_version",
+      "state",
+      "revision",
+      "created_at",
+      "updated_at",
+      "deadline",
+      "ready_at",
+      "cancel_requested_at",
+      "current_attempt_id",
+      "worker_id",
+      "fence",
+      "lease_until",
+      "next_event_seq",
+      "max_models",
+      "max_tools",
+      "models_used",
+      "tools_used",
+      "token_held",
+      "max_tokens",
+      "code",
+      "summary",
+      "model_snapshot",
+      "model_digest",
+      "evaluation_run_id",
+      "cost_held",
+      "max_cost_micros",
+      "tools_snapshot",
+      "tools_digest",
+      "report_time",
+      "evaluation_snapshot",
+      "evaluation_digest",
+      "evaluation_phase",
+      "evaluation_sample",
+      "evaluation_model",
+      "material_snapshot",
+      "material_digest",
+      "material_system_digest",
+      "material_file_snapshot",
+      "material_file_digest",
+      "execution_scope_digest",
+      "business_policy_snapshot",
+      "business_policy_digest",
+      "media_snapshot",
+      "media_digest",
+      "media_cleanup_state",
+      "mcp_snapshot",
+      "mcp_digest",
+      "question_binding",
+      "question_binding_digest",
+      "waiting_question_id",
+      "question_continuation_step_id",
+      "question_cleanup_state",
+      "question_retained_digests"
+    ],
+    "step": [
+      "tenant_id",
+      "id",
+      "task_id",
+      "attempt_id",
+      "ordinal",
+      "state",
+      "request_snapshot",
+      "request_digest",
+      "response_snapshot",
+      "response_digest",
+      "dispatch_id",
+      "dispatches",
+      "model_version",
+      "record_version",
+      "request_cleanup_state",
+      "retained_request_digest",
+      "directory_revision",
+      "directory_cwd",
+      "directory_binding_digest",
+      "session_upper_seq",
+      "session_context_digest",
+      "session_binding_digest"
+    ]
+  }
+}

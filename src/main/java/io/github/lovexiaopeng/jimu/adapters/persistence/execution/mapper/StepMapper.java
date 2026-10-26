@@ -67,4 +67,10 @@ public interface StepMapper {
       @Param("tenant") String tenant,
       @Param("taskId") String taskId,
       @Param("stepId") String stepId);
+
+  List<Map<String, Object>> selectWebReceiptStep(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId,
+      @Param("stepId") Object stepId);
 }

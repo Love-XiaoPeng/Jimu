@@ -131,4 +131,9 @@ public interface TaskMapper {
       @Param("revision") long revision,
       @Param("attemptId") String attemptId,
       @Param("fence") long fence);
+
+  List<Map<String, Object>> selectWebDiagnosticTask(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
 }
