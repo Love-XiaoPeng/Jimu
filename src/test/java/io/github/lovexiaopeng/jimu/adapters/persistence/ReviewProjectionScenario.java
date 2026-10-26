@@ -38,7 +38,9 @@ public final class ReviewProjectionScenario {
       for (int i = 1; i <= metadata.getColumnCount(); i++) {
         Object value = rs.getObject(i);
         var field = new LinkedHashMap<String, Object>();
-        field.put("value", value);
+        field.put(
+            "value",
+            value instanceof java.time.temporal.TemporalAccessor ? value.toString() : value);
         field.put("javaType", value == null ? null : value.getClass().getName());
         row.add(field);
       }

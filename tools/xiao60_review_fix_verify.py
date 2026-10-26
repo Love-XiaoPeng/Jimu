@@ -91,6 +91,8 @@ def verify(args):
     (classes.parent / 'products.json').write_text(json.dumps(products, indent=2))
     failures = []
     for label, kind in [('question', QuestionSlice), ('todo', TodoExperiment), ('directory', DirectoryExperiment), ('session', SessionSlice), ('media', MediaSlice)]:
+        if args.slices and label not in args.slices.split(','):
+            continue
         experiment = kind(args.jar, args.evidence / label)
         try:
             experiment.prepare()
@@ -139,4 +141,5 @@ if __name__ == '__main__':
     parser.add_argument('--jar', type=Path, required=True)
     parser.add_argument('--old-jar', type=Path, required=True)
     parser.add_argument('--evidence', type=Path, required=True)
+    parser.add_argument('--slices', help='Only retry named affected slices; preserve earlier evidence.')
     verify(parser.parse_args())
