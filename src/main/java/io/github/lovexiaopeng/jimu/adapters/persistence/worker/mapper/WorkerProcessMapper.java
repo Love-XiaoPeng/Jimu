@@ -16,4 +16,7 @@ public interface WorkerProcessMapper
 
   List<Map<String, Object>> selectActiveNativeWorker(
       @Param("query") SessionQueryContext query, @Param("worker") String worker);
+
+  List<Map<String, Object>> selectSearchWorkerHost(
+      @Param("query") SessionQueryContext query, @Param("worker") String worker);
 }

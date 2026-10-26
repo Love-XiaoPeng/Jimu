@@ -7,4 +7,5 @@
   <select id="selectActiveNativeWorker" resultType="map">
     <![CDATA[SELECT root_invocation FROM native_search_run WHERE worker_id=#{worker} AND phase<>'STOPPED' LIMIT 1]]>
   </select>
+<select id="selectSearchWorkerHost" resultType="map"><![CDATA[SELECT host_id FROM worker_process WHERE id=#{worker} AND stopped=FALSE]]></select>
 </mapper>

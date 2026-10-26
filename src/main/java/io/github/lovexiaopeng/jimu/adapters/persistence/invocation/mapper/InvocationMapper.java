@@ -161,4 +161,10 @@ public interface InvocationMapper
       @Param("tenant") String tenant,
       @Param("task") String task,
       @Param("invocation") String invocation);
+
+  List<Map<String, Object>> selectSearchInvocation(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("invocation") String invocation,
+      @Param("task") String task);
 }

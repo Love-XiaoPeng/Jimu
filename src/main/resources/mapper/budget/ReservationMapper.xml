@@ -54,4 +54,7 @@
 <select id="countMcpReservations" resultType="java.lang.Integer"><![CDATA[SELECT COUNT(*) FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{task} AND category='MCP_RESULT']]></select>
 <select id="selectMcpReservation" resultType="map"><![CDATA[SELECT tenant_id,id,task_id,dispatch_id,category,amount,actual,usage_quality,cost_quality,state,record_version FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{task} AND id=#{reservation} FOR UPDATE]]></select>
 <update id="settleMcpReservation"><![CDATA[UPDATE reservation SET actual=#{size},state='SETTLED' WHERE tenant_id=#{tenant} AND id=#{reservation}]]></update>
+<update id="settleSearchStorage"><![CDATA[UPDATE reservation SET actual=#{size},state='SETTLED' WHERE tenant_id=#{tenant} AND id=#{reservation} AND category='SEARCH_STORAGE' AND state='RESERVED']]></update>
+<select id="selectSearchRemovalReservation" resultType="map"><![CDATA[SELECT tenant_id,id,task_id,dispatch_id,category,amount,actual,usage_quality,cost_quality,state,record_version FROM reservation WHERE tenant_id=#{tenant} AND id=#{reservation} AND category='SEARCH_STORAGE' FOR UPDATE]]></select>
+<update id="releaseSearchReservation"><![CDATA[UPDATE reservation SET state='RELEASED' WHERE tenant_id=#{tenant} AND id=#{reservation}]]></update>
 </mapper>

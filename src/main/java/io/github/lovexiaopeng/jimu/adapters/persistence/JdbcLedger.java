@@ -91,6 +91,8 @@ public final class JdbcLedger
       imageService;
   final JdbcMcpRecords mcp;
   private final io.github.lovexiaopeng.jimu.kernel.mcp.service.McpPersistenceService mcpService;
+  private final io.github.lovexiaopeng.jimu.kernel.search.service.NativeSearchPersistenceService
+      nativeSearchService;
   private ArtifactStore imageStore;
   final io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts questions =
       new io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts();
@@ -1944,6 +1946,9 @@ public final class JdbcLedger
         new io.github.lovexiaopeng.jimu.kernel.mcp.service.impl.McpPersistenceServiceImpl(
             mcpRecords);
     mcp = new JdbcMcpRecords(mcpService, mcpRecords);
+    nativeSearchService =
+        new io.github.lovexiaopeng.jimu.kernel.search.service.impl
+            .NativeSearchPersistenceServiceImpl(new MapperNativeSearchRecords(this));
     db.setQueryTimeout(5);
     executionScopes = new JdbcExecutionScopes(db, models);
     var shared = manager == null ? new DataSourceTransactionManager(source) : manager;
@@ -3348,12 +3353,7 @@ public final class JdbcLedger
 
   @Override
   public boolean searchQuiescent(Lease lease, String invocation) {
-    return rows(
-            "SELECT root_invocation FROM native_search_run WHERE tenant_id=? AND task_id=? AND root_invocation=? AND phase<>'STOPPED'",
-            lease.tenant(),
-            lease.taskId(),
-            invocation)
-        .isEmpty();
+    return nativeSearchService.searchQuiescent(lease, invocation);
   }
 
   @Override
@@ -3364,273 +3364,43 @@ public final class JdbcLedger
       String snapshot,
       String query,
       String pin) {
-    leaseTx(
-        lease,
-        () -> {
-          fenced(lease, true);
-          var budget = bucket(lease.tenant());
-          var call =
-              one(
-                  "SELECT * FROM invocation WHERE tenant_id=? AND id=? AND task_id=?",
-                  lease.tenant(),
-                  invocation.id(),
-                  lease.taskId());
-          // A PROPOSED invocation can be admitted by a newer fenced attempt. Its original
-          // proposal attempt is historical; the native run below records the current writer.
-          if (!"RUNNING".equals(s(call, "state"))
-              || !List.of("glob", "grep").contains(s(call, "tool"))
-              || !invocation.effectId().equals(s(call, "effect_intent_id")))
-            throw new TaskFailure(409, "INVOCATION_MISMATCH");
-          var aggregate =
-              one(
-                  "SELECT COUNT(*) AS roots,COALESCE(SUM(COALESCE(result_size,4194304)),0) AS bytes FROM native_search_run WHERE tenant_id=? AND task_id=?",
-                  lease.tenant(),
-                  lease.taskId());
-          if (n(aggregate, "roots") >= 20 || n(aggregate, "bytes") + 4194304 > 8388608)
-            throw new TaskFailure(429, "SEARCH_RESULT_LIMIT");
-          if (storageHeld(budget) + 4194304 > n(budget, "storage_limit"))
-            throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
-          String host =
-              s(
-                  one(
-                      "SELECT host_id FROM worker_process WHERE id=? AND stopped=FALSE",
-                      lease.worker()),
-                  "host_id");
-          db.update(
-              "INSERT INTO native_search_run(tenant_id,root_invocation,task_id,effect_id,attempt_id,worker_id,host_id,runtime_directory,snapshot_digest,query_digest,tool_pin) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-              lease.tenant(),
-              invocation.id(),
-              lease.taskId(),
-              invocation.effectId(),
-              lease.attemptId(),
-              lease.worker(),
-              host,
-              directory,
-              snapshot,
-              query,
-              pin);
-          db.update(
-              "UPDATE tenant_budget SET storage_held=storage_held+4194304 WHERE tenant_id=?",
-              lease.tenant());
-          reserve(
-              lease.tenant(),
-              lease.taskId(),
-              "search:" + invocation.id(),
-              null,
-              "SEARCH_STORAGE",
-              4194304,
-              "RESERVED",
-              "KNOWN");
-          return null;
-        });
+    nativeSearchService.prepareSearch(lease, invocation, directory, snapshot, query, pin);
   }
 
   @Override
   public void searchStarted(Lease lease, String invocation, NativeIdentity identity) {
-    leaseTx(
-        lease,
-        () -> {
-          fenced(lease, true);
-          if (db.update(
-                  "UPDATE native_search_run SET phase='STARTED',process_identity=? WHERE tenant_id=? AND task_id=? AND root_invocation=? AND attempt_id=? AND phase='PREPARED'",
-                  Payloads.json(identity),
-                  lease.tenant(),
-                  lease.taskId(),
-                  invocation,
-                  lease.attemptId())
-              != 1) throw new TaskFailure(409, "SEARCH_PROCESS_UNPROVEN");
-          return null;
-        });
+    nativeSearchService.searchStarted(lease, invocation, identity);
   }
 
   @Override
   public void searchStopped(Run run, NativeIdentity identity) {
-    // Append-only physical observation: an old fence may report death, never business success.
-    tx(
-        () -> {
-          bucket(run.tenant());
-          var task = locked(run.tenant(), run.task());
-          var row =
-              one(
-                  "SELECT * FROM native_search_run WHERE tenant_id=? AND root_invocation=? AND task_id=? AND effect_id=? AND worker_id=? FOR UPDATE",
-                  run.tenant(),
-                  run.invocation(),
-                  run.task(),
-                  run.effect(),
-                  run.worker());
-          String fact = Payloads.json(identity);
-          if (row.get("process_identity") != null && !fact.equals(row.get("process_identity")))
-            throw new TaskFailure(409, "SEARCH_PROCESS_UNPROVEN");
-          db.update(
-              "INSERT IGNORE INTO native_search_stop(tenant_id,root_invocation,identity_digest,process_identity) VALUES(?,?,?,?)",
-              run.tenant(),
-              run.invocation(),
-              Payloads.hash(fact),
-              fact);
-          db.update(
-              "UPDATE native_search_run SET phase='STOPPED',process_identity=?,stopped_at=COALESCE(stopped_at,CURRENT_TIMESTAMP(6)) WHERE tenant_id=? AND root_invocation=?",
-              fact,
-              run.tenant(),
-              run.invocation());
-          settleStoppedWriters(task);
-          return null;
-        });
+    nativeSearchService.searchStopped(run, identity);
   }
 
   @Override
   public void searchCompleted(
       Lease lease, String invocation, String hash, long size, Map<String, Integer> cursors) {
-    if (size < 0 || size > 4194304 || !hash.matches("[a-f0-9]{64}") || cursors.size() > 100000)
-      throw new TaskFailure(409, "SEARCH_RESULT_LIMIT");
-    leaseTx(
-        lease,
-        () -> {
-          fenced(lease, true);
-          var run =
-              one(
-                  "SELECT * FROM native_search_run WHERE tenant_id=? AND task_id=? AND root_invocation=? AND attempt_id=? FOR UPDATE",
-                  lease.tenant(),
-                  lease.taskId(),
-                  invocation,
-                  lease.attemptId());
-          if (!"STOPPED".equals(s(run, "phase")) || run.get("result_hash") != null)
-            throw new TaskFailure(409, "SEARCH_PROCESS_UNPROVEN");
-          db.update(
-              "UPDATE native_search_run SET result_hash=?,result_size=?,cursor_index=? WHERE tenant_id=? AND root_invocation=?",
-              hash,
-              size,
-              Payloads.json(cursors),
-              lease.tenant(),
-              invocation);
-          db.update(
-              "UPDATE reservation SET actual=?,state='SETTLED' WHERE tenant_id=? AND id=? AND category='SEARCH_STORAGE' AND state='RESERVED'",
-              size,
-              lease.tenant(),
-              "search:" + invocation);
-          db.update(
-              "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
-              4194304 - size,
-              lease.tenant());
-          return null;
-        });
+    nativeSearchService.searchCompleted(lease, invocation, hash, size, cursors);
   }
 
   @Override
   public Result searchPage(Lease lease, String query, String pin, String cursor) {
-    return leaseTx(
-        lease,
-        () -> {
-          fenced(lease, true);
-          for (var row :
-              rows(
-                  "SELECT * FROM native_search_run WHERE tenant_id=? AND task_id=? AND result_hash IS NOT NULL AND phase='STOPPED' AND expires_at>CURRENT_TIMESTAMP(6)",
-                  lease.tenant(),
-                  lease.taskId())) {
-            var index =
-                Payloads.read(
-                    s(row, "cursor_index"), com.fasterxml.jackson.databind.JsonNode.class);
-            if (!index.has(cursor)) continue;
-            if (!query.equals(s(row, "query_digest")) || !pin.equals(s(row, "tool_pin")))
-              throw new TaskFailure(409, "SEARCH_CURSOR_INVALID");
-            return new Result(
-                s(row, "root_invocation"),
-                s(row, "runtime_directory"),
-                s(row, "result_hash"),
-                n(row, "result_size"),
-                index.path(cursor).intValue());
-          }
-          throw new TaskFailure(409, "SEARCH_CURSOR_INVALID");
-        });
+    return nativeSearchService.searchPage(lease, query, pin, cursor);
   }
 
   @Override
   public List<Run> nativeSearches(String host) {
-    return rows(
-            "SELECT n.*, (t.state<>'RUNNING' OR t.deadline<=CURRENT_TIMESTAMP(6) OR t.lease_until<=CURRENT_TIMESTAMP(6) OR w.stopped=TRUE) AS stop_requested FROM native_search_run n JOIN task t ON t.tenant_id=n.tenant_id AND t.id=n.task_id JOIN worker_process w ON w.id=n.worker_id WHERE n.host_id=? AND n.phase<>'STOPPED' ORDER BY n.root_invocation LIMIT 64",
-            host)
-        .stream()
-        .map(
-            row ->
-                new Run(
-                    s(row, "tenant_id"),
-                    s(row, "task_id"),
-                    s(row, "root_invocation"),
-                    s(row, "effect_id"),
-                    s(row, "attempt_id"),
-                    s(row, "worker_id"),
-                    s(row, "runtime_directory"),
-                    s(row, "snapshot_digest"),
-                    s(row, "phase"),
-                    row.get("process_identity") == null
-                        ? null
-                        : Payloads.read(s(row, "process_identity"), NativeIdentity.class),
-                    ((Number) row.get("stop_requested")).intValue() != 0))
-        .toList();
+    return nativeSearchService.nativeSearches(host);
   }
 
   @Override
   public List<Run> expiredSearches(String host) {
-    return rows(
-            "SELECT n.* FROM native_search_run n JOIN task t ON t.tenant_id=n.tenant_id AND t.id=n.task_id WHERE n.host_id=? AND n.phase='STOPPED' AND n.storage_removed=FALSE AND n.expires_at<=CURRENT_TIMESTAMP(6) AND t.state IN ('SUCCEEDED','FAILED','CANCELLED','NEEDS_RECONCILIATION') AND NOT EXISTS(SELECT 1 FROM task_attempt a WHERE a.tenant_id=n.tenant_id AND a.task_id=n.task_id AND a.quiescent=FALSE) LIMIT 64",
-            host)
-        .stream()
-        .map(
-            row ->
-                new Run(
-                    s(row, "tenant_id"),
-                    s(row, "task_id"),
-                    s(row, "root_invocation"),
-                    s(row, "effect_id"),
-                    s(row, "attempt_id"),
-                    s(row, "worker_id"),
-                    s(row, "runtime_directory"),
-                    s(row, "snapshot_digest"),
-                    "STOPPED",
-                    Payloads.read(s(row, "process_identity"), NativeIdentity.class),
-                    true))
-        .toList();
+    return nativeSearchService.expiredSearches(host);
   }
 
   @Override
   public void searchStorageRemoved(Run run) {
-    tx(
-        () -> {
-          bucket(run.tenant());
-          locked(run.tenant(), run.task());
-          var row =
-              one(
-                  "SELECT * FROM native_search_run WHERE tenant_id=? AND root_invocation=? AND task_id=? AND effect_id=? FOR UPDATE",
-                  run.tenant(),
-                  run.invocation(),
-                  run.task(),
-                  run.effect());
-          if (!"STOPPED".equals(s(row, "phase")))
-            throw new TaskFailure(409, "SEARCH_PROCESS_UNPROVEN");
-          var reservation =
-              one(
-                  "SELECT * FROM reservation WHERE tenant_id=? AND id=? AND category='SEARCH_STORAGE' FOR UPDATE",
-                  run.tenant(),
-                  "search:" + run.invocation());
-          if (!"RELEASED".equals(s(reservation, "state"))) {
-            long held =
-                reservation.get("actual") == null
-                    ? n(reservation, "amount")
-                    : n(reservation, "actual");
-            db.update(
-                "UPDATE tenant_budget SET storage_held=storage_held-? WHERE tenant_id=?",
-                held,
-                run.tenant());
-            db.update(
-                "UPDATE reservation SET state='RELEASED' WHERE tenant_id=? AND id=?",
-                run.tenant(),
-                "search:" + run.invocation());
-          }
-          db.update(
-              "UPDATE native_search_run SET storage_removed=TRUE,result_size=COALESCE(result_size,0) WHERE tenant_id=? AND root_invocation=?",
-              run.tenant(),
-              run.invocation());
-          return null;
-        });
+    nativeSearchService.searchStorageRemoved(run);
   }
 
   boolean publicReport(Map<String, Object> task) {

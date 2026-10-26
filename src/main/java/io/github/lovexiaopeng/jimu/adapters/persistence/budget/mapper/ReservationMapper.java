@@ -124,4 +124,20 @@ public interface ReservationMapper {
       @Param("size") long size,
       @Param("tenant") String tenant,
       @Param("reservation") String reservation);
+
+  int settleSearchStorage(
+      @Param("query") SessionQueryContext query,
+      @Param("size") long size,
+      @Param("tenant") String tenant,
+      @Param("reservation") String reservation);
+
+  List<Map<String, Object>> selectSearchRemovalReservation(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("reservation") String reservation);
+
+  int releaseSearchReservation(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("reservation") String reservation);
 }

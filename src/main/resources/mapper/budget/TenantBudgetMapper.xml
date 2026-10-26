@@ -30,4 +30,7 @@
   <update id="releaseImageStorage"><![CDATA[UPDATE tenant_budget SET storage_held=storage_held-#{bytes} WHERE tenant_id=#{tenant}]]></update>
 <update id="holdMcpStorage"><![CDATA[UPDATE tenant_budget SET storage_held=storage_held+1048576 WHERE tenant_id=#{tenant}]]></update>
 <update id="releaseMcpStorage"><![CDATA[UPDATE tenant_budget SET storage_held=storage_held-#{bytes} WHERE tenant_id=#{tenant}]]></update>
+<update id="holdSearchStorage"><![CDATA[UPDATE tenant_budget SET storage_held=storage_held+4194304 WHERE tenant_id=#{tenant}]]></update>
+<update id="releaseCompletedSearchStorage"><![CDATA[UPDATE tenant_budget SET storage_held=storage_held-#{bytes} WHERE tenant_id=#{tenant}]]></update>
+<update id="releaseRemovedSearchStorage"><![CDATA[UPDATE tenant_budget SET storage_held=storage_held-#{bytes} WHERE tenant_id=#{tenant}]]></update>
 </mapper>
