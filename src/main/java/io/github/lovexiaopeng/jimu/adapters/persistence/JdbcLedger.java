@@ -1603,20 +1603,21 @@ public final class JdbcLedger
     return questionInputs.input(new LedgerQuestionInput(this, q, task));
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionAuthorizationService
+      questionAuthorization =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl
+              .QuestionAuthorizationServiceImpl();
+
   @Override
   public void authorizeAnswer(Identity identity, String taskId, String requestId) {
-    tx(
-        () -> {
-          bucket(identity.tenant());
-          questionVisible(identity, taskId);
-          if (rows(
-                  "SELECT id FROM user_question WHERE tenant_id=? AND task_id=? AND id=?",
-                  identity.tenant(),
-                  taskId,
-                  requestId)
-              .isEmpty()) throw new TaskFailure(404, "QUESTION_NOT_FOUND");
-          return null;
-        });
+    questionAuthorization.authorize(
+        new MapperQuestionAuthorization(
+            this,
+            identity,
+            taskId,
+            requestId,
+            work -> tx(work),
+            () -> questionVisible(identity, taskId)));
   }
 
   @Override
