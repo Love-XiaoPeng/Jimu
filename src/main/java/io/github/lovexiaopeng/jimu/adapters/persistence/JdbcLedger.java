@@ -1560,9 +1560,12 @@ public final class JdbcLedger
     questionEligibility.access(new MapperQuestionEligibility(this, task));
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionClockService
+      questionClock =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl.QuestionClockServiceImpl();
+
   private Instant questionNow() {
-    return db.queryForObject("SELECT CURRENT_TIMESTAMP(6)", java.time.LocalDateTime.class)
-        .toInstant(java.time.ZoneOffset.UTC);
+    return questionClock.now(new MapperQuestionClock(this));
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionVisibilityService
