@@ -3,7 +3,6 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.BusinessPolicies;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationMaterials;
-import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationPlans;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionQueryDeadline;
 import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan;
@@ -96,6 +95,12 @@ public final class JdbcLedger
   private final io.github.lovexiaopeng.jimu.kernel.directory.service.DirectoryPersistenceService
       directoryService;
   private final io.github.lovexiaopeng.jimu.kernel.todo.service.TodoPersistenceService todoService;
+  final io.github.lovexiaopeng.jimu.kernel.model.service.MaterialEvidenceService materialEvidence;
+
+  byte[] materialImageBytes(String tenant, String key, String hash, long size) {
+    return imageStore.read(tenant, key, hash, size);
+  }
+
   private ArtifactStore imageStore;
   final io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts questions =
       new io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts();
@@ -1297,6 +1302,9 @@ public final class JdbcLedger
     todoService =
         new io.github.lovexiaopeng.jimu.kernel.todo.service.impl.TodoPersistenceServiceImpl(
             new MapperTodoRecords(this));
+    materialEvidence =
+        new io.github.lovexiaopeng.jimu.kernel.model.service.impl.MaterialEvidenceServiceImpl(
+            new MapperMaterialEvidenceRecords(this));
     db.setQueryTimeout(5);
     executionScopes = new JdbcExecutionScopes(db, models);
     var shared = manager == null ? new DataSourceTransactionManager(source) : manager;
@@ -1547,7 +1555,7 @@ public final class JdbcLedger
     }
   }
 
-  private boolean businessTask(Map<String, Object> task) {
+  boolean businessTask(Map<String, Object> task) {
     return n(task, "record_version") == 2
         || task.get("business_policy_snapshot") != null
         || task.get("business_policy_digest") != null;
@@ -2188,343 +2196,30 @@ public final class JdbcLedger
   }
 
   EvaluationMaterials.Material material(Map<String, Object> task) {
-    if (task.get("evaluation_snapshot") == null) return null;
-    String json = s(task, "material_snapshot");
-    EvaluationMaterials.require(
-        json != null && Payloads.hash(json).equals(s(task, "material_digest")));
-    var stored = Payloads.read(json, EvaluationMaterials.Material.class);
-    var binding = Payloads.read(s(task, "evaluation_snapshot"), EvaluationPlan.Binding.class);
-    var expected =
-        EvaluationMaterials.load(EvaluationPlans.plan(binding.planId()), binding.sample());
-    EvaluationMaterials.require(
-        expected.equals(stored)
-            && stored.goal().equals(s(task, "goal"))
-            && Payloads.hash(
-                    stored
-                        .systemTemplate()
-                        .replace("{{HOST_REPORT_TIME}}", time(task, "report_time").toString()))
-                .equals(s(task, "material_system_digest")));
-    return stored;
+    return MapperMaterialEvidenceRecords.unwrap(
+        materialEvidence.material(MapperMaterialEvidenceRecords.wrap(task)));
   }
 
   void checkMaterials(Map<String, Object> task) {
-    var material = material(task);
-    if (material == null) return;
-    for (var invocation :
-        mappers.invocations().selectMaterialSources(query, s(task, "tenant_id"), s(task, "id"))) {
-      String output = s(invocation, "output_snapshot");
-      EvaluationMaterials.require(
-          output != null && Payloads.hash(output).equals(s(invocation, "output_digest")));
-      var input =
-          Payloads.read(
-              s(invocation, "input_snapshot"), com.fasterxml.jackson.databind.JsonNode.class);
-      EvaluationMaterials.source(material, input.path("url").asText(), output);
-    }
-    if (task.get("material_file_snapshot") != null) {
-      var initial = initialFile(task);
-      boolean written = false;
-      for (var invocation :
-          mappers
-              .invocations()
-              .selectMaterialFileHistory(query, s(task, "tenant_id"), s(task, "id"))) {
-        if (s(invocation, "tool").equals("write")) {
-          written = true;
-          continue;
-        }
-        if (written) continue;
-        String output = s(invocation, "output_snapshot");
-        EvaluationMaterials.require(Payloads.hash(output).equals(s(invocation, "output_digest")));
-        var read = Payloads.read(output, com.fasterxml.jackson.databind.JsonNode.class);
-        if (material.initialContent() != null) {
-          var visible = new StringBuilder();
-          String[] lines = material.initialContent().split("\n", -1);
-          for (int index = 0; index < lines.length; index++)
-            visible.append(index + 1).append(": ").append(lines[index]).append('\n');
-          EvaluationMaterials.require(
-              read.path("offset").asInt() == 1
-                  && read.path("content").asText().equals(visible.toString()));
-        }
-        EvaluationMaterials.require(
-            read.path("filePath").asText().equals(initial.path())
-                && read.path("version").asLong() == initial.version()
-                && read.path("size").asLong() == initial.size()
-                && java.util.Objects.equals(
-                    read.path("sha256").isNull() ? null : read.path("sha256").asText(),
-                    initial.sha256()));
-      }
-    }
+    materialEvidence.checkMaterials(MapperMaterialEvidenceRecords.wrap(task));
   }
 
   @Override
   public Optional<String> evaluationFile(Lease lease) {
-    return leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, true);
-          var material = material(task);
-          if (material == null) return Optional.empty();
-          boolean written =
-              !rows(
-                      "SELECT id FROM invocation WHERE tenant_id=? AND task_id=? AND tool='write' AND state='SUCCEEDED' LIMIT 1",
-                      lease.tenant(),
-                      lease.taskId())
-                  .isEmpty();
-          if (written) {
-            initialFile(task);
-            return Optional.empty();
-          }
-          // A restart before first dispatch may inspect again, but may never replace its original
-          // receipt.
-          return Optional.of(material.target());
-        });
+    return materialEvidence.evaluationFile(lease);
   }
 
   ReportFile initialFile(Map<String, Object> task) {
-    String json = s(task, "material_file_snapshot");
-    EvaluationMaterials.require(
-        json != null && Payloads.hash(json).equals(s(task, "material_file_digest")));
-    return Payloads.read(json, ReportFile.class);
+    return materialEvidence.initialFile(MapperMaterialEvidenceRecords.wrap(task));
   }
 
   @Override
   public void bindEvaluationFile(Lease lease, ReportFile file) {
-    leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, true);
-          var material = material(task);
-          EvaluationMaterials.require(material != null && material.target().equals(file.path()));
-          String content = material.initialContent();
-          EvaluationMaterials.require(
-              content == null
-                  ? file.version() == 0 && file.sha256() == null && file.size() == 0
-                  : file.version() > 0
-                      && Payloads.hash(content).equals(file.sha256())
-                      && content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length
-                          == file.size());
-          if (task.get("material_file_snapshot") != null)
-            EvaluationMaterials.require(initialFile(task).equals(file));
-          else {
-            EvaluationMaterials.require(
-                rows(
-                        "SELECT id FROM step WHERE tenant_id=? AND task_id=? LIMIT 1",
-                        lease.tenant(),
-                        lease.taskId())
-                    .isEmpty());
-            String json = Payloads.json(file);
-            db.update(
-                "UPDATE task SET material_file_snapshot=?,material_file_digest=? WHERE tenant_id=? AND id=?",
-                json,
-                Payloads.hash(json),
-                lease.tenant(),
-                lease.taskId());
-          }
-          return null;
-        });
+    materialEvidence.bindEvaluationFile(lease, file);
   }
 
   void materialBody(Map<String, Object> task, String request, int ordinal) {
-    var material = material(task);
-    boolean business = businessTask(task);
-    boolean media = n(task, "record_version") == 3;
-    if (material == null && !business && !media) return;
-    var wire = Payloads.read(request, com.fasterxml.jackson.databind.JsonNode.class);
-    if (material != null) {
-      initialFile(task);
-      EvaluationMaterials.body(
-          material, wire.path("requestBody").asText(), time(task, "report_time").toString());
-    }
-    // Step N's request contains exactly the confirmed history through N-1. Its own
-    // outputs may already be committed on recovery and must not enter this prefix.
-    var preceding =
-        rows(
-            "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND ordinal<? ORDER BY ordinal",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            ordinal);
-    EvaluationMaterials.require(ordinal > 0 && preceding.size() == ordinal - 1);
-    var body =
-        Payloads.read(
-            wire.path("requestBody").asText(), com.fasterxml.jackson.databind.JsonNode.class);
-    var expected = Payloads.read("[]", com.fasterxml.jackson.databind.node.ArrayNode.class);
-    if (business || media) {
-      if (caps(task).contains("present")) {
-        var reports = new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportPolicy();
-        var context = new ReportContext(time(task, "report_time"), List.of());
-        String instruction = body.path("messages").path(0).path("content").asText();
-        // Recovery retains the original fixed template; no model-selected instruction is allowed.
-        EvaluationMaterials.require(
-            media
-                ? new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ImageReportComposer()
-                    .instruction(context)
-                    .equals(instruction)
-                : tools(task).pins().containsKey("compose_report")
-                    ? new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer()
-                        .instruction(context)
-                        .equals(instruction)
-                    : List.of(reports.instruction(context), reports.currentInstruction(context))
-                        .contains(instruction));
-        if (!preceding.isEmpty()) {
-          String first = s(preceding.getFirst(), "request_snapshot");
-          EvaluationMaterials.require(
-              Payloads.hash(first).equals(s(preceding.getFirst(), "request_digest")));
-          var original = Payloads.read(first, com.fasterxml.jackson.databind.JsonNode.class);
-          var originalBody =
-              Payloads.read(
-                  original.path("requestBody").asText(),
-                  com.fasterxml.jackson.databind.JsonNode.class);
-          EvaluationMaterials.require(
-              instruction.equals(originalBody.path("messages").path(0).path("content").asText()));
-        }
-        expected.addObject().put("role", "system").put("content", instruction);
-      }
-      expected.addObject().put("role", "user").put("content", s(task, "goal"));
-      if (media)
-        expected
-            .addObject()
-            .put("role", "user")
-            .put(
-                "content",
-                io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.directory(
-                    images.snapshot(task)));
-    } else {
-      expected.add(body.path("messages").get(0));
-      expected.add(body.path("messages").get(1));
-    }
-    int position = 0;
-    var seen = new java.util.HashSet<String>();
-    for (var prior : preceding) {
-      String response = s(prior, "response_snapshot");
-      EvaluationMaterials.require(
-          n(prior, "ordinal") == ++position
-              && response != null
-              && Payloads.hash(response).equals(s(prior, "response_digest")));
-      var original = Payloads.read(response, com.fasterxml.jackson.databind.JsonNode.class);
-      EvaluationMaterials.require(
-          original.path("version").asInt() == 2 && original.path("calls").isArray());
-      var assistant = expected.addObject().put("role", "assistant");
-      assistant.put("content", original.path("content").asText(""));
-      var invocations =
-          rows(
-              "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND step_id=? ORDER BY CAST(SUBSTRING_INDEX(slot,':',1) AS UNSIGNED)",
-              s(task, "tenant_id"),
-              s(task, "id"),
-              s(prior, "id"));
-      EvaluationMaterials.require(invocations.size() == original.path("calls").size());
-      int slot = 0;
-      for (var call : original.path("calls")) {
-        var invocation = invocations.get(slot);
-        String input = s(invocation, "input_snapshot");
-        String output = s(invocation, "output_snapshot");
-        EvaluationMaterials.require(
-            (slot + ":" + call.path("id").asText()).equals(s(invocation, "slot"))
-                && call.path("id").asText().equals(s(invocation, "provider_id"))
-                && call.path("name").asText().equals(s(invocation, "tool"))
-                && call.path("type").asText().equals("function")
-                && call.path("arguments").asText().equals(input)
-                && Payloads.hash(input).equals(s(invocation, "input_digest"))
-                && s(invocation, "state").equals("SUCCEEDED")
-                && output != null
-                && Payloads.hash(output).equals(s(invocation, "output_digest")));
-        var emitted = assistant.withArray("tool_calls").addObject();
-        emitted.put("id", call.path("id").asText()).put("type", "function");
-        emitted
-            .putObject("function")
-            .put("name", call.path("name").asText())
-            .put("arguments", input);
-        slot++;
-      }
-      for (var invocation : invocations)
-        expected
-            .addObject()
-            .put("role", "tool")
-            .put("tool_call_id", s(invocation, "provider_id"))
-            .put("content", s(invocation, "output_snapshot"));
-      if (media)
-        for (var image : images.step(task, s(prior, "id"))) {
-          var ref = image.result();
-          if (seen.add(
-              io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.identity(ref)))
-            expected.add(
-                io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.provider(
-                    ref,
-                    imageStore.read(
-                        s(task, "tenant_id"),
-                        image.key(),
-                        ref.image().sha256(),
-                        ref.image().size())));
-        }
-    }
-    EvaluationMaterials.require(expected.equals(body.path("messages")));
-    if (media) {
-      var cp =
-          Payloads.read(
-              request,
-              io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Checkpoint.class);
-      if (cp.version() != 3
-          || request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 12582912
-          || !Payloads.hash(cp.requestBody()).equals(cp.bodyDigest())
-          || !ModelProfiles.digest(snapshot(task)).equals(cp.configDigest()))
-        throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-      // Every serialized reference is reloaded from this task and projected into exact data bytes.
-      var definitions =
-          new java.util.ArrayList<org.springframework.ai.tool.definition.ToolDefinition>();
-      int toolIndex = 0;
-      for (String name : caps(task)) {
-        var pin = tools(task).pins().get(name);
-        try {
-          String schema;
-          if (name.equals("web_fetch"))
-            schema =
-                new String(
-                    io.github.lovexiaopeng.jimu.adapters.runtime.contract.BuiltinManifestLoader
-                        .resource("input.schema.json"),
-                    java.nio.charset.StandardCharsets.UTF_8);
-          else {
-            var contract =
-                new io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceContracts()
-                    .load(name, pin.version());
-            if (!contract.descriptor().outputSha256().equals(pin.digest()))
-              throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
-            schema = contract.input();
-          }
-          var saved = body.path("tools").path(toolIndex++).path("function");
-          String description =
-              io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceContracts.description(
-                  name);
-          if (!saved.path("name").asText().equals(name)
-              || !saved.path("description").asText().equals(description)
-              || !saved
-                  .path("parameters")
-                  .equals(Payloads.read(schema, com.fasterxml.jackson.databind.JsonNode.class)))
-            throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-          definitions.add(
-              org.springframework.ai.tool.definition.ToolDefinition.builder()
-                  .name(name)
-                  .description(description)
-                  .inputSchema(schema)
-                  .build());
-        } catch (java.io.IOException invalid) {
-          throw new TaskFailure(503, "PLUGIN_SNAPSHOT_UNAVAILABLE");
-        }
-      }
-      String projected =
-          new io.github.lovexiaopeng.jimu.adapters.ai.springai.OpenAiProtocol()
-              .body(
-                  snapshot(task),
-                  cp.messages(),
-                  definitions,
-                  ref -> {
-                    var object = images.object(task, ref);
-                    return imageStore.read(
-                        s(task, "tenant_id"),
-                        object.key(),
-                        ref.image().sha256(),
-                        ref.image().size());
-                  });
-      if (!projected.equals(cp.requestBody())) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-      models.checkInput(snapshot(task), projected);
-    }
+    materialEvidence.materialBody(MapperMaterialEvidenceRecords.wrap(task), request, ordinal);
   }
 
   String runRejection(Map<String, Object> evaluation) {
@@ -2801,81 +2496,13 @@ public final class JdbcLedger
   @Override
   public io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ReportEvidence imageReportContext(
       Lease lease, String invocation) {
-    return leaseTx(lease, () -> imageReportContext(fenced(lease, true), invocation));
+    return materialEvidence.imageReportContext(lease, invocation);
   }
 
   io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ReportEvidence imageReportContext(
       Map<String, Object> task, String invocation) {
-    var compose =
-        one(
-            "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=? AND tool='compose_report'",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            invocation);
-    var step =
-        one(
-            "SELECT * FROM step WHERE tenant_id=? AND task_id=? AND id=?",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            s(compose, "step_id"));
-    if (step.get("response_snapshot") == null
-        || !Payloads.hash(s(step, "response_snapshot")).equals(step.get("response_digest"))
-        || step.get("dispatch_id") == null)
-      throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
-    var dispatch =
-        one(
-            "SELECT * FROM model_dispatch WHERE tenant_id=? AND task_id=? AND id=?",
-            s(task, "tenant_id"),
-            s(task, "id"),
-            s(step, "dispatch_id"));
-    if (!"RESPONDED".equals(s(dispatch, "state"))
-        || !Payloads.hash(s(step, "request_snapshot")).equals(step.get("request_digest")))
-      throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
-    var checkpoint =
-        Payloads.read(
-            s(step, "request_snapshot"),
-            io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Checkpoint.class);
-    if (checkpoint.version() != 3
-        || !Payloads.hash(checkpoint.requestBody()).equals(checkpoint.bodyDigest())
-        || !s(task, "model_digest").equals(checkpoint.configDigest()))
-      throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
-    var body =
-        Payloads.read(checkpoint.requestBody(), com.fasterxml.jackson.databind.JsonNode.class);
-    var result =
-        new java.util.ArrayList<
-            io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ImageSource>();
-    for (var message : checkpoint.messages())
-      if (message.images() != null)
-        for (var ref : message.images()) {
-          var object = images.object(task, ref);
-          byte[] bytes =
-              imageStore.read(
-                  s(task, "tenant_id"), object.key(), ref.image().sha256(), ref.image().size());
-          var part =
-              io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.provider(ref, bytes);
-          boolean present = false;
-          for (var actual : body.path("messages")) if (actual.equals(part)) present = true;
-          if (!present) throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
-          var source =
-              one(
-                  "SELECT output_digest FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
-                  s(task, "tenant_id"),
-                  s(task, "id"),
-                  ref.sourceRef().substring(6));
-          result.add(
-              new io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ImageSource(
-                  ref,
-                  s(source, "output_digest"),
-                  s(step, "id"),
-                  s(step, "dispatch_id"),
-                  checkpoint.configDigest(),
-                  checkpoint.bodyDigest(),
-                  s(step, "response_digest")));
-        }
-    return new io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ReportEvidence(
-        reportContext(task),
-        List.copyOf(result),
-        !snapshot(task).paid() && models.localEvaluation(snapshot(task)));
+    return materialEvidence.imageReportContext(
+        MapperMaterialEvidenceRecords.wrap(task), invocation);
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.artifact.service.ReportPublicationService

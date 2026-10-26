@@ -163,4 +163,11 @@ public interface TaskMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("task") String task);
+
+  int bindMaterialReceipt(
+      @Param("query") SessionQueryContext query,
+      @Param("json") String json,
+      @Param("digest") String digest,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
 }

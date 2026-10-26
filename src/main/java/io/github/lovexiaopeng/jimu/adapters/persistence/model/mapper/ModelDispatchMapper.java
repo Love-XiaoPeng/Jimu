@@ -82,4 +82,10 @@ public interface ModelDispatchMapper
       @Param("quality") String quality,
       @Param("tenant") String tenant,
       @Param("dispatchId") String dispatchId);
+
+  List<Map<String, Object>> imageCompositionDispatch(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("dispatch") String dispatch);
 }

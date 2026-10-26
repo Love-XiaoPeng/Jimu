@@ -167,4 +167,27 @@ public interface InvocationMapper
       @Param("tenant") String tenant,
       @Param("invocation") String invocation,
       @Param("task") String task);
+
+  List<Map<String, Object>> successfulMaterialWrite(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  List<Map<String, Object>> materialStepInvocations(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("step") String step);
+
+  List<Map<String, Object>> imageComposition(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("invocation") String invocation);
+
+  List<Map<String, Object>> imageSourceDigest(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("invocation") String invocation);
 }

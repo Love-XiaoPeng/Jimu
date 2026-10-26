@@ -73,4 +73,21 @@ public interface StepMapper {
       @Param("tenant") String tenant,
       @Param("taskId") String taskId,
       @Param("stepId") Object stepId);
+
+  List<Map<String, Object>> existingMaterialStep(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  List<Map<String, Object>> materialPrecedingSteps(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("ordinal") int ordinal);
+
+  List<Map<String, Object>> imageCompositionStep(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("step") String step);
 }
