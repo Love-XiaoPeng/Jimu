@@ -702,106 +702,17 @@ public final class JdbcLedger
     commitFenceService.require(new MapperCommitFence(this, lease));
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.task.service.TaskMetadataAccountingService
+      taskMetadata =
+          new io.github.lovexiaopeng.jimu.kernel.task.service.impl
+              .TaskMetadataAccountingServiceImpl();
+
   private void directoryMetadata(Map<String, Object> task, boolean closing) {
-    // UTF-8 scalar values plus eight bytes per column and 32 per row conservatively
-    // bound fixed metadata. Body copies are counted separately by todoStorage.
-    long bytes = 0;
-    var body =
-        java.util.Set.of(
-            "request_snapshot",
-            "goal",
-            "summary",
-            "model_snapshot",
-            "tools_snapshot",
-            "binding_snapshot",
-            "response_snapshot",
-            "input_snapshot",
-            "output_snapshot",
-            "usage_snapshot",
-            "retained_digests",
-            "filesystem_receipt",
-            "directory_cwd",
-            "cwd",
-            "base_cwd",
-            "target_cwd",
-            "canonical_paths_snapshot",
-            "directory_evidence_snapshot");
-    for (String table :
-        List.of(
-            "task",
-            "task_directory",
-            "invocation_path_binding",
-            "task_attempt",
-            "step",
-            "invocation",
-            "model_dispatch",
-            "reservation",
-            "event")) {
-      String key = table.equals("task") ? "id" : "task_id";
-      for (var row :
-          rows(
-              "SELECT * FROM " + table + " WHERE tenant_id=? AND " + key + "=?",
-              s(task, "tenant_id"),
-              s(task, "id"))) {
-        bytes += 32;
-        for (var entry : row.entrySet())
-          if (!body.contains(entry.getKey()))
-            bytes +=
-                8
-                    + (entry.getValue() == null
-                        ? 1
-                        : io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(
-                            entry.getValue().toString()));
-      }
-    }
-    if (bytes > (closing ? 65536 : 61440)) throw new TaskFailure(429, "DIRECTORY_STORAGE_LIMIT");
+    taskMetadata.directoryMetadata(new MapperTaskMetadataAccounting(this, task), closing);
   }
 
   private void todoMetadata(Map<String, Object> task, boolean closing) {
-    // UTF-8 scalar values plus eight bytes per column and 32 per row conservatively
-    // bound fixed metadata. Body copies are counted separately by todoStorage.
-    long bytes = 0;
-    var body =
-        java.util.Set.of(
-            "request_snapshot",
-            "goal",
-            "summary",
-            "model_snapshot",
-            "tools_snapshot",
-            "binding_snapshot",
-            "response_snapshot",
-            "input_snapshot",
-            "output_snapshot",
-            "usage_snapshot",
-            "retained_digests");
-    for (String table :
-        List.of(
-            "task",
-            "task_todo_projection",
-            "task_attempt",
-            "step",
-            "invocation",
-            "model_dispatch",
-            "reservation",
-            "event")) {
-      String key = table.equals("task") ? "id" : "task_id";
-      for (var row :
-          rows(
-              "SELECT * FROM " + table + " WHERE tenant_id=? AND " + key + "=?",
-              s(task, "tenant_id"),
-              s(task, "id"))) {
-        bytes += 32;
-        for (var entry : row.entrySet())
-          if (!body.contains(entry.getKey()))
-            bytes +=
-                8
-                    + (entry.getValue() == null
-                        ? 1
-                        : io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(
-                            entry.getValue().toString()));
-      }
-    }
-    if (bytes > (closing ? 65536 : 61440)) throw new TaskFailure(429, "TODO_STORAGE_LIMIT");
+    taskMetadata.todoMetadata(new MapperTaskMetadataAccounting(this, task), closing);
   }
 
   @Override
@@ -1569,16 +1480,6 @@ public final class JdbcLedger
 
   io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext queryContext() {
     return query;
-  }
-
-  List<Map<String, Object>> rows(String sql, Object... args) {
-    return db.queryForList(sql, args);
-  }
-
-  Map<String, Object> one(String sql, Object... args) {
-    var result = rows(sql, args);
-    if (result.isEmpty()) throw new TaskFailure(404, "NOT_FOUND");
-    return result.getFirst();
   }
 
   static String s(Map<String, Object> row, String key) {
@@ -2369,42 +2270,19 @@ public final class JdbcLedger
             .anyMatch(name -> List.of("read", "write", "present", "compose_report").contains(name));
   }
 
+  private final MapperReportContexts reportContexts = new MapperReportContexts(this);
+  private final io.github.lovexiaopeng.jimu.kernel.artifact.service.ReportContextService
+      reportContextService =
+          new io.github.lovexiaopeng.jimu.kernel.artifact.service.impl.ReportContextServiceImpl(
+              reportContexts);
+
   @Override
   public ReportContext reportContext(Lease lease) {
-    return leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, true);
-          if (!publicReport(task) || time(task, "report_time") == null)
-            throw new TaskFailure(409, "REPORT_METADATA_MISSING");
-          return reportContext(task);
-        });
+    return reportContextService.context(lease);
   }
 
   ReportContext reportContext(Map<String, Object> task) {
-    boolean composed = tools(task).pins().containsKey("compose_report");
-    var fetchPin = tools(task).pins().get("web_fetch");
-    var sources =
-        rows(
-                "SELECT id,output_snapshot,output_digest,plugin_version,plugin_digest FROM invocation WHERE tenant_id=? AND task_id=? AND tool='web_fetch' AND state='SUCCEEDED'"
-                    + (composed ? "" : " AND plugin_version='0.3.0'")
-                    + " ORDER BY ordinal",
-                s(task, "tenant_id"),
-                s(task, "id"))
-            .stream()
-            .map(
-                row -> {
-                  if (composed
-                      && (fetchPin == null
-                          || !"0.3.0".equals(fetchPin.version())
-                          || !fetchPin.version().equals(s(row, "plugin_version"))
-                          || !fetchPin.digest().equals(s(row, "plugin_digest"))))
-                    throw new TaskFailure(409, "REPORT_COMPOSITION_INVALID");
-                  return new Source(
-                      s(row, "id"), s(row, "output_snapshot"), s(row, "output_digest"));
-                })
-            .toList();
-    return new ReportContext(time(task, "report_time"), sources);
+    return reportContextService.context(reportContexts.wrap(task));
   }
 
   @Override

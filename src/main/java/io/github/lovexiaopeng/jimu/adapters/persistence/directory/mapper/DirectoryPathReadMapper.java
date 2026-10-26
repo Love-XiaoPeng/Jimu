@@ -47,4 +47,10 @@ public interface DirectoryPathReadMapper extends BaseMapper<DirectoryPathReadEnt
       @Param("proof") String proof,
       @Param("tenant") String tenant,
       @Param("invocation") String invocation);
+
+  java.util.List<java.util.Map<String, Object>> metadataRows(
+      @org.apache.ibatis.annotations.Param("query")
+          io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      @org.apache.ibatis.annotations.Param("tenant") String tenant,
+      @org.apache.ibatis.annotations.Param("task") String task);
 }

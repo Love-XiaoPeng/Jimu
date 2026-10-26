@@ -179,20 +179,6 @@ final class JdbcSessionRecords {
         || searchTask(task);
   }
 
-  private List<Map<String, Object>> rows(String sql, Object... args) {
-    if (searchBudget != null && query == null)
-      throw new IllegalStateException("Session search requires an explicit query context");
-    try (var ignored = query == null ? null : query.meter(searchBudget)) {
-      return db.queryForList(sql, args);
-    }
-  }
-
-  private Map<String, Object> one(String sql, Object... args) {
-    var result = rows(sql, args);
-    if (result.size() != 1) throw corrupt();
-    return result.getFirst();
-  }
-
   static TaskFailure corrupt() {
     return new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
   }

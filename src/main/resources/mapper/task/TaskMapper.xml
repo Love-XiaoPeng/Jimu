@@ -73,4 +73,5 @@
 <update id="countTodoTool"><![CDATA[UPDATE task SET tools_used=tools_used+1 WHERE tenant_id=#{tenant} AND id=#{task}]]></update>
 <update id="bindMaterialReceipt"><![CDATA[UPDATE task SET material_file_snapshot=#{json},material_file_digest=#{digest} WHERE tenant_id=#{tenant} AND id=#{task}]]></update>
 <select id="selectSessionOwner" resultType="map"><![CDATA[SELECT * FROM task WHERE tenant_id=#{tenant} AND id=#{task} AND owner_actor_id=#{actor} FOR UPDATE]]></select>
+  <select id="metadataRows" resultType="org.springframework.util.LinkedCaseInsensitiveMap"><![CDATA[SELECT * FROM task WHERE tenant_id=#{tenant} AND id=#{task}]]></select>
 </mapper>

@@ -95,7 +95,37 @@ class PersistencePathTrackingTest {
         assertEquals(
             "SELECT * FROM task WHERE tenant_id=#{tenant} AND id=#{task} AND owner_actor_id=#{actor} FOR UPDATE",
             mapper.path("sql").asText());
-      else assertTrue(!mapper.path("sql").asText().matches("(?is).*SELECT\\s+(?:\\w+\\.)?\\*.*"));
+      else if (mapper.path("id").asText().endsWith(".metadataRows")) {
+        // Exact finite full-row scans are the original directory/todo billing inputs.
+        var expected =
+            java.util.Map.ofEntries(
+                java.util.Map.entry("task.mapper.TaskMapper", "task"),
+                java.util.Map.entry("directory.mapper.TaskDirectoryReadMapper", "task_directory"),
+                java.util.Map.entry(
+                    "directory.mapper.DirectoryPathReadMapper", "invocation_path_binding"),
+                java.util.Map.entry("todo.mapper.TodoProjectionReadMapper", "task_todo_projection"),
+                java.util.Map.entry("execution.mapper.TaskAttemptMapper", "task_attempt"),
+                java.util.Map.entry("execution.mapper.StepMapper", "step"),
+                java.util.Map.entry("invocation.mapper.InvocationMapper", "invocation"),
+                java.util.Map.entry("model.mapper.ModelDispatchMapper", "model_dispatch"),
+                java.util.Map.entry("budget.mapper.ReservationMapper", "reservation"),
+                java.util.Map.entry("event.mapper.EventMapper", "event"));
+        String id =
+            mapper
+                .path("id")
+                .asText()
+                .replace("io.github.lovexiaopeng.jimu.adapters.persistence.", "")
+                .replace(".metadataRows", "");
+        assertTrue(expected.containsKey(id));
+        String table = expected.get(id);
+        assertEquals(
+            "SELECT * FROM "
+                + table
+                + " WHERE tenant_id=#{tenant} AND "
+                + (table.equals("task") ? "id" : "task_id")
+                + "=#{task}",
+            mapper.path("sql").asText());
+      } else assertTrue(!mapper.path("sql").asText().matches("(?is).*SELECT\\s+(?:\\w+\\.)?\\*.*"));
     }
     for (var entry : capture.path("baseline").path("entries")) {
       assertTrue(entry.hasNonNull("targetService"));

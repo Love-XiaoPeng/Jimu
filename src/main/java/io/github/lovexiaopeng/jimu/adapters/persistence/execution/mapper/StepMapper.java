@@ -90,4 +90,10 @@ public interface StepMapper {
       @Param("tenant") String tenant,
       @Param("task") String task,
       @Param("step") String step);
+
+  java.util.List<java.util.Map<String, Object>> metadataRows(
+      @org.apache.ibatis.annotations.Param("query")
+          io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      @org.apache.ibatis.annotations.Param("tenant") String tenant,
+      @org.apache.ibatis.annotations.Param("task") String task);
 }

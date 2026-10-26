@@ -71,4 +71,10 @@ public interface TaskAttemptMapper {
       @Param("task") String task,
       @Param("attempt") String attempt,
       @Param("fence") long fence);
+
+  java.util.List<java.util.Map<String, Object>> metadataRows(
+      @org.apache.ibatis.annotations.Param("query")
+          io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      @org.apache.ibatis.annotations.Param("tenant") String tenant,
+      @org.apache.ibatis.annotations.Param("task") String task);
 }

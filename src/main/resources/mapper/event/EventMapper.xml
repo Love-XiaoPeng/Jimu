@@ -11,4 +11,5 @@
   <select id="selectFactCode" resultType="map"><![CDATA[SELECT code FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND fact_id=#{factId}]]></select>
 <select id="directorySourceEvent" resultType="map"><![CDATA[SELECT seq FROM event WHERE tenant_id=#{tenant} AND task_id=#{task} AND seq=#{seq} AND fact_id=#{fact} AND type='working_directory.changed']]></select>
 <select id="directoryViewEvent" resultType="map"><![CDATA[SELECT seq FROM event WHERE tenant_id=#{tenant} AND task_id=#{task} AND seq=#{seq} AND fact_id=#{fact} AND type='working_directory.changed']]></select>
+  <select id="metadataRows" resultType="org.springframework.util.LinkedCaseInsensitiveMap"><![CDATA[SELECT * FROM event WHERE tenant_id=#{tenant} AND task_id=#{task}]]></select>
 </mapper>
