@@ -8,6 +8,7 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.plugin.mapper.Installati
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Identity;
 import io.github.lovexiaopeng.jimu.kernel.todo.port.TodoAvailability;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
 import java.util.AbstractList;
 import java.util.HashMap;
@@ -41,7 +42,7 @@ final class MapperTodoAvailability implements TodoAvailability {
     wrapper
         .select(InstallationEntity::getPluginVersion, InstallationEntity::getPluginDigest)
         .eq(InstallationEntity::getTenantId, identity.tenant())
-        .eq(InstallationEntity::getPluginId, "todo_write");
+        .eq(InstallationEntity::getPluginId, ToolCapability.TODO_WRITE);
     var parameters = new HashMap<String, Object>();
     parameters.put("ew", wrapper);
     parameters.put("query", ledger.queryContext());

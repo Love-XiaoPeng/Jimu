@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.api;
 
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.WorkingDirectoryLedger;
 import java.util.Map;
@@ -31,7 +32,8 @@ public final class WorkingDirectoryController {
       throws java.io.IOException {
     var identity = authentication.authenticate(authorization);
     if (request.getQueryString() != null || request.getInputStream().read() != -1)
-      throw new io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure(400, "INVALID_REQUEST");
+      throw new io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure(
+          400, CommonErrorCode.INVALID_REQUEST);
     return ResponseEntity.ok()
         .header("Cache-Control", "no-store")
         .body(directories.getWorkingDirectory(identity, taskId));

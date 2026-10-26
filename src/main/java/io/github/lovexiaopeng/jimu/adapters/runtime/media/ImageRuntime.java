@@ -2,10 +2,14 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.media;
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.OperationThreads;
+import io.github.lovexiaopeng.jimu.kernel.media.api.ImagePolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.FileErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ImageErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.ImagePort;
 import java.time.Duration;
 import java.time.Instant;
@@ -35,7 +39,7 @@ public final class ImageRuntime {
   }
 
   public void available() {
-    if (store == null) throw new TaskFailure(503, "IMAGE_STORE_UNAVAILABLE");
+    if (store == null) throw new TaskFailure(503, ImageErrorCode.IMAGE_STORE_UNAVAILABLE);
     store.check();
     ImageNormalizer.available();
   }
@@ -46,11 +50,11 @@ public final class ImageRuntime {
       try {
         io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages.path(path);
       } catch (TaskFailure invalid) {
-        throw new io.github.lovexiaopeng.jimu.plugin.api.FileFailure("FS_PATH_DENIED");
+        throw new io.github.lovexiaopeng.jimu.plugin.api.FileFailure(FileErrorCode.FS_PATH_DENIED);
       }
       available();
-      if (Runtime.getRuntime().maxMemory() > 268435456L)
-        throw new TaskFailure(503, "IMAGE_WORKER_HEAP_UNBOUNDED");
+      if (Runtime.getRuntime().maxMemory() > ImagePolicyV1.WORKER_HEAP_BYTES)
+        throw new TaskFailure(503, ImageErrorCode.IMAGE_WORKER_HEAP_UNBOUNDED);
       var media = (ImageLedger) ledger;
       var raw = media.imageInput(lease, path);
       String id = media.reserveImage(lease, invocation.id(), raw.entry().inputId());
@@ -58,7 +62,7 @@ public final class ImageRuntime {
           new FutureTask<>(
               () -> decoder.normalize(path, raw.bytes(), () -> ledger.checkpoint(lease)));
       Thread decoder = operations.start("jimu-image-decode", future);
-      Instant until = Instant.now().plusSeconds(30);
+      Instant until = Instant.now().plusSeconds(ImagePolicyV1.DECODE_TIMEOUT_SECONDS);
       if (lease.deadline().isBefore(until)) until = lease.deadline();
       ImageNormalizer.Normalized result;
       try {
@@ -67,7 +71,7 @@ public final class ImageRuntime {
           long millis = Duration.between(Instant.now(), until).toMillis();
           if (millis <= 0) {
             media.imageDecodeTimedOut(lease);
-            throw new TaskFailure(409, "IMAGE_DECODE_TIMEOUT");
+            throw new TaskFailure(409, ImageErrorCode.IMAGE_DECODE_TIMEOUT);
           }
           try {
             result = future.get(Math.min(100, millis), TimeUnit.MILLISECONDS);
@@ -78,11 +82,11 @@ public final class ImageRuntime {
         }
       } catch (InterruptedException interrupted) {
         Thread.currentThread().interrupt();
-        throw new TaskFailure(409, "CANCEL_REQUESTED");
+        throw new TaskFailure(409, TaskErrorCode.CANCEL_REQUESTED);
       } catch (java.util.concurrent.ExecutionException failed) {
         if (failed.getCause() instanceof RuntimeException runtime) throw runtime;
         if (failed.getCause() instanceof Error fatal) throw fatal;
-        throw new TaskFailure(409, "INVALID_IMAGE");
+        throw new TaskFailure(409, ImageErrorCode.INVALID_IMAGE);
       } finally {
         if (!future.isDone()) {
           future.cancel(true);

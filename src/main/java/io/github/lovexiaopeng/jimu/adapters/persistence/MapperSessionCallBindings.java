@@ -18,9 +18,11 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionSe
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionTraceBindingMapper;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTraceContracts;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionScopeOperation;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionCallBindings;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionEventPort;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionEventTracePort;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -271,7 +273,9 @@ final class MapperSessionCallBindings implements SessionCallBindings {
               s(invocation, "id"),
               s(task, "id"),
               s(step, "id"),
-              s(invocation, "tool").equals("session_search") ? "SEARCH" : "READ",
+              s(invocation, "tool").equals(ToolCapability.SESSION_SEARCH)
+                  ? SessionScopeOperation.SEARCH
+                  : SessionScopeOperation.READ,
               s(step, "session_binding_digest"),
               s(invocation, "input_digest"),
               s(scope.row(), "authority_digest"),

@@ -1,5 +1,8 @@
 package io.github.lovexiaopeng.jimu.kernel.session.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionContentState;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionGrantState;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Authority;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Caller;
@@ -8,6 +11,8 @@ import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Valid
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeEligibilityService;
 import io.github.lovexiaopeng.jimu.kernel.snapshot.api.SnapshotDigest;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -27,11 +32,11 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
   }
 
   private static TaskFailure corrupt() {
-    return new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+    return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
   }
 
   private static TaskFailure unavailable() {
-    return new TaskFailure(404, "SESSION_SCOPE_UNAVAILABLE");
+    return new TaskFailure(404, SessionErrorCode.SESSION_SCOPE_UNAVAILABLE);
   }
 
   private static String utc(LocalDateTime value) {
@@ -58,7 +63,7 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
   }
 
   public boolean cleanupSafe(Caller c) {
-    return List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(c.state())
+    return List.of(TaskState.SUCCEEDED, TaskState.FAILED, TaskState.CANCELLED).contains(c.state())
         && records.writersQuiescent(c)
         && !records.activeInvocations(c)
         && !records.unsafeReservations(c)
@@ -71,9 +76,9 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
         || !c.owner().equals(s.owner())
         || !c.tools().equals(s.tools())
         || !digest.hash(records.expectedBinding()).equals(s.binding())) throw corrupt();
-    if (!"ACTIVE".equals(s.grant())
+    if (!SessionGrantState.ACTIVE.equals(s.grant())
         || s.invalidated() != null
-        || !"PRESENT".equals(s.content())
+        || !SessionContentState.PRESENT.equals(s.content())
         || !s.retained()) throw unavailable();
     records.validateAuthority(s.raw());
     if (bytes(s.raw()) != s.bytes() || !digest.hash(s.raw()).equals(s.digest())) throw corrupt();
@@ -93,7 +98,8 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
     try {
       return current(c);
     } catch (TaskFailure failure) {
-      if (failure.code().equals("SESSION_SCOPE_UNAVAILABLE")) records.invalidateAfterTransaction(c);
+      if (failure.code().equals(SessionErrorCode.SESSION_SCOPE_UNAVAILABLE))
+        records.invalidateAfterTransaction(c);
       throw failure;
     }
   }
@@ -113,7 +119,7 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
       String source = expected.id(), raw = target.raw();
       if (target.version() != 1
           || target.ordinal() != index
-          || !"PRESENT".equals(target.content())
+          || !SessionContentState.PRESENT.equals(target.content())
           || source.compareTo(previous) <= 0
           || source.equals(c.id())
           || !source.equals(target.source())
@@ -155,7 +161,7 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
         || !a.targets().isEmpty()
         || records.hasTargets(st)
         || h.nextSeq() < 1
-        || h.nextSeq() > 128
+        || h.nextSeq() > SessionHistoryPolicyV1.PUBLIC_EVENTS
         || !h.retain().equals(own.retain())) throw unavailable();
     if (admission && !records.admissionRetention(st)) throw unavailable();
     return st;

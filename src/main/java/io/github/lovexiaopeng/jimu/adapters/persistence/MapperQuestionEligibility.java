@@ -9,8 +9,10 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.Installati
 import io.github.lovexiaopeng.jimu.adapters.persistence.plugin.mapper.InstallationMapper;
 import io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts;
 import io.github.lovexiaopeng.jimu.kernel.question.port.QuestionEligibility;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.PluginPin;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +29,7 @@ final class MapperQuestionEligibility
   }
 
   public PluginPin pin() {
-    return ledger.tools(task).pins().get("ask_user_question");
+    return ledger.tools(task).pins().get(ToolCapability.ASK_USER_QUESTION);
   }
 
   public String version(PluginPin pin) {
@@ -49,7 +51,7 @@ final class MapperQuestionEligibility
   public Installation installation() {
     String tenant = s(task, "tenant_id");
     var wrapper = new QueryWrapper<InstallationEntity>();
-    wrapper.select("*").eq("tenant_id", tenant).eq("plugin_id", "ask_user_question");
+    wrapper.select("*").eq("tenant_id", tenant).eq("plugin_id", ToolCapability.ASK_USER_QUESTION);
     var parameters = new HashMap<String, Object>();
     parameters.put("ew", wrapper);
     parameters.put("query", ledger.queryContext());
@@ -62,7 +64,7 @@ final class MapperQuestionEligibility
   }
 
   static Row first(List<Map<String, Object>> rows) {
-    if (rows.isEmpty()) throw new TaskFailure(404, "NOT_FOUND");
+    if (rows.isEmpty()) throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
     return new Row(rows.getFirst());
   }
 

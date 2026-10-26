@@ -1,5 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.web;
 
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
@@ -67,7 +69,7 @@ public final class FetchRuntime {
   }
 
   public void available() {
-    if (!enabled) throw new TaskFailure(503, "PUBLIC_WEB_NOT_CONFIGURED");
+    if (!enabled) throw new TaskFailure(503, TaskErrorCode.PUBLIC_WEB_NOT_CONFIGURED);
   }
 
   public void validate(FetchInput input) {
@@ -93,7 +95,7 @@ public final class FetchRuntime {
           .output();
     if (publicReader != null)
       return new WebFetchPlugin(publicReader, descriptor).execute(input, context).output();
-    if (!credentials.containsKey(tenant)) throw new TaskFailure(403, "ACCESS_DENIED");
+    if (!credentials.containsKey(tenant)) throw new TaskFailure(403, CommonErrorCode.ACCESS_DENIED);
     try (var reader =
         new ConfiguredOriginReader(fixtureOrigin, credentials.get(tenant), effectId)) {
       return new WebFetchPlugin(reader, descriptor).execute(input, context).output();

@@ -1,9 +1,13 @@
 package io.github.lovexiaopeng.jimu.kernel.task.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.port.TaskMetadataAccounting;
 import io.github.lovexiaopeng.jimu.kernel.task.port.TaskMetadataAccounting.Table;
 import io.github.lovexiaopeng.jimu.kernel.task.service.TaskMetadataAccountingService;
+import io.github.lovexiaopeng.jimu.kernel.todo.api.TodoPolicyV1;
+import io.github.lovexiaopeng.jimu.plugin.api.TodoErrorCode;
 import java.util.List;
 
 /** 原表序列、排除集和逐值计费；全部扫描完才按 closing 阈值拒绝。 */
@@ -51,7 +55,11 @@ public final class TaskMetadataAccountingServiceImpl implements TaskMetadataAcco
                 8 + (entry.getValue() == null ? 1 : records.bytes(entry.getValue().toString()));
       }
     }
-    if (bytes > (closing ? 65536 : 61440)) throw new TaskFailure(429, "DIRECTORY_STORAGE_LIMIT");
+    if (bytes
+        > (closing
+            ? DirectoryPolicyV1.CLOSED_METADATA_BYTES
+            : DirectoryPolicyV1.OPEN_METADATA_BYTES))
+      throw new TaskFailure(429, DirectoryErrorCode.DIRECTORY_STORAGE_LIMIT);
   }
 
   public void todoMetadata(TaskMetadataAccounting records, boolean closing) {
@@ -89,6 +97,7 @@ public final class TaskMetadataAccountingServiceImpl implements TaskMetadataAcco
                 8 + (entry.getValue() == null ? 1 : records.bytes(entry.getValue().toString()));
       }
     }
-    if (bytes > (closing ? 65536 : 61440)) throw new TaskFailure(429, "TODO_STORAGE_LIMIT");
+    if (bytes > (closing ? TodoPolicyV1.CLOSED_METADATA_BYTES : TodoPolicyV1.OPEN_METADATA_BYTES))
+      throw new TaskFailure(429, TodoErrorCode.TODO_STORAGE_LIMIT);
   }
 }

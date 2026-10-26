@@ -4,13 +4,18 @@ import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.BoundaryProbe;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.OperationThreads;
 import io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore;
+import io.github.lovexiaopeng.jimu.kernel.search.api.NativeResultPolicyV1;
+import io.github.lovexiaopeng.jimu.kernel.search.api.NativeSearchPhase;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger.NativeIdentity;
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger.Run;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SearchErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.SearchPort;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -54,10 +59,11 @@ public final class NativeSearchRuntime {
           runner.run(
               test,
               projection,
-              new NativeSearchQuery("glob", "*", ".", null),
+              new NativeSearchQuery(ToolCapability.GLOB, "*", ".", null),
               UUID.randomUUID().toString(),
               () -> {
-                if (System.nanoTime() > end) throw new FileFailure("SEARCH_ISOLATION_UNAVAILABLE");
+                if (System.nanoTime() > end)
+                  throw new FileFailure(SearchErrorCode.SEARCH_ISOLATION_UNAVAILABLE);
               },
               identity -> {},
               identity -> {});
@@ -87,7 +93,7 @@ public final class NativeSearchRuntime {
   }
 
   public void requireAvailable() {
-    if (!available()) throw new TaskFailure(503, "SEARCH_NOT_CONFIGURED");
+    if (!available()) throw new TaskFailure(503, SearchErrorCode.SEARCH_NOT_CONFIGURED);
   }
 
   public SearchPort bind(
@@ -103,13 +109,15 @@ public final class NativeSearchRuntime {
       @Override
       public GlobPage glob(String pattern, String path, String cursor) {
         return Payloads.read(
-            execute(new NativeSearchQuery("glob", pattern, path, null), cursor), GlobPage.class);
+            execute(new NativeSearchQuery(ToolCapability.GLOB, pattern, path, null), cursor),
+            GlobPage.class);
       }
 
       @Override
       public GrepPage grep(String pattern, String path, String include, String cursor) {
         return Payloads.read(
-            execute(new NativeSearchQuery("grep", pattern, path, include), cursor), GrepPage.class);
+            execute(new NativeSearchQuery(ToolCapability.GREP, pattern, path, include), cursor),
+            GrepPage.class);
       }
 
       private String execute(NativeSearchQuery query, String cursor) {
@@ -119,16 +127,20 @@ public final class NativeSearchRuntime {
             () -> {
               ledger.checkpoint(lease);
               if (System.nanoTime() > end || Instant.now().isAfter(lease.deadline()))
-                throw new TaskFailure(409, "DEADLINE_EXCEEDED");
+                throw new TaskFailure(409, TaskErrorCode.DEADLINE_EXCEEDED);
             };
         checkpoint.run();
         String queryDigest = Payloads.hash(Payloads.json(query));
         if (cursor != null) {
           var stored = searches.searchPage(lease, queryDigest, pin, cursor);
           try {
-            byte[] bytes = SearchFiles.read(Path.of(stored.directory()), "result.json", 4194304);
+            byte[] bytes =
+                SearchFiles.read(
+                    Path.of(stored.directory()),
+                    "result.json",
+                    NativeResultPolicyV1.DOCUMENT_BYTES);
             if (bytes.length != stored.size() || !Payloads.hash(bytes).equals(stored.hash()))
-              throw new FileFailure("SNAPSHOT_CORRUPT");
+              throw new FileFailure(TaskErrorCode.SNAPSHOT_CORRUPT);
             var document =
                 Payloads.read(
                     new String(bytes, StandardCharsets.UTF_8), NativeResults.Document.class);
@@ -137,11 +149,11 @@ public final class NativeSearchRuntime {
                 || !Integer.valueOf(stored.page()).equals(document.cursors().get(cursor))
                 || stored.page() < 0
                 || stored.page() >= document.pages().size())
-              throw new FileFailure("SNAPSHOT_CORRUPT");
+              throw new FileFailure(TaskErrorCode.SNAPSHOT_CORRUPT);
             checkpoint.run();
             return document.pages().get(stored.page());
           } catch (IOException error) {
-            throw new FileFailure("SEARCH_FAILED", error);
+            throw new FileFailure(SearchErrorCode.SEARCH_FAILED, error);
           }
         }
         var snapshot = workspace.searchSnapshot(lease.tenant(), lease.taskId(), checkpoint::run);
@@ -157,7 +169,7 @@ public final class NativeSearchRuntime {
                 lease.worker(),
                 directory.toString(),
                 snapshot.digest(),
-                "PREPARED",
+                NativeSearchPhase.PREPARED,
                 null,
                 false);
         AtomicBoolean stopped = new AtomicBoolean();
@@ -202,8 +214,8 @@ public final class NativeSearchRuntime {
             String stderr = output.stderr();
             throw new FileFailure(
                 stderr.contains("regex parse error") || stderr.contains("error parsing glob")
-                    ? "SEARCH_INVALID_PATTERN"
-                    : "SEARCH_FAILED");
+                    ? SearchErrorCode.SEARCH_INVALID_PATTERN
+                    : SearchErrorCode.SEARCH_FAILED);
           }
           var result =
               NativeResults.collect(
@@ -225,7 +237,7 @@ public final class NativeSearchRuntime {
           completed = true;
           return result.pages().getFirst();
         } catch (IOException error) {
-          throw new FileFailure("SEARCH_FAILED", error);
+          throw new FileFailure(SearchErrorCode.SEARCH_FAILED, error);
         } finally {
           // Only proven native exit permits deleting the export. Unproven windows remain for
           // supervisor.
@@ -238,20 +250,20 @@ public final class NativeSearchRuntime {
               SearchFiles.removeTree(directory);
               searches.searchStorageRemoved(run);
             } catch (IOException error) {
-              throw new FileFailure("SEARCH_FAILED", error);
+              throw new FileFailure(SearchErrorCode.SEARCH_FAILED, error);
             }
           } else if (!prepared && created) {
             try {
               SearchFiles.removeTree(directory);
             } catch (IOException error) {
-              throw new FileFailure("SEARCH_FAILED", error);
+              throw new FileFailure(SearchErrorCode.SEARCH_FAILED, error);
             }
           } else if (stopped.get()
               && Files.exists(projection, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
             try {
               SearchFiles.removeTree(projection);
             } catch (IOException error) {
-              throw new FileFailure("SEARCH_FAILED", error);
+              throw new FileFailure(SearchErrorCode.SEARCH_FAILED, error);
             }
           }
         }

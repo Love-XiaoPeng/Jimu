@@ -6,6 +6,7 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeSearchQuery;
 import io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeSearchRuntime;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.BoundaryProbe;
 import io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore;
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ArtifactErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Invocation;
@@ -13,12 +14,16 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Publication;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ReportFile;
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.EditPort;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
+import io.github.lovexiaopeng.jimu.plugin.api.FileErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.FilePort;
 import io.github.lovexiaopeng.jimu.plugin.api.ReportPort;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import io.github.lovexiaopeng.jimu.plugins.builtin.workspace.ComposeReportPlugin;
 import io.github.lovexiaopeng.jimu.plugins.builtin.workspace.EditPlugin;
 import io.github.lovexiaopeng.jimu.plugins.builtin.workspace.GlobPlugin;
@@ -81,32 +86,37 @@ public final class WorkspaceRuntime {
     var loaded = new LinkedHashMap<String, WorkspaceContracts.Contract>();
     for (String name : WorkspaceContracts.NAMES)
       loaded.put(name, new WorkspaceContracts().load(name));
-    loaded.put("compose_report:0.2.0", new WorkspaceContracts().load("compose_report", "0.2.0"));
+    loaded.put(
+        "compose_report:0.2.0",
+        new WorkspaceContracts().load(ToolCapability.COMPOSE_REPORT, "0.2.0"));
     contracts = Map.copyOf(loaded);
   }
 
   public void available(String name) {
-    if (name.equals("read_image")) images.available();
-    if (name.equals("glob") || name.equals("grep")) searches.requireAvailable();
+    if (name.equals(ToolCapability.READ_IMAGE)) images.available();
+    if (name.equals(ToolCapability.GLOB) || name.equals(ToolCapability.GREP))
+      searches.requireAvailable();
   }
 
   public WorkspaceContracts.Contract contract(String name) {
     var contract = contracts.get(name);
-    if (contract == null) throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
+    if (contract == null) throw new TaskFailure(403, ToolErrorCode.TOOL_NOT_AUTHORIZED);
     return contract;
   }
 
   public WorkspaceContracts.Contract contract(String name, String version) {
     var value =
         contracts.get(
-            name.equals("compose_report") && version.equals("0.2.0") ? name + ":" + version : name);
+            name.equals(ToolCapability.COMPOSE_REPORT) && version.equals("0.2.0")
+                ? name + ":" + version
+                : name);
     if (value == null || !value.descriptor().version().equals(version))
-      throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+      throw new TaskFailure(409, TaskErrorCode.PLUGIN_PIN_MISMATCH);
     return value;
   }
 
   public void prepareEvaluation(Lease lease, ExecutionLedger ledger) {
-    if (lease.capabilities().contains("working_directory")) {
+    if (lease.capabilities().contains(ToolCapability.WORKING_DIRECTORY)) {
       directories.prepare(ledger, lease);
       return;
     }
@@ -114,7 +124,11 @@ public final class WorkspaceRuntime {
     workspace.initialize(
         lease.tenant(),
         lease.taskId(),
-        pins.keySet().stream().anyMatch(name -> Set.of("edit", "glob", "grep").contains(name)),
+        pins.keySet().stream()
+            .anyMatch(
+                name ->
+                    Set.of(ToolCapability.EDIT, ToolCapability.GLOB, ToolCapability.GREP)
+                        .contains(name)),
         () -> ledger.checkpoint(lease));
     ledger
         .evaluationFile(lease)
@@ -142,15 +156,16 @@ public final class WorkspaceRuntime {
     contract(name, version).in().validate(input);
     Set<String> allowed =
         switch (name) {
-          case "read" -> Set.of("file_path", "offset", "limit");
-          case "read_image" -> Set.of("file_path");
-          case "write" -> Set.of("file_path", "content");
-          case "present" -> Set.of("files");
-          case "compose_report" -> Set.of("file_path", "draft");
-          case "edit" -> Set.of("file_path", "old_string", "new_string", "replace_all");
-          case "glob" -> Set.of("pattern", "path", "cursor");
-          case "grep" -> Set.of("pattern", "path", "include", "cursor");
-          default -> throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
+          case ToolCapability.READ -> Set.of("file_path", "offset", "limit");
+          case ToolCapability.READ_IMAGE -> Set.of("file_path");
+          case ToolCapability.WRITE -> Set.of("file_path", "content");
+          case ToolCapability.PRESENT -> Set.of("files");
+          case ToolCapability.COMPOSE_REPORT -> Set.of("file_path", "draft");
+          case ToolCapability.EDIT ->
+              Set.of("file_path", "old_string", "new_string", "replace_all");
+          case ToolCapability.GLOB -> Set.of("pattern", "path", "cursor");
+          case ToolCapability.GREP -> Set.of("pattern", "path", "include", "cursor");
+          default -> throw new TaskFailure(403, ToolErrorCode.TOOL_NOT_AUTHORIZED);
         };
     input
         .fieldNames()
@@ -159,11 +174,11 @@ public final class WorkspaceRuntime {
               if (!allowed.contains(key))
                 throw new IllegalArgumentException("Unknown tool argument");
             });
-    if (name.equals("read")) {
+    if (name.equals(ToolCapability.READ)) {
       integer(input, "offset", 1, Integer.MAX_VALUE);
       integer(input, "limit", 2000, 2000);
     }
-    if (name.equals("edit")) {
+    if (name.equals(ToolCapability.EDIT)) {
       String old = input.path("old_string").asText(),
           replacement = input.path("new_string").asText();
       if (old.isEmpty()
@@ -176,7 +191,7 @@ public final class WorkspaceRuntime {
           || input.toString().getBytes(StandardCharsets.UTF_8).length > 65535)
         throw new IllegalArgumentException("Invalid edit argument");
     }
-    if (name.equals("glob") || name.equals("grep")) {
+    if (name.equals(ToolCapability.GLOB) || name.equals(ToolCapability.GREP)) {
       new NativeSearchQuery(
           name,
           input.path("pattern").asText(),
@@ -186,7 +201,7 @@ public final class WorkspaceRuntime {
       if (input.toString().getBytes(StandardCharsets.UTF_8).length > 65535)
         throw new IllegalArgumentException("Invalid search input");
     }
-    if (name.equals("present")) {
+    if (name.equals(ToolCapability.PRESENT)) {
       var files = input.path("files");
       if (files.isEmpty() || files.size() > 4)
         throw new IllegalArgumentException("Invalid deliverables");
@@ -217,25 +232,25 @@ public final class WorkspaceRuntime {
       ExecutionLedger ledger,
       ArtifactStore store,
       BoundaryProbe probe) {
-    if (lease.capabilities().contains("read_image")) {
+    if (lease.capabilities().contains(ToolCapability.READ_IMAGE)) {
       String path = input.path("file_path").asText();
       if (path.equals("inputs/images") || path.startsWith("inputs/images/")) {
-        if (name.equals("read")) throw new FileFailure("FS_NOT_TEXT");
-        if (List.of("write", "edit", "compose_report").contains(name))
-          throw new FileFailure("FS_READ_ONLY");
+        if (name.equals(ToolCapability.READ)) throw new FileFailure(FileErrorCode.FS_NOT_TEXT);
+        if (List.of(ToolCapability.WRITE, ToolCapability.EDIT, ToolCapability.COMPOSE_REPORT)
+            .contains(name)) throw new FileFailure(FileErrorCode.FS_READ_ONLY);
       }
-      if (name.equals("present"))
+      if (name.equals(ToolCapability.PRESENT))
         for (var file : input.path("files"))
           if (file.path("path").asText().startsWith("inputs/images/"))
-            throw new TaskFailure(409, "REPORT_INVALID");
+            throw new TaskFailure(409, ArtifactErrorCode.REPORT_INVALID);
     }
     // admit returns RUNNING only for new admission; all unconfirmed recovery is refused by
     // the ledger. Never catch a missing binding and rebind an older invocation.
-    boolean search = name.equals("glob") || name.equals("grep");
+    boolean search = name.equals(ToolCapability.GLOB) || name.equals(ToolCapability.GREP);
     var port =
         search
             ? null
-            : (lease.capabilities().contains("working_directory")
+            : (lease.capabilities().contains(ToolCapability.WORKING_DIRECTORY)
                     ? directories.workspace()
                     : workspace)
                 .bind(
@@ -260,7 +275,7 @@ public final class WorkspaceRuntime {
             : null;
     Object result =
         switch (name) {
-          case "read_image" ->
+          case ToolCapability.READ_IMAGE ->
               new io.github.lovexiaopeng.jimu.plugins.builtin.workspace.ReadImagePlugin(
                       images.bind(ledger, lease, invocation), descriptor)
                   .execute(
@@ -268,7 +283,7 @@ public final class WorkspaceRuntime {
                           .Input(input.path("file_path").asText()),
                       context)
                   .output();
-          case "read" ->
+          case ToolCapability.READ ->
               new ReadPlugin(port, descriptor)
                   .execute(
                       new ReadPlugin.Input(
@@ -277,14 +292,14 @@ public final class WorkspaceRuntime {
                           integer(input, "limit", 2000, 2000)),
                       context)
                   .output();
-          case "write" ->
+          case ToolCapability.WRITE ->
               new WritePlugin(port, descriptor)
                   .execute(
                       new WritePlugin.Input(
                           input.path("file_path").asText(), input.path("content").asText()),
                       context)
                   .output();
-          case "edit" ->
+          case ToolCapability.EDIT ->
               new EditPlugin((EditPort) port, descriptor)
                   .execute(
                       new EditPlugin.Input(
@@ -294,7 +309,7 @@ public final class WorkspaceRuntime {
                           input.path("replace_all").asBoolean(false)),
                       context)
                   .output();
-          case "glob" ->
+          case ToolCapability.GLOB ->
               new GlobPlugin(searchPort, descriptor)
                   .execute(
                       new GlobPlugin.Input(
@@ -303,7 +318,7 @@ public final class WorkspaceRuntime {
                           input.has("cursor") ? input.path("cursor").asText() : null),
                       context)
                   .output();
-          case "grep" ->
+          case ToolCapability.GREP ->
               new GrepPlugin(searchPort, descriptor)
                   .execute(
                       new GrepPlugin.Input(
@@ -313,7 +328,7 @@ public final class WorkspaceRuntime {
                           input.has("cursor") ? input.path("cursor").asText() : null),
                       context)
                   .output();
-          case "compose_report" ->
+          case ToolCapability.COMPOSE_REPORT ->
               descriptor.version().equals("0.2.0")
                   ? new ComposeReportPlugin.Images(
                           (path, draft) -> {
@@ -345,19 +360,19 @@ public final class WorkspaceRuntime {
                       .execute(
                           Payloads.read(input.toString(), ComposeReportPlugin.Input.class), context)
                       .output();
-          case "present" ->
+          case ToolCapability.PRESENT ->
               new PresentPlugin(
                       port,
                       files -> present(files, lease, invocation, ledger, store, probe),
                       descriptor)
                   .execute(Payloads.read(input.toString(), PresentPlugin.Input.class), context)
                   .output();
-          default -> throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
+          default -> throw new TaskFailure(403, ToolErrorCode.TOOL_NOT_AUTHORIZED);
         };
     selected.out().validateObject(result);
     String output = Payloads.json(result);
     if (output.getBytes(StandardCharsets.UTF_8).length > (search ? 65536 : 1048576))
-      throw new FileFailure("TOOL_OUTPUT_TOO_LARGE");
+      throw new FileFailure(ToolErrorCode.TOOL_OUTPUT_TOO_LARGE);
     return output;
   }
 
@@ -372,7 +387,7 @@ public final class WorkspaceRuntime {
     if (!ledger
         .toolSnapshot(lease)
         .pins()
-        .getOrDefault("compose_report", new ExecutionLedger.PluginPin("0.1.0", "", 0))
+        .getOrDefault(ToolCapability.COMPOSE_REPORT, new ExecutionLedger.PluginPin("0.1.0", "", 0))
         .version()
         .equals("0.2.0")) files.forEach(file -> reports.validate(file, context));
     probe.hit("P_BEFORE_STAGE", lease.taskId());
@@ -412,7 +427,7 @@ public final class WorkspaceRuntime {
               ReportPolicy.MEDIA));
     }
     var output = new ReportPort.Result(outputFiles);
-    contract("present").out().validateObject(output);
+    contract(ToolCapability.PRESENT).out().validateObject(output);
     probe.hit("P1", lease.taskId());
     ledger.presentSucceeded(lease, invocation.id(), publications, Payloads.json(output));
     return output;

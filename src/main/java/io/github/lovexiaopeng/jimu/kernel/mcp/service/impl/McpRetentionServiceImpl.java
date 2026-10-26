@@ -2,6 +2,7 @@ package io.github.lovexiaopeng.jimu.kernel.mcp.service.impl;
 
 import io.github.lovexiaopeng.jimu.kernel.mcp.port.McpRetentions;
 import io.github.lovexiaopeng.jimu.kernel.mcp.service.McpRetentionService;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
 import java.util.List;
 
@@ -23,7 +24,8 @@ public final class McpRetentionServiceImpl implements McpRetentionService {
             records.lockBudget(candidate.tenant());
             var task = records.lockTask(candidate);
             if (!task.writersQuiescent()
-                || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(task.state())
+                || !List.of(TaskState.SUCCEEDED, TaskState.FAILED, TaskState.CANCELLED)
+                    .contains(task.state())
                 || records.hasUnknownHold(candidate)) return null;
             for (var hold : task.lockExpiredHolds()) {
               String root = hold.id().substring(4);

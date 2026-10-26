@@ -8,6 +8,7 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionContract
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeEligibilityService;
 import io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionScopeEligibilityServiceImpl;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.util.List;
 import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -36,7 +37,7 @@ final class JdbcSessionScopes {
   }
 
   static TaskFailure unavailable() {
-    return new TaskFailure(404, "SESSION_SCOPE_UNAVAILABLE");
+    return new TaskFailure(404, SessionErrorCode.SESSION_SCOPE_UNAVAILABLE);
   }
 
   void lock(String tenant, String caller) {

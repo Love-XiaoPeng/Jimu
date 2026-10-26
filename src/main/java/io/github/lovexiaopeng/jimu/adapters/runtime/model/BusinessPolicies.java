@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.model;
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import java.util.Map;
@@ -87,7 +88,8 @@ public final class BusinessPolicies {
     if (!p.requestStrategy().equals(model.adapter())
         || !ModelProfiles.digest(model).equals(p.profileDigests().get(model.profile()))
         || !model.paid()
-        || p.localOnly() != local) throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+        || p.localOnly() != local)
+      throw new TaskFailure(409, ModelErrorCode.BUSINESS_POLICY_CONFLICT);
   }
 
   public static String canonical(Policy policy) {

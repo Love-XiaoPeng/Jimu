@@ -1,12 +1,16 @@
 package io.github.lovexiaopeng.jimu.kernel.task.api;
 
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.List;
 import java.util.Map;
 
 /** Independent v1 MCP binding; old tool/model/checkpoint wire formats remain unchanged. */
 public interface McpLedger {
   List<String> NAMES =
-      List.of("list_mcp_resource_templates", "list_mcp_resources", "read_mcp_resource");
+      List.of(
+          ToolCapability.LIST_MCP_RESOURCE_TEMPLATES,
+          ToolCapability.LIST_MCP_RESOURCES,
+          ToolCapability.READ_MCP_RESOURCE);
 
   record ServerInfo(String name, String version) {}
 

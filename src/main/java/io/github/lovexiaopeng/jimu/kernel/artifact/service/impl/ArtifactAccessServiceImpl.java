@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.kernel.artifact.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ArtifactErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.artifact.port.ArtifactDownloads;
 import io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactAccessService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
@@ -27,7 +28,7 @@ public final class ArtifactAccessServiceImpl implements ArtifactAccessService {
           var result = records.findOwnedRetained(identity, artifactId);
           records.requireTaskAccess(identity, result.taskId());
           if (result.artifact().expiresAt().isBefore(clock.instant()))
-            throw new TaskFailure(410, "ARTIFACT_EXPIRED");
+            throw new TaskFailure(410, ArtifactErrorCode.ARTIFACT_EXPIRED);
           return new Tasks.Download(result.artifact(), identity.tenant(), result.snapshotKey());
         });
   }

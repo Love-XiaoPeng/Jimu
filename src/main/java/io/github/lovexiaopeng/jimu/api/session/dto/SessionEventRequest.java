@@ -1,6 +1,8 @@
 package io.github.lovexiaopeng.jimu.api.session.dto;
 
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,15 +14,17 @@ public record SessionEventRequest(long target, int before, int after) {
     long target = -1;
     try {
       if (request.getContentLengthLong() > 0 || request.getHeader("Transfer-Encoding") != null)
-        throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+        throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
       if (request.getQueryString() != null) {
         for (String part : request.getQueryString().split("&", -1)) {
           String[] pair = part.split("=", -1);
           if (pair.length != 2
               || !java.util.List.of("before", "after").contains(pair[0])
-              || counts.containsKey(pair[0])) throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+              || counts.containsKey(pair[0]))
+            throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
           long value = decimal(pair[1]);
-          if (value > 4) throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+          if (value > SessionHistoryPolicyV1.READ_NEIGHBORS)
+            throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
           counts.put(pair[0], value);
         }
       }
@@ -36,13 +40,14 @@ public record SessionEventRequest(long target, int before, int after) {
   }
 
   private static long decimal(String value) {
-    if (!value.matches("0|[1-9][0-9]{0,15}")) throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+    if (!value.matches("0|[1-9][0-9]{0,15}"))
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     try {
       long number = Long.parseLong(value);
       if (number > 9007199254740991L) throw new NumberFormatException();
       return number;
     } catch (NumberFormatException invalid) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 }

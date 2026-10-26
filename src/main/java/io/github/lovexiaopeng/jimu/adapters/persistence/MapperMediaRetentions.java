@@ -9,6 +9,7 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.media.entity.ImageObject
 import io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.ImageObjectReadMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.media.mapper.MediaRetentionMapper;
 import io.github.lovexiaopeng.jimu.kernel.artifact.port.MediaRetentions;
+import io.github.lovexiaopeng.jimu.kernel.media.api.MediaCleanupState;
 import java.util.List;
 
 /** 同一SqlSession/DS/UoW与显式query；只转换事实，不决定保留或结算规则。 */
@@ -65,7 +66,7 @@ final class MapperMediaRetentions implements MediaRetentions {
         .select(ImageObjectReadEntity::getImageId)
         .eq(ImageObjectReadEntity::getTenantId, candidate.tenant())
         .eq(ImageObjectReadEntity::getTaskId, candidate.taskId())
-        .eq(ImageObjectReadEntity::getCleanupState, "DELETING");
+        .eq(ImageObjectReadEntity::getCleanupState, MediaCleanupState.DELETING);
     var parameters = new java.util.HashMap<String, Object>();
     parameters.put("ew", wrapper);
     parameters.put("query", ledger.queryContext());

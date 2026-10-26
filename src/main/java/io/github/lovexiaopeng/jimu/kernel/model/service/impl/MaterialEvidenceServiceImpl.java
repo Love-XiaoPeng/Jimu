@@ -1,5 +1,8 @@
 package io.github.lovexiaopeng.jimu.kernel.model.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ArtifactErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationState;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.model.port.MaterialEvidenceRecords;
 import io.github.lovexiaopeng.jimu.kernel.model.port.MaterialEvidenceRecords.Definition;
 import io.github.lovexiaopeng.jimu.kernel.model.port.MaterialEvidenceRecords.Material;
@@ -8,7 +11,9 @@ import io.github.lovexiaopeng.jimu.kernel.model.service.MaterialEvidenceService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ReportContext;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ReportFile;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,7 +26,7 @@ public final class MaterialEvidenceServiceImpl implements MaterialEvidenceServic
   }
 
   private static void require(boolean valid) {
-    if (!valid) throw new TaskFailure(409, "EVALUATION_MATERIAL_MISMATCH");
+    if (!valid) throw new TaskFailure(409, ModelErrorCode.EVALUATION_MATERIAL_MISMATCH);
   }
 
   public Material material(Row task) {
@@ -56,7 +61,7 @@ public final class MaterialEvidenceServiceImpl implements MaterialEvidenceServic
       var initial = initialFile(task);
       boolean written = false;
       for (var invocation : records.materialFileHistory(task.tenantId(), task.id())) {
-        if (invocation.tool().equals("write")) {
+        if (invocation.tool().equals(ToolCapability.WRITE)) {
           written = true;
           continue;
         }
@@ -153,7 +158,7 @@ public final class MaterialEvidenceServiceImpl implements MaterialEvidenceServic
     var body = records.readJson(wire.path("requestBody").asText());
     var expected = records.readArray("[]");
     if (business || media) {
-      if (records.caps(task).contains("present")) {
+      if (records.caps(task).contains(ToolCapability.PRESENT)) {
         var reports = records.reportInstructions();
         var context = new ReportContext(task.reportTime(), List.of());
         String instruction = body.path("messages").path(0).path("content").asText();
@@ -161,7 +166,7 @@ public final class MaterialEvidenceServiceImpl implements MaterialEvidenceServic
         require(
             media
                 ? records.imageInstruction(context).equals(instruction)
-                : records.tools(task).pins().containsKey("compose_report")
+                : records.tools(task).pins().containsKey(ToolCapability.COMPOSE_REPORT)
                     ? records.compositionInstruction(context).equals(instruction)
                     : List.of(reports.instruction(context), reports.currentInstruction(context))
                         .contains(instruction));
@@ -211,7 +216,7 @@ public final class MaterialEvidenceServiceImpl implements MaterialEvidenceServic
                 && call.path("type").asText().equals("function")
                 && call.path("arguments").asText().equals(input)
                 && records.hash(input).equals(invocation.inputDigest())
-                && invocation.state().equals("SUCCEEDED")
+                && invocation.state().equals(InvocationState.SUCCEEDED)
                 && output != null
                 && records.hash(output).equals(invocation.outputDigest()));
         var emitted = assistant.withArray("tool_calls").addObject();
@@ -246,7 +251,7 @@ public final class MaterialEvidenceServiceImpl implements MaterialEvidenceServic
           || request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 12582912
           || !records.hash(cp.requestBody()).equals(cp.bodyDigest())
           || !records.modelDigest(records.snapshot(task)).equals(cp.configDigest()))
-        throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+        throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
       // Every serialized reference is reloaded from this task and projected into exact data bytes.
       var definitions = new java.util.ArrayList<Definition>();
       int toolIndex = 0;
@@ -254,12 +259,12 @@ public final class MaterialEvidenceServiceImpl implements MaterialEvidenceServic
         var pin = records.tools(task).pins().get(name);
         try {
           String schema;
-          if (name.equals("web_fetch"))
+          if (name.equals(ToolCapability.WEB_FETCH))
             schema = new String(records.builtinInput(), java.nio.charset.StandardCharsets.UTF_8);
           else {
             var contract = records.workspaceContract(name, pin.version());
             if (!contract.descriptor().outputSha256().equals(pin.digest()))
-              throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+              throw new TaskFailure(409, TaskErrorCode.PLUGIN_PIN_MISMATCH);
             schema = contract.input();
           }
           var saved = body.path("tools").path(toolIndex++).path("function");
@@ -267,10 +272,10 @@ public final class MaterialEvidenceServiceImpl implements MaterialEvidenceServic
           if (!saved.path("name").asText().equals(name)
               || !saved.path("description").asText().equals(description)
               || !saved.path("parameters").equals(records.readJson(schema)))
-            throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+            throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
           definitions.add(records.definition(name, description, schema));
         } catch (java.io.IOException invalid) {
-          throw new TaskFailure(503, "PLUGIN_SNAPSHOT_UNAVAILABLE");
+          throw new TaskFailure(503, TaskErrorCode.PLUGIN_SNAPSHOT_UNAVAILABLE);
         }
       }
       String projected =
@@ -283,7 +288,8 @@ public final class MaterialEvidenceServiceImpl implements MaterialEvidenceServic
                 return records.readImage(
                     task.tenantId(), object.key(), ref.image().sha256(), ref.image().size());
               });
-      if (!projected.equals(cp.requestBody())) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      if (!projected.equals(cp.requestBody()))
+        throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
       records.checkInput(records.snapshot(task), projected);
     }
   }
@@ -302,16 +308,16 @@ public final class MaterialEvidenceServiceImpl implements MaterialEvidenceServic
     if (step.responseSnapshotObject() == null
         || !records.hash(step.responseSnapshot()).equals(step.responseDigestObject())
         || step.dispatchIdObject() == null)
-      throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
+      throw new TaskFailure(409, ArtifactErrorCode.REPORT_IMAGE_SOURCE_INVALID);
     var dispatch = records.imageCompositionDispatch(task.tenantId(), task.id(), step.dispatchId());
     if (!"RESPONDED".equals(dispatch.state())
         || !records.hash(step.requestSnapshot()).equals(step.requestDigestObject()))
-      throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
+      throw new TaskFailure(409, ArtifactErrorCode.REPORT_IMAGE_SOURCE_INVALID);
     var checkpoint = records.checkpoint(step.requestSnapshot());
     if (checkpoint.version() != 3
         || !records.hash(checkpoint.requestBody()).equals(checkpoint.bodyDigest())
         || !task.modelDigest().equals(checkpoint.configDigest()))
-      throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
+      throw new TaskFailure(409, ArtifactErrorCode.REPORT_IMAGE_SOURCE_INVALID);
     var body = records.readJson(checkpoint.requestBody());
     var result =
         new java.util.ArrayList<
@@ -326,7 +332,7 @@ public final class MaterialEvidenceServiceImpl implements MaterialEvidenceServic
           var part = records.imageProvider(ref, bytes);
           boolean present = false;
           for (var actual : body.path("messages")) if (actual.equals(part)) present = true;
-          if (!present) throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
+          if (!present) throw new TaskFailure(409, ArtifactErrorCode.REPORT_IMAGE_SOURCE_INVALID);
           var source =
               records.imageSourceDigest(task.tenantId(), task.id(), ref.sourceRef().substring(6));
           result.add(

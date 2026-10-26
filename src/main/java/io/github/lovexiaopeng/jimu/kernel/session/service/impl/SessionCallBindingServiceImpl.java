@@ -3,6 +3,8 @@ package io.github.lovexiaopeng.jimu.kernel.session.service.impl;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionCallBindings;
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionCallBindingService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 
 /** Binding decisions retain original history lock, branch, refusal and accounting order. */
 public final class SessionCallBindingServiceImpl implements SessionCallBindingService {
@@ -21,13 +23,13 @@ public final class SessionCallBindingServiceImpl implements SessionCallBindingSe
         call.chargeScope();
         continue;
       }
-      if (call.tool().equals("session_event_trace")) {
+      if (call.tool().equals(ToolCapability.SESSION_EVENT_TRACE)) {
         if (!b.traceTask()) throw corrupt();
         call.parseTrace();
         call.insertTrace();
         continue;
       }
-      if (call.tool().equals("session_event_search")) {
+      if (call.tool().equals(ToolCapability.SESSION_EVENT_SEARCH)) {
         if (!b.searchTask()) throw corrupt();
         call.normalizeSearch();
         call.chargeSearch();
@@ -41,6 +43,6 @@ public final class SessionCallBindingServiceImpl implements SessionCallBindingSe
   }
 
   private static TaskFailure corrupt() {
-    return new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+    return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
   }
 }

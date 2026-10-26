@@ -1,9 +1,18 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.BudgetErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.UsageQuality;
+import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.execution.port.ExecutionRecords;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -94,7 +103,7 @@ final class JdbcExecutionRecords implements ExecutionRecords {
       public void validateModuleRequest(String request) {
         if (ledger.questionTask(task)) {
           if (request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 65536)
-            throw new TaskFailure(429, "MODEL_INPUT_TOO_LARGE");
+            throw new TaskFailure(429, ModelErrorCode.MODEL_INPUT_TOO_LARGE);
           ledger.questionStorage(
               task, request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
         }
@@ -107,7 +116,7 @@ final class JdbcExecutionRecords implements ExecutionRecords {
                   > 131072
               || io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(
                       wire.requestBody())
-                  > 65536) throw new TaskFailure(429, "MODEL_INPUT_TOO_LARGE");
+                  > 65536) throw new TaskFailure(429, ModelErrorCode.MODEL_INPUT_TOO_LARGE);
           ledger.todoStorage(
               task, io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(request));
         }
@@ -119,7 +128,7 @@ final class JdbcExecutionRecords implements ExecutionRecords {
           var budget = ledger.bucket(lease.tenant());
           long bytes = request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
           if (bytes > ledger.n(budget, "storage_limit") - ledger.storageHeld(budget))
-            throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
+            throw new TaskFailure(429, BudgetErrorCode.STORAGE_BUDGET_EXCEEDED);
           ledger
               .mappers
               .budgets()
@@ -129,10 +138,10 @@ final class JdbcExecutionRecords implements ExecutionRecords {
               lease.taskId(),
               stepId + ":media-checkpoint",
               null,
-              "MEDIA_CHECKPOINT",
+              ReservationCategory.MEDIA_CHECKPOINT,
               bytes,
-              "SETTLED",
-              "KNOWN");
+              ReservationState.SETTLED,
+              UsageQuality.KNOWN);
           ledger
               .mappers
               .reservations()
@@ -190,9 +199,9 @@ final class JdbcExecutionRecords implements ExecutionRecords {
           var publicSummary =
               ledger.sessions.contracts.publicText(summary, ledger.sessions.sensitive());
           if (!publicSummary.content().equals(summary))
-            throw new TaskFailure(409, "SESSION_EVENT_UNSAFE");
+            throw new TaskFailure(409, SessionErrorCode.SESSION_EVENT_UNSAFE);
           if (io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(summary)
-              > 8192) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+              > 8192) throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
           ledger.sessions.body(
               task,
               io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(summary));
@@ -200,19 +209,19 @@ final class JdbcExecutionRecords implements ExecutionRecords {
         if (ledger.directoryTask(task)) {
           io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryPaths.unicode(summary);
           long bytes = summary.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
-          if (bytes > 8192) throw new TaskFailure(429, "DIRECTORY_STORAGE_LIMIT");
+          if (bytes > 8192) throw new TaskFailure(429, DirectoryErrorCode.DIRECTORY_STORAGE_LIMIT);
           ledger.directoryStorage(task, bytes);
         }
         if (ledger.todoTask(task)) {
           io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.unicode(summary);
           int bytes =
               io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(summary);
-          if (bytes > 8192) throw new TaskFailure(409, "SUMMARY_TOO_LARGE");
+          if (bytes > 8192) throw new TaskFailure(409, TaskErrorCode.SUMMARY_TOO_LARGE);
           ledger.todoStorage(task, bytes);
         }
         if (ledger.questionTask(task)) {
           if (summary.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 8192)
-            throw new TaskFailure(409, "SUMMARY_TOO_LARGE");
+            throw new TaskFailure(409, TaskErrorCode.SUMMARY_TOO_LARGE);
           ledger.questionStorage(
               task, summary.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
         }
@@ -233,7 +242,7 @@ final class JdbcExecutionRecords implements ExecutionRecords {
       }
 
       public void pauseQuestions(String step) {
-        ledger.questionPause(task, lease, "RESUME_READY", step);
+        ledger.questionPause(task, lease, TaskState.RESUME_READY, step);
         ledger.event(task, "question-final-resume:" + step, "task.resumable", null);
       }
 

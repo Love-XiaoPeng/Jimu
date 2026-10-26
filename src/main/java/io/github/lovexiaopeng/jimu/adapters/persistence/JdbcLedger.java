@@ -4,15 +4,33 @@ import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationMaterials;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionQueryDeadline;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.BudgetErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.UsageQuality;
+import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan;
+import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationRunState;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionContentState;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
 import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation;
+import io.github.lovexiaopeng.jimu.kernel.todo.api.TodoContentState;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
+import io.github.lovexiaopeng.jimu.plugin.api.ImageErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.QuestionErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.TodoErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -212,7 +230,7 @@ public final class JdbcLedger
         || io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(goal) > 8192
         || sourceIds.size() > 8
         || new java.util.HashSet<>(sourceIds).size() != sourceIds.size())
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     var ids = sourceIds.stream().map(java.util.UUID::toString).sorted().toList();
     return sessionSearchOwnerRead(
         () ->
@@ -372,7 +390,7 @@ public final class JdbcLedger
   private Map<String, Object> sessionSearchOwner(Identity identity, String taskId) {
     var task = sessionOwner(identity, taskId);
     if (!JdbcSessionRecords.searchTask(task))
-      throw new TaskFailure(409, "SESSION_SEARCH_UNAVAILABLE");
+      throw new TaskFailure(409, SessionErrorCode.SESSION_SEARCH_UNAVAILABLE);
     sessions.history(task, true);
     return task;
   }
@@ -413,7 +431,7 @@ public final class JdbcLedger
   private Map<String, Object> sessionTraceOwner(Identity identity, String taskId) {
     var task = sessionOwner(identity, taskId);
     if (!JdbcSessionRecords.traceTask(task))
-      throw new TaskFailure(409, "SESSION_TRACE_UNAVAILABLE");
+      throw new TaskFailure(409, SessionErrorCode.SESSION_TRACE_UNAVAILABLE);
     sessions.history(task, true);
     return task;
   }
@@ -499,9 +517,9 @@ public final class JdbcLedger
 
   private static int sessionFailureStatus(String code) {
     return switch (code) {
-      case "SESSION_EVENT_NOT_FOUND" -> 404;
-      case "SESSION_HISTORY_EXPIRED" -> 410;
-      case "SESSION_HISTORY_LIMIT" -> 429;
+      case SessionErrorCode.SESSION_EVENT_NOT_FOUND -> 404;
+      case SessionErrorCode.SESSION_HISTORY_EXPIRED -> 410;
+      case SessionErrorCode.SESSION_HISTORY_LIMIT -> 429;
       default -> 409;
     };
   }
@@ -653,12 +671,12 @@ public final class JdbcLedger
     if (wire.version() != 2
         || request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 131072
         || wire.requestBody().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 65536)
-      throw new TaskFailure(429, "MODEL_INPUT_TOO_LARGE");
+      throw new TaskFailure(429, ModelErrorCode.MODEL_INPUT_TOO_LARGE);
     var messages = wire.messages();
     if (messages.isEmpty()
         || !messages.getLast().role().equals("user")
         || !directories.context(s(p, "cwd"), n(p, "revision")).equals(messages.getLast().content()))
-      throw new TaskFailure(409, "DIRECTORY_REVISION_CONFLICT");
+      throw new TaskFailure(409, DirectoryErrorCode.DIRECTORY_REVISION_CONFLICT);
     directoryStorage(
         task,
         request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length
@@ -726,7 +744,7 @@ public final class JdbcLedger
             connection -> {
               int remaining =
                   (int) java.time.Duration.between(Instant.now(), lease.deadline()).toSeconds();
-              if (remaining < 1) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
+              if (remaining < 1) throw new TaskFailure(409, TaskErrorCode.DEADLINE_EXCEEDED);
               int prior;
               try (var statement = connection.createStatement();
                   var result =
@@ -1496,7 +1514,7 @@ public final class JdbcLedger
   }
 
   static Map<String, Object> first(List<Map<String, Object>> rows) {
-    if (rows.isEmpty()) throw new TaskFailure(404, "NOT_FOUND");
+    if (rows.isEmpty()) throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
     return rows.getFirst();
   }
 
@@ -1571,7 +1589,7 @@ public final class JdbcLedger
             ? null
             : io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageInputs.describe(input);
     if (original.images() != null && !original.images().equals(descriptors))
-      throw new TaskFailure(400, "INVALID_IMAGE_INPUT");
+      throw new TaskFailure(400, ImageErrorCode.INVALID_IMAGE_INPUT);
     return submitBound(identity, key, original, input, null, null);
   }
 
@@ -1752,8 +1770,10 @@ public final class JdbcLedger
         throw new TaskFailure(
             429,
             JdbcSessionRecords.task(task)
-                ? "SESSION_HISTORY_LIMIT"
-                : directoryTask(task) ? "DIRECTORY_EXECUTION_LIMIT" : "TODO_EXECUTION_LIMIT");
+                ? SessionErrorCode.SESSION_HISTORY_LIMIT
+                : directoryTask(task)
+                    ? DirectoryErrorCode.DIRECTORY_EXECUTION_LIMIT
+                    : TodoErrorCode.TODO_EXECUTION_LIMIT);
     }
     mappers.tasks().advanceEventSequence(query, tenant, taskId);
     long seq = mappers.tasks().selectNextEventSequence(query, tenant, taskId);
@@ -1894,23 +1914,23 @@ public final class JdbcLedger
             if (JdbcSessionRecords.task(task)) {
               sessionAdmission(task);
               if (mappers.attempts().countTaskAttempts(query, tenant, taskId) >= 8)
-                throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+                throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
             }
             if (directoryTask(task)) {
               directoryAdmission(task);
               if (mappers.attempts().countTaskAttempts(query, tenant, taskId) >= 8)
-                throw new TaskFailure(429, "DIRECTORY_EXECUTION_LIMIT");
+                throw new TaskFailure(429, DirectoryErrorCode.DIRECTORY_EXECUTION_LIMIT);
             }
             if (todoTask(task)) {
-              if (!todosEnabled) throw new TaskFailure(403, "TODO_FEATURE_DISABLED");
+              if (!todosEnabled) throw new TaskFailure(403, TodoErrorCode.TODO_FEATURE_DISABLED);
               models.requireTodo(snapshot(task));
               if (n(todoProjection(task), "revision") < 0)
-                throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+                throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
               if (mappers.attempts().countTaskAttempts(query, tenant, taskId) >= 8)
-                throw new TaskFailure(429, "TODO_EXECUTION_LIMIT");
+                throw new TaskFailure(429, TodoErrorCode.TODO_EXECUTION_LIMIT);
             }
             if (questionTask(task) && !questionsEnabled)
-              throw new TaskFailure(403, "QUESTION_FEATURE_DISABLED");
+              throw new TaskFailure(403, QuestionErrorCode.QUESTION_FEATURE_DISABLED);
             if (resume) {
               snapshot(task);
               questionStorage(task, 131072);
@@ -1932,13 +1952,21 @@ public final class JdbcLedger
           public void moveQueueToRunning() {
             mappers.budgets().moveQueuedToRunning(query, tenant);
             mappers.reservations().releaseQueueSlot(query, tenant, taskId + ":queue");
-            reserve(tenant, taskId, taskId + ":run", null, "RUNNING", 1, "RESERVED", "KNOWN");
+            reserve(
+                tenant,
+                taskId,
+                taskId + ":run",
+                null,
+                ReservationCategory.RUNNING,
+                1,
+                ReservationState.RESERVED,
+                UsageQuality.KNOWN);
           }
 
           @Override
           public void resumeRunning() {
             if (mappers.reservations().reserveReleasedRun(query, tenant, taskId + ":run") != 1)
-              throw new TaskFailure(409, "RESERVATION_STATE");
+              throw new TaskFailure(409, BudgetErrorCode.RESERVATION_STATE);
             mappers.budgets().incrementRunning(query, tenant);
           }
 
@@ -1984,8 +2012,8 @@ public final class JdbcLedger
         || !lease.attemptId().equals(s(task, "current_attempt_id"))
         || !lease.worker().equals(s(task, "worker_id"))
         || n(task, "live") != 1
-        || !List.of("RUNNING", "CANCEL_REQUESTED").contains(s(task, "state")))
-      throw new TaskFailure(409, "FENCE_REJECTED");
+        || !List.of(TaskState.RUNNING, TaskState.CANCEL_REQUESTED).contains(s(task, "state")))
+      throw new TaskFailure(409, CommonErrorCode.FENCE_REJECTED);
     if (admission) {
       String rejection = modelRejection(task);
       if (rejection == null) rejection = runRejection(evaluation);
@@ -1995,26 +2023,28 @@ public final class JdbcLedger
       access(task);
       if (JdbcSessionRecords.task(task)) {
         if (!lease.actor().equals(s(task, "owner_actor_id")))
-          throw new TaskFailure(409, "INVOCATION_MISMATCH");
+          throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
         sessionAdmission(task);
       }
       if (directoryTask(task)) {
         if (!lease.actor().equals(s(task, "owner_actor_id")))
-          throw new TaskFailure(409, "INVOCATION_MISMATCH");
+          throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
         directoryAdmission(task);
       }
       if (todoTask(task)) {
         if (!lease.actor().equals(s(task, "owner_actor_id")))
-          throw new TaskFailure(409, "INVOCATION_MISMATCH");
-        if (!todosEnabled) throw new TaskFailure(403, "TODO_FEATURE_DISABLED");
-        if ("PURGED".equals(s(todoProjection(task), "content_state")))
-          throw new TaskFailure(410, "TODO_CONTENT_EXPIRED");
+          throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
+        if (!todosEnabled) throw new TaskFailure(403, TodoErrorCode.TODO_FEATURE_DISABLED);
+        if (TodoContentState.PURGED.equals(s(todoProjection(task), "content_state")))
+          throw new TaskFailure(410, TodoErrorCode.TODO_CONTENT_EXPIRED);
         models.requireTodo(snapshot(task));
       }
       if (questionTask(task) && !questionsEnabled)
-        throw new TaskFailure(403, "QUESTION_FEATURE_DISABLED");
-      if (task.get("cancel_requested_at") != null) throw new TaskFailure(409, "CANCEL_REQUESTED");
-      if (n(task, "within_deadline") != 1) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
+        throw new TaskFailure(403, QuestionErrorCode.QUESTION_FEATURE_DISABLED);
+      if (task.get("cancel_requested_at") != null)
+        throw new TaskFailure(409, TaskErrorCode.CANCEL_REQUESTED);
+      if (n(task, "within_deadline") != 1)
+        throw new TaskFailure(409, TaskErrorCode.DEADLINE_EXCEEDED);
     }
     if (mappers
             .tasks()
@@ -2025,7 +2055,7 @@ public final class JdbcLedger
                 n(task, "revision"),
                 lease.attemptId(),
                 lease.fence())
-        != 1) throw new TaskFailure(409, "FENCE_REJECTED");
+        != 1) throw new TaskFailure(409, CommonErrorCode.FENCE_REJECTED);
     if (JdbcSessionRecords.task(task)
         && Long.toString(n(task, "revision")).length()
             != Long.toString(n(task, "revision") + 1).length()) sessions.account(task, false);
@@ -2060,8 +2090,8 @@ public final class JdbcLedger
   }
 
   String runRejection(Map<String, Object> evaluation) {
-    return evaluation != null && !"OPEN".equals(s(evaluation, "state"))
-        ? "MODEL_BUDGET_EXCEEDED"
+    return evaluation != null && !EvaluationRunState.OPEN.equals(s(evaluation, "state"))
+        ? ModelErrorCode.MODEL_BUDGET_EXCEEDED
         : null;
   }
 
@@ -2095,7 +2125,7 @@ public final class JdbcLedger
     String value = s(task, "model_snapshot");
     if (value == null) throw new TaskFailure(409, "MODEL_SNAPSHOT_MISSING");
     if (!Payloads.hash(value).equals(s(task, "model_digest")))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
     var snapshot = Payloads.read(value, ModelSnapshot.class);
     return snapshot;
   }
@@ -2107,14 +2137,15 @@ public final class JdbcLedger
 
   ToolSnapshot tools(Map<String, Object> task) {
     String value = s(task, "tools_snapshot");
-    if (value == null) throw new TaskFailure(409, "PLUGIN_SNAPSHOT_UNAVAILABLE");
+    if (value == null) throw new TaskFailure(409, TaskErrorCode.PLUGIN_SNAPSHOT_UNAVAILABLE);
     if (!Payloads.hash(value).equals(s(task, "tools_digest")))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
     var snapshot = Payloads.read(value, ToolSnapshot.class);
     if (snapshot.schemaVersion() != 1) throw new TaskFailure(409, "PLUGIN_SNAPSHOT_UNSUPPORTED");
     if (!snapshot.pins().keySet().equals(new java.util.HashSet<>(caps(task)))
         || snapshot.pins().values().stream().mapToLong(PluginPin::installationEpoch).sum()
-            != n(task, "installation_epoch")) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+            != n(task, "installation_epoch"))
+      throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
     return snapshot;
   }
 
@@ -2420,7 +2451,7 @@ public final class JdbcLedger
 
   void settleStoppedWriters(Map<String, Object> task) {
     if (!writersQuiescent(task)) return;
-    if ("CANCEL_REQUESTED".equals(s(task, "state"))) {
+    if (TaskState.CANCEL_REQUESTED.equals(s(task, "state"))) {
       boolean uncertain =
           !mappers
               .invocations()
@@ -2428,21 +2459,21 @@ public final class JdbcLedger
               .isEmpty();
       terminal(
           task,
-          uncertain ? "NEEDS_RECONCILIATION" : "CANCELLED",
-          uncertain ? "EFFECT_OUTCOME_UNKNOWN" : "CANCELLED");
+          uncertain ? TaskState.NEEDS_RECONCILIATION : TaskState.CANCELLED,
+          uncertain ? TaskErrorCode.EFFECT_OUTCOME_UNKNOWN : TaskErrorCode.CANCELLED);
     }
     if (List.of(
-            "WAITING_USER",
-            "RESUME_READY",
-            "CANCEL_REQUESTED",
-            "NEEDS_RECONCILIATION",
-            "SUCCEEDED",
-            "FAILED",
-            "CANCELLED")
+            TaskState.WAITING_USER,
+            TaskState.RESUME_READY,
+            TaskState.CANCEL_REQUESTED,
+            TaskState.NEEDS_RECONCILIATION,
+            TaskState.SUCCEEDED,
+            TaskState.FAILED,
+            TaskState.CANCELLED)
         .contains(s(task, "state"))) releaseRun(task);
     if (view(locked(s(task, "tenant_id"), s(task, "id"))).terminal()) releaseQuestionTask(task);
     if (JdbcSessionRecords.task(task)
-        && !"PURGED".equals(s(sessions.history(task, false), "content_state")))
+        && !SessionContentState.PURGED.equals(s(sessions.history(task, false), "content_state")))
       sessions.account(task, true);
   }
 

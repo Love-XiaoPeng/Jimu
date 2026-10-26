@@ -1,6 +1,9 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import io.github.lovexiaopeng.jimu.kernel.artifact.port.ArtifactPublications;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.UsageQuality;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import java.util.List;
 import java.util.Map;
@@ -92,7 +95,14 @@ final class MapperArtifactPublications implements ArtifactPublications {
 
   public void reserveStorage(Lease lease, String artifact, long size) {
     ledger.reserve(
-        lease.tenant(), lease.taskId(), artifact, null, "STORAGE", size, "RESERVED", "KNOWN");
+        lease.tenant(),
+        lease.taskId(),
+        artifact,
+        null,
+        ReservationCategory.STORAGE,
+        size,
+        ReservationState.RESERVED,
+        UsageQuality.KNOWN);
   }
 
   public void verify(Lease lease, String artifact, String key) {

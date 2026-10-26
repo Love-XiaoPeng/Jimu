@@ -3,7 +3,9 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.model;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -93,7 +95,7 @@ public final class EvaluationMaterials {
   }
 
   public static void require(boolean valid) {
-    if (!valid) throw new TaskFailure(409, "EVALUATION_MATERIAL_MISMATCH");
+    if (!valid) throw new TaskFailure(409, ModelErrorCode.EVALUATION_MATERIAL_MISMATCH);
   }
 
   public static void body(Material material, String request, String reportTime) {
@@ -122,7 +124,7 @@ public final class EvaluationMaterials {
       } else {
         var call = calls.get(message.path("tool_call_id").asText());
         require(call != null);
-        if (call.path("name").asText().equals("web_fetch")) {
+        if (call.path("name").asText().equals(ToolCapability.WEB_FETCH)) {
           var input = Payloads.read(call.path("arguments").asText(), JsonNode.class);
           source(material, input.path("url").asText(), message.path("content").asText());
         }

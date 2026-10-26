@@ -106,6 +106,41 @@ class NativeSearchContractTest {
   }
 
   @Test
+  void persistedEnvelopeCountsJsonEscapingBeyondCollectedEntries() throws Exception {
+    var paths = new ArrayList<String>();
+    for (int i = 0; i < 2100; i++) paths.add("\"".repeat(500) + i);
+    int collected =
+        paths.stream()
+            .mapToInt(p -> Payloads.json(p).getBytes(StandardCharsets.UTF_8).length + 1)
+            .sum();
+    assertTrue(collected < 4194304, "collection fits before pages are escaped into the document");
+    var query = new NativeSearchQuery("glob", "*", ".", null);
+    var smaller = paths.subList(0, 2000);
+    var accepted =
+        NativeResults.collect(
+            query,
+            String.join("\n", smaller).getBytes(StandardCharsets.UTF_8),
+            Set.copyOf(smaller),
+            "s",
+            "q",
+            "p");
+    assertTrue(Payloads.json(accepted).getBytes(StandardCharsets.UTF_8).length <= 4194304);
+    assertEquals(
+        "SEARCH_RESULT_LIMIT",
+        assertThrows(
+                FileFailure.class,
+                () ->
+                    NativeResults.collect(
+                        query,
+                        String.join("\n", paths).getBytes(StandardCharsets.UTF_8),
+                        Set.copyOf(paths),
+                        "s",
+                        "q",
+                        "p"))
+            .code());
+  }
+
+  @Test
   void globSamplingIsPersistedAndRemainingOrderHasNoDuplicates() throws Exception {
     var paths = new ArrayList<String>();
     for (int i = 0; i < 110; i++) paths.add("deep/a" + i);

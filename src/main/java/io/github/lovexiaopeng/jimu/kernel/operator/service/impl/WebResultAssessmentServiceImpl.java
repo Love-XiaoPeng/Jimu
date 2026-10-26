@@ -3,6 +3,8 @@ package io.github.lovexiaopeng.jimu.kernel.operator.service.impl;
 import io.github.lovexiaopeng.jimu.kernel.operator.port.WebResultProofCodec;
 import io.github.lovexiaopeng.jimu.kernel.operator.port.WebResultRecords;
 import io.github.lovexiaopeng.jimu.kernel.operator.service.WebResultAssessmentService;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
 import java.util.Map;
@@ -25,20 +27,21 @@ public final class WebResultAssessmentServiceImpl implements WebResultAssessment
         () -> {
           var tasks = records.tasks(tenant, task);
           var invocations = records.invocations(tenant, task, id);
-          if (tasks.size() != 1 || invocations.size() != 1) throw new TaskFailure(404, "NOT_FOUND");
+          if (tasks.size() != 1 || invocations.size() != 1)
+            throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
           var invocation = invocations.getFirst();
           var proofs = records.proofs(tenant, task, "web-result:" + id);
           String output = invocation.outputSnapshot();
           if (proofs.size() != 1
               || output == null
               || !codec.hash(output).equals(invocation.outputDigest()))
-            throw new TaskFailure(409, "WEB_RESULT_PROOF_MISSING");
+            throw new TaskFailure(409, TaskErrorCode.WEB_RESULT_PROOF_MISSING);
           var steps = records.steps(tenant, task, invocation.stepId());
           if (steps.size() != 1
               || !codec
                   .receipt(tasks.getFirst(), steps.getFirst(), invocation, output)
                   .equals(proofs.getFirst()))
-            throw new TaskFailure(409, "WEB_RESULT_PROOF_INVALID");
+            throw new TaskFailure(409, TaskErrorCode.WEB_RESULT_PROOF_INVALID);
           return Map.of(
               "taskId",
               task,

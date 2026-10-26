@@ -11,7 +11,9 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistorySe
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.NativeReadReceiptMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryStepReadMapper;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionContentState;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionReadRelationProofs;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.List;
 import java.util.Map;
 
@@ -209,7 +211,7 @@ final class MapperSessionReadRelationProofs implements SessionReadRelationProofs
         Payloads.read(
             s(task, "tools_snapshot"),
             io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ToolSnapshot.class);
-    var pin = pins.pins().get("session_event_read");
+    var pin = pins.pins().get(ToolCapability.SESSION_EVENT_READ);
     return pin == null
         ? null
         : new SessionReadRelationProofs.Pin(pin.version(), pin.digest(), pin.installationEpoch());
@@ -241,7 +243,10 @@ final class MapperSessionReadRelationProofs implements SessionReadRelationProofs
     return s(
         records.proofRow(
             HistorySessionPublicEventReadMapper.class,
-            base().eq("seq", seq).eq("content_state", "PRESENT").select("event_digest")),
+            base()
+                .eq("seq", seq)
+                .eq("content_state", SessionContentState.PRESENT)
+                .select("event_digest")),
         "event_digest");
   }
 }

@@ -1,12 +1,16 @@
 package io.github.lovexiaopeng.jimu.kernel.execution.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ArtifactErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.execution.port.ExecutionRecords;
 import io.github.lovexiaopeng.jimu.kernel.execution.service.ExecutionService;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.snapshot.api.SnapshotDigest;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Step;
 import io.github.lovexiaopeng.jimu.kernel.task.api.LeaseUnitOfWork;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
 import java.util.List;
 import java.util.Optional;
@@ -35,12 +39,15 @@ public final class ExecutionServiceImpl implements ExecutionService {
     work.required(
         () -> {
           var task = records.lockSettlement(lease);
-          if (code.equals("EVALUATION_MATERIAL_MISMATCH") && task.hasEvaluationRun())
+          if (code.equals(ModelErrorCode.EVALUATION_MATERIAL_MISMATCH) && task.hasEvaluationRun())
             task.stopEvaluationRun();
           if (task.pendingEffect()
-              || List.of("SNAPSHOT_CORRUPT", "MODEL_SETTLEMENT_PROOF_INVALID").contains(code))
-            task.terminal("NEEDS_RECONCILIATION", code);
-          else task.terminal(task.cancellationRequested() ? "CANCELLED" : "FAILED", code);
+              || List.of(
+                      TaskErrorCode.SNAPSHOT_CORRUPT, ModelErrorCode.MODEL_SETTLEMENT_PROOF_INVALID)
+                  .contains(code)) task.terminal(TaskState.NEEDS_RECONCILIATION, code);
+          else
+            task.terminal(
+                task.cancellationRequested() ? TaskState.CANCELLED : TaskState.FAILED, code);
           return null;
         });
   }
@@ -61,12 +68,13 @@ public final class ExecutionServiceImpl implements ExecutionService {
   }
 
   private Step checked(ExecutionRecords.StoredStep step) {
-    if (!"RETAINED".equals(step.cleanup())) throw new TaskFailure(410, "CHECKPOINT_MEDIA_PURGED");
-    if (step.version() != 1) throw new TaskFailure(409, "PAYLOAD_VERSION_UNSUPPORTED");
+    if (!"RETAINED".equals(step.cleanup()))
+      throw new TaskFailure(410, TaskErrorCode.CHECKPOINT_MEDIA_PURGED);
+    if (step.version() != 1) throw new TaskFailure(409, TaskErrorCode.PAYLOAD_VERSION_UNSUPPORTED);
     if (step.response() != null && !digest.hash(step.response()).equals(step.responseDigest()))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
     if (!digest.hash(step.request()).equals(step.requestDigest()))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
     return new Step(step.id(), step.ordinal(), step.request(), step.response(), step.dispatchId());
   }
 
@@ -86,7 +94,7 @@ public final class ExecutionServiceImpl implements ExecutionService {
           if (previous.isPresent()
               && (previous.get().response() == null
                   || task.unfinishedInvocations(previous.get().id())))
-            throw new TaskFailure(409, "CHECKPOINT_INCOMPLETE");
+            throw new TaskFailure(409, TaskErrorCode.CHECKPOINT_INCOMPLETE);
           task.validateModuleRequest(request);
           String id = UUID.randomUUID().toString();
           task.reserveMedia(id, request);
@@ -111,11 +119,11 @@ public final class ExecutionServiceImpl implements ExecutionService {
             return true;
           }
           if (task.publicReport() && !task.publishedReport())
-            throw new TaskFailure(409, "REPORT_NOT_PUBLISHED");
+            throw new TaskFailure(409, ArtifactErrorCode.REPORT_NOT_PUBLISHED);
           if (task.unresolvedInvocations() || task.unresolvedArtifacts())
-            throw new TaskFailure(409, "UNRESOLVED_FACTS");
+            throw new TaskFailure(409, ArtifactErrorCode.UNRESOLVED_FACTS);
           task.finishSummary(summary);
-          task.terminal("SUCCEEDED", null);
+          task.terminal(TaskState.SUCCEEDED, null);
           return false;
         });
   }

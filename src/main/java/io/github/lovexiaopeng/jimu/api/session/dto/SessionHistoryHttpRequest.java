@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.api.session.dto;
 
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
@@ -16,9 +17,9 @@ public final class SessionHistoryHttpRequest {
           || !MediaType.APPLICATION_JSON.isCompatibleWith(
               MediaType.parseMediaType(request.getContentType()))
           || request.getContentLengthLong() > maxLength)
-        throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+        throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     } catch (InvalidMediaTypeException invalid) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
@@ -26,6 +27,6 @@ public final class SessionHistoryHttpRequest {
     if (request.getQueryString() != null
         || request.getContentLengthLong() > 0
         || request.getHeader("Transfer-Encoding") != null)
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
   }
 }

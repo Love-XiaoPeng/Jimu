@@ -1,7 +1,11 @@
 package io.github.lovexiaopeng.jimu.kernel.artifact.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ArtifactErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ArtifactState;
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ReportLimitsV1;
 import io.github.lovexiaopeng.jimu.kernel.artifact.port.ArtifactPublications;
 import io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactPublicationService;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.BudgetErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Upload;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
@@ -20,13 +24,14 @@ public final class ArtifactPublicationServiceImpl implements ArtifactPublication
         lease,
         () -> {
           var task = records.fenced(lease, true);
-          if (task.publicReport()) throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
+          if (task.publicReport())
+            throw new TaskFailure(409, ArtifactErrorCode.PRESENT_COMMIT_REQUIRED);
           var budget = records.bucket(lease);
           var existing = records.taskArtifacts(lease);
           if (!existing.isEmpty()) {
             var artifact = existing.getFirst();
             if (!hash.equals(artifact.hash()) || size != artifact.size())
-              throw new TaskFailure(409, "ARTIFACT_MISMATCH");
+              throw new TaskFailure(409, ArtifactErrorCode.ARTIFACT_MISMATCH);
             return new Upload(
                 artifact.id(),
                 artifact.uploadId(),
@@ -36,8 +41,9 @@ public final class ArtifactPublicationServiceImpl implements ArtifactPublication
                 artifact.snapshotKey());
           }
           String producer = records.lastSucceededInvocation(lease);
-          if (size > 1048576 || budget.storageHeld() + size > budget.storageLimit())
-            throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
+          if (size > ReportLimitsV1.REPORT_BYTES
+              || budget.storageHeld() + size > budget.storageLimit())
+            throw new TaskFailure(429, BudgetErrorCode.STORAGE_BUDGET_EXCEEDED);
           String artifact = records.newId(), upload = records.newId();
           records.insert(lease, artifact, producer, upload, hash, size);
           records.holdStorage(lease, size);
@@ -65,11 +71,12 @@ public final class ArtifactPublicationServiceImpl implements ArtifactPublication
         lease,
         () -> {
           var task = records.fenced(lease, true);
-          if (task.publicReport()) throw new TaskFailure(409, "PRESENT_COMMIT_REQUIRED");
+          if (task.publicReport())
+            throw new TaskFailure(409, ArtifactErrorCode.PRESENT_COMMIT_REQUIRED);
           var artifact = records.artifact(lease, artifactId);
           if ("PUBLISHED".equals(artifact.state())) return null;
-          if (!"VERIFIED".equals(artifact.state()) || artifact.snapshotKey() == null)
-            throw new TaskFailure(409, "ARTIFACT_UNVERIFIED");
+          if (!ArtifactState.VERIFIED.equals(artifact.state()) || artifact.snapshotKey() == null)
+            throw new TaskFailure(409, ArtifactErrorCode.ARTIFACT_UNVERIFIED);
           records.publish(lease, artifactId);
           records.settleStorage(lease, artifactId);
           task.event("published:" + artifactId, "artifact.created");

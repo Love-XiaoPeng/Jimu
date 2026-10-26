@@ -2,13 +2,24 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.UsageQuality;
 import io.github.lovexiaopeng.jimu.kernel.budget.domain.ModelCosts;
+import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationState;
+import io.github.lovexiaopeng.jimu.kernel.model.api.DispatchState;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.model.port.ModelWorkflowRecords;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ToolSnapshot;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
+import io.github.lovexiaopeng.jimu.plugin.api.TodoErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -72,9 +83,9 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
               || ledger.n(step, "directory_revision") != ledger.n(p, "revision")
               || !ledger.s(p, "cwd").equals(ledger.s(step, "directory_cwd"))
               || !ledger.s(p, "binding_digest").equals(ledger.s(step, "directory_binding_digest")))
-            throw new TaskFailure(409, "DIRECTORY_REVISION_CONFLICT");
+            throw new TaskFailure(409, DirectoryErrorCode.DIRECTORY_REVISION_CONFLICT);
           if (ledger.n(task, "models_used") >= 8)
-            throw new TaskFailure(429, "DIRECTORY_EXECUTION_LIMIT");
+            throw new TaskFailure(429, DirectoryErrorCode.DIRECTORY_EXECUTION_LIMIT);
           ledger.directoryStorage(task, 131072);
         }
       }
@@ -189,10 +200,10 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
             lease.taskId(),
             dispatch + ":cost",
             dispatch,
-            "MODEL_COST",
+            ReservationCategory.MODEL_COST,
             cost,
-            "HELD_UNKNOWN",
-            "UNKNOWN");
+            ReservationState.HELD_UNKNOWN,
+            UsageQuality.UNKNOWN);
       }
 
       public void insertDispatch(String dispatch, String bodyDigest, long cost) {
@@ -204,7 +215,7 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
         row.setStepId(stepId);
         row.setConfigDigest(ledger.s(task, "model_digest"));
         row.setRequestDigest(bodyDigest);
-        row.setState("DISPATCHED");
+        row.setState(DispatchState.DISPATCHED);
         row.setPriceVersion(model.price() == null ? null : model.price().version());
         row.setCurrency(model.paid() ? "CNY" : null);
         row.setReservedCost(model.paid() ? cost : null);
@@ -228,10 +239,10 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
             lease.taskId(),
             dispatch,
             dispatch,
-            "MODEL",
+            ReservationCategory.MODEL,
             upper,
-            "RESERVED",
-            "UNKNOWN");
+            ReservationState.RESERVED,
+            UsageQuality.UNKNOWN);
       }
 
       public void markRunning(String dispatch) {
@@ -292,11 +303,13 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
           ledger.sessions.response(task, response, calls);
         } else if (ledger.directoryTask(task)) ledger.directoryAdmission(task);
         else {
-          if (!ledger.todosEnabled) throw new TaskFailure(403, "TODO_FEATURE_DISABLED");
+          if (!ledger.todosEnabled) throw new TaskFailure(403, TodoErrorCode.TODO_FEATURE_DISABLED);
           ledger.models.requireTodo(ledger.snapshot(task));
         }
-        if (task.get("cancel_requested_at") != null) throw new TaskFailure(409, "CANCEL_REQUESTED");
-        if (ledger.n(task, "within_deadline") != 1) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
+        if (task.get("cancel_requested_at") != null)
+          throw new TaskFailure(409, TaskErrorCode.CANCEL_REQUESTED);
+        if (ledger.n(task, "within_deadline") != 1)
+          throw new TaskFailure(409, TaskErrorCode.DEADLINE_EXCEEDED);
         io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.unicode(response);
         long invocations =
             ledger
@@ -304,13 +317,16 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
                 .invocations()
                 .countTaskInvocationsScalar(ledger.queryContext(), lease.tenant(), lease.taskId());
         if (io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(response) > 65536
-            || calls.size() > 4) throw new TaskFailure(409, "MODEL_RESPONSE_TOO_LARGE");
+            || calls.size() > 4)
+          throw new TaskFailure(409, ModelErrorCode.MODEL_RESPONSE_TOO_LARGE);
         if (invocations + calls.size() > 20)
           throw new TaskFailure(
               429,
-              ledger.directoryTask(task) ? "DIRECTORY_EXECUTION_LIMIT" : "TODO_EXECUTION_LIMIT");
+              ledger.directoryTask(task)
+                  ? DirectoryErrorCode.DIRECTORY_EXECUTION_LIMIT
+                  : TodoErrorCode.TODO_EXECUTION_LIMIT);
         if (invocations + calls.size() > ledger.n(task, "max_tools"))
-          throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
+          throw new TaskFailure(429, ToolErrorCode.TOOL_BUDGET_EXCEEDED);
         for (var call : calls) {
           if (JdbcSessionRecords.task(task)) {
             ledger.sessions.validateInput(task, call);
@@ -320,8 +336,9 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
             if (call.providerId().isEmpty()
                 || call.providerId().length() > 256
                 || !ledger.caps(task).contains(call.tool()))
-              throw new TaskFailure(400, "TOOL_INPUT_INVALID");
-            if (call.tool().equals("working_directory")) ledger.directories.input(call.input());
+              throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
+            if (call.tool().equals(ToolCapability.WORKING_DIRECTORY))
+              ledger.directories.input(call.input());
             else {
               try {
                 ledger
@@ -329,12 +346,12 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
                     .in()
                     .validate(ledger.directories.json(call.input(), 65535));
               } catch (IllegalArgumentException invalid) {
-                throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+                throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
               }
             }
           } else {
-            if (!"todo_write".equals(call.tool()))
-              throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
+            if (!ToolCapability.TODO_WRITE.equals(call.tool()))
+              throw new TaskFailure(403, ToolErrorCode.TOOL_NOT_AUTHORIZED);
             ledger.todos.input(call.input());
           }
         }
@@ -432,7 +449,8 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
             .mappers
             .reservations()
             .holdReservedModelUnknown(ledger.queryContext(), lease.tenant(), dispatch);
-        ledger.event(task, "response:" + stepId, "model.rejected", "MODEL_RESPONSE_TOO_LARGE");
+        ledger.event(
+            task, "response:" + stepId, "model.rejected", ModelErrorCode.MODEL_RESPONSE_TOO_LARGE);
       }
 
       public void reserveQuestionStorage(long bytes) {
@@ -491,7 +509,7 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
         row.setInstallationEpoch(plugin.installationEpoch());
         row.setInputSnapshot(call.input());
         row.setInputDigest(Payloads.hash(call.input()));
-        row.setState("PENDING");
+        row.setState(InvocationState.PENDING);
         ledger.mappers.insertInvocation(ledger.queryContext(), row);
         if (ledger.todoTask(task))
           ledger

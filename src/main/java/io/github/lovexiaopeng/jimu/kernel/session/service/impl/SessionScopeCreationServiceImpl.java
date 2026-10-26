@@ -4,6 +4,7 @@ import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeCreationRecor
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeCreationRecords.Row;
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeCreationService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -47,7 +48,7 @@ public final class SessionScopeCreationServiceImpl implements SessionScopeCreati
         targets.add(target);
       } catch (TaskFailure failure) {
         if (failure.status() == 403 || failure.status() == 404 || failure.status() == 410)
-          throw new TaskFailure(404, "SESSION_SCOPE_UNAVAILABLE");
+          throw new TaskFailure(404, SessionErrorCode.SESSION_SCOPE_UNAVAILABLE);
         throw failure;
       }
     }

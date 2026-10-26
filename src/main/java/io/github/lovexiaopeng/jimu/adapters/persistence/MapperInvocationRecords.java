@@ -2,6 +2,8 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import io.github.lovexiaopeng.jimu.kernel.invocation.port.InvocationRecords;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
 
 /** 原调用者事务内的调用结算；未知效果保留预留，不创建额外事务或重试。 */
 final class MapperInvocationRecords implements InvocationRecords {
@@ -70,7 +72,7 @@ final class MapperInvocationRecords implements InvocationRecords {
 
       @Override
       public void reconciliationRequired() {
-        ledger.terminal(row, "NEEDS_RECONCILIATION", "EFFECT_OUTCOME_UNKNOWN");
+        ledger.terminal(row, TaskState.NEEDS_RECONCILIATION, TaskErrorCode.EFFECT_OUTCOME_UNKNOWN);
       }
     };
   }

@@ -7,6 +7,8 @@ public final class DirectoryStorageLimit {
   private DirectoryStorageLimit() {}
 
   public static void check(long bytes, long additional) {
-    if (bytes + additional + 65536 > 2097152) throw new TaskFailure(429, "DIRECTORY_STORAGE_LIMIT");
+    if (bytes + additional + DirectoryPolicyV1.CLOSED_METADATA_BYTES
+        > DirectoryPolicyV1.BODY_STORAGE_BYTES)
+      throw new TaskFailure(429, DirectoryErrorCode.DIRECTORY_STORAGE_LIMIT);
   }
 }

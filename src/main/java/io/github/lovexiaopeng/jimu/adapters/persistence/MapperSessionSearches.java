@@ -17,7 +17,11 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionSc
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionSearchMapper;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionCommitUnconfirmed;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.UsageQuality;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionSearches;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
@@ -65,7 +69,7 @@ final class MapperSessionSearches implements SessionSearches {
   }
 
   private Map<String, Object> first(List<Map<String, Object>> rows) {
-    if (rows.isEmpty()) throw new TaskFailure(404, "NOT_FOUND");
+    if (rows.isEmpty()) throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
     return rows.getFirst();
   }
 
@@ -225,7 +229,14 @@ final class MapperSessionSearches implements SessionSearches {
 
     public void reserve(String invocation) {
       ledger.reserve(
-          lease.tenant(), lease.taskId(), invocation, invocation, "TOOL", 1, "SETTLED", "KNOWN");
+          lease.tenant(),
+          lease.taskId(),
+          invocation,
+          invocation,
+          ReservationCategory.TOOL,
+          1,
+          ReservationState.SETTLED,
+          UsageQuality.KNOWN);
     }
 
     public void settle(String invocation) {

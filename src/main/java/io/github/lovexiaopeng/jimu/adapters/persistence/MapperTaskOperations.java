@@ -10,6 +10,8 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.artifact.mapper.Artifact
 import io.github.lovexiaopeng.jimu.adapters.persistence.task.entity.TaskVisibilityEntity;
 import io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskOperationsMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskVisibilityMapper;
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ArtifactState;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionContentState;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
 import io.github.lovexiaopeng.jimu.kernel.task.port.TaskOperationsRecords;
 import java.util.List;
@@ -98,7 +100,7 @@ final class MapperTaskOperations implements TaskOperationsRecords {
       wrapper
           .eq(ArtifactViewEntity::getTenantId, tenant)
           .eq(ArtifactViewEntity::getTaskId, id)
-          .eq(ArtifactViewEntity::getState, "PUBLISHED")
+          .eq(ArtifactViewEntity::getState, ArtifactState.PUBLISHED)
           .orderByAsc(ArtifactViewEntity::getRowId);
       return select(ArtifactViewMapper.class, wrapper).stream()
           .map(
@@ -114,7 +116,7 @@ final class MapperTaskOperations implements TaskOperationsRecords {
 
     public boolean historyRetained() {
       var h = ledger.sessions.history(value, false);
-      return n(h, "retained") == 1 && "PRESENT".equals(s(h, "content_state"));
+      return n(h, "retained") == 1 && SessionContentState.PRESENT.equals(s(h, "content_state"));
     }
 
     public boolean writersQuiescent() {

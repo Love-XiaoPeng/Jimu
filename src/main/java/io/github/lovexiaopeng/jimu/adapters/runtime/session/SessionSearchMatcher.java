@@ -2,7 +2,9 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.session;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionEventSearchPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionEventSearchPort;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -35,8 +37,9 @@ public final class SessionSearchMatcher {
   }
 
   private boolean equal(int a, int b) {
-    if (++comparisons > 8388608) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-    if ((comparisons & 1023) == 0) deadline.run();
+    if (++comparisons > SessionEventSearchPolicyV1.COMPARISONS)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
+    if ((comparisons & SessionEventSearchPolicyV1.DEADLINE_CHECK_MASK) == 0) deadline.run();
     return a == b;
   }
 
@@ -67,10 +70,13 @@ public final class SessionSearchMatcher {
       }
     }
     if (occurrences == 0) return;
-    int start = Math.max(0, first - 80), end = Math.min(document.length, start + 240);
+    int start = Math.max(0, first - SessionEventSearchPolicyV1.SNIPPET_BEFORE_CODEPOINTS),
+        end =
+            Math.min(document.length, start + SessionEventSearchPolicyV1.SNIPPET_WINDOW_CODEPOINTS);
     String snippet = new String(document, start, end - start);
-    if (SessionContracts.bytes(Payloads.json(snippet)) > 1536)
-      throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (SessionContracts.bytes(Payloads.json(snippet))
+        > SessionEventSearchPolicyV1.SNIPPET_JSON_BYTES)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
     var hit = new LinkedHashMap<String, Object>();
     for (String key : List.of("seq", "type", "time", "source", "redacted"))
       hit.put(key, event.get(key));
@@ -78,13 +84,14 @@ public final class SessionSearchMatcher {
     hit.put("snippet", snippet);
     hit.put("left_truncated", start > 0);
     hit.put("right_truncated", end < document.length);
-    if (SessionContracts.bytes(Payloads.json(hit)) > 2048 || matches.size() >= 128)
-      throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (SessionContracts.bytes(Payloads.json(hit)) > SessionEventSearchPolicyV1.HIT_JSON_BYTES
+        || matches.size() >= SessionEventSearchPolicyV1.CANDIDATES)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
     matches.add(new Hit(occurrences, document.length, time, seq, hit));
   }
 
   public String output(String task, long upper, String boundary) {
-    return output(task, upper, boundary, 2);
+    return output(task, upper, boundary, SessionEventSearchPolicyV1.DEFAULT_HISTORY_VERSION);
   }
 
   public String output(String task, long upper, String boundary, int historyVersion) {
@@ -96,17 +103,19 @@ public final class SessionSearchMatcher {
             .thenComparing(Hit::time, Comparator.reverseOrder())
             .thenComparing(Comparator.comparingLong(Hit::seq).reversed()));
     var value = new LinkedHashMap<String, Object>();
-    value.put("version", 1);
+    value.put("version", SessionEventSearchPolicyV1.OUTPUT_VERSION);
     value.put("session_id", task);
     value.put("history_version", historyVersion);
-    value.put("content_policy", "public-v1");
+    value.put("content_policy", SessionEventSearchPolicyV1.CONTENT_POLICY);
     value.put("boundary", boundary);
     value.put("upper_seq", upper);
-    value.put("match_policy", "public-content-literal-v1");
-    value.put("ordering", "occurrences-desc,length-asc,time-desc,seq-desc");
-    value.put("returned_count", Math.min(16, matches.size()));
-    value.put("capped", matches.size() > 16);
-    value.put("items", matches.stream().limit(16).map(Hit::value).toList());
+    value.put("match_policy", SessionEventSearchPolicyV1.MATCH_POLICY);
+    value.put("ordering", SessionEventSearchPolicyV1.ORDERING);
+    value.put("returned_count", Math.min(SessionEventSearchPolicyV1.RETURNED_HITS, matches.size()));
+    value.put("capped", matches.size() > SessionEventSearchPolicyV1.RETURNED_HITS);
+    value.put(
+        "items",
+        matches.stream().limit(SessionEventSearchPolicyV1.RETURNED_HITS).map(Hit::value).toList());
     return Payloads.json(value);
   }
 }

@@ -6,6 +6,7 @@ import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcLedger.s;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.kernel.question.port.QuestionInput;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.PluginPin;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugins.builtin.interaction.AskUserQuestionPlugin.Input;
 import java.util.Map;
 
@@ -50,7 +51,7 @@ final class LedgerQuestionInput implements QuestionInput<PluginPin, Input> {
   }
 
   public PluginPin pin() {
-    return ledger.tools(task).pins().get("ask_user_question");
+    return ledger.tools(task).pins().get(ToolCapability.ASK_USER_QUESTION);
   }
 
   public String version(PluginPin pin) {

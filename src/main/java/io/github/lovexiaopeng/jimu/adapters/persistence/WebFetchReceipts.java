@@ -6,7 +6,9 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.contract.BuiltinManifestLoad
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
 import io.github.lovexiaopeng.jimu.adapters.runtime.web.PublicWebPolicy;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ToolSnapshot;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchInput;
 import io.github.lovexiaopeng.jimu.plugins.builtin.webfetch.FetchOutput;
 import java.io.IOException;
@@ -27,7 +29,7 @@ final class WebFetchReceipts {
       Map<String, Object> invocation,
       String output) {
     try {
-      if (!"web_fetch".equals(invocation.get("tool"))
+      if (!ToolCapability.WEB_FETCH.equals(invocation.get("tool"))
           || !"0.3.0".equals(invocation.get("plugin_version"))
           || !BuiltinManifestLoader.OUTPUT_SHA256.equals(invocation.get("plugin_digest"))
           || output == null
@@ -44,7 +46,7 @@ final class WebFetchReceipts {
           .equals(request.path("bodyDigest").asText()))
         throw new IllegalArgumentException("Invalid wire digest");
       var pins = Payloads.read((String) task.get("tools_snapshot"), ToolSnapshot.class);
-      var pin = pins.pins().get("web_fetch");
+      var pin = pins.pins().get(ToolCapability.WEB_FETCH);
       if (pins.schemaVersion() != 1
           || pin == null
           || !pin.version().equals(invocation.get("plugin_version"))
@@ -64,7 +66,7 @@ final class WebFetchReceipts {
       for (var call : response.path("calls")) {
         if (call.path("id").asText().equals(invocation.get("provider_id"))) identities++;
         if (call.path("id").asText().equals(invocation.get("provider_id"))
-            && call.path("name").asText().equals("web_fetch")
+            && call.path("name").asText().equals(ToolCapability.WEB_FETCH)
             && call.path("arguments").asText().equals(invocation.get("input_snapshot"))
             && (index + ":" + call.path("id").asText()).equals(invocation.get("slot"))) matches++;
         index++;
@@ -102,7 +104,7 @@ final class WebFetchReceipts {
       receipt.put("step.responseDigest", step.get("response_digest"));
       return Payloads.hash(Payloads.json(receipt));
     } catch (IOException | IllegalArgumentException invalid) {
-      throw new TaskFailure(409, "WEB_RESULT_PROOF_INVALID");
+      throw new TaskFailure(409, TaskErrorCode.WEB_RESULT_PROOF_INVALID);
     }
   }
 

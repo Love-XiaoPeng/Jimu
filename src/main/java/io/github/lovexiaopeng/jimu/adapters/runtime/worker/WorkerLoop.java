@@ -3,8 +3,11 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.worker;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent;
 import io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeProcesses;
 import io.github.lovexiaopeng.jimu.kernel.readiness.port.ResourceProbe;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.worker.api.WorkerLeasePolicyV1;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -53,7 +56,8 @@ public final class WorkerLoop implements AutoCloseable {
         process.startTicks(),
         process.bootId(),
         process.observerPidNamespace());
-    work.scheduleWithFixedDelay(this::tick, 0, 100, TimeUnit.MILLISECONDS);
+    work.scheduleWithFixedDelay(
+        this::tick, 0, WorkerLeasePolicyV1.POLL_MILLIS, TimeUnit.MILLISECONDS);
   }
 
   void tick() {
@@ -65,17 +69,22 @@ public final class WorkerLoop implements AutoCloseable {
       if (candidate.isEmpty()) return;
       var lease = candidate.get();
       var renewal =
-          heartbeat.scheduleAtFixedRate(() -> ledger.renew(lease), 10, 10, TimeUnit.SECONDS);
+          heartbeat.scheduleAtFixedRate(
+              () -> ledger.renew(lease),
+              WorkerLeasePolicyV1.HEARTBEAT_SECONDS,
+              WorkerLeasePolicyV1.HEARTBEAT_SECONDS,
+              TimeUnit.SECONDS);
       try {
         execution.accept(lease);
       } catch (RuntimeException error) {
-        String code = error instanceof TaskFailure failure ? failure.code() : "EXECUTION_FAILED";
+        String code =
+            error instanceof TaskFailure failure ? failure.code() : TaskErrorCode.EXECUTION_FAILED;
         System.getLogger(WorkerLoop.class.getName())
             .log(System.Logger.Level.WARNING, "Execution stopped: " + code, error);
         try {
           ledger.stop(lease, code);
         } catch (TaskFailure rejected) {
-          if (!"FENCE_REJECTED".equals(rejected.code())) throw rejected;
+          if (!CommonErrorCode.FENCE_REJECTED.equals(rejected.code())) throw rejected;
         }
       } finally {
         try {

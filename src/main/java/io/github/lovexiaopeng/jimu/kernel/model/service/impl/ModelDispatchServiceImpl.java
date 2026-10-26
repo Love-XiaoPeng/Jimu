@@ -1,5 +1,8 @@
 package io.github.lovexiaopeng.jimu.kernel.model.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationRunState;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelResponseLimitsV1;
 import io.github.lovexiaopeng.jimu.kernel.model.port.ModelDispatchRecords;
 import io.github.lovexiaopeng.jimu.kernel.model.port.ModelWorkflowRecords;
 import io.github.lovexiaopeng.jimu.kernel.model.service.ModelDispatchService;
@@ -8,10 +11,12 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ToolSnapshot;
 import io.github.lovexiaopeng.jimu.kernel.task.api.LeaseUnitOfWork;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
@@ -82,14 +87,14 @@ public final class ModelDispatchServiceImpl implements ModelDispatchService {
         () -> {
           var row = workflows.lockAdmission(lease, step);
           row.validateStep();
-          if (row.responded()) throw new TaskFailure(409, "ALREADY_RESPONDED");
+          if (row.responded()) throw new TaskFailure(409, TaskErrorCode.ALREADY_RESPONDED);
           row.validateDirectory();
           var request = row.request();
           String bodyDigest = digest.hash(request.body());
           if (!bodyDigest.equals(request.bodyDigest()))
-            throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+            throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
           if (!request.actualConfigDigest().equals(request.configDigest()))
-            throw new TaskFailure(409, "MODEL_CONFIG_UNAVAILABLE");
+            throw new TaskFailure(409, ModelErrorCode.MODEL_CONFIG_UNAVAILABLE);
           row.validateEvaluationAndMaterial();
           row.validateInput(request.body());
           var b = row.limits();
@@ -100,22 +105,22 @@ public final class ModelDispatchServiceImpl implements ModelDispatchService {
           long cost = b.reservedCost();
           if (b.paid()
               && (!b.runPresent()
-                  || !"OPEN".equals(b.runState())
+                  || !EvaluationRunState.OPEN.equals(b.runState())
                   || b.requests() >= b.maxRequests()
                   || cost > b.runRoom()
                   || cost > b.taskCostRoom()
                   || cost > b.tenantCostRoom()))
-            throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
+            throw new TaskFailure(429, ModelErrorCode.MODEL_BUDGET_EXCEEDED);
           if (b.dispatches() >= (b.paid() ? 1 : 2)
               || b.modelsUsed() >= b.maxModels()
               || b.tenantModels() >= b.tenantModelLimit()
               || b.tenantTokens() + upper > b.upperTenantTokens()
               || b.taskTokens() + upper > b.maxTokens())
-            throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
+            throw new TaskFailure(429, ModelErrorCode.MODEL_BUDGET_EXCEEDED);
           var plan = row.planAllowance();
           ModelEvaluationAdmission.check(plan, cost);
           if (plan != null && row.activePlanDispatch())
-            throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
+            throw new TaskFailure(429, ModelErrorCode.MODEL_BUDGET_EXCEEDED);
           row.reserveModuleStorage();
           String dispatch = UUID.randomUUID().toString();
           if (b.paid()) row.reserveCost(dispatch, cost);
@@ -140,7 +145,7 @@ public final class ModelDispatchServiceImpl implements ModelDispatchService {
     work.required(
         () -> {
           var row = workflows.lockResponse(lease, step, dispatch);
-          if (!row.originalDispatch()) throw new TaskFailure(409, "DISPATCH_REJECTED");
+          if (!row.originalDispatch()) throw new TaskFailure(409, ModelErrorCode.DISPATCH_REJECTED);
           if (ModelCostSettlement.settle(row.costs(), usage)) {
             String code = row.costRejection();
             row.rejectStep();
@@ -158,7 +163,9 @@ public final class ModelDispatchServiceImpl implements ModelDispatchService {
               return null;
             }
           if (row.question()
-              && (response.getBytes(StandardCharsets.UTF_8).length > 32768 || calls.size() > 8)) {
+              && (response.getBytes(StandardCharsets.UTF_8).length
+                      > ModelResponseLimitsV1.RESPONSE_BYTES
+                  || calls.size() > ModelResponseLimitsV1.TOOL_CALLS)) {
             row.rejectOversizedQuestion();
             return null;
           }
@@ -171,8 +178,9 @@ public final class ModelDispatchServiceImpl implements ModelDispatchService {
             if (rejection != null) throw new TaskFailure(409, rejection);
             row.requireScope();
             for (var call : calls)
-              if (call.input().getBytes(StandardCharsets.UTF_8).length > 65535)
-                throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+              if (call.input().getBytes(StandardCharsets.UTF_8).length
+                  > ModelResponseLimitsV1.TOOL_INPUT_BYTES)
+                throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
           } catch (TaskFailure rejected) {
             row.rejectStep();
             row.recordRejection(rejected.code());
@@ -183,7 +191,7 @@ public final class ModelDispatchServiceImpl implements ModelDispatchService {
           long revision = row.todoRevision();
           for (var call : calls) {
             if (!lease.capabilities().contains(call.tool()))
-              throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
+              throw new TaskFailure(403, ToolErrorCode.TOOL_NOT_AUTHORIZED);
             row.insertCall(call, ++ordinal, revision++);
           }
           row.bindCalls();

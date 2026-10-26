@@ -2,7 +2,10 @@ package io.github.lovexiaopeng.jimu.kernel.question.service.impl;
 
 import io.github.lovexiaopeng.jimu.kernel.question.port.QuestionMaintenance;
 import io.github.lovexiaopeng.jimu.kernel.question.service.QuestionMaintenanceService;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
+import io.github.lovexiaopeng.jimu.plugin.api.QuestionErrorCode;
 import java.util.List;
 import java.util.Map;
 
@@ -14,11 +17,12 @@ public final class QuestionMaintenanceServiceImpl implements QuestionMaintenance
           () -> {
             port.bucket(s(candidate, "tenant_id"));
             var task = port.locked(s(candidate, "tenant_id"), s(candidate, "id"));
-            if (!List.of("WAITING_USER", "RESUME_READY").contains(s(task, "state"))) return null;
+            if (!List.of(TaskState.WAITING_USER, TaskState.RESUME_READY).contains(s(task, "state")))
+              return null;
             String rejection = null;
-            if (task.get("cancel_requested_at") != null) rejection = "CANCELLED";
-            else if (n(task, "within_deadline") != 1) rejection = "DEADLINE_EXCEEDED";
-            else if (!port.enabled()) rejection = "QUESTION_FEATURE_DISABLED";
+            if (task.get("cancel_requested_at") != null) rejection = TaskErrorCode.CANCELLED;
+            else if (n(task, "within_deadline") != 1) rejection = TaskErrorCode.DEADLINE_EXCEEDED;
+            else if (!port.enabled()) rejection = QuestionErrorCode.QUESTION_FEATURE_DISABLED;
             else
               try {
                 port.access(task);
@@ -28,7 +32,11 @@ public final class QuestionMaintenanceServiceImpl implements QuestionMaintenance
             if (rejection != null) {
               port.close(task, rejection);
               port.terminal(
-                  task, rejection.equals("CANCELLED") ? "CANCELLED" : "FAILED", rejection);
+                  task,
+                  rejection.equals(TaskErrorCode.CANCELLED)
+                      ? TaskState.CANCELLED
+                      : TaskState.FAILED,
+                  rejection);
               return null;
             }
             for (var q : port.due(s(task, "tenant_id"), s(task, "id")))

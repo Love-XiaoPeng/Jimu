@@ -1,14 +1,16 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.search;
 
+import io.github.lovexiaopeng.jimu.plugin.api.FileErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.nio.charset.StandardCharsets;
 
 public record NativeSearchQuery(String tool, String pattern, String path, String include) {
   public NativeSearchQuery {
-    if (!tool.equals("glob") && !tool.equals("grep"))
+    if (!tool.equals(ToolCapability.GLOB) && !tool.equals(ToolCapability.GREP))
       throw new IllegalArgumentException("Invalid search tool");
     text(pattern, 8192);
-    if (pattern.isEmpty() || tool.equals("glob") && pattern.isBlank())
+    if (pattern.isEmpty() || tool.equals(ToolCapability.GLOB) && pattern.isBlank())
       throw new IllegalArgumentException("Invalid pattern");
     path = path == null ? "." : path;
     path(path);
@@ -43,10 +45,10 @@ public record NativeSearchQuery(String tool, String pattern, String path, String
         || path.contains("\\")
         || path.contains(":")
         || path.codePoints().anyMatch(c -> c < 32 || c == 127))
-      throw new FileFailure("FS_PATH_DENIED");
+      throw new FileFailure(FileErrorCode.FS_PATH_DENIED);
     for (String part : path.split("/", -1))
       if (part.isEmpty() || part.equals(".") || part.equals(".."))
-        throw new FileFailure("FS_PATH_DENIED");
+        throw new FileFailure(FileErrorCode.FS_PATH_DENIED);
   }
 
   public static void cursor(String cursor) {

@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.kernel.task.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Identity;
 import io.github.lovexiaopeng.jimu.kernel.task.port.TaskIdentityRecords;
@@ -11,7 +12,7 @@ public final class TaskIdentityServiceImpl implements TaskIdentityService {
   public void identity(TaskIdentityRecords records, Identity identity) {
     var result = records.lockActor(identity);
     if (result.isEmpty() || !Boolean.TRUE.equals(result.first().enabled()))
-      throw new TaskFailure(403, "ACCESS_REVOKED");
+      throw new TaskFailure(403, CommonErrorCode.ACCESS_REVOKED);
   }
 
   public long epoch(TaskIdentityRecords records, Identity identity, List<String> capabilities) {
@@ -20,7 +21,7 @@ public final class TaskIdentityServiceImpl implements TaskIdentityService {
     for (String capability : capabilities.stream().sorted().toList()) {
       var installed = records.lockInstallation(identity, capability);
       if (installed.isEmpty() || !Boolean.TRUE.equals(installed.first().enabled()))
-        throw new TaskFailure(403, "CAPABILITY_REVOKED");
+        throw new TaskFailure(403, CommonErrorCode.CAPABILITY_REVOKED);
       epoch += installed.first().epoch().longValue();
     }
     return epoch;

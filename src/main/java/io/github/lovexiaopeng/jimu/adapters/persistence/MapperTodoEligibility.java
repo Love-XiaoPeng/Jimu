@@ -4,9 +4,11 @@ import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcLedger.n;
 import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcLedger.s;
 
 import io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoEligibilityMapper;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.PluginPin;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.todo.port.TodoEligibility;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +28,7 @@ final class MapperTodoEligibility implements TodoEligibility {
   }
 
   public PluginPin pin() {
-    return ledger.tools(task).pins().get("todo_write");
+    return ledger.tools(task).pins().get(ToolCapability.TODO_WRITE);
   }
 
   public Installation installation() {
@@ -35,8 +37,9 @@ final class MapperTodoEligibility implements TodoEligibility {
             .mappers
             .session()
             .getMapper(TodoEligibilityMapper.class)
-            .lockInstallation(ledger.queryContext(), s(task, "tenant_id"), "todo_write");
-    if (rows.isEmpty()) throw new TaskFailure(404, "NOT_FOUND");
+            .lockInstallation(
+                ledger.queryContext(), s(task, "tenant_id"), ToolCapability.TODO_WRITE);
+    if (rows.isEmpty()) throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
     return new Row(rows.getFirst());
   }
 

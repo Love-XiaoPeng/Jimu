@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.api.task.dto;
 
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import java.util.regex.Pattern;
 
@@ -10,11 +11,11 @@ public final class TaskEventCursor {
   public static long parse(String id, String last) {
     if (last == null) return 0;
     if (!last.matches(Pattern.quote(id) + ":[1-9][0-9]{0,18}"))
-      throw new TaskFailure(400, "INVALID_CURSOR");
+      throw new TaskFailure(400, TaskErrorCode.INVALID_CURSOR);
     try {
       return Long.parseLong(last.substring(id.length() + 1));
     } catch (NumberFormatException e) {
-      throw new TaskFailure(400, "INVALID_CURSOR");
+      throw new TaskFailure(400, TaskErrorCode.INVALID_CURSOR);
     }
   }
 }

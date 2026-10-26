@@ -1,5 +1,8 @@
 package io.github.lovexiaopeng.jimu.kernel.session.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationState;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionOutcome;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionReads;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionReads.Commit;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionReads.Read;
@@ -8,6 +11,9 @@ import io.github.lovexiaopeng.jimu.kernel.session.service.SessionReadService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import java.util.List;
 
 /** 原生协议保持证明顺序；已结算的拒绝在事务提交后抛出。 */
@@ -28,11 +34,11 @@ public final class SessionReadServiceImpl implements SessionReadService {
 
   private Outcome execute(Lease lease, String step, Call call, String version, String digest) {
     var task = records.lock(lease);
-    if (!task.enabled()) throw new TaskFailure(403, "SESSION_READ_DISABLED");
+    if (!task.enabled()) throw new TaskFailure(403, SessionErrorCode.SESSION_READ_DISABLED);
     var invocation = task.originalSlot(step, call, version, digest);
     var input = task.input(call.input());
-    if (!call.tool().equals("session_event_read"))
-      throw new TaskFailure(409, "INVOCATION_MISMATCH");
+    if (!call.tool().equals(ToolCapability.SESSION_EVENT_READ))
+      throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
     String history = task.historyBinding();
     var st = task.validatedStep(step);
     var binding = task.lockBinding(invocation.id());
@@ -47,32 +53,33 @@ public final class SessionReadServiceImpl implements SessionReadService {
         || binding.before() != input.before()
         || binding.after() != input.after()) throw corrupt();
     if (task.trace() && binding.relation() != 1) throw corrupt();
-    if (!"PENDING".equals(invocation.state())) {
+    if (!InvocationState.PENDING.equals(invocation.state())) {
       if (!invocation.state().equals(binding.outcome())) throw corrupt();
       task.verifyReceipt(binding.receipt());
       finish(task);
-      if ("FAILED".equals(binding.outcome()))
+      if (SessionOutcome.FAILED.equals(binding.outcome()))
         return new Outcome(
             null, new TaskFailure(failureStatus(binding.failure()), binding.failure()));
-      if (!"SUCCEEDED".equals(binding.outcome())) throw corrupt();
+      if (!SessionOutcome.SUCCEEDED.equals(binding.outcome())) throw corrupt();
       task.validateOutput(invocation.output());
       return new Outcome(invocation.output(), null);
     }
-    if (!"PENDING".equals(binding.outcome())) throw corrupt();
+    if (!SessionOutcome.PENDING.equals(binding.outcome())) throw corrupt();
     var budget = task.budget();
     if (task.toolsUsed() >= task.maxTools()
         || task.toolsUsed() >= 20
-        || budget.used() >= budget.limit()) throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
+        || budget.used() >= budget.limit())
+      throw new TaskFailure(429, ToolErrorCode.TOOL_BUDGET_EXCEEDED);
     Read read = null;
     TaskFailure failure = null;
     try {
       read = task.read(input, binding.upper());
     } catch (TaskFailure rejected) {
       if (!List.of(
-              "SESSION_EVENT_NOT_FOUND",
-              "SESSION_HISTORY_CORRUPT",
-              "SESSION_HISTORY_VERSION_UNSUPPORTED",
-              "SESSION_HISTORY_LIMIT")
+              SessionErrorCode.SESSION_EVENT_NOT_FOUND,
+              SessionErrorCode.SESSION_HISTORY_CORRUPT,
+              SessionErrorCode.SESSION_HISTORY_VERSION_UNSUPPORTED,
+              SessionErrorCode.SESSION_HISTORY_LIMIT)
           .contains(rejected.code())) throw rejected;
       failure = rejected;
     }
@@ -83,7 +90,7 @@ public final class SessionReadServiceImpl implements SessionReadService {
     task.consumeTenant();
     task.reserve(invocation.id());
     task.settle(invocation.id());
-    String outcome = failure == null ? "SUCCEEDED" : "FAILED";
+    String outcome = failure == null ? SessionOutcome.SUCCEEDED : SessionOutcome.FAILED;
     task.finishInvocation(
         invocation.id(), outcome, output, output == null ? null : records.hash(output));
     long receipt = task.nextSequence();
@@ -117,14 +124,14 @@ public final class SessionReadServiceImpl implements SessionReadService {
   }
 
   private static TaskFailure corrupt() {
-    return new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+    return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
   }
 
   private static int failureStatus(String code) {
     return switch (code) {
-      case "SESSION_EVENT_NOT_FOUND" -> 404;
-      case "SESSION_HISTORY_EXPIRED" -> 410;
-      case "SESSION_HISTORY_LIMIT" -> 429;
+      case SessionErrorCode.SESSION_EVENT_NOT_FOUND -> 404;
+      case SessionErrorCode.SESSION_HISTORY_EXPIRED -> 410;
+      case SessionErrorCode.SESSION_HISTORY_LIMIT -> 429;
       default -> 409;
     };
   }

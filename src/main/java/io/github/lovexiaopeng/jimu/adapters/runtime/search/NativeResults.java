@@ -5,8 +5,11 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import io.github.lovexiaopeng.jimu.kernel.search.api.NativeResultPolicyV1;
 import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SearchErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.SearchPort;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -32,9 +35,9 @@ public final class NativeResults {
       JsonFactory.builder()
           .streamReadConstraints(
               StreamReadConstraints.builder()
-                  .maxStringLength(20000000)
-                  .maxDocumentLength(20000000)
-                  .maxNestingDepth(32)
+                  .maxStringLength(NativeResultPolicyV1.PARSER_STRING_UTF16_UNITS)
+                  .maxDocumentLength(NativeResultPolicyV1.PARSER_DOCUMENT_LENGTH)
+                  .maxNestingDepth(NativeResultPolicyV1.PARSER_DEPTH)
                   .build())
           .build();
   private static final SecureRandom RANDOM = new SecureRandom();
@@ -52,14 +55,15 @@ public final class NativeResults {
     var paths = new ArrayList<String>();
     var matches = new ArrayList<SearchPort.Match>();
     int bytes = 0;
-    if (query.tool().equals("glob")) {
+    if (query.tool().equals(ToolCapability.GLOB)) {
       Set<String> unique = new HashSet<>();
       for (String line : new String(raw, StandardCharsets.UTF_8).split("\n")) {
         if (line.isEmpty()) continue;
         String path = path(line, files);
-        if (!unique.add(path)) throw new FileFailure("SEARCH_FAILED");
+        if (!unique.add(path)) throw new FileFailure(SearchErrorCode.SEARCH_FAILED);
         bytes += Payloads.json(path).getBytes(StandardCharsets.UTF_8).length + 1;
-        if (bytes > 4194304) throw new FileFailure("SEARCH_RESULT_LIMIT");
+        if (bytes > NativeResultPolicyV1.COLLECTED_ENTRY_BYTES)
+          throw new FileFailure(SearchErrorCode.SEARCH_RESULT_LIMIT);
         paths.add(path);
       }
       paths = sample(paths, query.path());
@@ -67,7 +71,7 @@ public final class NativeResults {
       try (JsonParser parser = JSON.createParser(raw)) {
         while (parser.nextToken() != null) {
           if (parser.currentToken() != JsonToken.START_OBJECT)
-            throw new FileFailure("SEARCH_FAILED");
+            throw new FileFailure(SearchErrorCode.SEARCH_FAILED);
           String type = null, matchPath = null, line = null;
           long lineNumber = 0;
           boolean lineTruncated = false;
@@ -90,7 +94,11 @@ public final class NativeResults {
                     String textKey = parser.currentName();
                     parser.nextToken();
                     if ("text".equals(textKey) && parser.currentToken() == JsonToken.VALUE_STRING) {
-                      var preview = new Preview("path".equals(dataKey) ? 2048 : 2000);
+                      var preview =
+                          new Preview(
+                              "path".equals(dataKey)
+                                  ? NativeResultPolicyV1.PATH_PREVIEW_UTF8_BYTES
+                                  : NativeResultPolicyV1.LINE_PREVIEW_UTF8_BYTES);
                       parser.getText(preview);
                       text = preview.text();
                       truncated = preview.truncated();
@@ -100,7 +108,7 @@ public final class NativeResults {
                     } else parser.skipChildren();
                   }
                   if ("path".equals(dataKey)) {
-                    if (truncated) throw new FileFailure("SEARCH_FAILED");
+                    if (truncated) throw new FileFailure(SearchErrorCode.SEARCH_FAILED);
                     matchPath = text;
                   } else {
                     line = text;
@@ -112,26 +120,35 @@ public final class NativeResults {
           }
           if ("match".equals(type)) {
             if (matchPath == null || line == null || lineNumber < 1)
-              throw new FileFailure("SEARCH_FAILED");
+              throw new FileFailure(SearchErrorCode.SEARCH_FAILED);
             var match =
                 new SearchPort.Match(path(matchPath, files), lineNumber, line, lineTruncated);
             bytes += Payloads.json(match).getBytes(StandardCharsets.UTF_8).length + 1;
-            if (bytes > 4194304) throw new FileFailure("SEARCH_RESULT_LIMIT");
+            if (bytes > NativeResultPolicyV1.COLLECTED_ENTRY_BYTES)
+              throw new FileFailure(SearchErrorCode.SEARCH_RESULT_LIMIT);
             matches.add(match);
           } else if (!Set.of("begin", "end", "context", "summary")
-              .contains(type == null ? "" : type)) throw new FileFailure("SEARCH_FAILED");
+              .contains(type == null ? "" : type))
+            throw new FileFailure(SearchErrorCode.SEARCH_FAILED);
         }
       }
     }
     List<String> pages = new ArrayList<>();
     Map<String, Integer> cursors = new LinkedHashMap<>();
-    int seen = query.tool().equals("glob") ? paths.size() : matches.size(), position = 0;
+    int seen = query.tool().equals(ToolCapability.GLOB) ? paths.size() : matches.size(),
+        position = 0;
     do {
-      int max = Math.min(seen, position + (query.tool().equals("glob") ? 100 : 250));
+      int max =
+          Math.min(
+              seen,
+              position
+                  + (query.tool().equals(ToolCapability.GLOB)
+                      ? NativeResultPolicyV1.GLOB_PAGE_ENTRIES
+                      : NativeResultPolicyV1.GREP_PAGE_ENTRIES));
       String page = null, next = null;
       for (int end = max; end >= position; end--) {
         next = end < seen ? cursor() : null;
-        if (query.tool().equals("glob"))
+        if (query.tool().equals(ToolCapability.GLOB))
           page =
               Payloads.json(
                   new SearchPort.GlobPage(
@@ -152,24 +169,26 @@ public final class NativeResults {
                           || matches.subList(position, end).stream()
                               .anyMatch(SearchPort.Match::lineTruncated),
                       next));
-        if (page.getBytes(StandardCharsets.UTF_8).length <= 65536) {
+        if (page.getBytes(StandardCharsets.UTF_8).length <= NativeResultPolicyV1.PAGE_BYTES) {
           max = end;
           break;
         }
       }
-      if (max == position && position < seen) throw new FileFailure("SEARCH_RESULT_LIMIT");
+      if (max == position && position < seen)
+        throw new FileFailure(SearchErrorCode.SEARCH_RESULT_LIMIT);
       pages.add(page);
       if (next != null) cursors.put(next, pages.size());
       position = max;
     } while (position < seen);
     var result = new Document(snapshot, digest, pin, List.copyOf(pages), Map.copyOf(cursors));
-    if (Payloads.json(result).getBytes(StandardCharsets.UTF_8).length > 4194304)
-      throw new FileFailure("SEARCH_RESULT_LIMIT");
+    if (Payloads.json(result).getBytes(StandardCharsets.UTF_8).length
+        > NativeResultPolicyV1.DOCUMENT_BYTES)
+      throw new FileFailure(SearchErrorCode.SEARCH_RESULT_LIMIT);
     return result;
   }
 
   private static String cursor() {
-    byte[] bytes = new byte[16];
+    byte[] bytes = new byte[NativeResultPolicyV1.CURSOR_RANDOM_BYTES];
     RANDOM.nextBytes(bytes);
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
@@ -177,7 +196,7 @@ public final class NativeResults {
   private static String path(String raw, Set<String> files) {
     String value = raw.startsWith("./") ? raw.substring(2) : raw;
     NativeSearchQuery.path(value);
-    if (!files.contains(value)) throw new FileFailure("SEARCH_FAILED");
+    if (!files.contains(value)) throw new FileFailure(SearchErrorCode.SEARCH_FAILED);
     return value;
   }
 
@@ -191,10 +210,13 @@ public final class NativeResults {
       groups.computeIfAbsent(top, key -> new ArrayList<>()).add(i);
     }
     var selected = new HashSet<Integer>();
-    for (int offset = 0; selected.size() < Math.min(100, paths.size()); offset++) {
+    for (int offset = 0;
+        selected.size() < Math.min(NativeResultPolicyV1.DIVERSE_SAMPLE_ENTRIES, paths.size());
+        offset++) {
       for (var indices : groups.values()) {
         if (offset < indices.size()) selected.add(indices.get(offset));
-        if (selected.size() == Math.min(100, paths.size())) break;
+        if (selected.size() == Math.min(NativeResultPolicyV1.DIVERSE_SAMPLE_ENTRIES, paths.size()))
+          break;
       }
     }
     var ordered = new ArrayList<String>();

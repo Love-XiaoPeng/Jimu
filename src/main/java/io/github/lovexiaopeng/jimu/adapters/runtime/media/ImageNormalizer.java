@@ -1,7 +1,9 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.media;
 
+import io.github.lovexiaopeng.jimu.kernel.media.api.ImagePolicyV1;
 import io.github.lovexiaopeng.jimu.plugin.api.Cancellation;
 import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.ImageErrorCode;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -29,9 +31,9 @@ public final class ImageNormalizer {
     return StreamSupport.stream(installed.spliterator(), false);
   }
 
-  public static final String VERSION = "jimu-image-v1";
-  public static final int MAX_BYTES = 1048576;
-  public static final long MAX_PIXELS = 4194304L;
+  public static final String VERSION = ImagePolicyV1.NORMALIZER_VERSION;
+  public static final int MAX_BYTES = ImagePolicyV1.RAW_BYTES;
+  public static final long MAX_PIXELS = ImagePolicyV1.MAX_PIXELS;
 
   public static void available() {
     var readers =
@@ -51,7 +53,7 @@ public final class ImageNormalizer {
             java.util.List.of(
                 "com.sun.imageio.plugins.png.PNGImageReaderSpi",
                 "com.sun.imageio.plugins.jpeg.JPEGImageReaderSpi"))
-        || !writer) throw new FileFailure("IMAGE_CODEC_UNAVAILABLE");
+        || !writer) throw new FileFailure(ImageErrorCode.IMAGE_CODEC_UNAVAILABLE);
   }
 
   public record Normalized(
@@ -68,20 +70,21 @@ public final class ImageNormalizer {
 
   public Normalized normalize(String path, byte[] raw, Cancellation cancellation) {
     cancellation.throwIfCancelled();
-    if (raw.length < 1 || raw.length > MAX_BYTES) throw new FileFailure("IMAGE_TOO_LARGE");
+    if (raw.length < 1 || raw.length > MAX_BYTES)
+      throw new FileFailure(ImageErrorCode.IMAGE_TOO_LARGE);
     boolean png =
         raw.length >= 8
             && Arrays.equals(
                 Arrays.copyOf(raw, 8), new byte[] {(byte) 137, 80, 78, 71, 13, 10, 26, 10});
     boolean jpeg = raw.length >= 4 && (raw[0] & 255) == 255 && (raw[1] & 255) == 216;
-    if (!png && !jpeg) throw new FileFailure("IMAGE_FORMAT_UNSUPPORTED");
+    if (!png && !jpeg) throw new FileFailure(ImageErrorCode.IMAGE_FORMAT_UNSUPPORTED);
     String extension = path.substring(path.lastIndexOf('/') + 1);
     int dot = extension.lastIndexOf('.');
     if (dot >= 0) {
       extension = extension.substring(dot + 1).toLowerCase(Locale.ROOT);
       if (!java.util.List.of("png", "jpg", "jpeg").contains(extension))
-        throw new FileFailure("IMAGE_FORMAT_UNSUPPORTED");
-      if (png != extension.equals("png")) throw new FileFailure("IMAGE_TYPE_MISMATCH");
+        throw new FileFailure(ImageErrorCode.IMAGE_FORMAT_UNSUPPORTED);
+      if (png != extension.equals("png")) throw new FileFailure(ImageErrorCode.IMAGE_TYPE_MISMATCH);
     }
     int orientation = png ? pngContainer(raw) : jpegContainer(raw);
     var profile = colorProfile(raw, png);
@@ -94,7 +97,7 @@ public final class ImageNormalizer {
                     p.getClass().getModule().getName().equals("java.desktop")
                         && p.getClass().getName().equals(readerName))
             .findFirst()
-            .orElseThrow(() -> new FileFailure("IMAGE_CODEC_UNAVAILABLE"));
+            .orElseThrow(() -> new FileFailure(ImageErrorCode.IMAGE_CODEC_UNAVAILABLE));
     try (var input = new MemoryCacheImageInputStream(new ByteArrayInputStream(raw))) {
       var reader = spi.createReaderInstance();
       try {
@@ -106,7 +109,8 @@ public final class ImageNormalizer {
         reader.setInput(input, false, true);
         int width = reader.getWidth(0), height = reader.getHeight(0);
         dimensions(width, height);
-        if (reader.getNumImages(true) != 1) throw new FileFailure("IMAGE_FORMAT_UNSUPPORTED");
+        if (reader.getNumImages(true) != 1)
+          throw new FileFailure(ImageErrorCode.IMAGE_FORMAT_UNSUPPORTED);
         cancellation.throwIfCancelled();
         var decoded = reader.read(0);
         if (decoded == null || decoded.getWidth() != width || decoded.getHeight() != height)
@@ -131,7 +135,10 @@ public final class ImageNormalizer {
         int ow = oriented.getWidth(), oh = oriented.getHeight();
         double scale =
             Math.min(
-                1.0, Math.min(2048.0 / Math.max(ow, oh), Math.sqrt(1048576.0 / ((long) ow * oh))));
+                1.0,
+                Math.min(
+                    (double) ImagePolicyV1.NORMALIZED_DIMENSION / Math.max(ow, oh),
+                    Math.sqrt((double) ImagePolicyV1.NORMALIZED_PIXELS / ((long) ow * oh))));
         int w = Math.max(1, (int) Math.floor(ow * scale)),
             h = Math.max(1, (int) Math.floor(oh * scale));
         while (true) {
@@ -139,7 +146,7 @@ public final class ImageNormalizer {
           var image = resize(oriented, w, h);
           byte[] bytes = encode(image);
           if (bytes.length <= MAX_BYTES) return new Normalized(bytes, w, h, ow, oh);
-          if (w == 1 && h == 1) throw new FileFailure("IMAGE_TOO_LARGE");
+          if (w == 1 && h == 1) throw new FileFailure(ImageErrorCode.IMAGE_TOO_LARGE);
           w = Math.max(1, w / 2);
           h = Math.max(1, h / 2);
         }
@@ -167,8 +174,8 @@ public final class ImageNormalizer {
             try (var input =
                 new java.util.zip.InflaterInputStream(
                     new ByteArrayInputStream(raw, zero + 2, end - zero - 2))) {
-              profile = input.readNBytes(65537);
-              if (profile.length > 65536) throw invalid();
+              profile = input.readNBytes(ImagePolicyV1.ICC_BYTES + 1);
+              if (profile.length > ImagePolicyV1.ICC_BYTES) throw invalid();
             }
           }
           at += length + 12;
@@ -194,7 +201,7 @@ public final class ImageNormalizer {
             count = expected;
             byte[] part = Arrays.copyOfRange(raw, at + 16, at + length);
             total += part.length;
-            if (total > 65536) throw invalid();
+            if (total > ImagePolicyV1.ICC_BYTES) throw invalid();
             parts.put(sequence, part);
           }
           at += length;
@@ -221,8 +228,10 @@ public final class ImageNormalizer {
 
   public static void dimensions(int width, int height) {
     if (width < 1 || height < 1) throw invalid();
-    if (width > 8192 || height > 8192) throw new FileFailure("IMAGE_DIMENSION_TOO_LARGE");
-    if ((long) width * height > MAX_PIXELS) throw new FileFailure("IMAGE_TOO_MANY_PIXELS");
+    if (width > ImagePolicyV1.MAX_DIMENSION || height > ImagePolicyV1.MAX_DIMENSION)
+      throw new FileFailure(ImageErrorCode.IMAGE_DIMENSION_TOO_LARGE);
+    if ((long) width * height > MAX_PIXELS)
+      throw new FileFailure(ImageErrorCode.IMAGE_TOO_MANY_PIXELS);
   }
 
   private static byte[] encode(BufferedImage image) throws IOException {
@@ -235,7 +244,7 @@ public final class ImageNormalizer {
                             .getName()
                             .equals("com.sun.imageio.plugins.png.PNGImageWriterSpi"))
             .findFirst()
-            .orElseThrow(() -> new FileFailure("IMAGE_CODEC_UNAVAILABLE"));
+            .orElseThrow(() -> new FileFailure(ImageErrorCode.IMAGE_CODEC_UNAVAILABLE));
     var writer = spi.createWriterInstance();
     var bytes = new ByteArrayOutputStream();
     try (var output = new MemoryCacheImageOutputStream(bytes)) {
@@ -318,7 +327,7 @@ public final class ImageNormalizer {
             ByteBuffer.wrap(raw, at + 8, 4).getInt(), ByteBuffer.wrap(raw, at + 12, 4).getInt());
       }
       if (java.util.List.of("acTL", "fcTL", "fdAT").contains(type))
-        throw new FileFailure("IMAGE_FORMAT_UNSUPPORTED");
+        throw new FileFailure(ImageErrorCode.IMAGE_FORMAT_UNSUPPORTED);
       if (type.equals("IDAT")) data = true;
       at += size + 12;
       if (type.equals("IEND")) {
@@ -352,7 +361,7 @@ public final class ImageNormalizer {
             || size < 8
             || raw[at + 2] != 8
             || !java.util.List.of(1, 3).contains(raw[at + 7] & 255))
-          throw new FileFailure("IMAGE_FORMAT_UNSUPPORTED");
+          throw new FileFailure(ImageErrorCode.IMAGE_FORMAT_UNSUPPORTED);
         dimensions(
             ((raw[at + 5] & 255) << 8) | (raw[at + 6] & 255),
             ((raw[at + 3] & 255) << 8) | (raw[at + 4] & 255));
@@ -430,6 +439,6 @@ public final class ImageNormalizer {
   }
 
   private static FileFailure invalid() {
-    return new FileFailure("INVALID_IMAGE");
+    return new FileFailure(ImageErrorCode.INVALID_IMAGE);
   }
 }

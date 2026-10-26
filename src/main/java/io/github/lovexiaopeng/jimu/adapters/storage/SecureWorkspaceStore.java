@@ -7,8 +7,11 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.Cancellation;
 import io.github.lovexiaopeng.jimu.plugin.api.EditPort;
+import io.github.lovexiaopeng.jimu.plugin.api.FileErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.FilePort;
 import java.io.IOException;
@@ -144,12 +147,14 @@ public final class SecureWorkspaceStore {
                   Path.of(scope + ".json"),
                   Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS))) {
             state = load(directory, scope);
-            if (state.format() != (format3 ? 3 : 2)) throw new FileFailure("FS_BINDING_UNPROVEN");
+            if (state.format() != (format3 ? 3 : 2))
+              throw new FileFailure(FileErrorCode.FS_BINDING_UNPROVEN);
             if (directoryPolicy
                 && (!state.files().isEmpty()
                     || !state.observed().isEmpty()
                     || !state.operations().isEmpty()
-                    || !state.bindings().isEmpty())) throw new FileFailure("FS_BINDING_UNPROVEN");
+                    || !state.bindings().isEmpty()))
+              throw new FileFailure(FileErrorCode.FS_BINDING_UNPROVEN);
           } catch (NoSuchFileException absent) {
             state =
                 new State(
@@ -173,7 +178,7 @@ public final class SecureWorkspaceStore {
         cancellation,
         directory -> {
           State state = load(directory, scope);
-          if (state.format() != 3) throw new FileFailure("FS_BINDING_UNPROVEN");
+          if (state.format() != 3) throw new FileFailure(FileErrorCode.FS_BINDING_UNPROVEN);
           var files = new java.util.TreeMap<>(state.files());
           return new WorkspaceSnapshot(Payloads.hash(Payloads.json(files)), files);
         });
@@ -243,11 +248,12 @@ public final class SecureWorkspaceStore {
               if (recovery) {
                 // Without the invocation receipt its original kind/arguments are unproven too.
                 if (original == null || !state.operations().containsKey(operationId))
-                  throw new FileFailure("FS_BINDING_UNPROVEN");
+                  throw new FileFailure(FileErrorCode.FS_BINDING_UNPROVEN);
                 return Map.copyOf(original);
               }
-              if (original != null) throw new FileFailure("FS_OPERATION_MISMATCH");
-              if (state.bindings().size() >= 100) throw new FileFailure("WORKSPACE_LIMIT");
+              if (original != null) throw new FileFailure(FileErrorCode.FS_OPERATION_MISMATCH);
+              if (state.bindings().size() >= 100)
+                throw new FileFailure(FileErrorCode.WORKSPACE_LIMIT);
               var frozen = Map.copyOf(state.observed());
               state.bindings().put(operationId, frozen);
               save(directory, state, "BINDING_BEFORE_RENAME");
@@ -258,7 +264,8 @@ public final class SecureWorkspaceStore {
       @Override
       public Read read(String path, int offset, int limit) {
         String name = logicalPath(path);
-        if (offset < 1 || limit < 1 || limit > 2000) throw new FileFailure("INPUT_INVALID");
+        if (offset < 1 || limit < 1 || limit > 2000)
+          throw new FileFailure(TaskErrorCode.INPUT_INVALID);
         return locked(
             scope,
             cancellation,
@@ -296,7 +303,7 @@ public final class SecureWorkspaceStore {
       public Written write(String path, String content) {
         String name = logicalPath(path);
         long size = utf8Size(content);
-        if (size > MAX_BYTES) throw new FileFailure("WORKSPACE_LIMIT");
+        if (size > MAX_BYTES) throw new FileFailure(FileErrorCode.WORKSPACE_LIMIT);
         return locked(
             scope,
             cancellation,
@@ -307,7 +314,7 @@ public final class SecureWorkspaceStore {
               if (intent != null && intent.result() != null) return written(name, intent.result());
               if (intent == null) {
                 Long expected = boundObservations.get(name);
-                if (expected == null) throw new FileFailure("FS_NOT_OBSERVED");
+                if (expected == null) throw new FileFailure(FileErrorCode.FS_NOT_OBSERVED);
                 intent = new Operation("WRITE", input, expected, null);
                 state.operations().put(operationId, intent);
                 save(directory, state);
@@ -318,10 +325,11 @@ public final class SecureWorkspaceStore {
                 io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryPaths
                     .requireFileNamespace(name, state.files().keySet());
               long version = current == null ? 0 : current.version();
-              if (version != intent.expected()) throw new FileFailure("FS_STALE_VERSION");
+              if (version != intent.expected())
+                throw new FileFailure(FileErrorCode.FS_STALE_VERSION);
               long total = state.files().values().stream().mapToLong(FileValue::size).sum();
               if (total - (current == null ? 0 : current.size()) + size > MAX_BYTES)
-                throw new FileFailure("WORKSPACE_LIMIT");
+                throw new FileFailure(FileErrorCode.WORKSPACE_LIMIT);
               FileValue result = value(state, version + 1, content, size);
               state.files().put(name, result);
               state.observed().put(name, result.version());
@@ -341,7 +349,7 @@ public final class SecureWorkspaceStore {
         if (utf8Size(oldString) == 0
             || utf8Size(oldString) > 16384
             || utf8Size(newString) > 16384
-            || oldString.equals(newString)) throw new FileFailure("INPUT_INVALID");
+            || oldString.equals(newString)) throw new FileFailure(TaskErrorCode.INPUT_INVALID);
         String input =
             Payloads.hash(
                 Payloads.json(List.of("literal-v1", name, oldString, newString, replaceAll)));
@@ -350,13 +358,13 @@ public final class SecureWorkspaceStore {
             cancellation,
             directory -> {
               State state = load(directory, scope);
-              if (state.format() != 3) throw new FileFailure("FS_BINDING_UNPROVEN");
+              if (state.format() != 3) throw new FileFailure(FileErrorCode.FS_BINDING_UNPROVEN);
               Operation intent = operation(state, operationId, "EDIT", input);
               if (intent != null && intent.result() != null) return written(name, intent.result());
               if (intent == null) {
                 Long expected = boundObservations.get(name);
-                if (expected == null) throw new FileFailure("FS_NOT_OBSERVED");
-                if (expected == 0) throw new FileFailure("FS_NOT_FOUND");
+                if (expected == null) throw new FileFailure(FileErrorCode.FS_NOT_OBSERVED);
+                if (expected == 0) throw new FileFailure(FileErrorCode.FS_NOT_FOUND);
                 intent = new Operation("EDIT", input, expected, null);
                 state.operations().put(operationId, intent);
                 save(directory, state);
@@ -364,13 +372,14 @@ public final class SecureWorkspaceStore {
               }
               FileValue current = state.files().get(name);
               if (current == null || current.version() != intent.expected())
-                throw new FileFailure("FS_STALE_VERSION");
-              if (current.content().indexOf('\0') >= 0) throw new FileFailure("FS_NOT_TEXT");
+                throw new FileFailure(FileErrorCode.FS_STALE_VERSION);
+              if (current.content().indexOf('\0') >= 0)
+                throw new FileFailure(FileErrorCode.FS_NOT_TEXT);
               String content = replaceLiteral(current.content(), oldString, newString, replaceAll);
               long size = utf8Size(content);
               long total = state.files().values().stream().mapToLong(FileValue::size).sum();
               if (size > MAX_BYTES || total - current.size() + size > MAX_BYTES)
-                throw new FileFailure("WORKSPACE_LIMIT");
+                throw new FileFailure(FileErrorCode.WORKSPACE_LIMIT);
               FileValue result = value(state, current.version() + 1, content, size);
               state.files().put(name, result);
               state.observed().put(name, result.version());
@@ -405,10 +414,11 @@ public final class SecureWorkspaceStore {
               if (old != null) value = old.result();
               else {
                 Long observed = boundObservations.get(name);
-                if (observed == null) throw new FileFailure("FS_NOT_OBSERVED");
+                if (observed == null) throw new FileFailure(FileErrorCode.FS_NOT_OBSERVED);
                 value = state.files().get(name);
-                if (value == null) throw new FileFailure("FS_NOT_FOUND");
-                if (value.version() != observed) throw new FileFailure("FS_STALE_VERSION");
+                if (value == null) throw new FileFailure(FileErrorCode.FS_NOT_FOUND);
+                if (value.version() != observed)
+                  throw new FileFailure(FileErrorCode.FS_STALE_VERSION);
                 state.operations().put(receipt, new Operation("PRESENT", input, observed, value));
                 save(directory, state);
               }
@@ -447,9 +457,9 @@ public final class SecureWorkspaceStore {
     String text = (raw.startsWith("\uFEFF") ? raw.substring(1) : raw).replace("\r\n", "\n");
     String old = oldString.replace("\r\n", "\n"), replacement = newString.replace("\r\n", "\n");
     int first = text.indexOf(old);
-    if (first < 0) throw new FileFailure("FS_EDIT_NOT_FOUND");
+    if (first < 0) throw new FileFailure(FileErrorCode.FS_EDIT_NOT_FOUND);
     if (!all && text.indexOf(old, first + old.length()) >= 0)
-      throw new FileFailure("FS_AMBIGUOUS_EDIT");
+      throw new FileFailure(FileErrorCode.FS_AMBIGUOUS_EDIT);
     long matches = 1;
     if (all)
       for (int at = text.indexOf(old, first + old.length());
@@ -462,7 +472,7 @@ public final class SecureWorkspaceStore {
               + matches
                   * (replacement.chars().filter(c -> c == '\n').count()
                       - old.chars().filter(c -> c == '\n').count());
-    if (bytes > MAX_BYTES) throw new FileFailure("WORKSPACE_LIMIT");
+    if (bytes > MAX_BYTES) throw new FileFailure(FileErrorCode.WORKSPACE_LIMIT);
     // String.replace is literal and advances non-overlapping matches; no regex replacement rules.
     String result =
         all
@@ -478,15 +488,16 @@ public final class SecureWorkspaceStore {
   private static Operation operation(State state, String id, String kind, String input) {
     Operation old = state.operations().get(id);
     if (old != null && (!old.kind().equals(kind) || !old.inputDigest().equals(input)))
-      throw new FileFailure("FS_OPERATION_MISMATCH");
+      throw new FileFailure(FileErrorCode.FS_OPERATION_MISMATCH);
     // At most twenty tool calls, with one root and at most four file receipts per present.
-    if (old == null && state.operations().size() >= 100) throw new FileFailure("WORKSPACE_LIMIT");
+    if (old == null && state.operations().size() >= 100)
+      throw new FileFailure(FileErrorCode.WORKSPACE_LIMIT);
     return old;
   }
 
   private static long utf8Size(String content) {
     if (content == null || !StandardCharsets.UTF_8.newEncoder().canEncode(content))
-      throw new FileFailure("INPUT_INVALID");
+      throw new FileFailure(TaskErrorCode.INPUT_INVALID);
     return content.getBytes(StandardCharsets.UTF_8).length;
   }
 
@@ -498,10 +509,10 @@ public final class SecureWorkspaceStore {
         || path.contains("\\")
         || path.contains(":")
         || path.codePoints().anyMatch(c -> c < 32 || c == 127))
-      throw new FileFailure("FS_PATH_DENIED");
+      throw new FileFailure(FileErrorCode.FS_PATH_DENIED);
     for (String component : path.split("/", -1))
       if (component.isEmpty() || component.equals(".") || component.equals(".."))
-        throw new FileFailure("FS_PATH_DENIED");
+        throw new FileFailure(FileErrorCode.FS_PATH_DENIED);
     return path;
   }
 
@@ -516,7 +527,7 @@ public final class SecureWorkspaceStore {
     if (directoryPolicy) {
       while (!local.tryLock()) {
         cancellation.throwIfCancelled();
-        if (System.nanoTime() >= until) throw new FileFailure("WORKSPACE_UNAVAILABLE");
+        if (System.nanoTime() >= until) throw new FileFailure(FileErrorCode.WORKSPACE_UNAVAILABLE);
         java.util.concurrent.locks.LockSupport.parkNanos(1000000);
       }
     } else local.lock();
@@ -540,7 +551,7 @@ public final class SecureWorkspaceStore {
           return work.apply(directory);
         }
       } catch (IOException e) {
-        throw new FileFailure("WORKSPACE_UNAVAILABLE", e);
+        throw new FileFailure(FileErrorCode.WORKSPACE_UNAVAILABLE, e);
       }
     } finally {
       local.unlock();
@@ -570,7 +581,7 @@ public final class SecureWorkspaceStore {
         if (file.read(buffer) < 0) throw new IOException("Truncated workspace");
       bytes = buffer.array();
     } catch (NoSuchFileException missing) {
-      if (directoryPolicy) throw new FileFailure("FS_BINDING_UNPROVEN");
+      if (directoryPolicy) throw new FileFailure(FileErrorCode.FS_BINDING_UNPROVEN);
       return new State(
           2, scope, new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
     }
@@ -580,7 +591,7 @@ public final class SecureWorkspaceStore {
         throw new IOException("Workspace integrity failure");
       State state = STATE_JSON.readValue(envelope.payload(), State.class);
       // Format 1 never persisted binding identity. Do not manufacture it from latest reads.
-      if (state.format() == 1) throw new FileFailure("FS_BINDING_UNPROVEN");
+      if (state.format() == 1) throw new FileFailure(FileErrorCode.FS_BINDING_UNPROVEN);
       if ((state.format() != 2 && state.format() != 3)
           || !scope.equals(state.scope())
           || state.bindings() == null) throw new IOException("Workspace scope mismatch");
@@ -617,12 +628,12 @@ public final class SecureWorkspaceStore {
     byte[] bytes =
         Payloads.json(new Envelope(Payloads.hash(payload), payload))
             .getBytes(StandardCharsets.UTF_8);
-    if (bytes.length > MAX_STATE_BYTES) throw new FileFailure("WORKSPACE_LIMIT");
+    if (bytes.length > MAX_STATE_BYTES) throw new FileFailure(FileErrorCode.WORKSPACE_LIMIT);
     if (directoryPolicy) {
-      if (bytes.length > 2097152) throw new FileFailure("DIRECTORY_STORAGE_LIMIT");
+      if (bytes.length > 2097152) throw new FileFailure(DirectoryErrorCode.DIRECTORY_STORAGE_LIMIT);
       var usage = scopeUsage(directory, state.scope());
       if (usage.bytes() + bytes.length > 4194304 || usage.parts() + 1 > 8)
-        throw new FileFailure("DIRECTORY_STORAGE_LIMIT");
+        throw new FileFailure(DirectoryErrorCode.DIRECTORY_STORAGE_LIMIT);
     }
     Path temporary = Path.of(state.scope() + "." + UUID.randomUUID() + ".part");
     try {
@@ -653,10 +664,10 @@ public final class SecureWorkspaceStore {
   }
 
   private static void directoryState(State state) {
-    if (state.format() != 3) throw new FileFailure("FS_BINDING_UNPROVEN");
+    if (state.format() != 3) throw new FileFailure(FileErrorCode.FS_BINDING_UNPROVEN);
     if (state.files().values().stream().anyMatch(value -> value.size() > 32768)
         || state.files().values().stream().mapToLong(FileValue::size).sum() > 262144)
-      throw new FileFailure("DIRECTORY_STORAGE_LIMIT");
+      throw new FileFailure(DirectoryErrorCode.DIRECTORY_STORAGE_LIMIT);
     for (String path : state.files().keySet())
       io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryPaths.requireFileNamespace(
           path, state.files().keySet());
@@ -723,7 +734,7 @@ public final class SecureWorkspaceStore {
   public void purge(String tenant, String task, PurgePlan plan, Cancellation cancellation) {
     if (!directoryPolicy) throw new IllegalStateException("Directory policy required");
     String scope = scope(tenant, task);
-    if (!scope.equals(plan.namespace())) throw new FileFailure("FS_BINDING_UNPROVEN");
+    if (!scope.equals(plan.namespace())) throw new FileFailure(FileErrorCode.FS_BINDING_UNPROVEN);
     locked(
         scope,
         cancellation,

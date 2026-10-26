@@ -1,5 +1,7 @@
 package io.github.lovexiaopeng.jimu.api;
 
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ArtifactErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import java.util.UUID;
 import org.springframework.dao.DataAccessException;
@@ -27,7 +29,7 @@ public final class TaskErrors {
 
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<Error> invalid(HttpMessageNotReadableException failure) {
-    return response(400, "INVALID_REQUEST");
+    return response(400, CommonErrorCode.INVALID_REQUEST);
   }
 
   @ExceptionHandler({
@@ -35,7 +37,7 @@ public final class TaskErrors {
     org.springframework.transaction.TransactionException.class
   })
   public ResponseEntity<Error> database(RuntimeException failure) {
-    return response(503, "LEDGER_UNAVAILABLE");
+    return response(503, CommonErrorCode.LEDGER_UNAVAILABLE);
   }
 
   private ResponseEntity<Error> response(int status, String code) {
@@ -44,6 +46,6 @@ public final class TaskErrors {
 
   @ExceptionHandler(IllegalStateException.class)
   public ResponseEntity<Error> artifact(IllegalStateException failure) {
-    return response(503, "ARTIFACT_UNAVAILABLE");
+    return response(503, ArtifactErrorCode.ARTIFACT_UNAVAILABLE);
   }
 }

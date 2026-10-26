@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ArtifactErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ReportDraftReason;
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ReportLimitsV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ReportContext;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ReportFile;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Source;
@@ -14,6 +17,7 @@ import io.github.lovexiaopeng.jimu.plugin.api.ReportCompositionPort.Binding;
 import io.github.lovexiaopeng.jimu.plugin.api.ReportCompositionPort.Draft;
 import io.github.lovexiaopeng.jimu.plugin.api.ReportCompositionPort.Receipt;
 import io.github.lovexiaopeng.jimu.plugin.api.ReportCompositionPort.Segment;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugins.builtin.workspace.ComposeReportPlugin;
 import java.io.IOException;
 import java.net.URI;
@@ -72,20 +76,22 @@ public final class ReportComposer {
   }
 
   public Composed compose(String path, Draft draft, ReportContext context) {
-    require(draft.version() == 1, "VERSION_UNSUPPORTED");
-    String subject = plain(draft.subject(), 120);
+    require(draft.version() == 1, ReportDraftReason.VERSION_UNSUPPORTED);
+    String subject = plain(draft.subject(), ReportLimitsV1.SUBJECT_UTF16_UNITS);
     require(
         draft.summary() != null && !draft.summary().isEmpty() && draft.summary().size() <= 8,
-        "BLOCKS_INVALID");
+        ReportDraftReason.BLOCKS_INVALID);
     require(
         draft.conclusions() != null
             && !draft.conclusions().isEmpty()
             && draft.conclusions().size() <= 8,
-        "BLOCKS_INVALID");
-    require(draft.limitations() != null && draft.limitations().size() <= 4, "BLOCKS_INVALID");
+        ReportDraftReason.BLOCKS_INVALID);
+    require(
+        draft.limitations() != null && draft.limitations().size() <= 4,
+        ReportDraftReason.BLOCKS_INVALID);
     require(
         Payloads.json(draft).getBytes(StandardCharsets.UTF_8).length <= INPUT_MAX_BYTES,
-        "TOO_LARGE");
+        ReportDraftReason.TOO_LARGE);
     Map<String, Source> sources = new LinkedHashMap<>();
     boolean partial = false;
     for (Source source : context.sources()) {
@@ -95,7 +101,9 @@ public final class ReportComposer {
         continue;
       }
       Source previous = sources.putIfAbsent(evidence.sourceUrl(), source);
-      require(previous == null || previous.digest().equals(source.digest()), "SOURCE_AMBIGUOUS");
+      require(
+          previous == null || previous.digest().equals(source.digest()),
+          ReportDraftReason.SOURCE_AMBIGUOUS);
     }
     var bindings = new ArrayList<Binding>();
     Set<String> used = new LinkedHashSet<>();
@@ -105,7 +113,7 @@ public final class ReportComposer {
     for (String url : used) links.append("- [来源](").append(url).append(")。\n");
     var limits = new StringBuilder("结构化内容按已保存资料组装；端点保留协议与标识，不作为已抓取来源。\n");
     for (String limit : draft.limitations())
-      limits.append("- ").append(plain(limit, 400)).append('\n');
+      limits.append("- ").append(plain(limit, ReportLimitsV1.LIMITATION_UTF16_UNITS)).append('\n');
     if (partial) limits.append("部分来源失败。\n");
     if (sources.size() > used.size()) limits.append("部分可用来源未用于本报告。\n");
     String markdown =
@@ -127,7 +135,7 @@ public final class ReportComposer {
     Set<String> rendered = new LinkedHashSet<>();
     var matcher = URL.matcher(markdown);
     while (matcher.find()) rendered.add(matcher.group());
-    require(rendered.equals(used), "URL_SET_MISMATCH");
+    require(rendered.equals(used), ReportDraftReason.URL_SET_MISMATCH);
     return new Composed(
         markdown,
         Payloads.hash(Payloads.json(draft)),
@@ -139,7 +147,7 @@ public final class ReportComposer {
   public boolean matches(String rawInput, String output, ReportFile file, ReportContext context) {
     try {
       var input = parse(rawInput);
-      var contract = new WorkspaceContracts().load("compose_report");
+      var contract = new WorkspaceContracts().load(ToolCapability.COMPOSE_REPORT);
       contract.in().validate(input);
       contract.out().validate(parse(output));
       var call = Payloads.read(input.toString(), ComposeReportPlugin.Input.class);
@@ -153,7 +161,7 @@ public final class ReportComposer {
           && file.sha256().equals(Payloads.hash(expected.markdown()))
           && file.size() == expected.markdown().getBytes(StandardCharsets.UTF_8).length;
     } catch (IOException | IllegalArgumentException e) {
-      throw new TaskFailure(409, "REPORT_COMPOSITION_INVALID");
+      throw new TaskFailure(409, ArtifactErrorCode.REPORT_COMPOSITION_INVALID);
     }
   }
 
@@ -164,29 +172,33 @@ public final class ReportComposer {
       Set<String> used) {
     var result = new StringBuilder();
     for (var segment : segments) {
-      require(segment != null, "SHAPE_INVALID");
+      require(segment != null, ReportDraftReason.SHAPE_INVALID);
       Source source = sources.get(segment.sourceRef());
-      require(source != null, "SOURCE_UNKNOWN");
+      require(source != null, ReportDraftReason.SOURCE_UNKNOWN);
       var saved = policy.evidence(source);
       String quote = segment.evidence(), body = saved.body();
-      require(quote != null && !quote.isBlank() && quote.length() <= 800, "EVIDENCE_MISMATCH");
+      require(
+          quote != null && !quote.isBlank() && quote.length() <= ReportLimitsV1.QUOTE_UTF16_UNITS,
+          ReportDraftReason.EVIDENCE_MISMATCH);
       int offset = body.indexOf(quote);
-      require(offset >= 0, "EVIDENCE_MISMATCH");
+      require(offset >= 0, ReportDraftReason.EVIDENCE_MISMATCH);
       String text;
       if ("text".equals(segment.kind())) {
-        require(segment.protocol() == null && segment.identifier() == null, "SHAPE_INVALID");
-        text = plain(segment.text(), 600);
+        require(
+            segment.protocol() == null && segment.identifier() == null,
+            ReportDraftReason.SHAPE_INVALID);
+        text = plain(segment.text(), ReportLimitsV1.SEGMENT_UTF16_UNITS);
       } else if ("endpoint".equals(segment.kind())) {
         require(
             segment.text() == null
                 && segment.protocol() != null
                 && Set.of("http", "https").contains(segment.protocol()),
-            "ENDPOINT_INVALID");
+            ReportDraftReason.ENDPOINT_INVALID);
         String identifier = segment.identifier();
         require(
             identifier != null
                 && !identifier.isBlank()
-                && identifier.length() <= 300
+                && identifier.length() <= ReportLimitsV1.IDENTIFIER_UTF16_UNITS
                 && identifier
                     .codePoints()
                     .noneMatch(
@@ -196,23 +208,23 @@ public final class ReportComposer {
                                 || Character.isSpaceChar(c)
                                 || Character.getType(c) == Character.FORMAT)
                 && !Pattern.compile("[\\s`\\\\<>\\[\\]()&]").matcher(identifier).find(),
-            "ENDPOINT_INVALID");
+            ReportDraftReason.ENDPOINT_INVALID);
         URI endpoint;
         try {
           endpoint = URI.create(segment.protocol() + "://" + identifier);
         } catch (IllegalArgumentException e) {
-          throw new TaskFailure(409, "REPORT_DRAFT_ENDPOINT_INVALID");
+          throw new TaskFailure(409, ArtifactErrorCode.REPORT_DRAFT_ENDPOINT_INVALID);
         }
         require(
             endpoint.getHost() != null
                 && endpoint.getRawUserInfo() == null
                 && endpoint.getRawQuery() == null
                 && endpoint.getRawFragment() == null,
-            "ENDPOINT_INVALID");
+            ReportDraftReason.ENDPOINT_INVALID);
         offset = supportedQuote(body, quote, endpoint.toString());
-        require(offset >= 0, "ENDPOINT_UNSUPPORTED");
+        require(offset >= 0, ReportDraftReason.ENDPOINT_UNSUPPORTED);
         text = "端点标识 `" + identifier + "`（协议 `" + segment.protocol() + "`）";
-      } else throw new TaskFailure(409, "REPORT_DRAFT_KIND_INVALID");
+      } else throw new TaskFailure(409, ArtifactErrorCode.REPORT_DRAFT_KIND_INVALID);
       bindings.add(
           new Binding(
               source.invocationId(),
@@ -253,8 +265,8 @@ public final class ReportComposer {
                 .codePoints()
                 .noneMatch(
                     c -> Character.isISOControl(c) || Character.getType(c) == Character.FORMAT),
-        "TEXT_INVALID");
-    require(!URL.matcher(value).find(), "RAW_URL_FORBIDDEN");
+        ReportDraftReason.TEXT_INVALID);
+    require(!URL.matcher(value).find(), ReportDraftReason.RAW_URL_FORBIDDEN);
     String escaped = value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     for (String control : List.of("\\", "`", "*", "_", "[", "]", "(", ")", "#", "!", "|"))
       escaped = escaped.replace(control, "\\" + control);
@@ -262,6 +274,6 @@ public final class ReportComposer {
   }
 
   private static void require(boolean condition, String code) {
-    if (!condition) throw new TaskFailure(409, "REPORT_DRAFT_" + code);
+    if (!condition) throw new TaskFailure(409, ArtifactErrorCode.REPORT_DRAFT_ + code);
   }
 }

@@ -1,5 +1,13 @@
 package io.github.lovexiaopeng.jimu.kernel.mcp.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.budget.api.BudgetErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.UsageQuality;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationState;
+import io.github.lovexiaopeng.jimu.kernel.mcp.api.McpAuditPhase;
+import io.github.lovexiaopeng.jimu.kernel.mcp.api.McpResourcePolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.mcp.port.McpRecords;
 import io.github.lovexiaopeng.jimu.kernel.mcp.service.McpPersistenceService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
@@ -8,7 +16,9 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.Binding;
 import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.ListSnapshot;
 import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.Query;
 import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.Server;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.McpErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,11 +32,11 @@ public final class McpPersistenceServiceImpl implements McpPersistenceService {
   }
 
   private static TaskFailure unauthorized() {
-    return new TaskFailure(403, "MCP_SERVER_NOT_AUTHORIZED");
+    return new TaskFailure(403, McpErrorCode.MCP_SERVER_NOT_AUTHORIZED);
   }
 
   private static TaskFailure corrupt() {
-    return new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    return new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
   }
 
   @Override
@@ -54,13 +64,18 @@ public final class McpPersistenceServiceImpl implements McpPersistenceService {
         () -> {
           records.fenced(lease, !cleanup);
           var call = records.selectMcpInvocation(lease.tenant(), lease.taskId(), invocation);
-          if (!McpLedger.NAMES.contains(call.tool()) || !call.state().equals("RUNNING"))
-            throw new TaskFailure(409, "INVOCATION_STATE");
+          if (!McpLedger.NAMES.contains(call.tool())
+              || !call.state().equals(InvocationState.RUNNING))
+            throw new TaskFailure(409, InvocationErrorCode.INVOCATION_STATE);
           String kind = cleanup ? "CLEANUP" : "NORMAL";
           int count = records.countMcpIo(lease.tenant(), lease.taskId(), kind);
-          if (count >= (cleanup ? 20 : 64)) throw new TaskFailure(429, "MCP_LIMIT_EXCEEDED");
+          if (count
+              >= (cleanup
+                  ? McpResourcePolicyV1.CLEANUP_TASK_SNAPSHOTS
+                  : McpResourcePolicyV1.TASK_SNAPSHOTS))
+            throw new TaskFailure(429, McpErrorCode.MCP_LIMIT_EXCEEDED);
           if (cleanup && records.countMcpCleanup(lease.tenant(), lease.taskId(), invocation) > 0)
-            throw new TaskFailure(429, "MCP_LIMIT_EXCEEDED");
+            throw new TaskFailure(429, McpErrorCode.MCP_LIMIT_EXCEEDED);
           int ordinal = records.nextMcpOrdinal(lease.tenant(), lease.taskId(), invocation);
           records.insertMcpIo(
               lease.tenant(), lease.taskId(), invocation, ordinal, requestId, method, kind, digest);
@@ -74,13 +89,13 @@ public final class McpPersistenceServiceImpl implements McpPersistenceService {
         () -> {
           records.fenced(lease, false);
           if (records.respondMcpIo(
-                  error == null ? "RESPONDED" : "FAILED",
+                  error == null ? McpAuditPhase.RESPONDED : McpAuditPhase.FAILED,
                   error,
                   lease.tenant(),
                   lease.taskId(),
                   invocation,
                   ordinal)
-              != 1) throw new TaskFailure(409, "INVOCATION_STATE");
+              != 1) throw new TaskFailure(409, InvocationErrorCode.INVOCATION_STATE);
           return null;
         });
   }
@@ -94,20 +109,21 @@ public final class McpPersistenceServiceImpl implements McpPersistenceService {
           records.fenced(lease, true);
           var call = records.selectMcpListInvocation(lease.tenant(), lease.taskId(), invocation);
           if (!List.of("list_mcp_resources", "list_mcp_resource_templates").contains(call.tool())
-              || !call.state().equals("RUNNING")) throw new TaskFailure(409, "INVOCATION_STATE");
+              || !call.state().equals(InvocationState.RUNNING))
+            throw new TaskFailure(409, InvocationErrorCode.INVOCATION_STATE);
           if (records.countMcpReservations(lease.tenant(), lease.taskId()) >= 4
-              || 1048576
+              || McpResourcePolicyV1.SNAPSHOT_BYTES
                   > budget.storageLimit() - (budget.storageHeld() + budget.mediaCheckpointHeld()))
-            throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
+            throw new TaskFailure(429, BudgetErrorCode.STORAGE_BUDGET_EXCEEDED);
           records.reserveStorage(
               lease.tenant(),
               lease.taskId(),
               "mcp:" + invocation,
               invocation,
-              "MCP_RESULT",
-              1048576,
-              "RESERVED",
-              "KNOWN");
+              ReservationCategory.MCP_RESULT,
+              McpResourcePolicyV1.SNAPSHOT_BYTES,
+              ReservationState.RESERVED,
+              UsageQuality.KNOWN);
           records.holdMcpStorage(lease.tenant());
           return null;
         });
@@ -120,7 +136,7 @@ public final class McpPersistenceServiceImpl implements McpPersistenceService {
         () -> {
           var task = records.fenced(lease, true);
           var found = records.selectMcpPage(lease.tenant(), lease.taskId(), records.hash(cursor));
-          if (found.size() != 1) throw new TaskFailure(409, "MCP_CURSOR_INVALID");
+          if (found.size() != 1) throw new TaskFailure(409, McpErrorCode.MCP_CURSOR_INVALID);
           var row = found.getFirst();
           String raw = row.body();
           if (!"RETAINED".equals(row.state())
@@ -128,12 +144,12 @@ public final class McpPersistenceServiceImpl implements McpPersistenceService {
               || !task.mcpDigest().equals(row.bindingDigest())
               || raw == null
               || !records.hash(raw).equals(row.bodyDigest()))
-            throw new TaskFailure(409, "MCP_CURSOR_INVALID");
+            throw new TaskFailure(409, McpErrorCode.MCP_CURSOR_INVALID);
           var snapshot = records.readList(raw);
           validateMcpList(task, snapshot);
           Integer page = snapshot.cursorPositions().get(records.hash(cursor));
           if (page == null || page != row.pageIndex() || !snapshot.queryDigest().equals(query))
-            throw new TaskFailure(409, "MCP_CURSOR_INVALID");
+            throw new TaskFailure(409, McpErrorCode.MCP_CURSOR_INVALID);
           return snapshot.pages().get(page);
         });
   }
@@ -172,7 +188,8 @@ public final class McpPersistenceServiceImpl implements McpPersistenceService {
       int total = -1;
       for (int index = 0; index < snapshot.pages().size(); index++) {
         String page = snapshot.pages().get(index);
-        if (page.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 65536) throw corrupt();
+        if (page.getBytes(java.nio.charset.StandardCharsets.UTF_8).length
+            > McpResourcePolicyV1.PAGE_BYTES) throw corrupt();
         var node = records.readNode(page);
         contracts.validatePage(name, node);
         if (!node.path("snapshotId").asText().equals(snapshot.rootInvocation())
@@ -214,13 +231,14 @@ public final class McpPersistenceServiceImpl implements McpPersistenceService {
           var task = records.fenced(lease, true);
           var producer = records.selectMcpProducer(lease.tenant(), lease.taskId(), invocation);
           if (!McpLedger.NAMES.contains(producer.tool()))
-            throw new TaskFailure(409, "INVOCATION_STATE");
-          if ("SUCCEEDED".equals(producer.state())) {
+            throw new TaskFailure(409, InvocationErrorCode.INVOCATION_STATE);
+          if (InvocationState.SUCCEEDED.equals(producer.state())) {
             if (!output.equals(producer.outputSnapshot())
                 || !records.hash(output).equals(producer.outputDigest())) throw corrupt();
             return null;
           }
-          if (!"RUNNING".equals(producer.state())) throw new TaskFailure(409, "INVOCATION_STATE");
+          if (!InvocationState.RUNNING.equals(producer.state()))
+            throw new TaskFailure(409, InvocationErrorCode.INVOCATION_STATE);
           if (snapshot != null) {
             validateMcpList(task, snapshot);
             if (!snapshot.rootInvocation().equals(invocation)
@@ -228,12 +246,14 @@ public final class McpPersistenceServiceImpl implements McpPersistenceService {
             String raw = records.json(snapshot);
             long size =
                 raw.getBytes(java.nio.charset.StandardCharsets.UTF_8).length
-                    + snapshot.cursorPositions().size() * 96L;
-            if (size > 1048576) throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
+                    + snapshot.cursorPositions().size()
+                        * (long) McpResourcePolicyV1.CURSOR_METADATA_BYTES;
+            if (size > McpResourcePolicyV1.SNAPSHOT_BYTES)
+              throw new TaskFailure(429, BudgetErrorCode.STORAGE_BUDGET_EXCEEDED);
             var reservation =
                 records.selectMcpReservation(lease.tenant(), lease.taskId(), "mcp:" + invocation);
-            if (!reservation.state().equals("RESERVED"))
-              throw new TaskFailure(409, "INVOCATION_STATE");
+            if (!reservation.state().equals(ReservationState.RESERVED))
+              throw new TaskFailure(409, InvocationErrorCode.INVOCATION_STATE);
             records.insertMcpResult(
                 lease.tenant(),
                 lease.taskId(),
@@ -263,25 +283,26 @@ public final class McpPersistenceServiceImpl implements McpPersistenceService {
 
   private McpLedger.Server server(McpRecords.ServerRow row) {
     String raw = row.profileSnapshot(), digest = row.profileDigest();
-    if (raw.getBytes(StandardCharsets.UTF_8).length > 8192 || !records.hash(raw).equals(digest))
-      throw corrupt();
+    if (raw.getBytes(StandardCharsets.UTF_8).length > McpResourcePolicyV1.PROFILE_BYTES
+        || !records.hash(raw).equals(digest)) throw corrupt();
     McpLedger.Profile p;
     try {
       p = records.readProfile(raw);
       records.profile(p);
     } catch (IllegalArgumentException error) {
-      throw new TaskFailure(409, "MCP_SNAPSHOT_MISMATCH");
+      throw new TaskFailure(409, McpErrorCode.MCP_SNAPSHOT_MISMATCH);
     }
     if (!p.tenant().equals(row.tenantId())
         || !p.server().equals(row.serverId())
         || p.epoch() != row.epoch()) throw corrupt();
     if (!records.json(p).equals(raw)) throw corrupt();
-    if (!p.hostId().equals(records.hostId())) throw new TaskFailure(409, "MCP_SNAPSHOT_MISMATCH");
+    if (!p.hostId().equals(records.hostId()))
+      throw new TaskFailure(409, McpErrorCode.MCP_SNAPSHOT_MISMATCH);
     return new McpLedger.Server(p, digest);
   }
 
   public McpLedger.Binding bind(String tenant, String actor) {
-    if (!records.enabled()) throw new TaskFailure(503, "MCP_NOT_CONFIGURED");
+    if (!records.enabled()) throw new TaskFailure(503, McpErrorCode.MCP_NOT_CONFIGURED);
     var servers = new LinkedHashMap<String, McpLedger.Server>();
     for (var row : records.selectEnabledMcpServers(tenant)) {
       var s = server(row);
@@ -291,20 +312,22 @@ public final class McpPersistenceServiceImpl implements McpPersistenceService {
       }
     }
     if (servers.isEmpty()) throw unauthorized();
-    if (servers.size() > 4) throw new TaskFailure(503, "MCP_NOT_CONFIGURED");
+    if (servers.size() > 4) throw new TaskFailure(503, McpErrorCode.MCP_NOT_CONFIGURED);
     var binding = new McpLedger.Binding(1, servers);
     records.bindingContract(binding);
-    if (records.json(binding).getBytes(StandardCharsets.UTF_8).length > 65536)
-      throw new TaskFailure(429, "MCP_LIMIT_EXCEEDED");
+    if (records.json(binding).getBytes(StandardCharsets.UTF_8).length
+        > McpResourcePolicyV1.BINDING_BYTES)
+      throw new TaskFailure(429, McpErrorCode.MCP_LIMIT_EXCEEDED);
     return binding;
   }
 
   public McpLedger.Binding binding(McpRecords.Task task) {
-    if (!records.enabled()) throw new TaskFailure(503, "MCP_NOT_CONFIGURED");
+    if (!records.enabled()) throw new TaskFailure(503, McpErrorCode.MCP_NOT_CONFIGURED);
     String raw = task.mcpSnapshot();
-    if (raw == null) throw new TaskFailure(503, "MCP_NOT_CONFIGURED");
+    if (raw == null) throw new TaskFailure(503, McpErrorCode.MCP_NOT_CONFIGURED);
     if (!records.hash(raw).equals(task.digestObject())
-        || raw.getBytes(StandardCharsets.UTF_8).length > 65536) throw corrupt();
+        || raw.getBytes(StandardCharsets.UTF_8).length > McpResourcePolicyV1.BINDING_BYTES)
+      throw corrupt();
     McpLedger.Binding binding;
     try {
       binding = records.readBinding(raw);
@@ -324,7 +347,7 @@ public final class McpPersistenceServiceImpl implements McpPersistenceService {
       if (!actual.profile().allowedActors().contains(task.ownerObject())) throw unauthorized();
       if (actual.profile().epoch() != pinned.profile().epoch()
           || !actual.digest().equals(pinned.digest()))
-        throw new TaskFailure(409, "MCP_SNAPSHOT_MISMATCH");
+        throw new TaskFailure(409, McpErrorCode.MCP_SNAPSHOT_MISMATCH);
       records.credential(pinned.profile());
     }
     return binding;

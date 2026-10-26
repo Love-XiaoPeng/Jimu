@@ -32,6 +32,7 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTa
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionHistoryRetentions;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -123,7 +124,8 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
     return new LockedHistory() {
       public History history() {
         var found = sql.history(ledger.queryContext(), tenant, taskId);
-        if (found.isEmpty()) throw new TaskFailure(409, "SESSION_HISTORY_UNAVAILABLE");
+        if (found.isEmpty())
+          throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_UNAVAILABLE);
         var h = found.getFirst();
         return new History(
             n(h, "record_version"),

@@ -1,0 +1,29 @@
+package io.github.lovexiaopeng.jimu.plugin.api;
+
+/** 既有公开失败码的语义归属；保持原字符值、HTTP 映射和失败次序。 */
+public final class SessionErrorCode {
+  public static final String SESSION_BOUNDARY_CONFLICT = "SESSION_BOUNDARY_CONFLICT";
+  public static final String SESSION_EVENT_NOT_FOUND = "SESSION_EVENT_NOT_FOUND";
+  public static final String SESSION_EVENT_UNSAFE = "SESSION_EVENT_UNSAFE";
+  public static final String SESSION_HISTORY_CORRUPT = "SESSION_HISTORY_CORRUPT";
+  public static final String SESSION_HISTORY_EXPIRED = "SESSION_HISTORY_EXPIRED";
+  public static final String SESSION_HISTORY_LIMIT = "SESSION_HISTORY_LIMIT";
+  public static final String SESSION_HISTORY_UNAVAILABLE = "SESSION_HISTORY_UNAVAILABLE";
+  public static final String SESSION_HISTORY_VERSION_UNSUPPORTED =
+      "SESSION_HISTORY_VERSION_UNSUPPORTED";
+  public static final String SESSION_QUERY_TIMEOUT = "SESSION_QUERY_TIMEOUT";
+  public static final String SESSION_READ_COMMIT_REQUIRED = "SESSION_READ_COMMIT_REQUIRED";
+  public static final String SESSION_READ_DISABLED = "SESSION_READ_DISABLED";
+  public static final String SESSION_SCOPE_COMMIT_REQUIRED = "SESSION_SCOPE_COMMIT_REQUIRED";
+  public static final String SESSION_SCOPE_UNAVAILABLE = "SESSION_SCOPE_UNAVAILABLE";
+  public static final String SESSION_SEARCH_COMMIT_REQUIRED = "SESSION_SEARCH_COMMIT_REQUIRED";
+  public static final String SESSION_SEARCH_DISABLED = "SESSION_SEARCH_DISABLED";
+  public static final String SESSION_SEARCH_FILTER_UNSUPPORTED =
+      "SESSION_SEARCH_FILTER_UNSUPPORTED";
+  public static final String SESSION_SEARCH_UNAVAILABLE = "SESSION_SEARCH_UNAVAILABLE";
+  public static final String SESSION_TRACE_COMMIT_REQUIRED = "SESSION_TRACE_COMMIT_REQUIRED";
+  public static final String SESSION_TRACE_DISABLED = "SESSION_TRACE_DISABLED";
+  public static final String SESSION_TRACE_UNAVAILABLE = "SESSION_TRACE_UNAVAILABLE";
+
+  private SessionErrorCode() {}
+}

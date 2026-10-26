@@ -4,9 +4,13 @@ import static io.github.lovexiaopeng.jimu.api.session.vo.SessionHistoryHttpRespo
 
 import io.github.lovexiaopeng.jimu.api.session.dto.SessionEventRequest;
 import io.github.lovexiaopeng.jimu.api.session.dto.SessionHistoryHttpRequest;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionEventSearchPolicyV1;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionTracePolicyV3;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -36,12 +40,13 @@ public final class SessionHistoryController {
       @PathVariable String taskId,
       HttpServletRequest request) {
     var identity = authentication.authenticate(authorization);
-    long deadline = System.nanoTime() + 2_000_000_000L;
+    long deadline = System.nanoTime() + SessionHistoryPolicyV1.QUERY_NANOS;
     history.authorizeSessionSearch(identity, taskId, deadline);
-    SessionHistoryHttpRequest.validateJson(request, 2048);
+    SessionHistoryHttpRequest.validateJson(request, SessionEventSearchPolicyV1.INPUT_BYTES);
     long millis = Math.max(1, (deadline - System.nanoTime() + 999999) / 1000000);
     var result = new DeferredResult<ResponseEntity<String>>(millis);
-    result.onTimeout(() -> result.setErrorResult(new TaskFailure(504, "SESSION_QUERY_TIMEOUT")));
+    result.onTimeout(
+        () -> result.setErrorResult(new TaskFailure(504, SessionErrorCode.SESSION_QUERY_TIMEOUT)));
     request.setAttribute(
         "jimu.session.search.request",
         new SessionEventLedger.SearchRequest(
@@ -59,12 +64,13 @@ public final class SessionHistoryController {
       @PathVariable String taskId,
       HttpServletRequest request) {
     var identity = authentication.authenticate(authorization);
-    long deadline = System.nanoTime() + 2_000_000_000L;
+    long deadline = System.nanoTime() + SessionHistoryPolicyV1.QUERY_NANOS;
     history.authorizeSessionTrace(identity, taskId, deadline);
-    SessionHistoryHttpRequest.validateJson(request, 1024);
+    SessionHistoryHttpRequest.validateJson(request, SessionTracePolicyV3.INPUT_BYTES);
     long millis = Math.max(1, (deadline - System.nanoTime() + 999999) / 1000000);
     var result = new DeferredResult<ResponseEntity<String>>(millis);
-    result.onTimeout(() -> result.setErrorResult(new TaskFailure(504, "SESSION_QUERY_TIMEOUT")));
+    result.onTimeout(
+        () -> result.setErrorResult(new TaskFailure(504, SessionErrorCode.SESSION_QUERY_TIMEOUT)));
     request.setAttribute(
         "jimu.session.search.request",
         new SessionEventLedger.SearchRequest(

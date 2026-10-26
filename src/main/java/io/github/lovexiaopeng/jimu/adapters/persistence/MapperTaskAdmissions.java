@@ -8,6 +8,11 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskLookupMa
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.BusinessPolicies;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationMaterials;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationPlans;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.UsageQuality;
+import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryContentState;
+import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.PluginPin;
 import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
@@ -16,7 +21,10 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Identity;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Request;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.View;
 import io.github.lovexiaopeng.jimu.kernel.task.port.TaskAdmissionRecords;
+import io.github.lovexiaopeng.jimu.kernel.todo.api.TodoContentState;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
+import io.github.lovexiaopeng.jimu.plugin.api.TodoErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.List;
 import java.util.Map;
 
@@ -137,13 +145,14 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
       }
       if (ledger.directoryTask(retry)) {
         ledger.access(retry);
-        if (!"PRESENT".equals(ledger.s(ledger.directoryProjection(retry), "content_state")))
-          throw new TaskFailure(410, "DIRECTORY_CONTENT_EXPIRED");
+        if (!DirectoryContentState.PRESENT.equals(
+            ledger.s(ledger.directoryProjection(retry), "content_state")))
+          throw new TaskFailure(410, DirectoryErrorCode.DIRECTORY_CONTENT_EXPIRED);
       }
       if (ledger.todoTask(retry)) {
         ledger.access(retry);
-        if ("PURGED".equals(ledger.s(ledger.todoProjection(retry), "content_state")))
-          throw new TaskFailure(410, "TODO_CONTENT_EXPIRED");
+        if (TodoContentState.PURGED.equals(ledger.s(ledger.todoProjection(retry), "content_state")))
+          throw new TaskFailure(410, TodoErrorCode.TODO_CONTENT_EXPIRED);
       }
       if (ask) ledger.access(retry);
       return new Existing(ledger.s(retry, "request_snapshot"), ledger.s(retry, "request_digest"));
@@ -251,7 +260,7 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
 
     public void requireSessionModel(ModelSnapshot model, String kind) {
       switch (kind) {
-        case "read" -> ledger.models.requireSessionRead(model);
+        case ToolCapability.READ -> ledger.models.requireSessionRead(model);
         case "search" -> ledger.models.requireSessionSearch(model);
         case "trace" -> ledger.models.requireSessionTrace(model);
         default -> throw new IllegalArgumentException(kind);
@@ -269,19 +278,19 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     public PluginPin contract(String name, boolean prior, boolean trace, boolean search) {
       var descriptor =
           switch (name) {
-            case "session_event_read" ->
+            case ToolCapability.SESSION_EVENT_READ ->
                 (prior
                         ? ledger.sessions.v4
                         : trace
                             ? ledger.sessions.v3
                             : search ? ledger.sessions.v2 : ledger.sessions.contracts)
                     .descriptor();
-            case "session_search" -> ledger.sessionScopes.contracts.descriptor();
-            case "session_event_search" ->
+            case ToolCapability.SESSION_SEARCH -> ledger.sessionScopes.contracts.descriptor();
+            case ToolCapability.SESSION_EVENT_SEARCH ->
                 (trace ? ledger.sessions.searchV3 : ledger.sessions.search).descriptor();
-            case "session_event_trace" -> ledger.sessions.trace.descriptor();
-            case "working_directory" -> ledger.directories.descriptor();
-            case "todo_write" -> ledger.todos.descriptor();
+            case ToolCapability.SESSION_EVENT_TRACE -> ledger.sessions.trace.descriptor();
+            case ToolCapability.WORKING_DIRECTORY -> ledger.directories.descriptor();
+            case ToolCapability.TODO_WRITE -> ledger.todos.descriptor();
             default -> ledger.directoryFileContract(name).descriptor();
           };
       return new PluginPin(descriptor.version(), descriptor.outputSha256(), 0);
@@ -416,10 +425,10 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
             task,
             task + ":media-input",
             null,
-            "MEDIA_INPUT",
+            ReservationCategory.MEDIA_INPUT,
             held,
-            "SETTLED",
-            "KNOWN");
+            ReservationState.SETTLED,
+            UsageQuality.KNOWN);
         sql.settleImages(ledger.queryContext(), identity.tenant(), task + ":media-input");
       }
     }
@@ -470,12 +479,20 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     }
 
     public void reserve(String task, String suffix, String kind, long amount) {
-      if (kind.equals("QUEUE")) sql.holdQueue(ledger.queryContext(), identity.tenant());
+      if (kind.equals(ReservationCategory.QUEUE))
+        sql.holdQueue(ledger.queryContext(), identity.tenant());
       ledger.reserve(
-          identity.tenant(), task, task + suffix, null, kind, amount, "RESERVED", "KNOWN");
-      if (kind.equals("DIRECTORY_STORAGE"))
+          identity.tenant(),
+          task,
+          task + suffix,
+          null,
+          kind,
+          amount,
+          ReservationState.RESERVED,
+          UsageQuality.KNOWN);
+      if (kind.equals(ReservationCategory.DIRECTORY_STORAGE))
         ledger.directoryStorage(ledger.locked(identity.tenant(), task), 0);
-      if (kind.equals("TODO_STORAGE"))
+      if (kind.equals(ReservationCategory.TODO_STORAGE))
         ledger.todoStorage(ledger.locked(identity.tenant(), task), 0);
     }
 

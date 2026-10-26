@@ -5,6 +5,8 @@ import io.github.lovexiaopeng.jimu.api.task.dto.TaskRequestDecoder;
 import io.github.lovexiaopeng.jimu.api.task.vo.ArtifactDownloadResponse;
 import io.github.lovexiaopeng.jimu.api.task.vo.TaskEventResponse;
 import io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactService;
+import io.github.lovexiaopeng.jimu.kernel.event.api.EventFeedPolicyV1;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.EventFeed;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
@@ -60,7 +62,7 @@ public final class TaskController {
       if (!UUID.fromString(value).toString().equals(value)) throw new IllegalArgumentException();
       return value;
     } catch (IllegalArgumentException e) {
-      throw new TaskFailure(404, "NOT_FOUND");
+      throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
     }
   }
 
@@ -101,7 +103,7 @@ public final class TaskController {
     var identity = authentication.authenticate(authorization);
     tasks.get(identity, taskId(id));
     long cursor = TaskEventCursor.parse(id, last);
-    SseEmitter emitter = new SseEmitter(30000L);
+    SseEmitter emitter = new SseEmitter(EventFeedPolicyV1.EMITTER_TIMEOUT_MILLIS);
     var subscription =
         feed.subscribe(
             authorization,

@@ -1,9 +1,13 @@
 package io.github.lovexiaopeng.jimu.api;
 
+import io.github.lovexiaopeng.jimu.kernel.session.api.PriorSessionPolicyV4;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -35,9 +39,9 @@ public final class SessionSearchController {
           || !MediaType.APPLICATION_JSON.isCompatibleWith(
               MediaType.parseMediaType(request.getContentType()))
           || request.getContentLengthLong() > limit)
-        throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+        throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     } catch (org.springframework.http.InvalidMediaTypeException failure) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
@@ -47,13 +51,14 @@ public final class SessionSearchController {
           @RequestHeader(value = "Authorization", required = false) String authorization,
           @RequestHeader(value = "Idempotency-Key", required = false) String key,
           HttpServletRequest request) {
-    long deadline = System.nanoTime() + 2_000_000_000L;
+    long deadline = System.nanoTime() + SessionHistoryPolicyV1.QUERY_NANOS;
     var identity = authentication.authenticate(authorization);
-    json(request, 16384);
+    json(request, PriorSessionPolicyV4.ADMISSION_BYTES);
     var result =
         new DeferredResult<ResponseEntity<io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.View>>(
             Math.max(1, (deadline - System.nanoTime() + 999999) / 1000000));
-    result.onTimeout(() -> result.setErrorResult(new TaskFailure(504, "SESSION_QUERY_TIMEOUT")));
+    result.onTimeout(
+        () -> result.setErrorResult(new TaskFailure(504, SessionErrorCode.SESSION_QUERY_TIMEOUT)));
     request.setAttribute(
         "jimu.session.search.request",
         new SessionEventLedger.SearchRequest(
@@ -75,14 +80,15 @@ public final class SessionSearchController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable String caller,
       HttpServletRequest request) {
-    long deadline = System.nanoTime() + 2_000_000_000L;
+    long deadline = System.nanoTime() + SessionHistoryPolicyV1.QUERY_NANOS;
     var identity = authentication.authenticate(authorization);
     var resources = scopes.authorizePriorSessionSearch(identity, caller, deadline);
-    json(request, 4096);
+    json(request, PriorSessionPolicyV4.INPUT_BYTES);
     var result =
         new DeferredResult<ResponseEntity<String>>(
             Math.max(1, (deadline - System.nanoTime() + 999999) / 1000000));
-    result.onTimeout(() -> result.setErrorResult(new TaskFailure(504, "SESSION_QUERY_TIMEOUT")));
+    result.onTimeout(
+        () -> result.setErrorResult(new TaskFailure(504, SessionErrorCode.SESSION_QUERY_TIMEOUT)));
     request.setAttribute(
         "jimu.session.search.request",
         new SessionEventLedger.SearchRequest(
@@ -104,7 +110,7 @@ public final class SessionSearchController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable String caller,
       HttpServletRequest request) {
-    long deadline = System.nanoTime() + 2_000_000_000L;
+    long deadline = System.nanoTime() + SessionHistoryPolicyV1.QUERY_NANOS;
     var identity = authentication.authenticate(authorization);
     boolean validRequest =
         request.getQueryString() == null

@@ -9,9 +9,14 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
+import io.github.lovexiaopeng.jimu.kernel.question.api.QuestionPolicyV1;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger;
+import io.github.lovexiaopeng.jimu.plugin.api.QuestionErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort;
 import io.github.lovexiaopeng.jimu.plugins.builtin.interaction.AskUserQuestionPlugin;
 import java.io.IOException;
@@ -46,7 +51,7 @@ public final class QuestionContracts {
           .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
           .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
           .build();
-  public static final String NAME = "ask_user_question";
+  public static final String NAME = ToolCapability.ASK_USER_QUESTION;
 
   public record Contract(
       ToolDescriptor descriptor,
@@ -106,7 +111,7 @@ public final class QuestionContracts {
 
   public Contract contract(String version) {
     var value = contracts.get(version);
-    if (value == null) throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+    if (value == null) throw new TaskFailure(409, TaskErrorCode.PLUGIN_PIN_MISMATCH);
     return value;
   }
 
@@ -117,12 +122,12 @@ public final class QuestionContracts {
             1,
             "local-durable-questions-v1",
             mode(version),
-            120,
+            QuestionPolicyV1.DEFAULT_TIMEOUT_SECONDS,
             catalogDigest,
-            8,
-            4,
-            180,
-            2097152));
+            QuestionPolicyV1.BATCH_QUESTIONS,
+            QuestionPolicyV1.OPTIONS,
+            QuestionPolicyV1.MAX_TIMEOUT_SECONDS,
+            QuestionPolicyV1.STORAGE_BYTES));
   }
 
   public String mode(String version) {
@@ -140,7 +145,8 @@ public final class QuestionContracts {
 
   public AskUserQuestionPlugin.Input input(String version, String raw) {
     try {
-      if (bytes(raw) > 16384) throw new IllegalArgumentException("Input bytes");
+      if (bytes(raw) > QuestionPolicyV1.INPUT_BYTES)
+        throw new IllegalArgumentException("Input bytes");
       JsonNode node = STRICT.readTree(raw);
       contract(version).in().validate(node);
       var input = STRICT.treeToValue(node, AskUserQuestionPlugin.Input.class);
@@ -149,20 +155,21 @@ public final class QuestionContracts {
       var ids = new HashSet<String>();
       for (var q : input.questions()) {
         if (!ids.add(q.id())) throw new IllegalArgumentException("Duplicate question id");
-        text(q.question(), 4096);
-        if (q.header() != null) text(q.header(), 128);
+        text(q.question(), QuestionPolicyV1.TEXT_UTF8_BYTES);
+        if (q.header() != null) text(q.header(), QuestionPolicyV1.HEADER_UTF8_BYTES);
         if (q.options() != null) {
           var labels = new HashSet<String>();
           for (var option : q.options()) {
             text(option.label(), 256);
             if (!labels.add(option.label())) throw new IllegalArgumentException("Duplicate label");
-            if (option.description() != null) text(option.description(), 1024);
+            if (option.description() != null)
+              text(option.description(), QuestionPolicyV1.DESCRIPTION_UTF8_BYTES);
           }
         }
       }
       return input;
     } catch (IOException | IllegalArgumentException e) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
@@ -188,22 +195,23 @@ public final class QuestionContracts {
         if (!Boolean.TRUE.equals(q.multi_select())
             && (a.selected().size() > 1 || !a.selected().isEmpty() && a.custom() != null))
           throw new IllegalArgumentException("Single selection");
-        if (a.custom() != null) text(a.custom(), 2048);
+        if (a.custom() != null) text(a.custom(), QuestionPolicyV1.CUSTOM_ANSWER_UTF8_BYTES);
         result.add(
             new UserQuestionPort.Answer(
                 q.id(), labels.stream().filter(a.selected()::contains).toList(), a.custom()));
       }
-      if (bytes(Payloads.json(result)) > 16384
+      if (bytes(Payloads.json(result)) > QuestionPolicyV1.ANSWER_BYTES
           || bytes(Payloads.json(new UserQuestionPort.AnswerBatch(result, null, null, null)))
-              > 16384) throw new IllegalArgumentException("Answer bytes");
+              > QuestionPolicyV1.ANSWER_BYTES) throw new IllegalArgumentException("Answer bytes");
       return List.copyOf(result);
     } catch (IllegalArgumentException e) {
-      throw new TaskFailure(400, "QUESTION_ANSWER_INVALID");
+      throw new TaskFailure(400, QuestionErrorCode.QUESTION_ANSWER_INVALID);
     }
   }
 
   public void output(String version, String value) {
-    if (bytes(value) > 16384) throw new TaskFailure(409, "TOOL_OUTPUT_TOO_LARGE");
+    if (bytes(value) > QuestionPolicyV1.ANSWER_BYTES)
+      throw new TaskFailure(409, ToolErrorCode.TOOL_OUTPUT_TOO_LARGE);
     contract(version).out().validate(Payloads.read(value, JsonNode.class));
   }
 

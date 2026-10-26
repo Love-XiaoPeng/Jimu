@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.persistence.todo.entity.TodoProjectionReadEntity;
 import io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoProjectionReadMapper;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.todo.port.TodoProjections;
 import java.util.HashMap;
@@ -59,7 +60,7 @@ final class MapperTodoProjections implements TodoProjections<MapperTodoProjectio
             .mappers
             .session()
             .selectList(TodoProjectionReadMapper.class.getName() + ".selectMaps", parameters);
-    if (rows.isEmpty()) throw new TaskFailure(404, "NOT_FOUND");
+    if (rows.isEmpty()) throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
     return new Row(originalColumns(rows.getFirst()));
   }
 

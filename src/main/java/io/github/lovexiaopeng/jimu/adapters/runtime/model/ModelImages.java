@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.model;
 
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import java.nio.charset.StandardCharsets;
@@ -38,15 +39,16 @@ public final class ModelImages {
         || c.maxRequestBytes() < 1
         || c.maxRequestBytes() > 8388608
         || c.evidence() == null
-        || c.evidence().isBlank()) throw new TaskFailure(503, "MODEL_CAPABILITY_UNSUPPORTED");
+        || c.evidence().isBlank())
+      throw new TaskFailure(503, ModelErrorCode.MODEL_CAPABILITY_UNSUPPORTED);
   }
 
   public static void body(ModelSnapshot p, String body) {
     require(p);
     if (body.getBytes(StandardCharsets.UTF_8).length > p.imageInput().maxRequestBytes())
-      throw new TaskFailure(409, "MODEL_MEDIA_LIMIT_EXCEEDED");
+      throw new TaskFailure(409, ModelErrorCode.MODEL_MEDIA_LIMIT_EXCEEDED);
     // No multimodal billing proof is registered. UTF-8 text proofs cannot authorize paid vision.
-    if (p.paid()) throw new TaskFailure(503, "MODEL_INPUT_BOUND_UNAVAILABLE");
+    if (p.paid()) throw new TaskFailure(503, ModelErrorCode.MODEL_INPUT_BOUND_UNAVAILABLE);
   }
 
   public static boolean deepseek(String adapter) {

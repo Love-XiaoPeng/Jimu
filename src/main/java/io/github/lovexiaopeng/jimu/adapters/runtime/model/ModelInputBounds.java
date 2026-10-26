@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.model;
 
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import java.net.URI;
@@ -22,8 +23,8 @@ public final class ModelInputBounds {
         || !List.of("127.0.0.1", "[::1]").contains(URI.create(model.baseUrl()).getHost())
         || !"local-byte-accounted-v1".equals(model.model())
         || !"local-byte-accounted-v1".equals(model.revision()))
-      throw new TaskFailure(503, "MODEL_INPUT_BOUND_UNAVAILABLE");
+      throw new TaskFailure(503, ModelErrorCode.MODEL_INPUT_BOUND_UNAVAILABLE);
     if (body.getBytes(StandardCharsets.UTF_8).length > limit.maxTokens())
-      throw new TaskFailure(429, "MODEL_INPUT_LIMIT_EXCEEDED");
+      throw new TaskFailure(429, ModelErrorCode.MODEL_INPUT_LIMIT_EXCEEDED);
   }
 }

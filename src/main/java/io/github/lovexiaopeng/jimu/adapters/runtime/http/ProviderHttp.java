@@ -1,5 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.http;
 
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import java.io.IOException;
 import java.net.URI;
@@ -18,7 +20,7 @@ public final class ProviderHttp implements AutoCloseable {
       int responseBytes)
       throws IOException {
     if (credential != null && !credential.matches("[!-~]{1,4096}"))
-      throw new TaskFailure(503, "CREDENTIAL_UNAVAILABLE");
+      throw new TaskFailure(503, TaskErrorCode.CREDENTIAL_UNAVAILABLE);
     try (var client =
         HttpClient.newBuilder()
             .connectTimeout(connectTimeout)
@@ -34,7 +36,7 @@ public final class ProviderHttp implements AutoCloseable {
           timeout);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new TaskFailure(502, "MODEL_INTERRUPTED");
+      throw new TaskFailure(502, ModelErrorCode.MODEL_INTERRUPTED);
     }
   }
 

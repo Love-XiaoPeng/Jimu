@@ -1,9 +1,14 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.model;
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.TodoErrorCode;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -148,9 +153,9 @@ public final class ModelProfiles {
 
   public void retainedBusiness(BusinessPolicies.Policy policy) {
     if (business == null || !business.policies().containsKey(policy.id()))
-      throw new TaskFailure(503, "BUSINESS_POLICY_UNAVAILABLE");
+      throw new TaskFailure(503, ModelErrorCode.BUSINESS_POLICY_UNAVAILABLE);
     if (!policy.equals(business.policies().get(policy.id())))
-      throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+      throw new TaskFailure(409, ModelErrorCode.BUSINESS_POLICY_CONFLICT);
   }
 
   private boolean businessProfile(ModelSnapshot snapshot) {
@@ -169,7 +174,7 @@ public final class ModelProfiles {
     try {
       return Payloads.read(json, ExecutionScopes.Requirement.class);
     } catch (IllegalArgumentException invalid) {
-      throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
+      throw new TaskFailure(503, ModelErrorCode.EVALUATION_SCOPE_UNAVAILABLE);
     }
   }
 
@@ -180,20 +185,21 @@ public final class ModelProfiles {
         || !localEvaluation(model)
         || businessPolicy() != null
         || evaluationRunId() != null
-        || scopeRequirement() != null) throw new TaskFailure(403, "DIRECTORY_NOT_AUTHORIZED");
+        || scopeRequirement() != null)
+      throw new TaskFailure(403, DirectoryErrorCode.DIRECTORY_NOT_AUTHORIZED);
     if (model.maxOutputTokens() > 4096
         || model.responseBytes() > 65536
         || model.inputLimit() == null
         || model.inputLimit().maxTokens() > 65536
         || !"test-whole-request-utf8-v1".equals(model.inputLimit().proof()))
-      throw new TaskFailure(403, "DIRECTORY_NOT_AUTHORIZED");
+      throw new TaskFailure(403, DirectoryErrorCode.DIRECTORY_NOT_AUTHORIZED);
   }
 
   public void requireSessionTrace(ModelSnapshot model) {
     try {
       requireSessionRead(model);
     } catch (TaskFailure failure) {
-      throw new TaskFailure(403, "SESSION_TRACE_DISABLED");
+      throw new TaskFailure(403, SessionErrorCode.SESSION_TRACE_DISABLED);
     }
   }
 
@@ -201,7 +207,7 @@ public final class ModelProfiles {
     try {
       requireSessionRead(model);
     } catch (TaskFailure rejected) {
-      throw new TaskFailure(403, "SESSION_SEARCH_DISABLED");
+      throw new TaskFailure(403, SessionErrorCode.SESSION_SEARCH_DISABLED);
     }
   }
 
@@ -218,7 +224,7 @@ public final class ModelProfiles {
         || model.inputLimit() == null
         || model.inputLimit().maxTokens() > 65536
         || !"test-whole-request-utf8-v1".equals(model.inputLimit().proof()))
-      throw new TaskFailure(403, "SESSION_READ_DISABLED");
+      throw new TaskFailure(403, SessionErrorCode.SESSION_READ_DISABLED);
   }
 
   public List<String> sessionPrivateValues() {
@@ -239,13 +245,14 @@ public final class ModelProfiles {
         || !localEvaluation(model)
         || businessPolicy() != null
         || evaluationRunId() != null
-        || scopeRequirement() != null) throw new TaskFailure(403, "TODO_NOT_AUTHORIZED");
+        || scopeRequirement() != null)
+      throw new TaskFailure(403, TodoErrorCode.TODO_NOT_AUTHORIZED);
     if (model.maxOutputTokens() > 4096
         || model.responseBytes() > 65536
         || model.inputLimit() == null
         || model.inputLimit().maxTokens() > 65536
         || !"test-whole-request-utf8-v1".equals(model.inputLimit().proof()))
-      throw new TaskFailure(403, "TODO_NOT_AUTHORIZED");
+      throw new TaskFailure(403, TodoErrorCode.TODO_NOT_AUTHORIZED);
   }
 
   public boolean localEvaluation(ModelSnapshot model) {
@@ -320,7 +327,7 @@ public final class ModelProfiles {
             ? settings.defaultProfileRef()
             : settings.tenantProfiles().getOrDefault(tenant, settings.defaultProfileRef());
     var profile = settings.profiles().get(ref);
-    if (profile == null) throw new TaskFailure(503, "MODEL_CONFIG_UNAVAILABLE");
+    if (profile == null) throw new TaskFailure(503, ModelErrorCode.MODEL_CONFIG_UNAVAILABLE);
     return profile;
   }
 
@@ -330,13 +337,14 @@ public final class ModelProfiles {
                 && snapshot.imageInput() == null
                 && List.of("openai-chat-v1", BusinessPolicies.STRATEGY).contains(snapshot.adapter())
             || snapshot.version() == 3 && ModelImages.enabled(snapshot)))
-      throw new TaskFailure(503, "MODEL_CONFIG_UNAVAILABLE");
+      throw new TaskFailure(503, ModelErrorCode.MODEL_CONFIG_UNAVAILABLE);
     if (fixture) {
       if (!"p2-fixture".equals(snapshot.profile()))
-        throw new TaskFailure(503, "MODEL_CONFIG_UNAVAILABLE");
+        throw new TaskFailure(503, ModelErrorCode.MODEL_CONFIG_UNAVAILABLE);
     } else {
       var retained = settings.profiles().get(snapshot.profile());
-      if (!snapshot.equals(retained)) throw new TaskFailure(503, "MODEL_CONFIG_UNAVAILABLE");
+      if (!snapshot.equals(retained))
+        throw new TaskFailure(503, ModelErrorCode.MODEL_CONFIG_UNAVAILABLE);
       validate(snapshot);
     }
   }
@@ -348,7 +356,7 @@ public final class ModelProfiles {
             || snapshot.price() == null
             || evaluationRunId() == null
             || evaluationRunId().isBlank()))
-      throw new TaskFailure(503, "MODEL_COST_BOUND_UNAVAILABLE");
+      throw new TaskFailure(503, ModelErrorCode.MODEL_COST_BOUND_UNAVAILABLE);
     var selection = evaluationSelection();
     if (!ModelImages.deepseek(snapshot.adapter())
         && selection != null
@@ -356,7 +364,7 @@ public final class ModelProfiles {
             && "trusted-local-v1".equals(snapshot.transportPolicy())
             && List.of("127.0.0.1", "[::1]").contains(URI.create(snapshot.baseUrl()).getHost()))
         && (!selection.plan().enabled() || !selection.plan().paidDispatchAuthorized()))
-      throw new TaskFailure(503, "MODEL_EVALUATION_CLOSED");
+      throw new TaskFailure(503, ModelErrorCode.MODEL_EVALUATION_CLOSED);
     credential(snapshot);
   }
 
@@ -374,7 +382,7 @@ public final class ModelProfiles {
       String value = System.getenv(ref.substring(4));
       if (value != null && value.matches("[!-~]{1,4096}")) return value;
     }
-    throw new TaskFailure(503, "CREDENTIAL_UNAVAILABLE");
+    throw new TaskFailure(503, TaskErrorCode.CREDENTIAL_UNAVAILABLE);
   }
 
   public void checkInput(ModelSnapshot snapshot, String body) {
@@ -463,7 +471,7 @@ public final class ModelProfiles {
         || c.evidence() == null
         || c.evidence().isBlank()
         || p.stream() && (!c.streamText() || !c.streamTools()))
-      throw new TaskFailure(503, "MODEL_CAPABILITY_UNSUPPORTED");
+      throw new TaskFailure(503, ModelErrorCode.MODEL_CAPABILITY_UNSUPPORTED);
     if (ModelImages.deepseek(p.adapter())
         && (!business
             || !p.paid()

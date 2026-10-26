@@ -2,6 +2,7 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.mcp;
 
 import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.Profile;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.McpErrorCode;
 import org.springframework.core.env.Environment;
 
 /**
@@ -37,7 +38,7 @@ public final class McpSettings {
         || value.isBlank()
         || value.length() > 4096
         || value.indexOf('\r') >= 0
-        || value.indexOf('\n') >= 0) throw new TaskFailure(503, "MCP_UNAVAILABLE");
+        || value.indexOf('\n') >= 0) throw new TaskFailure(503, McpErrorCode.MCP_UNAVAILABLE);
     return value;
   }
 }

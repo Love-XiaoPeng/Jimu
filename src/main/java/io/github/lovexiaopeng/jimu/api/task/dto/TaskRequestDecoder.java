@@ -6,8 +6,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskSubmission;
+import io.github.lovexiaopeng.jimu.plugin.api.ImageErrorCode;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -25,7 +27,7 @@ public final class TaskRequestDecoder {
 
   public static TaskSubmission decode(InputStream input) throws IOException {
     byte[] body = input.readNBytes(MAX_BODY_BYTES + 1);
-    if (body.length > MAX_BODY_BYTES) throw new TaskFailure(413, "REQUEST_TOO_LARGE");
+    if (body.length > MAX_BODY_BYTES) throw new TaskFailure(413, CommonErrorCode.REQUEST_TOO_LARGE);
     SubmitRequest request;
     try {
       request = STRICT.readValue(body, SubmitRequest.class);
@@ -34,7 +36,8 @@ public final class TaskRequestDecoder {
           invalid instanceof JsonMappingException mapping
               && mapping.getPath().stream()
                   .anyMatch(reference -> "images".equals(reference.getFieldName()));
-      throw new TaskFailure(400, image ? "INVALID_IMAGE_INPUT" : "INVALID_REQUEST");
+      throw new TaskFailure(
+          400, image ? ImageErrorCode.INVALID_IMAGE_INPUT : CommonErrorCode.INVALID_REQUEST);
     }
     return request == null ? null : request.toSubmission();
   }
