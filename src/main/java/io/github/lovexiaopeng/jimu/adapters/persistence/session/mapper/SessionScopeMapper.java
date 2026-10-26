@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper;
 
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
@@ -60,4 +61,29 @@ public interface SessionScopeMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("caller") String caller);
+
+  int insertAuthority(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("id") String id,
+      @Param("owner") String owner,
+      @Param("binding") String binding,
+      @Param("tools") String tools,
+      @Param("raw") String raw,
+      @Param("digest") String digest,
+      @Param("bytes") int bytes,
+      @Param("count") int count,
+      @Param("created") LocalDateTime created,
+      @Param("retain") LocalDateTime retain,
+      @Param("validation") LocalDateTime validation);
+
+  int insertAuthorityTarget(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("id") String id,
+      @Param("ordinal") int ordinal,
+      @Param("source") Object source,
+      @Param("raw") String raw,
+      @Param("digest") String digest,
+      @Param("bytes") int bytes);
 }

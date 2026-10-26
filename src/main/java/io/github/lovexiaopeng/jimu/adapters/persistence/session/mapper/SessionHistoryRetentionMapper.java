@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper;
 
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
@@ -198,4 +199,10 @@ public interface SessionHistoryRetentionMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("taskId") String taskId);
+
+  int retainAuthorityHistory(
+      @Param("query") SessionQueryContext query,
+      @Param("retain") LocalDateTime retain,
+      @Param("tenant") String tenant,
+      @Param("id") String id);
 }

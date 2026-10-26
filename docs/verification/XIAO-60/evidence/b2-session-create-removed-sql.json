@@ -1,0 +1,122 @@
+{
+  "base": "677cf21ab88f0786508d68bf15e3e64165cc9393",
+  "sites": 3,
+  "binds": 22,
+  "operations": [
+    {
+      "name": "insertAuthority",
+      "domain": "session",
+      "mapper": "SessionScopeMapper",
+      "args": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "id",
+          "type": "String"
+        },
+        {
+          "name": "owner",
+          "type": "String"
+        },
+        {
+          "name": "binding",
+          "type": "String"
+        },
+        {
+          "name": "tools",
+          "type": "String"
+        },
+        {
+          "name": "raw",
+          "type": "String"
+        },
+        {
+          "name": "digest",
+          "type": "String"
+        },
+        {
+          "name": "bytes",
+          "type": "int"
+        },
+        {
+          "name": "count",
+          "type": "int"
+        },
+        {
+          "name": "created",
+          "type": "LocalDateTime"
+        },
+        {
+          "name": "retain",
+          "type": "LocalDateTime"
+        },
+        {
+          "name": "validation",
+          "type": "LocalDateTime"
+        }
+      ],
+      "original": "INSERT INTO task_session_scope(tenant_id,caller_task_id,owner_actor_id,caller_binding_digest,caller_tools_digest,authority_snapshot,authority_digest,authority_bytes,candidate_count,created_at,retain_until,next_validation_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+      "sql": "INSERT INTO task_session_scope(tenant_id,caller_task_id,owner_actor_id,caller_binding_digest,caller_tools_digest,authority_snapshot,authority_digest,authority_bytes,candidate_count,created_at,retain_until,next_validation_at) VALUES(#{tenant},#{id},#{owner},#{binding},#{tools},#{raw},#{digest},#{bytes},#{count},#{created},#{retain},#{validation})"
+    },
+    {
+      "name": "insertAuthorityTarget",
+      "domain": "session",
+      "mapper": "SessionScopeMapper",
+      "args": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "id",
+          "type": "String"
+        },
+        {
+          "name": "ordinal",
+          "type": "int"
+        },
+        {
+          "name": "source",
+          "type": "Object"
+        },
+        {
+          "name": "raw",
+          "type": "String"
+        },
+        {
+          "name": "digest",
+          "type": "String"
+        },
+        {
+          "name": "bytes",
+          "type": "int"
+        }
+      ],
+      "original": "INSERT INTO task_session_scope_target(tenant_id,caller_task_id,ordinal,source_task_id,target_snapshot,target_digest,target_bytes) VALUES(?,?,?,?,?,?,?)",
+      "sql": "INSERT INTO task_session_scope_target(tenant_id,caller_task_id,ordinal,source_task_id,target_snapshot,target_digest,target_bytes) VALUES(#{tenant},#{id},#{ordinal},#{source},#{raw},#{digest},#{bytes})"
+    },
+    {
+      "name": "retainAuthorityHistory",
+      "domain": "session",
+      "mapper": "SessionHistoryRetentionMapper",
+      "args": [
+        {
+          "name": "retain",
+          "type": "LocalDateTime"
+        },
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "id",
+          "type": "String"
+        }
+      ],
+      "original": "UPDATE task_session_history SET retain_until=? WHERE tenant_id=? AND task_id=?",
+      "sql": "UPDATE task_session_history SET retain_until=#{retain} WHERE tenant_id=#{tenant} AND task_id=#{id}"
+    }
+  ]
+}

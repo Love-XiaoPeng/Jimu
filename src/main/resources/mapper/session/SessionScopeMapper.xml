@@ -12,4 +12,6 @@
   <update id="defer"><![CDATA[UPDATE task_session_scope SET next_validation_at=TIMESTAMPADD(SECOND,60,CURRENT_TIMESTAMP(6)) WHERE tenant_id=#{tenant} AND caller_task_id=#{caller}]]></update>
   <update id="invalidate"><![CDATA[UPDATE task_session_scope SET invalidated_at=COALESCE(invalidated_at,CURRENT_TIMESTAMP(6)) WHERE tenant_id=#{tenant} AND caller_task_id=#{caller}]]></update>
   <update id="invalidateAndSchedule"><![CDATA[UPDATE task_session_scope SET invalidated_at=COALESCE(invalidated_at,CURRENT_TIMESTAMP(6)),next_validation_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND caller_task_id=#{caller} AND content_state='PRESENT']]></update>
+<insert id="insertAuthority"><![CDATA[INSERT INTO task_session_scope(tenant_id,caller_task_id,owner_actor_id,caller_binding_digest,caller_tools_digest,authority_snapshot,authority_digest,authority_bytes,candidate_count,created_at,retain_until,next_validation_at) VALUES(#{tenant},#{id},#{owner},#{binding},#{tools},#{raw},#{digest},#{bytes},#{count},#{created},#{retain},#{validation})]]></insert>
+<insert id="insertAuthorityTarget"><![CDATA[INSERT INTO task_session_scope_target(tenant_id,caller_task_id,ordinal,source_task_id,target_snapshot,target_digest,target_bytes) VALUES(#{tenant},#{id},#{ordinal},#{source},#{raw},#{digest},#{bytes})]]></insert>
 </mapper>
