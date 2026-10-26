@@ -1677,110 +1677,15 @@ public final class JdbcLedger
     return Payloads.read(s(q, "receipt_snapshot"), Map.class);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionOpeningService
+      questionOpening =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl.QuestionOpeningServiceImpl();
+
   @Override
   public OpenResult openOrResult(
       Lease lease, String step, Call call, String version, String digest) {
-    return leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, true);
-          var budget = bucket(lease.tenant());
-          if (!questionTask(task) || !questionsEnabled)
-            throw new TaskFailure(403, "QUESTION_NOT_AUTHORIZED");
-          var input = questions.input(version, call.input());
-          var invocation =
-              one(
-                  "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND step_id=? AND slot=? FOR UPDATE",
-                  lease.tenant(),
-                  lease.taskId(),
-                  step,
-                  call.slot());
-          if (!call.tool().equals("ask_user_question")
-              || !call.tool().equals(s(invocation, "tool"))
-              || !call.providerId().equals(s(invocation, "provider_id"))
-              || !Payloads.hash(call.input()).equals(s(invocation, "input_digest"))
-              || !version.equals(s(invocation, "plugin_version"))
-              || !digest.equals(s(invocation, "plugin_digest")))
-            throw new TaskFailure(409, "INVOCATION_MISMATCH");
-          var pin = tools(task).pins().get("ask_user_question");
-          if (!pin.version().equals(version)
-              || !pin.digest().equals(digest)
-              || pin.installationEpoch() != n(invocation, "installation_epoch"))
-            throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
-          String invocationId = s(invocation, "id");
-          if ("SUCCEEDED".equals(s(invocation, "state"))) {
-            if (!Payloads.hash(s(invocation, "output_snapshot"))
-                .equals(s(invocation, "output_digest")))
-              throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
-            questions.output(version, s(invocation, "output_snapshot"));
-            return new OpenResult(
-                false,
-                Payloads.read(
-                    s(invocation, "output_snapshot"),
-                    io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.AnswerBatch.class));
-          }
-          if (!"PENDING".equals(s(invocation, "state")))
-            throw new TaskFailure(409, "INVOCATION_STATE");
-          int ordinal =
-              db.queryForObject(
-                  "SELECT COUNT(*)+1 FROM user_question WHERE tenant_id=? AND task_id=?",
-                  Integer.class,
-                  lease.tenant(),
-                  lease.taskId());
-          if (ordinal > 8) throw new TaskFailure(429, "QUESTION_BATCH_LIMIT");
-          if (task.get("waiting_question_id") != null)
-            throw new TaskFailure(409, "QUESTION_ALREADY_WAITING");
-          if (n(task, "tools_used") >= n(task, "max_tools")
-              || n(budget, "tool_used") >= n(budget, "tool_limit"))
-            throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
-          questionStorage(task, 16384);
-          String requestId = id();
-          Integer timeout =
-              version.equals("0.1.0") ? null : input.timeout() == null ? 120 : input.timeout();
-          db.update(
-              "INSERT INTO user_question(tenant_id,id,task_id,owner_actor_id,invocation_id,ordinal,binding_digest,mode,effective_timeout,phase,request_snapshot,request_digest,foreground_due_at,answer_expires_at,retain_until) VALUES(?,?,?,?,?,?,?,?,?,'OPEN',?,?,IF(? IS NULL OR ?=-1,NULL,TIMESTAMPADD(SECOND,?,CURRENT_TIMESTAMP(6))),?,?)",
-              lease.tenant(),
-              requestId,
-              lease.taskId(),
-              lease.actor(),
-              invocationId,
-              ordinal,
-              s(task, "question_binding_digest"),
-              questions.mode(version),
-              timeout,
-              call.input(),
-              Payloads.hash(call.input()),
-              timeout,
-              timeout,
-              timeout,
-              task.get("deadline"),
-              java.sql.Timestamp.from(time(task, "created_at").plusSeconds(604800)));
-          db.update(
-              "UPDATE task SET tools_used=tools_used+1,waiting_question_id=? WHERE tenant_id=? AND id=?",
-              requestId,
-              lease.tenant(),
-              lease.taskId());
-          db.update(
-              "UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=?", lease.tenant());
-          reserve(
-              lease.tenant(),
-              lease.taskId(),
-              invocationId,
-              invocationId,
-              "TOOL",
-              1,
-              "RESERVED",
-              "KNOWN");
-          if (db.update(
-                  "UPDATE invocation SET state='WAITING_USER' WHERE tenant_id=? AND id=? AND state='PENDING'",
-                  lease.tenant(),
-                  invocationId)
-              != 1) throw new TaskFailure(409, "INVOCATION_STATE");
-          questionPause(task, lease, "WAITING_USER", null);
-          event(task, "question-created:" + requestId, "question.created", null);
-          event(task, "question-wait:" + requestId, "task.waiting_user", null);
-          return new OpenResult(true, null);
-        });
+    return questionOpening.openOrResult(
+        new MapperQuestionOpening(this, lease, step, call, version, digest));
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionPauseService

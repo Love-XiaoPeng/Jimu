@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionOpeningMapper">
+ <select id="invocation" resultType="java.util.LinkedHashMap"><![CDATA[SELECT * FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{task} AND step_id=#{step} AND slot=#{slot} FOR UPDATE]]></select>
+ <select id="ordinal" resultType="java.lang.Integer"><![CDATA[SELECT COUNT(*)+1 FROM user_question WHERE tenant_id=#{tenant} AND task_id=#{task}]]></select>
+ <insert id="insert"><![CDATA[INSERT INTO user_question(tenant_id,id,task_id,owner_actor_id,invocation_id,ordinal,binding_digest,mode,effective_timeout,phase,request_snapshot,request_digest,foreground_due_at,answer_expires_at,retain_until) VALUES(#{tenant},#{request},#{task},#{actor},#{invocation},#{ordinal},#{binding},#{mode},#{timeout},'OPEN',#{raw},#{digest},IF(#{dueNull} IS NULL OR #{dueUnlimited}=-1,NULL,TIMESTAMPADD(SECOND,#{dueSeconds},CURRENT_TIMESTAMP(6))),#{deadline},#{retain})]]></insert>
+ <update id="waiting"><![CDATA[UPDATE task SET tools_used=tools_used+1,waiting_question_id=#{request} WHERE tenant_id=#{tenant} AND id=#{task}]]></update>
+ <update id="budget"><![CDATA[UPDATE tenant_budget SET tool_used=tool_used+1 WHERE tenant_id=#{tenant}]]></update>
+ <update id="waitingInvocation"><![CDATA[UPDATE invocation SET state='WAITING_USER' WHERE tenant_id=#{tenant} AND id=#{invocation} AND state='PENDING']]></update>
+</mapper>
