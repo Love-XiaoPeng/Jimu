@@ -158,4 +158,9 @@ public interface TaskMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("task") String task);
+
+  int countTodoTool(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
 }
