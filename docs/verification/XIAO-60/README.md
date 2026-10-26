@@ -1,6 +1,6 @@
 # XIAO-60 B0/B1 基础检查点
 
-> 当前逐表与B0–B5对账见[115接入及三项事务验证](transaction-gaps.md)及`evidence/transaction-gaps-closure.json.gz`；前一层为[兼容门面及调用者收口](facade-callers.md)。35表＋只读receipt的业务迁移、必要基础设施、开发行为证明及最终独立验收分别登记。下文保留原检查点事实，全OPEN不代表当前全部未迁。
+> 当前逐表与B0–B5对账见[120串行接入及完整候选](candidate-integration.md)及`evidence/candidate-closure.json.gz`；前一层为[115接入及三项事务验证](transaction-gaps.md)。35表＋只读receipt的业务迁移、必要基础设施、具名独审/QA结果及最终候选验收分别登记。下文保留原检查点事实，全OPEN不代表当前全部未迁。
 
 > 最新 B2 ModelDispatch 实现、55处旧 SQL 替换及定向证据边界见 [模型调用检查点](b2-model-checkpoint.md)。35表＋receipt仍全部 OPEN，B2 继续实施。
 
