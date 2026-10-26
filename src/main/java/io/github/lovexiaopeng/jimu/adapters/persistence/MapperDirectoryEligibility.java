@@ -5,6 +5,7 @@ import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcLedger.s;
 
 import io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.DirectoryEligibilityMapper;
 import io.github.lovexiaopeng.jimu.kernel.directory.port.DirectoryEligibility;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.PluginPin;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
@@ -36,7 +37,7 @@ final class MapperDirectoryEligibility implements DirectoryEligibility {
             .session()
             .getMapper(DirectoryEligibilityMapper.class)
             .lockInstallation(ledger.queryContext(), s(task, "tenant_id"), name);
-    if (rows.isEmpty()) throw new TaskFailure(404, "NOT_FOUND");
+    if (rows.isEmpty()) throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
     var row = rows.getFirst();
     return new Installation() {
       public String version() {

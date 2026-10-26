@@ -3,13 +3,17 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.mcp;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.WorkspaceContracts.Contract;
+import io.github.lovexiaopeng.jimu.kernel.mcp.api.McpResourcePolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Invocation;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.ExecutionContext;
+import io.github.lovexiaopeng.jimu.plugin.api.McpErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.McpResourcePort;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import io.github.lovexiaopeng.jimu.plugins.builtin.mcp.ListMcpResourceTemplatesPlugin;
 import io.github.lovexiaopeng.jimu.plugins.builtin.mcp.ListMcpResourcesPlugin;
 import io.github.lovexiaopeng.jimu.plugins.builtin.mcp.ReadMcpResourcePlugin;
@@ -41,7 +45,7 @@ public final class McpRuntime {
   }
 
   public void available() {
-    if (!settings.enabled()) throw new TaskFailure(503, "MCP_NOT_CONFIGURED");
+    if (!settings.enabled()) throw new TaskFailure(503, McpErrorCode.MCP_NOT_CONFIGURED);
   }
 
   public String description(String name) {
@@ -54,7 +58,7 @@ public final class McpRuntime {
     try {
       contract(name).in().validate(input);
     } catch (IllegalArgumentException error) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
@@ -70,7 +74,7 @@ public final class McpRuntime {
         new ExecutionContext(invocation.id(), lease.deadline(), () -> execution.checkpoint(lease));
     Object value =
         switch (name) {
-          case "list_mcp_resource_templates" ->
+          case ToolCapability.LIST_MCP_RESOURCE_TEMPLATES ->
               new ListMcpResourceTemplatesPlugin(operation, contract(name).descriptor())
                   .execute(
                       new ListMcpResourceTemplatesPlugin.Input(
@@ -78,7 +82,7 @@ public final class McpRuntime {
                           input.has("cursor") ? input.get("cursor").asText() : null),
                       context)
                   .output();
-          case "list_mcp_resources" ->
+          case ToolCapability.LIST_MCP_RESOURCES ->
               new ListMcpResourcesPlugin(operation, contract(name).descriptor())
                   .execute(
                       new ListMcpResourcesPlugin.Input(
@@ -86,14 +90,14 @@ public final class McpRuntime {
                           input.has("cursor") ? input.get("cursor").asText() : null),
                       context)
                   .output();
-          case "read_mcp_resource" ->
+          case ToolCapability.READ_MCP_RESOURCE ->
               new ReadMcpResourcePlugin(operation, contract(name).descriptor())
                   .execute(
                       new ReadMcpResourcePlugin.Input(
                           server.profile().server(), input.path("uri").asText()),
                       context)
                   .output();
-          default -> throw new TaskFailure(403, "TOOL_NOT_AUTHORIZED");
+          default -> throw new TaskFailure(403, ToolErrorCode.TOOL_NOT_AUTHORIZED);
         };
     String output = Payloads.json(value);
     validateOutput(name, output);
@@ -101,11 +105,12 @@ public final class McpRuntime {
   }
 
   public void validateOutput(String name, String output) {
-    if (McpWire.textBytes(output).length > 65536) throw new TaskFailure(429, "MCP_LIMIT_EXCEEDED");
+    if (McpWire.textBytes(output).length > McpResourcePolicyV1.READ_OUTPUT_BYTES)
+      throw new TaskFailure(429, McpErrorCode.MCP_LIMIT_EXCEEDED);
     try {
       contract(name).out().validate(McpWire.parse(McpWire.textBytes(output)));
     } catch (IllegalArgumentException error) {
-      throw new TaskFailure(502, "MCP_PROTOCOL_INVALID");
+      throw new TaskFailure(502, McpErrorCode.MCP_PROTOCOL_INVALID);
     }
   }
 
@@ -193,7 +198,8 @@ public final class McpRuntime {
           JsonNode values = result.path(templates ? "resourceTemplates" : "resources");
           if (!values.isArray()) throw invalid();
           rawCount += values.size();
-          if (values.size() > 100 || rawCount > 1000) throw limit();
+          if (values.size() > McpResourcePolicyV1.LIST_ENTRIES
+              || rawCount > McpResourcePolicyV1.RAW_LIST_ENTRIES) throw limit();
           if (!pageHashes.add(Payloads.hash(Payloads.json(values)))) throw invalid();
           for (var item : values) {
             if (!item.isObject()) throw invalid();
@@ -205,8 +211,9 @@ public final class McpRuntime {
             String itemName = field(item, "name", 256, true);
             if (itemName.isEmpty()) throw invalid();
             String title = field(item, "title", 256, false),
-                description = field(item, "description", 2048, false),
-                mime = field(item, "mimeType", 128, false);
+                description =
+                    field(item, "description", McpResourcePolicyV1.DESCRIPTION_UTF16_UNITS, false),
+                mime = field(item, "mimeType", McpResourcePolicyV1.MIME_UTF16_UNITS, false);
             if (templates) items.add(new Template(id, itemName, title, description, mime));
             else {
               Long size = null;
@@ -220,7 +227,7 @@ public final class McpRuntime {
             }
           }
           if (!result.has("nextCursor")) break;
-          upstream = field(result, "nextCursor", 1024, true);
+          upstream = field(result, "nextCursor", McpResourcePolicyV1.CURSOR_UTF16_UNITS, true);
           if (upstream.isEmpty() || !cursors.add(upstream)) throw invalid();
           if (page == 9) throw limit();
         }
@@ -230,7 +237,7 @@ public final class McpRuntime {
       var chunk = new ArrayList<Object>();
       for (Object item : items) {
         chunk.add(item);
-        if (chunk.size() > 100
+        if (chunk.size() > McpResourcePolicyV1.LIST_ENTRIES
             || McpWire.textBytes(
                         Payloads.json(
                             page(
@@ -241,7 +248,7 @@ public final class McpRuntime {
                                 projection,
                                 "AAAAAAAAAAAAAAAAAAAAAA")))
                     .length
-                > 65536) {
+                > McpResourcePolicyV1.PAGE_BYTES) {
           chunk.removeLast();
           if (chunk.isEmpty()) throw limit();
           chunks.add(List.copyOf(chunk));
@@ -352,16 +359,19 @@ public final class McpRuntime {
       var contents = new ArrayList<Content>();
       var identities = new ArrayList<ContentIdentity>();
       // Stay below the unchanged local model checkpoint budget, including duplicated wire history.
-      int decoded = 0, preview = 16384;
+      int decoded = 0, preview = McpResourcePolicyV1.PREVIEW_BYTES;
       for (var value : values) {
         if (!value.isObject()
-            || !field(value, "uri", 2048, true).equals(uri)
+            || !field(value, "uri", McpResourcePolicyV1.URI_UTF16_UNITS, true).equals(uri)
             || value.has("text") == value.has("blob")) throw invalid();
         boolean text = value.has("text");
         byte[] bytes;
-        if (text) bytes = McpWire.textBytes(field(value, "text", 262144, true));
+        if (text)
+          bytes =
+              McpWire.textBytes(
+                  field(value, "text", McpResourcePolicyV1.DECODED_RESOURCE_BYTES, true));
         else {
-          String blob = field(value, "blob", 349528, true);
+          String blob = field(value, "blob", McpResourcePolicyV1.BASE64_RESOURCE_UTF16_UNITS, true);
           try {
             bytes = Base64.getDecoder().decode(blob);
           } catch (IllegalArgumentException error) {
@@ -370,10 +380,10 @@ public final class McpRuntime {
           if (!Base64.getEncoder().encodeToString(bytes).equals(blob)) throw invalid();
         }
         decoded += bytes.length;
-        if (decoded > 262144) throw limit();
+        if (decoded > McpResourcePolicyV1.DECODED_RESOURCE_BYTES) throw limit();
         String mime =
             value.has("mimeType")
-                ? field(value, "mimeType", 128, true)
+                ? field(value, "mimeType", McpResourcePolicyV1.MIME_UTF16_UNITS, true)
                 : text ? "text/plain" : "application/octet-stream";
         int length = text ? Math.min(preview, bytes.length) : 0;
         if (text && length < bytes.length)
@@ -409,10 +419,10 @@ public final class McpRuntime {
   }
 
   private static TaskFailure invalid() {
-    return new TaskFailure(502, "MCP_PROTOCOL_INVALID");
+    return new TaskFailure(502, McpErrorCode.MCP_PROTOCOL_INVALID);
   }
 
   private static TaskFailure limit() {
-    return new TaskFailure(429, "MCP_LIMIT_EXCEEDED");
+    return new TaskFailure(429, McpErrorCode.MCP_LIMIT_EXCEEDED);
   }
 }

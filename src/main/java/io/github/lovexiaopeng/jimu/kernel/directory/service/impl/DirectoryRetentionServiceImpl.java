@@ -1,5 +1,7 @@
 package io.github.lovexiaopeng.jimu.kernel.directory.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.budget.api.BudgetErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryContentState;
 import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryStorageLimit;
 import io.github.lovexiaopeng.jimu.kernel.directory.port.DirectoryRetentions;
 import io.github.lovexiaopeng.jimu.kernel.directory.port.DirectoryRetentions.Body;
@@ -8,7 +10,9 @@ import io.github.lovexiaopeng.jimu.kernel.directory.port.DirectoryRetentions.Ret
 import io.github.lovexiaopeng.jimu.kernel.directory.port.DirectoryRetentions.Workspace;
 import io.github.lovexiaopeng.jimu.kernel.directory.service.DirectoryRetentionService;
 import io.github.lovexiaopeng.jimu.kernel.snapshot.api.SnapshotDigest;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -33,7 +37,8 @@ public final class DirectoryRetentionServiceImpl implements DirectoryRetentionSe
   }
 
   private static boolean safe(LockedTask task) {
-    return List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(task.state())
+    return List.of(TaskState.SUCCEEDED, TaskState.FAILED, TaskState.CANCELLED)
+            .contains(task.state())
         && task.writersQuiescent()
         && !task.unsafeReservations()
         && !task.activeInvocations()
@@ -66,10 +71,10 @@ public final class DirectoryRetentionServiceImpl implements DirectoryRetentionSe
                 records.lockBudget(candidate.tenant());
                 var task = records.lockTask(candidate);
                 var projection = task.projection();
-                if ("PURGED".equals(projection.state())
+                if (DirectoryContentState.PURGED.equals(projection.state())
                     || projection.retainUntil().isAfter(records.now())
                     || !safe(task)) return null;
-                if ("PURGING".equals(projection.state())) return projection;
+                if (DirectoryContentState.PURGING.equals(projection.state())) return projection;
                 var retained = new ArrayList<RetainedBody>();
                 retain(retained, "task:", task.bodies());
                 String tombstone = "{\"version\":1,\"state\":\"DIRECTORY_PURGED\"}";
@@ -107,9 +112,9 @@ public final class DirectoryRetentionServiceImpl implements DirectoryRetentionSe
                   records.lockBudget(candidate.tenant());
                   var task = records.lockTask(candidate);
                   var projection = task.projection();
-                  if (!"PURGING".equals(projection.state())
+                  if (!DirectoryContentState.PURGING.equals(projection.state())
                       || !generation.equals(projection.generation())
-                      || !safe(task)) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+                      || !safe(task)) throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
                   if (projection.receipt() != null) return projection.receipt();
                   storage(task, planned);
                   task.storeReceipt(planned);
@@ -123,14 +128,15 @@ public final class DirectoryRetentionServiceImpl implements DirectoryRetentionSe
             records.lockBudget(candidate.tenant());
             var task = records.lockTask(candidate);
             var projection = task.projection();
-            if ("PURGED".equals(projection.state())) return null;
-            if (!"PURGING".equals(projection.state())
+            if (DirectoryContentState.PURGED.equals(projection.state())) return null;
+            if (!DirectoryContentState.PURGING.equals(projection.state())
                 || !generation.equals(projection.generation())
                 || !confirmed.equals(projection.receipt())
-                || !safe(task)) throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+                || !safe(task)) throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
             task.markPurged();
             task.event();
-            if (task.releaseHold() != 1) throw new TaskFailure(409, "RESERVATION_STATE");
+            if (task.releaseHold() != 1)
+              throw new TaskFailure(409, BudgetErrorCode.RESERVATION_STATE);
             task.releaseBudget();
             return null;
           });

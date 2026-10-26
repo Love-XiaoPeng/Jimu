@@ -5,6 +5,7 @@ import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcLedger.s;
 
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionEligibilityMapper;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionEligibility;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.PluginPin;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
@@ -49,7 +50,7 @@ final class MapperSessionEligibility implements SessionEligibility.Access {
             .session()
             .getMapper(SessionEligibilityMapper.class)
             .lockInstallation(ledger.queryContext(), s(task, "tenant_id"), name);
-    if (rows.isEmpty()) throw new TaskFailure(404, "NOT_FOUND");
+    if (rows.isEmpty()) throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
     var row = rows.getFirst();
     return new SessionEligibility.Installation() {
       public String version() {

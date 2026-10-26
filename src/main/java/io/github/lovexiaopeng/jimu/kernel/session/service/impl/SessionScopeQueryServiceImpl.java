@@ -1,5 +1,12 @@
 package io.github.lovexiaopeng.jimu.kernel.session.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationState;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionContentState;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionOutcome;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionScopeOperation;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeQueries;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeQueries.Commit;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeQueries.Result;
@@ -8,6 +15,10 @@ import io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeQueryServi
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -38,8 +49,10 @@ public final class SessionScopeQueryServiceImpl implements SessionScopeQueryServ
 
   private Outcome execute(Lease lease, String step, Call call, String version, String digest) {
     var task = records.lock(lease);
-    if (!task.scopeTask() || !List.of("session_event_read", "session_search").contains(call.tool()))
-      throw new TaskFailure(409, "INVOCATION_MISMATCH");
+    if (!task.scopeTask()
+        || !List.of(ToolCapability.SESSION_EVENT_READ, ToolCapability.SESSION_SEARCH)
+            .contains(call.tool()))
+      throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
     var invocation = task.originalSlot(step, call, version, digest);
     var st = task.validatedStep(step);
     String authority = task.requireScope();
@@ -51,11 +64,12 @@ public final class SessionScopeQueryServiceImpl implements SessionScopeQueryServ
         new io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeNormalization.Stored(
             binding.normalized(), binding::normalizedDigest, binding::normalizedBytes),
         records);
-    boolean read = call.tool().equals("session_event_read");
+    boolean read = call.tool().equals(ToolCapability.SESSION_EVENT_READ);
     if (binding.version() != 1
         || !lease.taskId().equals(binding.caller())
         || !step.equals(binding.step())
-        || !(read ? "READ" : "SEARCH").equals(binding.operation())
+        || !(read ? SessionScopeOperation.READ : SessionScopeOperation.SEARCH)
+            .equals(binding.operation())
         || !st.binding().equals(binding.binding())
         || !records.hash(call.input()).equals(binding.input())
         || !authority.equals(binding.authority())
@@ -63,18 +77,19 @@ public final class SessionScopeQueryServiceImpl implements SessionScopeQueryServ
         || !st.context().equals(binding.context())
         || !cut.context().equals(binding.context())
         || !records.hash(cut.snapshot()).equals(cut.context())
-        || !"PRESENT".equals(binding.content())) throw corrupt();
-    if (!"PENDING".equals(invocation.state())) {
-      boolean success = "SUCCEEDED".equals(binding.outcome());
+        || !SessionContentState.PRESENT.equals(binding.content())) throw corrupt();
+    if (!InvocationState.PENDING.equals(invocation.state())) {
+      boolean success = SessionOutcome.SUCCEEDED.equals(binding.outcome());
       if (!invocation.state().equals(binding.outcome())
-          || !List.of("SUCCEEDED", "FAILED").contains(binding.outcome())) throw corrupt();
+          || !List.of(TaskState.SUCCEEDED, TaskState.FAILED).contains(binding.outcome()))
+        throw corrupt();
       var receipt = task.receipt(binding.receipt());
       var reservation = task.reservation(invocation.id());
       if (!receipt.fact().equals("result:" + invocation.id())
           || !receipt.type().equals(success ? "tool.completed" : "tool.failed")
           || !Objects.equals(receipt.code(), binding.failure())
-          || !"TOOL".equals(reservation.category())
-          || !"SETTLED".equals(reservation.state())
+          || !ReservationCategory.TOOL.equals(reservation.category())
+          || !ReservationState.SETTLED.equals(reservation.state())
           || reservation.actual() != 1) throw corrupt();
       task.requireAttempt(binding.attempt(), binding.fence());
       if (success) {
@@ -93,22 +108,23 @@ public final class SessionScopeQueryServiceImpl implements SessionScopeQueryServ
           success ? invocation.output() : null,
           success ? null : new TaskFailure(failureStatus(binding.failure()), binding.failure()));
     }
-    if (!"PENDING".equals(binding.outcome())) throw corrupt();
+    if (!SessionOutcome.PENDING.equals(binding.outcome())) throw corrupt();
     var budget = task.budget();
     if (task.toolsUsed() >= task.maxTools()
         || task.toolsUsed() >= 20
-        || budget.used() >= budget.limit()) throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
+        || budget.used() >= budget.limit())
+      throw new TaskFailure(429, ToolErrorCode.TOOL_BUDGET_EXCEEDED);
     Result found = null;
     TaskFailure failure = null;
     try {
       found = read ? task.read(normalized) : task.search(call.input());
     } catch (TaskFailure rejected) {
-      if (!rejected.code().equals("SESSION_EVENT_NOT_FOUND")) throw rejected;
+      if (!rejected.code().equals(SessionErrorCode.SESSION_EVENT_NOT_FOUND)) throw rejected;
       failure = rejected;
     }
     String output = found == null ? null : found.output();
     String refs = read ? (found == null ? "[]" : found.refs()) : null;
-    String outcome = failure == null ? "SUCCEEDED" : "FAILED",
+    String outcome = failure == null ? SessionOutcome.SUCCEEDED : SessionOutcome.FAILED,
         code = failure == null ? null : failure.code();
     if (output != null) task.body(records.bytes(output));
     if (refs != null) {
@@ -157,14 +173,14 @@ public final class SessionScopeQueryServiceImpl implements SessionScopeQueryServ
   }
 
   private static TaskFailure corrupt() {
-    return new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+    return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
   }
 
   private static int failureStatus(String code) {
     return switch (code) {
-      case "SESSION_EVENT_NOT_FOUND" -> 404;
-      case "SESSION_HISTORY_EXPIRED" -> 410;
-      case "SESSION_HISTORY_LIMIT" -> 429;
+      case SessionErrorCode.SESSION_EVENT_NOT_FOUND -> 404;
+      case SessionErrorCode.SESSION_HISTORY_EXPIRED -> 410;
+      case SessionErrorCode.SESSION_HISTORY_LIMIT -> 429;
       default -> 409;
     };
   }

@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.contract;
 
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -17,42 +18,52 @@ public final class WorkspaceContracts {
   /** Frozen host descriptions are also used when reconstructing a media checkpoint. */
   public static String description(String name) {
     return switch (name) {
-      case "web_fetch" -> "Fetch from the configured origin";
-      case "read" -> "Read a UTF-8 task file with line numbers; observe missing files before write";
-      case "read_image" ->
+      case ToolCapability.WEB_FETCH -> "Fetch from the configured origin";
+      case ToolCapability.READ ->
+          "Read a UTF-8 task file with line numbers; observe missing files before write";
+      case ToolCapability.READ_IMAGE ->
           "Read an authorized task PNG/JPEG as actual model media; use the host directory, never host paths or URLs";
-      case "write" -> "Create or replace UTF-8 task file using the host's observed version";
-      case "edit" ->
+      case ToolCapability.WRITE ->
+          "Create or replace UTF-8 task file using the host's observed version";
+      case ToolCapability.EDIT ->
           "Replace observed literal UTF-8 text atomically; read first; replace_all defaults false";
-      case "glob" ->
+      case ToolCapability.GLOB ->
           "Find task files using native glob semantics; cursor reads the same immutable snapshot";
-      case "grep" ->
+      case ToolCapability.GREP ->
           "Search task file lines with native Rust regex semantics; read matches before editing";
-      case "compose_report" ->
+      case ToolCapability.COMPOSE_REPORT ->
           "Compose a source-bound report from typed fields and exact fetched evidence; read target first";
-      case "present" ->
+      case ToolCapability.PRESENT ->
           "Publish existing observed Markdown reports as immutable authorized deliverables";
       default -> throw new IllegalArgumentException("Unknown workspace tool");
     };
   }
 
   public static final List<String> NAMES =
-      List.of("read", "write", "present", "compose_report", "edit", "glob", "grep", "read_image");
+      List.of(
+          ToolCapability.READ,
+          ToolCapability.WRITE,
+          ToolCapability.PRESENT,
+          ToolCapability.COMPOSE_REPORT,
+          ToolCapability.EDIT,
+          ToolCapability.GLOB,
+          ToolCapability.GREP,
+          ToolCapability.READ_IMAGE);
   private static final Map<String, String> ENTRIES =
       Map.of(
-          "read",
+          ToolCapability.READ,
           "ReadPlugin",
-          "write",
+          ToolCapability.WRITE,
           "WritePlugin",
-          "present",
+          ToolCapability.PRESENT,
           "PresentPlugin",
-          "compose_report",
+          ToolCapability.COMPOSE_REPORT,
           "ComposeReportPlugin",
-          "edit",
+          ToolCapability.EDIT,
           "EditPlugin",
-          "glob",
+          ToolCapability.GLOB,
           "GlobPlugin",
-          "grep",
+          ToolCapability.GREP,
           "GrepPlugin");
 
   public record Contract(
@@ -63,18 +74,19 @@ public final class WorkspaceContracts {
   }
 
   public Contract load(String name, String version) throws IOException {
-    boolean image = name.equals("read_image");
-    boolean composeV2 = name.equals("compose_report") && version.equals("0.2.0");
+    boolean image = name.equals(ToolCapability.READ_IMAGE);
+    boolean composeV2 = name.equals(ToolCapability.COMPOSE_REPORT) && version.equals("0.2.0");
     if ((!NAMES.contains(name) && !image) || !(version.equals("0.1.0") || composeV2))
       throw new IllegalArgumentException("Unknown workspace tool version");
     String root = "plugins/builtin/" + name + (composeV2 ? "-0.2.0" : "") + "/";
-    boolean search = name.equals("glob") || name.equals("grep");
+    boolean search = name.equals(ToolCapability.GLOB) || name.equals(ToolCapability.GREP);
     byte[] input = resource(root + "input.schema.json");
     byte[] output = resource(root + "output.schema.json");
     String entry =
         "io.github.lovexiaopeng.jimu.plugins.builtin.workspace."
             + (image ? "ReadImagePlugin" : ENTRIES.get(name));
-    String plugin = name.equals("present") ? "jimu.artifact.present" : "jimu.workspace." + name;
+    String plugin =
+        name.equals(ToolCapability.PRESENT) ? "jimu.artifact.present" : "jimu.workspace." + name;
     var options = new LoaderOptions();
     options.setAllowDuplicateKeys(false);
     options.setMaxAliasesForCollections(0);
@@ -101,7 +113,9 @@ public final class WorkspaceContracts {
                         "outputSchema",
                         "output.schema.json",
                         "sideEffect",
-                        name.equals("read") || search || image ? "read" : "write"))),
+                        name.equals(ToolCapability.READ) || search || image
+                            ? ToolCapability.READ
+                            : ToolCapability.WRITE))),
             Map.entry("permissions", Map.of("filesystem", List.of("host-task-workspace"))),
             Map.entry("secretRefs", List.of()),
             Map.entry("dependencies", List.of()),

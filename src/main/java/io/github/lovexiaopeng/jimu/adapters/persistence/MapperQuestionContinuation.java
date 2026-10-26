@@ -9,6 +9,7 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.Question
 import io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionInvocationReadMapper;
 import io.github.lovexiaopeng.jimu.kernel.question.port.QuestionContinuation;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.PluginPin;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +67,7 @@ final class MapperQuestionContinuation
   }
 
   public PluginPin pin() {
-    return ledger.tools(task).pins().get("ask_user_question");
+    return ledger.tools(task).pins().get(ToolCapability.ASK_USER_QUESTION);
   }
 
   public String version(PluginPin pin) {

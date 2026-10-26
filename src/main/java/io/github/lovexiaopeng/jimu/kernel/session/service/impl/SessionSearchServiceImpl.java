@@ -1,5 +1,11 @@
 package io.github.lovexiaopeng.jimu.kernel.session.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationState;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionContentState;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionOutcome;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionSearches;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionSearches.Commit;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionSearches.Search;
@@ -7,6 +13,9 @@ import io.github.lovexiaopeng.jimu.kernel.session.service.SessionSearchService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import java.util.List;
 import java.util.Objects;
 
@@ -28,10 +37,10 @@ public final class SessionSearchServiceImpl implements SessionSearchService {
 
   private Outcome execute(Lease lease, String step, Call call, String version, String digest) {
     var task = records.lock(lease);
-    if (!task.enabled()) throw new TaskFailure(403, "SESSION_SEARCH_DISABLED");
+    if (!task.enabled()) throw new TaskFailure(403, SessionErrorCode.SESSION_SEARCH_DISABLED);
     var invocation = task.originalSlot(step, call, version, digest);
-    if (!call.tool().equals("session_event_search"))
-      throw new TaskFailure(409, "INVOCATION_MISMATCH");
+    if (!call.tool().equals(ToolCapability.SESSION_EVENT_SEARCH))
+      throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
     var input = task.input(call.input());
     String history = task.historyBinding();
     var st = task.validatedStep(step);
@@ -44,22 +53,22 @@ public final class SessionSearchServiceImpl implements SessionSearchService {
         || !history.equals(st.binding())
         || b.upper() != st.upper()
         || !records.hash(call.input()).equals(b.input())
-        || !"PRESENT".equals(b.content())
+        || !SessionContentState.PRESENT.equals(b.content())
         || !normalized.equals(b.normalized())
         || !records.hash(normalized).equals(b.normalizedDigest())
         || records.bytes(normalized) != b.normalizedBytes()) throw corrupt();
-    if (!"PENDING".equals(invocation.state())) {
+    if (!InvocationState.PENDING.equals(invocation.state())) {
       if (!invocation.state().equals(b.outcome())) throw corrupt();
       var receipt = task.receipt(b.receipt());
-      boolean success = "SUCCEEDED".equals(b.outcome());
+      boolean success = SessionOutcome.SUCCEEDED.equals(b.outcome());
       if (!success && !known(b.failure())) throw corrupt();
-      if ((!success && !"FAILED".equals(b.outcome()))
+      if ((!success && !SessionOutcome.FAILED.equals(b.outcome()))
           || !receipt.fact().equals("result:" + invocation.id())
           || !receipt.type().equals(success ? "tool.completed" : "tool.failed")
           || !Objects.equals(receipt.code(), b.failure())) throw corrupt();
       var reservation = task.reservation(invocation.id());
-      if (!"TOOL".equals(reservation.category())
-          || !"SETTLED".equals(reservation.state())
+      if (!ReservationCategory.TOOL.equals(reservation.category())
+          || !ReservationState.SETTLED.equals(reservation.state())
           || reservation.actual() != 1) throw corrupt();
       task.requireAttempt(b.attempt(), b.fence());
       if (success) {
@@ -76,11 +85,12 @@ public final class SessionSearchServiceImpl implements SessionSearchService {
           success ? invocation.output() : null,
           success ? null : new TaskFailure(failureStatus(b.failure()), b.failure()));
     }
-    if (!"PENDING".equals(b.outcome())) throw corrupt();
+    if (!SessionOutcome.PENDING.equals(b.outcome())) throw corrupt();
     var budget = task.budget();
     if (task.toolsUsed() >= task.maxTools()
         || task.toolsUsed() >= 20
-        || budget.used() >= budget.limit()) throw new TaskFailure(429, "TOOL_BUDGET_EXCEEDED");
+        || budget.used() >= budget.limit())
+      throw new TaskFailure(429, ToolErrorCode.TOOL_BUDGET_EXCEEDED);
     Search found = null;
     TaskFailure failure = null;
     try {
@@ -91,7 +101,7 @@ public final class SessionSearchServiceImpl implements SessionSearchService {
     }
     String output = found == null ? null : found.output();
     String code = failure == null ? null : failure.code();
-    String outcome = failure == null ? "SUCCEEDED" : "FAILED";
+    String outcome = failure == null ? SessionOutcome.SUCCEEDED : SessionOutcome.FAILED;
     if (output != null) task.body(records.bytes(output));
     task.consumeTask();
     task.consumeTenant();
@@ -122,21 +132,21 @@ public final class SessionSearchServiceImpl implements SessionSearchService {
 
   private static boolean known(String code) {
     return List.of(
-            "SESSION_HISTORY_CORRUPT",
-            "SESSION_HISTORY_VERSION_UNSUPPORTED",
-            "SESSION_HISTORY_LIMIT")
+            SessionErrorCode.SESSION_HISTORY_CORRUPT,
+            SessionErrorCode.SESSION_HISTORY_VERSION_UNSUPPORTED,
+            SessionErrorCode.SESSION_HISTORY_LIMIT)
         .contains(code);
   }
 
   private static TaskFailure corrupt() {
-    return new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+    return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
   }
 
   private static int failureStatus(String code) {
     return switch (code) {
-      case "SESSION_EVENT_NOT_FOUND" -> 404;
-      case "SESSION_HISTORY_EXPIRED" -> 410;
-      case "SESSION_HISTORY_LIMIT" -> 429;
+      case SessionErrorCode.SESSION_EVENT_NOT_FOUND -> 404;
+      case SessionErrorCode.SESSION_HISTORY_EXPIRED -> 410;
+      case SessionErrorCode.SESSION_HISTORY_LIMIT -> 429;
       default -> 409;
     };
   }

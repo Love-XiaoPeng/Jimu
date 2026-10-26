@@ -1,10 +1,13 @@
 package io.github.lovexiaopeng.jimu.kernel.session.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeMaintenanceRecords;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeMaintenanceRecords.Candidate;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeMaintenanceRecords.StorageFailure;
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeMaintenanceService;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.util.List;
 
 /** 先独立提交下一调度，再当前资格验证；超时不能使坏源饿死后续候选。 */
@@ -16,7 +19,7 @@ public final class SessionScopeMaintenanceServiceImpl implements SessionScopeMai
   }
 
   public void validate() {
-    long end = System.nanoTime() + 2_000_000_000L;
+    long end = System.nanoTime() + SessionHistoryPolicyV1.QUERY_NANOS;
     try {
       var candidates = records.required(end, records::candidates);
       for (var candidate : candidates) {
@@ -38,10 +41,10 @@ public final class SessionScopeMaintenanceServiceImpl implements SessionScopeMai
                   task.requireCurrent();
                 } catch (TaskFailure failure) {
                   if (!List.of(
-                          "SESSION_SCOPE_UNAVAILABLE",
-                          "CAPABILITY_REVOKED",
-                          "ACTOR_REVOKED",
-                          "SESSION_HISTORY_EXPIRED")
+                          SessionErrorCode.SESSION_SCOPE_UNAVAILABLE,
+                          CommonErrorCode.CAPABILITY_REVOKED,
+                          CommonErrorCode.ACTOR_REVOKED,
+                          SessionErrorCode.SESSION_HISTORY_EXPIRED)
                       .contains(failure.code())) throw failure;
                   task.invalidate();
                 }
@@ -58,7 +61,7 @@ public final class SessionScopeMaintenanceServiceImpl implements SessionScopeMai
     } catch (StorageFailure failure) {
       records.deferred(true, failure.getCause().getClass().getSimpleName());
     } catch (TaskFailure failure) {
-      if (!failure.code().equals("SESSION_QUERY_TIMEOUT")) throw failure;
+      if (!failure.code().equals(SessionErrorCode.SESSION_QUERY_TIMEOUT)) throw failure;
     }
   }
 

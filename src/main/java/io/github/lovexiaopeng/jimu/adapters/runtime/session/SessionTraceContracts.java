@@ -4,9 +4,13 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonToken;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionTracePolicyV3;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionEventTracePort;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.CodingErrorAction;
@@ -14,7 +18,7 @@ import java.nio.charset.StandardCharsets;
 
 /** ADR-0013; seq token spelling is checked before numeric conversion. */
 public final class SessionTraceContracts {
-  public static final String NAME = "session_event_trace";
+  public static final String NAME = ToolCapability.SESSION_EVENT_TRACE;
   public static final String POLICY = "read-receipt-sources-v1";
   private final SessionContracts history = new SessionContracts(3);
   private final SchemaContract input, output;
@@ -79,12 +83,12 @@ public final class SessionTraceContracts {
               .decode(ByteBuffer.wrap(raw))
               .toString());
     } catch (java.nio.charset.CharacterCodingException failure) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
   public SessionEventTracePort.Input input(String raw) {
-    var value = history.strictJson(raw, 1024);
+    var value = history.strictJson(raw, SessionTracePolicyV3.INPUT_BYTES);
     try {
       input.validate(value);
       try (var parser = new JsonFactory().createParser(raw)) {
@@ -100,16 +104,17 @@ public final class SessionTraceContracts {
           value.path("seq").longValue(),
           value.has("session_id") ? value.path("session_id").textValue() : null);
     } catch (IOException | IllegalArgumentException failure) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
   public void output(String raw) {
-    if (SessionContracts.bytes(raw) > 32768) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (SessionContracts.bytes(raw) > 32768)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
     try {
-      output.validate(history.json(raw, 32768));
+      output.validate(history.json(raw, SessionTracePolicyV3.OUTPUT_BYTES));
     } catch (IllegalArgumentException | TaskFailure failure) {
-      throw new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+      throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
     }
   }
 }

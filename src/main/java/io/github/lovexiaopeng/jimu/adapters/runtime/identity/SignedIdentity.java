@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.identity;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Identity;
@@ -31,9 +32,10 @@ public final class SignedIdentity implements Authenticator {
   public Identity authenticate(String authorization) {
     if (authorization == null
         || !authorization.startsWith("Bearer ")
-        || authorization.length() > 4096) throw new TaskFailure(401, "UNAUTHENTICATED");
+        || authorization.length() > 4096)
+      throw new TaskFailure(401, CommonErrorCode.UNAUTHENTICATED);
     String[] parts = authorization.substring(7).split("\\.");
-    if (parts.length != 3) throw new TaskFailure(401, "UNAUTHENTICATED");
+    if (parts.length != 3) throw new TaskFailure(401, CommonErrorCode.UNAUTHENTICATED);
     try {
       var mapper = new ObjectMapper();
       var header = mapper.readTree(Base64.getUrlDecoder().decode(parts[0]));
@@ -48,12 +50,12 @@ public final class SignedIdentity implements Authenticator {
           || !"jimu-api".equals(claims.path("aud").asText())
           || !claims.path("exp").canConvertToLong()
           || claims.path("exp").asLong() <= Instant.now().getEpochSecond())
-        throw new TaskFailure(401, "UNAUTHENTICATED");
+        throw new TaskFailure(401, CommonErrorCode.UNAUTHENTICATED);
       Identity identity = subjects.get(claims.path("sub").asText());
-      if (identity == null) throw new TaskFailure(401, "UNAUTHENTICATED");
+      if (identity == null) throw new TaskFailure(401, CommonErrorCode.UNAUTHENTICATED);
       return identity;
     } catch (java.io.IOException | IllegalArgumentException | GeneralSecurityException e) {
-      throw new TaskFailure(401, "UNAUTHENTICATED");
+      throw new TaskFailure(401, CommonErrorCode.UNAUTHENTICATED);
     }
   }
 }

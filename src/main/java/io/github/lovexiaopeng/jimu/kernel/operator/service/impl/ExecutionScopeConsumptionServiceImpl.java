@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.kernel.operator.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.operator.port.ExecutionScopeConsumptionRecords;
 import io.github.lovexiaopeng.jimu.kernel.operator.port.ExecutionScopeConsumptionRecords.Policy;
 import io.github.lovexiaopeng.jimu.kernel.operator.port.ExecutionScopeConsumptionRecords.Requirement;
@@ -22,7 +23,7 @@ public final class ExecutionScopeConsumptionServiceImpl
   private Map<String, Object> receipt(String tenant) {
     if (records.receiptTable() == 0) return null;
     var rows = records.receipts(tenant);
-    if (rows.size() > 1) throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
+    if (rows.size() > 1) throw new TaskFailure(503, ModelErrorCode.EVALUATION_SCOPE_UNAVAILABLE);
     return rows.isEmpty() ? null : rows.getFirst();
   }
 
@@ -43,13 +44,14 @@ public final class ExecutionScopeConsumptionServiceImpl
             // A known task keeps its original run; new admission must have unambiguous authority.
             if (fallback != null) {
               if (bound.contains(fallback)) return fallback;
-              throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
+              throw new TaskFailure(503, ModelErrorCode.EVALUATION_SCOPE_UNAVAILABLE);
             }
-            if (bound.size() != 1) throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
+            if (bound.size() != 1)
+              throw new TaskFailure(503, ModelErrorCode.EVALUATION_SCOPE_UNAVAILABLE);
             return bound.getFirst();
           });
     } catch (ExecutionScopeConsumptionRecords.Unavailable unavailable) {
-      throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
+      throw new TaskFailure(503, ModelErrorCode.EVALUATION_SCOPE_UNAVAILABLE);
     }
   }
 
@@ -64,7 +66,8 @@ public final class ExecutionScopeConsumptionServiceImpl
   }
 
   private void fail(String code) {
-    throw new TaskFailure(code.equals("EVALUATION_SCOPE_UNAVAILABLE") ? 503 : 409, code);
+    throw new TaskFailure(
+        code.equals(ModelErrorCode.EVALUATION_SCOPE_UNAVAILABLE) ? 503 : 409, code);
   }
 
   public Requirement requirement(String tenant) {
@@ -79,7 +82,7 @@ public final class ExecutionScopeConsumptionServiceImpl
         || req.schema() == null
         || req.instanceUuid() == null
         || !records.digest(req.approvalDigest())) {
-      fail("EVALUATION_SCOPE_UNAVAILABLE");
+      fail(ModelErrorCode.EVALUATION_SCOPE_UNAVAILABLE);
     }
     String approval = (String) r.get("approval_snapshot");
     if (approval == null
@@ -90,9 +93,11 @@ public final class ExecutionScopeConsumptionServiceImpl
         || !req.approvalDigest().equals(r.get("approval_digest"))
         || !req.instanceUuid().equals(r.get("instance_uuid"))
         || !req.instanceUuid().equals(records.serverUuid())
-        || !req.schema().equals(records.schema())) fail("EVALUATION_SCOPE_NOT_ALLOWED");
+        || !req.schema().equals(records.schema()))
+      fail(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
     String candidate = records.activeCandidate(approval);
-    if (!"qwen3.7-plus-2026-05-26".equals(candidate)) fail("EVALUATION_SCOPE_NOT_ALLOWED");
+    if (!"qwen3.7-plus-2026-05-26".equals(candidate))
+      fail(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
     return req;
   }
 
@@ -104,44 +109,48 @@ public final class ExecutionScopeConsumptionServiceImpl
         || !req.runId().equals(run.get("id"))
         || !req.runId().equals(records.evaluationRunId())
         || !java.util.Objects.equals(r.get("plan_digest"), run.get("plan_digest")))
-      throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+      throw new TaskFailure(409, ModelErrorCode.BUSINESS_POLICY_CONFLICT);
     var plan = records.plan("qwen-main-v1");
     if (!records.planDigest(plan).equals(r.get("plan_digest"))
         || !plan.materialsDigest().equals(r.get("materials_digest")))
-      throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+      throw new TaskFailure(409, ModelErrorCode.BUSINESS_POLICY_CONFLICT);
   }
 
   public String require(
       String tenant, Map<String, Object> run, Map<String, Object> task, ModelSnapshot model) {
     boolean claimed = task != null && task.get("execution_scope_digest") != null;
-    if (task != null && !claimed) fail("EVALUATION_SCOPE_LEGACY_UNBOUND");
+    if (task != null && !claimed) fail(ModelErrorCode.EVALUATION_SCOPE_LEGACY_UNBOUND);
     try {
       var req = requirement(tenant);
       var receipt = receipt(tenant);
       if (run == null
           || !req.runId().equals(run.get("id"))
-          || !req.runId().equals(records.evaluationRunId())) fail("EVALUATION_SCOPE_NOT_ALLOWED");
+          || !req.runId().equals(records.evaluationRunId()))
+        fail(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
       var rows = records.scopes(tenant, req.runId());
       if (rows.isEmpty()) {
-        fail(claimed ? "EVALUATION_SCOPE_MISMATCH" : "EVALUATION_SCOPE_UNAVAILABLE");
+        fail(
+            claimed
+                ? ModelErrorCode.EVALUATION_SCOPE_MISMATCH
+                : ModelErrorCode.EVALUATION_SCOPE_UNAVAILABLE);
       }
       var row = rows.getFirst();
       String json = (String) row.get("scope_snapshot"), digest = (String) row.get("scope_digest");
       var scope = records.readScope(json);
       if (((Number) row.get("record_version")).intValue() != 1
           || !records.hash(json).equals(digest)
-          || !json.equals(records.canonical(scope))) fail("EVALUATION_SCOPE_MISMATCH");
+          || !json.equals(records.canonical(scope))) fail(ModelErrorCode.EVALUATION_SCOPE_MISMATCH);
       if (!matches(req, scope)
           || !scope.planDigest().equals(run.get("plan_digest"))
           || !scope.planDigest().equals(receipt.get("plan_digest"))
           || !scope.materialsDigest().equals(receipt.get("materials_digest")))
-        fail("EVALUATION_SCOPE_MISMATCH");
+        fail(ModelErrorCode.EVALUATION_SCOPE_MISMATCH);
       var selection = records.evaluationSelection();
       if (selection == null
           || !scope.planDigest().equals(records.planDigest(selection.plan()))
           || !scope.materialsDigest().equals(selection.plan().materialsDigest())
           || !scope.sourcePlanSha256().equals(selection.plan().sourcePlanSha256()))
-        fail("EVALUATION_SCOPE_NOT_ALLOWED");
+        fail(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
       var pin = scope.pin(model.profile());
       if (!scope.allowedModel().equals(model.model())
           || !scope.allowedRevision().equals(model.revision())
@@ -152,17 +161,17 @@ public final class ExecutionScopeConsumptionServiceImpl
           || !pin.modelSnapshotDigest().equals(records.modelDigest(model))
           || !model.profile().equals(scope.sampleProfiles().get(selection.sample()))
           || scope.localOnly() != records.localEvaluation(model))
-        fail("EVALUATION_SCOPE_NOT_ALLOWED");
+        fail(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
       if (claimed
           && (!digest.equals(task.get("execution_scope_digest"))
               || !req.runId().equals(task.get("evaluation_run_id"))))
-        fail("EVALUATION_SCOPE_MISMATCH");
+        fail(ModelErrorCode.EVALUATION_SCOPE_MISMATCH);
       return digest;
     } catch (IllegalArgumentException invalid) {
-      fail("EVALUATION_SCOPE_MISMATCH");
+      fail(ModelErrorCode.EVALUATION_SCOPE_MISMATCH);
     } catch (TaskFailure failure) {
-      if (claimed && !failure.code().equals("EVALUATION_SCOPE_MISMATCH"))
-        fail("EVALUATION_SCOPE_MISMATCH");
+      if (claimed && !failure.code().equals(ModelErrorCode.EVALUATION_SCOPE_MISMATCH))
+        fail(ModelErrorCode.EVALUATION_SCOPE_MISMATCH);
       throw failure;
     }
     throw new IllegalStateException("Unreachable scope validation");
@@ -195,11 +204,11 @@ public final class ExecutionScopeConsumptionServiceImpl
             if (!needed(tenant, task)) return null;
             if (task != null) {
               if (task.get("execution_scope_digest") == null)
-                throw new TaskFailure(409, "EVALUATION_SCOPE_LEGACY_UNBOUND");
+                throw new TaskFailure(409, ModelErrorCode.EVALUATION_SCOPE_LEGACY_UNBOUND);
               try {
                 model = records.historicalSnapshot(task);
               } catch (TaskFailure | IllegalArgumentException corrupt) {
-                throw new TaskFailure(409, "EVALUATION_SCOPE_MISMATCH");
+                throw new TaskFailure(409, ModelErrorCode.EVALUATION_SCOPE_MISMATCH);
               }
             }
             String digest = require(tenant, evaluation, task, model);
@@ -208,15 +217,16 @@ public final class ExecutionScopeConsumptionServiceImpl
                 records.available(model);
                 records.checkEvaluation(task, evaluation, model);
               } catch (TaskFailure | IllegalArgumentException corrupt) {
-                throw new TaskFailure(409, "EVALUATION_SCOPE_MISMATCH");
+                throw new TaskFailure(409, ModelErrorCode.EVALUATION_SCOPE_MISMATCH);
               }
             }
             return digest;
           });
     } catch (ExecutionScopeConsumptionRecords.Unavailable unavailable) {
-      throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
+      throw new TaskFailure(503, ModelErrorCode.EVALUATION_SCOPE_UNAVAILABLE);
     } catch (TaskFailure failure) {
-      if (List.of("EVALUATION_SCOPE_MISMATCH", "BUSINESS_POLICY_CONFLICT").contains(failure.code())
+      if (List.of(ModelErrorCode.EVALUATION_SCOPE_MISMATCH, ModelErrorCode.BUSINESS_POLICY_CONFLICT)
+              .contains(failure.code())
           && evaluation != null) {
         records.stopRun(tenant, s(evaluation, "id"));
         if (task != null)
@@ -250,27 +260,29 @@ public final class ExecutionScopeConsumptionServiceImpl
             || task.get("evaluation_snapshot") != null
             || !java.util.Objects.equals(
                 task.get("evaluation_run_id"), run == null ? null : run.get("id")))
-          throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+          throw new TaskFailure(409, ModelErrorCode.BUSINESS_POLICY_CONFLICT);
         policy = records.readPolicy(json);
         if (!(n(task, "record_version") == 2 && policy.version() == 1
             || n(task, "record_version") == 3 && policy.version() == 2))
-          throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+          throw new TaskFailure(409, ModelErrorCode.BUSINESS_POLICY_CONFLICT);
         if (!records.canonical(policy).equals(json))
-          throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+          throw new TaskFailure(409, ModelErrorCode.BUSINESS_POLICY_CONFLICT);
         model = records.historicalSnapshot(task);
       }
       records.validate(policy);
       records.retainedBusiness(policy);
       if (!tenant.equals(policy.anchor().tenantId()))
-        throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+        throw new TaskFailure(409, ModelErrorCode.BUSINESS_POLICY_CONFLICT);
       businessAnchor(policy, run);
-      if (records.boundPlan(run) == null) throw new TaskFailure(503, "BUSINESS_POLICY_UNAVAILABLE");
+      if (records.boundPlan(run) == null)
+        throw new TaskFailure(503, ModelErrorCode.BUSINESS_POLICY_UNAVAILABLE);
       records.profile(policy, model, records.localEvaluation(model));
       records.available(model);
     } catch (IllegalArgumentException corrupt) {
-      throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+      throw new TaskFailure(409, ModelErrorCode.BUSINESS_POLICY_CONFLICT);
     } catch (TaskFailure invalid) {
-      if (invalid.status() == 409) throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
+      if (invalid.status() == 409)
+        throw new TaskFailure(409, ModelErrorCode.BUSINESS_POLICY_CONFLICT);
       throw invalid;
     }
   }

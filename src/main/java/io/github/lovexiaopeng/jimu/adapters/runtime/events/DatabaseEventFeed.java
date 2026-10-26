@@ -1,5 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.events;
 
+import io.github.lovexiaopeng.jimu.kernel.event.api.EventErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.event.api.EventFeedPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.EventFeed;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
@@ -21,7 +23,8 @@ public final class DatabaseEventFeed implements EventFeed, AutoCloseable {
   private final Tasks tasks;
   private final Authenticator auth;
   private final Map<String, Integer> subscriptions = new HashMap<>();
-  private final ScheduledExecutorService readers = Executors.newScheduledThreadPool(32);
+  private final ScheduledExecutorService readers =
+      Executors.newScheduledThreadPool(EventFeedPolicyV1.SUBSCRIPTIONS);
 
   public DatabaseEventFeed(Tasks tasks, Authenticator auth) {
     this.tasks = tasks;
@@ -36,12 +39,13 @@ public final class DatabaseEventFeed implements EventFeed, AutoCloseable {
       Consumer<Tasks.Event> event,
       Runnable complete) {
     var identity = auth.authenticate(authorization);
-    tasks.events(identity, taskId, cursor, 64);
+    tasks.events(identity, taskId, cursor, EventFeedPolicyV1.BATCH);
     String key = identity.tenant() + ":" + identity.actor() + ":" + taskId;
     synchronized (subscriptions) {
-      if (subscriptions.values().stream().mapToInt(Integer::intValue).sum() >= 32
-          || subscriptions.getOrDefault(key, 0) >= 2)
-        throw new TaskFailure(429, "SUBSCRIPTION_LIMIT");
+      if (subscriptions.values().stream().mapToInt(Integer::intValue).sum()
+              >= EventFeedPolicyV1.SUBSCRIPTIONS
+          || subscriptions.getOrDefault(key, 0) >= EventFeedPolicyV1.PER_ACTOR_TASK)
+        throw new TaskFailure(429, EventErrorCode.SUBSCRIPTION_LIMIT);
       subscriptions.merge(key, 1, Integer::sum);
     }
     AtomicBoolean closed = new AtomicBoolean();
@@ -65,20 +69,21 @@ public final class DatabaseEventFeed implements EventFeed, AutoCloseable {
               if (closed.get()) return;
               try {
                 var current = auth.authenticate(authorization);
-                for (var item : tasks.events(current, taskId, last[0], 64)) {
+                for (var item : tasks.events(current, taskId, last[0], EventFeedPolicyV1.BATCH)) {
                   tasks.events(auth.authenticate(authorization), taskId, last[0], 1);
                   event.accept(item);
                   last[0] = item.seq();
                 }
                 if ((tasks.get(current, taskId).terminal()
                         && tasks.events(current, taskId, last[0], 1).isEmpty())
-                    || System.nanoTime() - started > TimeUnit.SECONDS.toNanos(25)) close.run();
+                    || System.nanoTime() - started
+                        > TimeUnit.SECONDS.toNanos(EventFeedPolicyV1.LIFETIME_SECONDS)) close.run();
               } catch (RuntimeException failure) {
                 close.run();
               }
             },
-            50,
-            100,
+            EventFeedPolicyV1.INITIAL_DELAY_MILLIS,
+            EventFeedPolicyV1.POLL_MILLIS,
             TimeUnit.MILLISECONDS));
     return close::run;
   }

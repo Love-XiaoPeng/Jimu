@@ -1,7 +1,12 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.session;
 
+import io.github.lovexiaopeng.jimu.kernel.session.api.PriorSessionPolicyV4;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionEventSearchPolicyV1;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionTracePolicyV3;
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import jakarta.servlet.AsyncEvent;
 import jakarta.servlet.AsyncListener;
 import jakarta.servlet.Filter;
@@ -55,20 +60,20 @@ public final class SessionSearchBodyFilter implements Filter {
             stream,
             search,
             ((jakarta.servlet.http.HttpServletRequest) request).getRequestURI().endsWith("/trace")
-                ? 1024
+                ? SessionTracePolicyV3.INPUT_BYTES
                 : ((jakarta.servlet.http.HttpServletRequest) request)
                         .getRequestURI()
                         .equals("/api/session-search/tasks")
-                    ? 16384
+                    ? PriorSessionPolicyV4.ADMISSION_BYTES
                     : ((jakarta.servlet.http.HttpServletRequest) request)
                             .getRequestURI()
                             .endsWith("/session-search")
-                        ? 4096
-                        : 2048);
+                        ? PriorSessionPolicyV4.INPUT_BYTES
+                        : SessionEventSearchPolicyV1.INPUT_BYTES);
     request.getAsyncContext().addListener(reader);
     reader.timeout(
         deadlines.schedule(
-            () -> reader.fail(new TaskFailure(504, "SESSION_QUERY_TIMEOUT")),
+            () -> reader.fail(new TaskFailure(504, SessionErrorCode.SESSION_QUERY_TIMEOUT)),
             Math.max(0, search.deadlineNanos() - System.nanoTime()),
             java.util.concurrent.TimeUnit.NANOSECONDS));
     stream.setReadListener(reader);
@@ -101,14 +106,14 @@ public final class SessionSearchBodyFilter implements Filter {
     public synchronized void onDataAvailable() throws IOException {
       while (!done && stream.isReady() && !stream.isFinished()) {
         if (System.nanoTime() >= search.deadlineNanos()) {
-          fail(new TaskFailure(504, "SESSION_QUERY_TIMEOUT"));
+          fail(new TaskFailure(504, SessionErrorCode.SESSION_QUERY_TIMEOUT));
           return;
         }
         int next = stream.read();
         if (next < 0) break;
         bytes.write(next);
         if (bytes.size() > max) {
-          fail(new TaskFailure(400, "TOOL_INPUT_INVALID"));
+          fail(new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID));
           return;
         }
       }
@@ -141,7 +146,7 @@ public final class SessionSearchBodyFilter implements Filter {
 
     @Override
     public void onError(Throwable failure) {
-      fail(new TaskFailure(400, "TOOL_INPUT_INVALID"));
+      fail(new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID));
     }
 
     @Override
@@ -153,12 +158,12 @@ public final class SessionSearchBodyFilter implements Filter {
 
     @Override
     public void onTimeout(AsyncEvent event) {
-      fail(new TaskFailure(504, "SESSION_QUERY_TIMEOUT"));
+      fail(new TaskFailure(504, SessionErrorCode.SESSION_QUERY_TIMEOUT));
     }
 
     @Override
     public void onError(AsyncEvent event) {
-      fail(new TaskFailure(400, "TOOL_INPUT_INVALID"));
+      fail(new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID));
     }
 
     @Override

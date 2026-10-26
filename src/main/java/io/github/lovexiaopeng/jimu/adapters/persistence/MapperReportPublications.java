@@ -4,9 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.persistence.artifact.mapper.ArtifactMapper;
 import io.github.lovexiaopeng.jimu.kernel.artifact.port.ReportPublications;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.UsageQuality;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.PluginPin;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.ReportFile;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +40,7 @@ final class MapperReportPublications implements ReportPublications {
       }
 
       public PluginPin compositionPin() {
-        return ledger.tools(row).pins().get("compose_report");
+        return ledger.tools(row).pins().get(ToolCapability.COMPOSE_REPORT);
       }
 
       public List<Composition> confirmed() {
@@ -177,7 +181,14 @@ final class MapperReportPublications implements ReportPublications {
 
   public void reserve(Lease lease, String artifact, long size) {
     ledger.reserve(
-        lease.tenant(), lease.taskId(), artifact, null, "STORAGE", size, "RESERVED", "KNOWN");
+        lease.tenant(),
+        lease.taskId(),
+        artifact,
+        null,
+        ReservationCategory.STORAGE,
+        size,
+        ReservationState.RESERVED,
+        UsageQuality.KNOWN);
   }
 
   public List<Artifact> stagedIds(Lease lease, String invocation) {

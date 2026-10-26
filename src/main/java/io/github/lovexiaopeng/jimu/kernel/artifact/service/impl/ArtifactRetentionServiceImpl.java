@@ -1,8 +1,11 @@
 package io.github.lovexiaopeng.jimu.kernel.artifact.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ArtifactReleaseReason;
 import io.github.lovexiaopeng.jimu.kernel.artifact.port.ArtifactRetentions;
 import io.github.lovexiaopeng.jimu.kernel.artifact.service.ArtifactRetentionService;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
 import java.time.Clock;
 import java.time.Instant;
@@ -32,12 +35,16 @@ public final class ArtifactRetentionServiceImpl implements ArtifactRetentionServ
                 boolean expired =
                     records.lockArtifactExpiry(candidate).isBefore(Instant.now(clock));
                 // Even a currently quiescent RUNNING task may acquire another attempt later.
-                if (expired && !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(task.state()))
-                  return false;
-                if (!expired && !List.of("FAILED", "CANCELLED").contains(task.state()))
+                if (expired
+                    && !List.of(TaskState.SUCCEEDED, TaskState.FAILED, TaskState.CANCELLED)
+                        .contains(task.state())) return false;
+                if (!expired
+                    && !List.of(TaskState.FAILED, TaskState.CANCELLED).contains(task.state()))
                   return false;
                 if (!task.writersQuiescent()) return false;
-                records.mark(candidate, expired ? "EXPIRED" : "ABANDONED");
+                records.mark(
+                    candidate,
+                    expired ? ArtifactReleaseReason.EXPIRED : ArtifactReleaseReason.ABANDONED);
                 return true;
               });
       if (!ready) continue;
@@ -48,7 +55,7 @@ public final class ArtifactRetentionServiceImpl implements ArtifactRetentionServ
             records.lockBudget(candidate.tenant());
             records.lockTask(candidate);
             var hold = records.hold(candidate);
-            if (!"RELEASED".equals(hold.state())) {
+            if (!ReservationState.RELEASED.equals(hold.state())) {
               records.releaseStorage(candidate.tenant(), hold.amount());
               records.releaseHold(candidate);
             }

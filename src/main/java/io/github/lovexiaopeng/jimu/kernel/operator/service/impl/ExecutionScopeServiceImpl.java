@@ -1,5 +1,8 @@
 package io.github.lovexiaopeng.jimu.kernel.operator.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationRunState;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.operator.api.ExecutionScopeApprovalV1;
 import io.github.lovexiaopeng.jimu.kernel.operator.api.OperatorScopes.Requirement;
 import io.github.lovexiaopeng.jimu.kernel.operator.api.OperatorScopes.Scope;
 import io.github.lovexiaopeng.jimu.kernel.operator.port.ScopeBindingCodec;
@@ -41,40 +44,45 @@ public final class ExecutionScopeServiceImpl implements ExecutionScopeService {
   }
 
   private static void reject(String code) {
-    throw new TaskFailure(code.equals("EVALUATION_SCOPE_UNAVAILABLE") ? 503 : 409, code);
+    throw new TaskFailure(
+        code.equals(ModelErrorCode.EVALUATION_SCOPE_UNAVAILABLE) ? 503 : 409, code);
   }
 
   public Map<String, Object> bindOnce(Input input) {
-    if (input == null || input.profiles() == null) reject("EVALUATION_SCOPE_NOT_ALLOWED");
+    if (input == null || input.profiles() == null)
+      reject(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
     var scope = input.scope();
     String snapshot = codec.canonical(scope), digest = codec.hash(snapshot);
-    if (input.boundBy() == null || input.boundBy().isBlank() || input.boundBy().length() > 160)
-      reject("EVALUATION_SCOPE_NOT_ALLOWED");
+    if (input.boundBy() == null
+        || input.boundBy().isBlank()
+        || input.boundBy().length() > ExecutionScopeApprovalV1.BOUND_BY_UTF16_UNITS)
+      reject(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
     return transactions.required(
         () -> {
           var run = records.lockRun(scope.tenantId(), scope.runId());
-          if (run == null) reject("EVALUATION_SCOPE_NOT_ALLOWED");
+          if (run == null) reject(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
           verify(input, run);
-          if (!"OPEN".equals(run.state())) reject("MODEL_BUDGET_EXCEEDED");
+          if (!EvaluationRunState.OPEN.equals(run.state()))
+            reject(ModelErrorCode.MODEL_BUDGET_EXCEEDED);
           var existing = records.binding(scope.tenantId(), scope.runId());
           if (existing != null) {
             if (!snapshot.equals(existing.snapshot()) || !digest.equals(existing.digest()))
-              reject("EVALUATION_SCOPE_BINDING_CONFLICT");
+              reject(ModelErrorCode.EVALUATION_SCOPE_BINDING_CONFLICT);
             return readback(existing, scope);
           }
           var budget = records.lockBudget(scope.tenantId());
           if (budget == null
-              || !"OPEN".equals(run.state())
-              || run.maxRequests() > 63
-              || run.maxCost() > 500000000
+              || !EvaluationRunState.OPEN.equals(run.state())
+              || run.maxRequests() > ExecutionScopeApprovalV1.REQUESTS
+              || run.maxCost() > ExecutionScopeApprovalV1.COST_MICROS
               || run.requestsUsed() != records.dispatchCount(scope.tenantId(), scope.runId()))
-            reject("EVALUATION_SCOPE_NOT_ALLOWED");
+            reject(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
           if (records.accountedCost(scope.tenantId(), scope.runId()) != run.costHeld()
               || records.invalidTasks(scope.tenantId(), scope.runId()) != 0
               || budget.costHeld() != records.tenantCost(scope.tenantId())
               || budget.modelUsed() != records.tenantModels(scope.tenantId())
               || records.invalidReservations(scope.tenantId(), scope.runId()) != 0)
-            reject("EVALUATION_SCOPE_LEDGER_UNPROVEN");
+            reject(ModelErrorCode.EVALUATION_SCOPE_LEDGER_UNPROVEN);
           records.insert(scope.tenantId(), scope.runId(), snapshot, digest, input.boundBy());
           return readback(records.binding(scope.tenantId(), scope.runId()), scope);
         });
@@ -82,7 +90,7 @@ public final class ExecutionScopeServiceImpl implements ExecutionScopeService {
 
   private ScopeBindingRecords.Receipt receipt(String tenant) {
     var rows = records.receipts(tenant);
-    if (rows.size() > 1) reject("EVALUATION_SCOPE_UNAVAILABLE");
+    if (rows.size() > 1) reject(ModelErrorCode.EVALUATION_SCOPE_UNAVAILABLE);
     return rows.isEmpty() ? null : rows.getFirst();
   }
 
@@ -98,7 +106,7 @@ public final class ExecutionScopeServiceImpl implements ExecutionScopeService {
         || req.runId() == null
         || req.schema() == null
         || req.instanceUuid() == null
-        || !codec.digest(req.approvalDigest())) reject("EVALUATION_SCOPE_UNAVAILABLE");
+        || !codec.digest(req.approvalDigest())) reject(ModelErrorCode.EVALUATION_SCOPE_UNAVAILABLE);
     String approval = r.approvalSnapshot();
     if (approval == null
         || r.version() != null && r.version() != 1
@@ -108,9 +116,10 @@ public final class ExecutionScopeServiceImpl implements ExecutionScopeService {
         || !req.approvalDigest().equals(r.approvalDigest())
         || !req.instanceUuid().equals(r.instanceUuid())
         || !req.instanceUuid().equals(records.serverUuid())
-        || !req.schema().equals(records.schema())) reject("EVALUATION_SCOPE_NOT_ALLOWED");
+        || !req.schema().equals(records.schema()))
+      reject(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
     if (!"qwen3.7-plus-2026-05-26".equals(codec.approvedCandidate(approval)))
-      reject("EVALUATION_SCOPE_NOT_ALLOWED");
+      reject(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
     // Preserve the original second read in the same transaction, including receipt cardinality.
     r = receipt(s.tenantId());
     var e = input.accountEvidence();
@@ -133,15 +142,16 @@ public final class ExecutionScopeServiceImpl implements ExecutionScopeService {
         || e.billingScope() == null
         || e.billingScope().isBlank()
         || !e.exactModelAuthorized()
-        || !e.egressVerified()) reject("EVALUATION_SCOPE_NOT_ALLOWED");
+        || !e.egressVerified()) reject(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
     var plan = codec.plan();
     if (!s.planDigest().equals(plan.digest())
         || !s.sourcePlanSha256().equals(plan.sourceSha())
         || !s.materialsDigest().equals(plan.materialsDigest())
-        || !plan.snapshot().equals(run.planSnapshot())) reject("EVALUATION_SCOPE_NOT_ALLOWED");
+        || !plan.snapshot().equals(run.planSnapshot()))
+      reject(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
     for (var entry : input.profiles().entrySet()) {
       var p = entry.getValue();
-      if (p == null) reject("EVALUATION_SCOPE_NOT_ALLOWED");
+      if (p == null) reject(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
       var pin = s.profilePins().get(entry.getKey());
       codec.validateProfile(p, s.localOnly());
       if (!s.allowedModel().equals(p.model())
@@ -151,11 +161,12 @@ public final class ExecutionScopeServiceImpl implements ExecutionScopeService {
           || pin.configVersion() != p.configVersion()
           || pin.stream() != p.stream()
           || !URI.create(p.baseUrl()).getHost().equals(e.apiHost())
-          || s.localOnly() != codec.localEvaluation(p)) reject("EVALUATION_SCOPE_NOT_ALLOWED");
+          || s.localOnly() != codec.localEvaluation(p))
+        reject(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
     }
     if (!s.localOnly()
         && (!"cn-beijing".equals(e.region()) || !"modelstudio-payg-cny".equals(e.billingScope())))
-      reject("EVALUATION_SCOPE_NOT_ALLOWED");
+      reject(ModelErrorCode.EVALUATION_SCOPE_NOT_ALLOWED);
   }
 
   private Map<String, Object> readback(ScopeBindingRecords.Binding row, Scope scope) {

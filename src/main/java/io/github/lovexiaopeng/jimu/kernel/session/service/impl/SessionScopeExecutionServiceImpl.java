@@ -1,5 +1,7 @@
 package io.github.lovexiaopeng.jimu.kernel.session.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.session.api.PriorSessionPolicyV4;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeExecution.Prior;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeExecution.ReadResult;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeExecution.Ref;
@@ -9,6 +11,7 @@ import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeExecution.Val
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeExecution.Window;
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeExecutionService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.util.ArrayList;
 
 /** 原require/输入来源/matcher/预算顺序，逐项截止/证明/refs/匹配及finally清理。 */
@@ -16,7 +19,8 @@ public final class SessionScopeExecutionServiceImpl implements SessionScopeExecu
   public SearchResult prior(Prior prior) {
     var scope = prior.require();
     for (String id : prior.sessions())
-      if (!scope.contains(id)) throw new TaskFailure(404, "SESSION_SCOPE_UNAVAILABLE");
+      if (!scope.contains(id))
+        throw new TaskFailure(404, SessionErrorCode.SESSION_SCOPE_UNAVAILABLE);
     var matcher = prior.matcher();
     var scanned = new ArrayList<Ref>();
     int eventBytes = 0;
@@ -30,11 +34,14 @@ public final class SessionScopeExecutionServiceImpl implements SessionScopeExecu
         for (int index = 0; index < records.size(); index++) {
           prior.deadline();
           var record = records.get(index);
-          if (record.seq() != index || scanned.size() >= 1024) throw corrupt();
+          if (record.seq() != index || scanned.size() >= PriorSessionPolicyV4.EVENTS)
+            throw corrupt();
           int bytes = record.snapshotBytes();
-          if (bytes > 16384 || bytes != record.storedBytes()) throw corrupt();
+          if (bytes > SessionHistoryPolicyV1.EVENT_BYTES || bytes != record.storedBytes())
+            throw corrupt();
           eventBytes += bytes;
-          if (eventBytes > 4194304) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+          if (eventBytes > PriorSessionPolicyV4.EVENT_BODY_BYTES)
+            throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
           var value = record.verify();
           scanned.add(source.ref(index, record.digest()));
           matcher.accept(value, record.digest(), cut);
@@ -65,7 +72,8 @@ public final class SessionScopeExecutionServiceImpl implements SessionScopeExecu
     var input = window.input();
     long upper = window.upper();
     if (input.sessionId() != null && !input.sessionId().equals(window.session())
-        || input.seq() > upper) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
+        || input.seq() > upper)
+      throw new TaskFailure(404, SessionErrorCode.SESSION_EVENT_NOT_FOUND);
     long from = Math.max(0, input.seq() - input.before());
     long to = Math.min(upper, input.seq() + input.after());
     var records = window.events(from, to);
@@ -87,11 +95,11 @@ public final class SessionScopeExecutionServiceImpl implements SessionScopeExecu
         (record.seq() < input.seq() ? before : after).add(window.summary(value));
       }
     }
-    if (target == null) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
+    if (target == null) throw new TaskFailure(404, SessionErrorCode.SESSION_EVENT_NOT_FOUND);
     return window.output(from, to, target, targetDigest, before, after, refs, records);
   }
 
   private static TaskFailure corrupt() {
-    return new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+    return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
   }
 }

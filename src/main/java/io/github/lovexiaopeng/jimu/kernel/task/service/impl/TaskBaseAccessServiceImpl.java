@@ -1,6 +1,8 @@
 package io.github.lovexiaopeng.jimu.kernel.task.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Identity;
 import io.github.lovexiaopeng.jimu.kernel.task.port.TaskBaseAccess;
@@ -16,12 +18,12 @@ public final class TaskBaseAccessServiceImpl implements TaskBaseAccessService {
     if (records.todoTask()) records.todoAccess();
     if (records.questionTask()) records.questionAccess();
     else if (currentEpoch != records.installationEpoch())
-      throw new TaskFailure(403, "CAPABILITY_REVOKED");
+      throw new TaskFailure(403, CommonErrorCode.CAPABILITY_REVOKED);
     if (records.capabilities().stream().anyMatch(McpLedger.NAMES::contains)) {
       if (!McpLedger.NAMES.containsAll(records.capabilities()))
-        throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+        throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
       records.mcpBinding();
     } else if (records.hasMcpSnapshot() || records.hasMcpDigest())
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
   }
 }

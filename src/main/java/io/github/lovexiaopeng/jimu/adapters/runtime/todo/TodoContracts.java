@@ -8,9 +8,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.todo.api.TodoPolicyV1;
 import io.github.lovexiaopeng.jimu.plugin.api.TodoPort;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -18,7 +22,7 @@ import java.util.HashSet;
 
 /** Byte-pinned catalog and strict untrusted model JSON boundary. */
 public final class TodoContracts {
-  public static final String NAME = "todo_write";
+  public static final String NAME = ToolCapability.TODO_WRITE;
   private static final JsonMapper STRICT =
       JsonMapper.builder(
               JsonFactory.builder()
@@ -108,8 +112,9 @@ public final class TodoContracts {
       char c = text.charAt(i);
       if (Character.isHighSurrogate(c)) {
         if (++i >= text.length() || !Character.isLowSurrogate(text.charAt(i)))
-          throw new TaskFailure(400, "TOOL_INPUT_INVALID");
-      } else if (Character.isLowSurrogate(c)) throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+          throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
+      } else if (Character.isLowSurrogate(c))
+        throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
@@ -137,7 +142,7 @@ public final class TodoContracts {
   public TodoPort.Result input(String raw) {
     try {
       unicode(raw);
-      if (bytes(raw) > 16384) throw new IllegalArgumentException("Input bytes");
+      if (bytes(raw) > TodoPolicyV1.INPUT_BYTES) throw new IllegalArgumentException("Input bytes");
       JsonNode node = STRICT.readTree(raw);
       in.validate(node);
       var items = new ArrayList<TodoPort.Item>();
@@ -147,8 +152,9 @@ public final class TodoContracts {
         String content = trim(item.path("content").textValue()),
             status = item.path("status").textValue();
         unicode(content);
-        if (content.isEmpty() || bytes(content) > 1024 || !seen.add(content))
-          throw new IllegalArgumentException("Content");
+        if (content.isEmpty()
+            || bytes(content) > TodoPolicyV1.ITEM_UTF8_BYTES
+            || !seen.add(content)) throw new IllegalArgumentException("Content");
         switch (status) {
           case "pending" -> pending++;
           case "in_progress" -> active++;
@@ -157,17 +163,19 @@ public final class TodoContracts {
         }
         items.add(new TodoPort.Item(content, status));
       }
-      if (active > 1 || bytes(Payloads.json(items)) > 8192)
+      if (active > TodoPolicyV1.IN_PROGRESS_ITEMS
+          || bytes(Payloads.json(items)) > TodoPolicyV1.LIST_BYTES)
         throw new IllegalArgumentException("List limit");
       return new TodoPort.Result(items, new TodoPort.Counts(pending, active, completed));
     } catch (IOException | IllegalArgumentException e) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
   public TodoPort.Result output(String raw) {
     try {
-      if (bytes(raw) > 16384) throw new TaskFailure(409, "TOOL_OUTPUT_TOO_LARGE");
+      if (bytes(raw) > TodoPolicyV1.INPUT_BYTES)
+        throw new TaskFailure(409, ToolErrorCode.TOOL_OUTPUT_TOO_LARGE);
       unicode(raw);
       var node = STRICT.readTree(raw);
       out.validate(node);
@@ -176,10 +184,10 @@ public final class TodoContracts {
         throw new IllegalArgumentException("Noncanonical output");
       return result;
     } catch (TaskFailure e) {
-      if (e.code().equals("TOOL_OUTPUT_TOO_LARGE")) throw e;
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      if (e.code().equals(ToolErrorCode.TOOL_OUTPUT_TOO_LARGE)) throw e;
+      throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
     } catch (IOException | IllegalArgumentException e) {
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
     }
   }
 

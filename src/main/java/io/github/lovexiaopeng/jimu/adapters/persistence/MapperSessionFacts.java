@@ -13,6 +13,7 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionFa
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionFactStepMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionFactTerminalMapper;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionFacts;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import java.time.Instant;
@@ -74,7 +75,7 @@ final class MapperSessionFacts implements SessionFacts.Fact {
     args.put("ew", wrapper);
     List<Map<String, Object>> rows =
         ledger.mappers.session().selectList(mapper.getName() + ".selectMaps", args);
-    if (rows.isEmpty()) throw new TaskFailure(404, "NOT_FOUND");
+    if (rows.isEmpty()) throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
     return rows.getFirst();
   }
 

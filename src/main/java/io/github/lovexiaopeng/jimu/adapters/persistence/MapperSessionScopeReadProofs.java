@@ -12,6 +12,7 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQuer
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryStepReadMapper;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeReadProofs;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.List;
 import java.util.Map;
 
@@ -164,7 +165,7 @@ final class MapperSessionScopeReadProofs implements SessionScopeReadProofs.Proof
 
   public String normalizedInput() {
     return records.normalizedScope(
-        task, step, "session_event_read", s(invocation, "input_snapshot"));
+        task, step, ToolCapability.SESSION_EVENT_READ, s(invocation, "input_snapshot"));
   }
 
   public boolean sameJson(String left, String right, int limit) {

@@ -6,9 +6,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity;
 import io.github.lovexiaopeng.jimu.adapters.persistence.plugin.mapper.InstallationMapper;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionAvailability;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Identity;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
 import java.util.AbstractList;
 import java.util.HashMap;
@@ -121,15 +123,15 @@ final class MapperSessionAvailability implements SessionAvailability {
   }
 
   private Installation first(List<Installation> rows) {
-    if (rows.isEmpty()) throw new TaskFailure(404, "NOT_FOUND");
+    if (rows.isEmpty()) throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
     return rows.getFirst();
   }
 
   public Installation readInstallation() {
-    return first(installed("session_event_read"));
+    return first(installed(ToolCapability.SESSION_EVENT_READ));
   }
 
   public Installation searchInstallation() {
-    return first(installed("session_event_search"));
+    return first(installed(ToolCapability.SESSION_EVENT_SEARCH));
   }
 }

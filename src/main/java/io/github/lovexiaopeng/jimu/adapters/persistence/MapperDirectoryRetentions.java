@@ -17,6 +17,7 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.Directo
 import io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.DirectoryStepReadMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.TaskDirectoryReadMapper;
 import io.github.lovexiaopeng.jimu.kernel.directory.port.DirectoryRetentions;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -46,7 +47,7 @@ final class MapperDirectoryRetentions implements DirectoryRetentions {
         .eq(TaskDirectoryReadEntity::getTenantId, tenant)
         .eq(TaskDirectoryReadEntity::getTaskId, task);
     var rows = select(TaskDirectoryReadMapper.class, wrapper);
-    if (rows.isEmpty()) throw new TaskFailure(404, "NOT_FOUND");
+    if (rows.isEmpty()) throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
     return rows.getFirst();
   }
 

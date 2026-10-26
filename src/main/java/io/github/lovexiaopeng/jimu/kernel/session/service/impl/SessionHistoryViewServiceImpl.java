@@ -1,8 +1,10 @@
 package io.github.lovexiaopeng.jimu.kernel.session.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionContentState;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionHistoryViews;
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionHistoryViewService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -15,7 +17,8 @@ public final class SessionHistoryViewServiceImpl implements SessionHistoryViewSe
   public String metadata(SessionHistoryViews.Projection records) {
     var history = records.history();
     long upper = history.nextSeq() - 1;
-    boolean readable = "PRESENT".equals(history.contentState()) && history.retained() == 1;
+    boolean readable =
+        SessionContentState.PRESENT.equals(history.contentState()) && history.retained() == 1;
     var value = new LinkedHashMap<String, Object>();
     value.put("version", records.version());
     value.put("session_id", records.sessionId());
@@ -40,7 +43,7 @@ public final class SessionHistoryViewServiceImpl implements SessionHistoryViewSe
       SessionHistoryViews.RecentQuery records, long upper) {
     var result = records.read(upper);
     if (result.size() != Math.min(8, upper + 1))
-      throw new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+      throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
     return result;
   }
 }

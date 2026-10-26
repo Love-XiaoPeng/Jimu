@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.contract;
 
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
 import java.io.IOException;
 import java.io.InputStream;
@@ -78,13 +79,13 @@ public final class BuiltinManifestLoader {
         List.of(
             Map.of(
                 "name",
-                "web_fetch",
+                ToolCapability.WEB_FETCH,
                 "inputSchema",
                 publicWeb ? ROOT + "input.schema.json" : "input.schema.json",
                 "outputSchema",
                 publicWeb ? ROOT + "output.schema.json" : "output.schema.json",
                 "sideEffect",
-                "read")));
+                ToolCapability.READ)));
     expect(
         manifest,
         "permissions",
@@ -108,7 +109,7 @@ public final class BuiltinManifestLoader {
     return new ToolDescriptor(
         "jimu.web.fetch",
         version,
-        "web_fetch",
+        ToolCapability.WEB_FETCH,
         ROOT + "input.schema.json",
         ROOT + "output.schema.json",
         OUTPUT_SHA256,

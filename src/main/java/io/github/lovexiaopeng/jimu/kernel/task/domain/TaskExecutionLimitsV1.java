@@ -8,5 +8,11 @@ public final class TaskExecutionLimitsV1 {
   public static final int MODEL_REQUESTS = 8;
   public static final int TOOL_INVOCATIONS = 20;
 
+  public static final int DEFAULT_COST_MICROS = 1000000;
+
+  public static final int MAX_UNSCOPED_COST_MICROS = 1000000;
+
+  public static final int DEFAULT_TOKENS = 65536;
+
   private TaskExecutionLimitsV1() {}
 }

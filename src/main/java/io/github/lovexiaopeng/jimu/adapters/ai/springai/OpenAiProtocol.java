@@ -8,8 +8,10 @@ import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Response;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.ToolCall;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.WireMessage;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -83,7 +85,7 @@ public final class OpenAiProtocol {
             || bytes.length > p.imageInput().maxImageBytes()
             || imageBytes > p.imageInput().maxTotalImageBytes())
           throw new io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure(
-              409, "MODEL_MEDIA_LIMIT_EXCEEDED");
+              409, ModelErrorCode.MODEL_MEDIA_LIMIT_EXCEEDED);
         messages.add(
             io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.provider(ref, bytes));
         continue;
@@ -201,15 +203,15 @@ public final class OpenAiProtocol {
     var calls = new ArrayList<ToolCall>();
     var ids = new HashSet<String>();
     var wireCalls = message.path("tool_calls");
-    boolean directory = authorizedTools.contains("working_directory");
-    boolean session = authorizedTools.contains("session_event_read");
+    boolean directory = authorizedTools.contains(ToolCapability.WORKING_DIRECTORY);
+    boolean session = authorizedTools.contains(ToolCapability.SESSION_EVENT_READ);
     if (!wireCalls.isMissingNode() && !wireCalls.isArray()) throw new IOException("Invalid calls");
     for (var c : wireCalls) {
       String id = c.path("id").asText();
       var function = c.path("function");
       var arguments = function.path("arguments");
-      boolean composition = "compose_report".equals(function.path("name").asText());
-      boolean todo = "todo_write".equals(function.path("name").asText());
+      boolean composition = ToolCapability.COMPOSE_REPORT.equals(function.path("name").asText());
+      boolean todo = ToolCapability.TODO_WRITE.equals(function.path("name").asText());
       boolean workspaceV3 =
           java.util.List.of("edit", "glob", "grep").contains(function.path("name").asText());
       if (calls.size() >= 20

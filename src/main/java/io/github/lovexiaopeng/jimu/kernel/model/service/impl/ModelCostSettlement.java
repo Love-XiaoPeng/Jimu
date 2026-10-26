@@ -1,6 +1,9 @@
 package io.github.lovexiaopeng.jimu.kernel.model.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.budget.api.CostQuality;
 import io.github.lovexiaopeng.jimu.kernel.budget.api.ModelCost;
+import io.github.lovexiaopeng.jimu.kernel.model.api.DispatchState;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.model.port.ModelCostRecords;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
@@ -12,7 +15,8 @@ final class ModelCostSettlement {
   private ModelCostSettlement() {}
 
   static ModelSnapshot prove(ModelCostRecords row) {
-    if (!"DISPATCHED".equals(row.state())) throw new TaskFailure(409, "DISPATCH_REJECTED");
+    if (!DispatchState.DISPATCHED.equals(row.state()))
+      throw new TaskFailure(409, ModelErrorCode.DISPATCH_REJECTED);
     try {
       var proof = row.proof();
       var model = proof.model();
@@ -30,7 +34,7 @@ final class ModelCostSettlement {
     } catch (TaskFailure | IllegalArgumentException corrupt) {
       // 原有特殊拒绝提交边界保留：先持久化 UNKNOWN/停止 run，再交 UoW 提交拒绝。
       row.invalidateProof();
-      throw new TaskFailure(409, "MODEL_SETTLEMENT_PROOF_INVALID");
+      throw new TaskFailure(409, ModelErrorCode.MODEL_SETTLEMENT_PROOF_INVALID);
     }
   }
 
@@ -66,10 +70,14 @@ final class ModelCostSettlement {
     }
     row.recordUsage(
         usage,
-        exceeded ? "BOUND_EXCEEDED" : unknown ? "USAGE_UNKNOWN" : "RESPONDED",
-        exceeded ? "MODEL_COST_BOUND_EXCEEDED" : unknown ? "MODEL_USAGE_UNKNOWN" : null,
+        exceeded
+            ? DispatchState.BOUND_EXCEEDED
+            : unknown ? DispatchState.USAGE_UNKNOWN : DispatchState.RESPONDED,
+        exceeded
+            ? ModelErrorCode.MODEL_COST_BOUND_EXCEEDED
+            : unknown ? ModelErrorCode.MODEL_USAGE_UNKNOWN : null,
         actual,
-        actual == null ? "UNKNOWN" : "KNOWN");
+        actual == null ? CostQuality.UNKNOWN : CostQuality.KNOWN);
     if (exceeded) row.stopFurtherDispatch();
     return exceeded || unknown;
   }

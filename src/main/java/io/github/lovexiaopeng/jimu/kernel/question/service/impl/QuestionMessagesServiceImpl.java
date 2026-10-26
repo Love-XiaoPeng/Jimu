@@ -2,7 +2,9 @@ package io.github.lovexiaopeng.jimu.kernel.question.service.impl;
 
 import io.github.lovexiaopeng.jimu.kernel.question.port.QuestionMessages;
 import io.github.lovexiaopeng.jimu.kernel.question.service.QuestionMessagesService;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -12,13 +14,13 @@ public final class QuestionMessagesServiceImpl implements QuestionMessagesServic
     if (!port.questionTask()) return result;
     for (var row : port.pending(port.tenant(), port.taskId())) {
       if (!port.hash(port.answer(row)).equals(port.answerDigest(row)))
-        throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+        throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
       result.put(
           port.id(row),
           port.encode(
               1,
               "answer_to_pending_question",
-              "ask_user_question",
+              ToolCapability.ASK_USER_QUESTION,
               port.id(row),
               port.provider(row),
               port.questions(row),

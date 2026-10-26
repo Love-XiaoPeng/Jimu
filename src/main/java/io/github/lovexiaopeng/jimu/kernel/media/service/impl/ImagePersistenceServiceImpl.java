@@ -1,13 +1,23 @@
 package io.github.lovexiaopeng.jimu.kernel.media.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.budget.api.BudgetErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.UsageQuality;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.media.api.ImagePolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.media.port.ImageRecords;
 import io.github.lovexiaopeng.jimu.kernel.media.service.ImagePersistenceService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
+import io.github.lovexiaopeng.jimu.plugin.api.FileErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ImageErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.ImagePort;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.List;
 
 /** Complete original image integrity and lifecycle orchestration in the caller's UoW. */
@@ -42,9 +52,9 @@ public final class ImagePersistenceServiceImpl implements ImagePersistenceServic
           var task = records.fenced(lease, true);
           // fenced holds evaluation -> budget -> task; only re-read our already locked budget.
           var budget = records.budget(lease.tenant());
-          if (1048576
+          if (ImagePolicyV1.NORMALIZED_BYTES
               > budget.storageLimit() - (budget.storageHeld() + budget.mediaCheckpointHeld()))
-            throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
+            throw new TaskFailure(429, BudgetErrorCode.STORAGE_BUDGET_EXCEEDED);
           String image = records.id();
           reserve(task, invocation, image, inputId);
           records.holdImageStorage(lease.tenant());
@@ -53,10 +63,10 @@ public final class ImagePersistenceServiceImpl implements ImagePersistenceServic
               lease.taskId(),
               image,
               null,
-              "MEDIA_STORAGE",
-              1048576,
-              "RESERVED",
-              "KNOWN");
+              ReservationCategory.MEDIA_STORAGE,
+              ImagePolicyV1.NORMALIZED_BYTES,
+              ReservationState.RESERVED,
+              UsageQuality.KNOWN);
           return image;
         });
   }
@@ -70,7 +80,8 @@ public final class ImagePersistenceServiceImpl implements ImagePersistenceServic
           succeeded(task, invocation, key, result);
           records.settleImageReservation(
               result.image().size(), lease.tenant(), result.image().imageId());
-          records.releaseImageStorage(1048576 - result.image().size(), lease.tenant());
+          records.releaseImageStorage(
+              ImagePolicyV1.NORMALIZED_BYTES - result.image().size(), lease.tenant());
           records.toolSucceeded(lease, invocation, records.json(result));
           return null;
         });
@@ -94,13 +105,16 @@ public final class ImagePersistenceServiceImpl implements ImagePersistenceServic
           var task = records.fenced(lease, false);
           records.cancelImageDecode(lease.tenant(), lease.taskId());
           records.event(
-              task, "image-decode-timeout", "task.cancel_requested", "IMAGE_DECODE_TIMEOUT");
+              task,
+              "image-decode-timeout",
+              "task.cancel_requested",
+              ImageErrorCode.IMAGE_DECODE_TIMEOUT);
           return null;
         });
   }
 
   private static TaskFailure corrupt() {
-    return new TaskFailure(409, "SNAPSHOT_CORRUPT");
+    return new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
   }
 
   public void insert(
@@ -159,7 +173,7 @@ public final class ImagePersistenceServiceImpl implements ImagePersistenceServic
         snapshot(task).entries().stream()
             .filter(e -> e.filePath().equals(path))
             .findFirst()
-            .orElseThrow(() -> new TaskFailure(409, "FS_NOT_FOUND"));
+            .orElseThrow(() -> new TaskFailure(409, FileErrorCode.FS_NOT_FOUND));
     var row = input(task, entry.inputId());
     byte[] bytes = records.decode(row.base64());
     if (bytes.length != entry.size()
@@ -175,7 +189,8 @@ public final class ImagePersistenceServiceImpl implements ImagePersistenceServic
     if (found.size() != 1
         || found.getFirst().valid() != 1
         || found.getFirst().revokedAt() != null
-        || found.getFirst().rawBase64() == null) throw new TaskFailure(409, "IMAGE_UNAVAILABLE");
+        || found.getFirst().rawBase64() == null)
+      throw new TaskFailure(409, ImageErrorCode.IMAGE_UNAVAILABLE);
     return found.getFirst();
   }
 
@@ -183,11 +198,11 @@ public final class ImagePersistenceServiceImpl implements ImagePersistenceServic
     snapshot(task);
     input(task, inputId);
     var inv = records.selectRunningImageInvocation(task.tenantId(), task.id(), invocation);
-    if (inv.size() != 1) throw new TaskFailure(409, "INVOCATION_STATE");
+    if (inv.size() != 1) throw new TaskFailure(409, InvocationErrorCode.INVOCATION_STATE);
     String path = records.filePath(inv.getFirst().inputSnapshot());
     if (!input(task, inputId).logicalPath().equals(path)) throw corrupt();
     if (!records.selectProducerImages(task.tenantId(), invocation).isEmpty())
-      throw new TaskFailure(409, "EFFECT_OUTCOME_UNKNOWN");
+      throw new TaskFailure(409, TaskErrorCode.EFFECT_OUTCOME_UNKNOWN);
     records.reserveImageObject(
         task.tenantId(), task.id(), image, invocation, inputId, "jimu-image-v1");
   }
@@ -227,14 +242,14 @@ public final class ImagePersistenceServiceImpl implements ImagePersistenceServic
             .orElseThrow(ImagePersistenceServiceImpl::corrupt);
     var input = input(task, entry.inputId());
     var rows = records.selectRetainedImageObject(task.tenantId(), task.id(), ref.image().imageId());
-    if (rows.size() != 1) throw new TaskFailure(409, "IMAGE_UNAVAILABLE");
+    if (rows.size() != 1) throw new TaskFailure(409, ImageErrorCode.IMAGE_UNAVAILABLE);
     var row = rows.getFirst();
     String invocation = row.producerInvocation();
     var invs = records.selectSucceededImageInvocation(task.tenantId(), task.id(), invocation);
     if (invs.size() != 1) throw corrupt();
     var inv = invs.getFirst();
     String output = inv.outputSnapshot(), args = inv.inputSnapshot();
-    var pin = records.readTools(task.toolsSnapshot()).pins().get("read_image");
+    var pin = records.readTools(task.toolsSnapshot()).pins().get(ToolCapability.READ_IMAGE);
     if (pin == null
         || !pin.version().equals(inv.pluginVersion())
         || !pin.digest().equals(inv.pluginDigest())

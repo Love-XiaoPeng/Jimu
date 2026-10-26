@@ -1,10 +1,14 @@
 package io.github.lovexiaopeng.jimu.kernel.invocation.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationState;
 import io.github.lovexiaopeng.jimu.kernel.invocation.port.WebFetchRecords;
 import io.github.lovexiaopeng.jimu.kernel.invocation.service.WebFetchService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 
 /** Original transaction, qualifications, first failure, and diagnostic/receipt event order. */
 public final class WebFetchServiceImpl implements WebFetchService {
@@ -24,10 +28,10 @@ public final class WebFetchServiceImpl implements WebFetchService {
           }
           var task = records.fenced(lease, false);
           var invocation = records.invocation(lease, invocationId);
-          if (!"web_fetch".equals(invocation.tool())
+          if (!ToolCapability.WEB_FETCH.equals(invocation.tool())
               || !"0.3.0".equals(invocation.version())
-              || !"RUNNING".equals(invocation.state()))
-            throw new TaskFailure(409, "INVOCATION_STATE");
+              || !InvocationState.RUNNING.equals(invocation.state()))
+            throw new TaskFailure(409, InvocationErrorCode.INVOCATION_STATE);
           boolean failed = observation.failure() != WebFetchObservation.Failure.NONE;
           task.event(
               (failed ? "web-failure:" : "web-phase:") + invocationId + ":" + observation.phase(),
@@ -43,7 +47,7 @@ public final class WebFetchServiceImpl implements WebFetchService {
     var cancellation = observation.cancellation();
     var task = records.lockDiagnosticTask(lease);
     if (records.diagnosticBindings(lease, invocationId) != 1)
-      throw new TaskFailure(409, "WEB_OBSERVATION_BINDING_REJECTED");
+      throw new TaskFailure(409, TaskErrorCode.WEB_OBSERVATION_BINDING_REJECTED);
     String fact = "web-cancel:" + invocationId + ":" + lease.fence();
     if (records.cancellationRecorded(lease, fact)) return;
     task.event(fact, "web.fetch_cancelled", cancellation.phase() + "_" + cancellation.reason());
@@ -65,7 +69,8 @@ public final class WebFetchServiceImpl implements WebFetchService {
         () -> {
           var task = records.fenced(lease, false);
           var invocation = records.invocation(lease, invocationId);
-          if (!"RUNNING".equals(invocation.state())) throw new TaskFailure(409, "INVOCATION_STATE");
+          if (!InvocationState.RUNNING.equals(invocation.state()))
+            throw new TaskFailure(409, InvocationErrorCode.INVOCATION_STATE);
           var step = records.step(lease, invocation.stepId());
           String digest = records.proof(task, step, invocation, output);
           var existing = records.receipts(lease, "web-result:" + invocationId);
@@ -73,11 +78,11 @@ public final class WebFetchServiceImpl implements WebFetchService {
             if (!digest.equals(existing.getFirst().code())
                 || !output.equals(invocation.output())
                 || !records.hash(output).equals(invocation.outputDigest()))
-              throw new TaskFailure(409, "WEB_RESULT_PROOF_INVALID");
+              throw new TaskFailure(409, TaskErrorCode.WEB_RESULT_PROOF_INVALID);
             return null;
           }
           if (invocation.output() != null || invocation.outputDigest() != null)
-            throw new TaskFailure(409, "WEB_RESULT_PROOF_INVALID");
+            throw new TaskFailure(409, TaskErrorCode.WEB_RESULT_PROOF_INVALID);
           records.preserve(lease, invocationId, output, records.hash(output));
           task.event("web-result:" + invocationId, "web.result_preserved", digest);
           return null;

@@ -6,6 +6,7 @@ import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionToolResultMapper;
 import io.github.lovexiaopeng.jimu.kernel.question.port.QuestionToolResult;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.PluginPin;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.Map;
 
 /** Stores original references only; no field, codec or session access in construction. */
@@ -30,7 +31,7 @@ final class MapperQuestionToolResult implements QuestionToolResult<PluginPin> {
   }
 
   public PluginPin pin() {
-    return ledger.tools(task).pins().get("ask_user_question");
+    return ledger.tools(task).pins().get(ToolCapability.ASK_USER_QUESTION);
   }
 
   public String version(PluginPin pin) {

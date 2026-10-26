@@ -3,9 +3,13 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.session;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionEventSearchPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionEventSearchPort;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.CodingErrorAction;
@@ -22,7 +26,7 @@ import java.util.List;
 
 /** ADR-0012 strict input and byte-pinned search contracts; no user expression evaluation. */
 public final class SessionSearchContracts {
-  public static final String NAME = "session_event_search";
+  public static final String NAME = ToolCapability.SESSION_EVENT_SEARCH;
   public static final List<String> TYPES =
       List.of("user.message", "step.started", "model.response", "session.read", "turn.ended");
   private static final DateTimeFormatter TIME =
@@ -113,7 +117,7 @@ public final class SessionSearchContracts {
 
   public SessionEventSearchPort.Input input(String raw) {
     try {
-      var node = history.strictJson(raw, 2048);
+      var node = history.strictJson(raw, SessionEventSearchPolicyV1.INPUT_BYTES);
       for (String key : List.of("seq_from", "seq_to"))
         if (node.has(key) && !node.path(key).isIntegralNumber()) throw invalid();
       input.validate(node);
@@ -131,7 +135,8 @@ public final class SessionSearchContracts {
           TYPES.stream()
               .filter(type -> !node.has("event_types") || contains(node.path("event_types"), type))
               .toList();
-      if (node.has("surfaces")) throw new TaskFailure(400, "SESSION_SEARCH_FILTER_UNSUPPORTED");
+      if (node.has("surfaces"))
+        throw new TaskFailure(400, SessionErrorCode.SESSION_SEARCH_FILTER_UNSUPPORTED);
       return new SessionEventSearchPort.Input(
           query,
           node.has("session_id") ? node.path("session_id").textValue() : null,
@@ -152,12 +157,14 @@ public final class SessionSearchContracts {
 
   private static void checkQuery(String value) {
     int count = value.codePointCount(0, value.length());
-    if (count < 1 || count > 256 || SessionContracts.bytes(value) > 1024 || value.indexOf(0) >= 0)
-      throw invalid();
+    if (count < 1
+        || count > SessionEventSearchPolicyV1.QUERY_CODEPOINTS
+        || SessionContracts.bytes(value) > SessionEventSearchPolicyV1.QUERY_UTF8_BYTES
+        || value.indexOf(0) >= 0) throw invalid();
   }
 
   private static TaskFailure invalid() {
-    return new TaskFailure(400, "TOOL_INPUT_INVALID");
+    return new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
   }
 
   public static Instant time(String value) {
@@ -176,7 +183,7 @@ public final class SessionSearchContracts {
 
   public String normalized(SessionEventSearchPort.Input value, String task, long upper) {
     if (value.sessionId() != null && !task.equals(value.sessionId()))
-      throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
+      throw new TaskFailure(404, SessionErrorCode.SESSION_EVENT_NOT_FOUND);
     var node = new LinkedHashMap<String, Object>();
     node.put("query", value.query());
     node.put("session_id", task);
@@ -186,16 +193,17 @@ public final class SessionSearchContracts {
     node.put("time_to", value.timeTo() == null ? null : UTC.format(value.timeTo()));
     node.put("event_types", value.eventTypes());
     String raw = Payloads.json(node);
-    if (SessionContracts.bytes(raw) > 2048) throw invalid();
+    if (SessionContracts.bytes(raw) > SessionEventSearchPolicyV1.INPUT_BYTES) throw invalid();
     return raw;
   }
 
   public void output(String raw) {
-    if (SessionContracts.bytes(raw) > 32768) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (SessionContracts.bytes(raw) > 32768)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
     try {
-      output.validate(history.json(raw, 32768));
+      output.validate(history.json(raw, SessionEventSearchPolicyV1.OUTPUT_BYTES));
     } catch (IllegalArgumentException | TaskFailure e) {
-      throw new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+      throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
     }
   }
 

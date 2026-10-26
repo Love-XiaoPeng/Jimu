@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.kernel.model.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.model.port.ModelWorkflowRecords.PlanAllowance;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 
@@ -40,6 +41,6 @@ final class ModelEvaluationAdmission {
         || phaseModelCalls >= modelPhaseLimit
         || phaseModelCost + cost > modelPhaseLimit * cost
         || sampleCalls >= (plan.sample().equals("W1") ? 7 : 6))
-      throw new TaskFailure(429, "MODEL_BUDGET_EXCEEDED");
+      throw new TaskFailure(429, ModelErrorCode.MODEL_BUDGET_EXCEEDED);
   }
 }

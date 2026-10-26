@@ -3,6 +3,7 @@ package io.github.lovexiaopeng.jimu.adapters.storage;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.ImageErrorCode;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -86,7 +87,8 @@ public final class SecureImageStore implements ArtifactStore {
   }
 
   private static Path name(String tenant, String key) {
-    if (!key.matches("[a-f0-9-]{36}-[a-f0-9]{64}")) throw new FileFailure("IMAGE_UNAVAILABLE");
+    if (!key.matches("[a-f0-9-]{36}-[a-f0-9]{64}"))
+      throw new FileFailure(ImageErrorCode.IMAGE_UNAVAILABLE);
     return Path.of(Payloads.hash(tenant) + "-" + key);
   }
 
@@ -133,7 +135,7 @@ public final class SecureImageStore implements ArtifactStore {
     try (var dir = open()) {
       return read(dir, name(tenant, key), hash, size);
     } catch (IOException e) {
-      throw new FileFailure("IMAGE_UNAVAILABLE");
+      throw new FileFailure(ImageErrorCode.IMAGE_UNAVAILABLE);
     }
   }
 
@@ -183,7 +185,7 @@ public final class SecureImageStore implements ArtifactStore {
         }
       }
     } catch (IOException e) {
-      throw new FileFailure("IMAGE_UNAVAILABLE");
+      throw new FileFailure(ImageErrorCode.IMAGE_UNAVAILABLE);
     }
   }
 
@@ -200,7 +202,7 @@ public final class SecureImageStore implements ArtifactStore {
       }
       force(dir);
     } catch (IOException e) {
-      throw new FileFailure("IMAGE_UNAVAILABLE");
+      throw new FileFailure(ImageErrorCode.IMAGE_UNAVAILABLE);
     }
   }
 
@@ -210,7 +212,7 @@ public final class SecureImageStore implements ArtifactStore {
       anchor(dir);
       force(dir);
     } catch (IOException e) {
-      throw new FileFailure("IMAGE_STORE_UNAVAILABLE");
+      throw new FileFailure(ImageErrorCode.IMAGE_STORE_UNAVAILABLE);
     }
   }
 }

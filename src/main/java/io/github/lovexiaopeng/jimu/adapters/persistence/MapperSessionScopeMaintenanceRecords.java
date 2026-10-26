@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionScopeMapper;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionContentState;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeMaintenanceRecords;
 import java.util.List;
 import java.util.function.Supplier;
@@ -64,8 +65,8 @@ final class MapperSessionScopeMaintenanceRecords implements SessionScopeMaintena
       }
 
       public boolean historyPresent() {
-        return "PRESENT"
-            .equals(JdbcLedger.s(ledger.sessions.history(task, false), "content_state"));
+        return SessionContentState.PRESENT.equals(
+            JdbcLedger.s(ledger.sessions.history(task, false), "content_state"));
       }
 
       public boolean cleanupSafe() {

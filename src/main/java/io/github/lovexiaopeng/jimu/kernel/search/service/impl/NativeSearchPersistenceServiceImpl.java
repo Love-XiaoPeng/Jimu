@@ -1,5 +1,13 @@
 package io.github.lovexiaopeng.jimu.kernel.search.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.budget.api.BudgetErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.UsageQuality;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationState;
+import io.github.lovexiaopeng.jimu.kernel.search.api.NativeResultPolicyV1;
+import io.github.lovexiaopeng.jimu.kernel.search.api.NativeSearchPhase;
 import io.github.lovexiaopeng.jimu.kernel.search.port.NativeSearchRecords;
 import io.github.lovexiaopeng.jimu.kernel.search.service.NativeSearchPersistenceService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Invocation;
@@ -8,6 +16,8 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger.NativeIden
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger.Result;
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger.Run;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SearchErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.List;
 import java.util.Map;
 
@@ -41,15 +51,19 @@ public final class NativeSearchPersistenceServiceImpl implements NativeSearchPer
               records.selectSearchInvocation(lease.tenant(), invocation.id(), lease.taskId());
           // A PROPOSED invocation can be admitted by a newer fenced attempt. Its original
           // proposal attempt is historical; the native run below records the current writer.
-          if (!"RUNNING".equals(call.state())
-              || !List.of("glob", "grep").contains(call.tool())
+          if (!InvocationState.RUNNING.equals(call.state())
+              || !List.of(ToolCapability.GLOB, ToolCapability.GREP).contains(call.tool())
               || !invocation.effectId().equals(call.effectIntentId()))
-            throw new TaskFailure(409, "INVOCATION_MISMATCH");
+            throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
           var aggregate = records.selectSearchAggregate(lease.tenant(), lease.taskId());
-          if (aggregate.roots() >= 20 || aggregate.bytes() + 4194304 > 8388608)
-            throw new TaskFailure(429, "SEARCH_RESULT_LIMIT");
-          if ((budget.storageHeld() + budget.mediaCheckpointHeld()) + 4194304
-              > budget.storageLimit()) throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
+          if (aggregate.roots() >= NativeResultPolicyV1.TASK_ROOTS
+              || aggregate.bytes() + NativeResultPolicyV1.DOCUMENT_BYTES
+                  > NativeResultPolicyV1.TASK_STORAGE_BYTES)
+            throw new TaskFailure(429, SearchErrorCode.SEARCH_RESULT_LIMIT);
+          if ((budget.storageHeld() + budget.mediaCheckpointHeld())
+                  + NativeResultPolicyV1.DOCUMENT_BYTES
+              > budget.storageLimit())
+            throw new TaskFailure(429, BudgetErrorCode.STORAGE_BUDGET_EXCEEDED);
           String host = records.selectSearchWorkerHost(lease.worker()).hostId();
           records.insertSearchRun(
               lease.tenant(),
@@ -69,10 +83,10 @@ public final class NativeSearchPersistenceServiceImpl implements NativeSearchPer
               lease.taskId(),
               "search:" + invocation.id(),
               null,
-              "SEARCH_STORAGE",
-              4194304,
-              "RESERVED",
-              "KNOWN");
+              ReservationCategory.SEARCH_STORAGE,
+              NativeResultPolicyV1.DOCUMENT_BYTES,
+              ReservationState.RESERVED,
+              UsageQuality.KNOWN);
           return null;
         });
   }
@@ -89,7 +103,7 @@ public final class NativeSearchPersistenceServiceImpl implements NativeSearchPer
                   lease.taskId(),
                   invocation,
                   lease.attemptId())
-              != 1) throw new TaskFailure(409, "SEARCH_PROCESS_UNPROVEN");
+              != 1) throw new TaskFailure(409, SearchErrorCode.SEARCH_PROCESS_UNPROVEN);
           return null;
         });
   }
@@ -106,7 +120,7 @@ public final class NativeSearchPersistenceServiceImpl implements NativeSearchPer
                   run.tenant(), run.invocation(), run.task(), run.effect(), run.worker());
           String fact = records.json(identity);
           if (row.processIdentityObject() != null && !fact.equals(row.processIdentityObject()))
-            throw new TaskFailure(409, "SEARCH_PROCESS_UNPROVEN");
+            throw new TaskFailure(409, SearchErrorCode.SEARCH_PROCESS_UNPROVEN);
           records.insertSearchStop(run.tenant(), run.invocation(), records.hash(fact), fact);
           records.stopSearchRun(fact, run.tenant(), run.invocation());
           records.settleStoppedWriters(task);
@@ -117,8 +131,11 @@ public final class NativeSearchPersistenceServiceImpl implements NativeSearchPer
   @Override
   public void searchCompleted(
       Lease lease, String invocation, String hash, long size, Map<String, Integer> cursors) {
-    if (size < 0 || size > 4194304 || !hash.matches("[a-f0-9]{64}") || cursors.size() > 100000)
-      throw new TaskFailure(409, "SEARCH_RESULT_LIMIT");
+    if (size < 0
+        || size > NativeResultPolicyV1.DOCUMENT_BYTES
+        || !hash.matches("[a-f0-9]{64}")
+        || cursors.size() > NativeResultPolicyV1.CURSORS)
+      throw new TaskFailure(409, SearchErrorCode.SEARCH_RESULT_LIMIT);
     records.leaseTransaction(
         lease,
         () -> {
@@ -126,11 +143,12 @@ public final class NativeSearchPersistenceServiceImpl implements NativeSearchPer
           var run =
               records.selectSearchCompleteRun(
                   lease.tenant(), lease.taskId(), invocation, lease.attemptId());
-          if (!"STOPPED".equals(run.phase()) || run.resultHashObject() != null)
-            throw new TaskFailure(409, "SEARCH_PROCESS_UNPROVEN");
+          if (!NativeSearchPhase.STOPPED.equals(run.phase()) || run.resultHashObject() != null)
+            throw new TaskFailure(409, SearchErrorCode.SEARCH_PROCESS_UNPROVEN);
           records.completeSearchRun(hash, size, records.json(cursors), lease.tenant(), invocation);
           records.settleSearchStorage(size, lease.tenant(), "search:" + invocation);
-          records.releaseCompletedSearchStorage(4194304 - size, lease.tenant());
+          records.releaseCompletedSearchStorage(
+              NativeResultPolicyV1.DOCUMENT_BYTES - size, lease.tenant());
           return null;
         });
   }
@@ -145,7 +163,7 @@ public final class NativeSearchPersistenceServiceImpl implements NativeSearchPer
             var index = records.readIndex(row.cursorIndex());
             if (!index.has(cursor)) continue;
             if (!query.equals(row.queryDigest()) || !pin.equals(row.toolPin()))
-              throw new TaskFailure(409, "SEARCH_CURSOR_INVALID");
+              throw new TaskFailure(409, SearchErrorCode.SEARCH_CURSOR_INVALID);
             return new Result(
                 row.rootInvocation(),
                 row.runtimeDirectory(),
@@ -153,7 +171,7 @@ public final class NativeSearchPersistenceServiceImpl implements NativeSearchPer
                 row.resultSize(),
                 index.path(cursor).intValue());
           }
-          throw new TaskFailure(409, "SEARCH_CURSOR_INVALID");
+          throw new TaskFailure(409, SearchErrorCode.SEARCH_CURSOR_INVALID);
         });
   }
 
@@ -193,7 +211,7 @@ public final class NativeSearchPersistenceServiceImpl implements NativeSearchPer
                     row.workerId(),
                     row.runtimeDirectory(),
                     row.snapshotDigest(),
-                    "STOPPED",
+                    NativeSearchPhase.STOPPED,
                     records.readIdentity(row.processIdentity()),
                     true))
         .toList();
@@ -208,10 +226,11 @@ public final class NativeSearchPersistenceServiceImpl implements NativeSearchPer
           var row =
               records.selectSearchRemovalRun(
                   run.tenant(), run.invocation(), run.task(), run.effect());
-          if (!"STOPPED".equals(row.phase())) throw new TaskFailure(409, "SEARCH_PROCESS_UNPROVEN");
+          if (!NativeSearchPhase.STOPPED.equals(row.phase()))
+            throw new TaskFailure(409, SearchErrorCode.SEARCH_PROCESS_UNPROVEN);
           var reservation =
               records.selectSearchRemovalReservation(run.tenant(), "search:" + run.invocation());
-          if (!"RELEASED".equals(reservation.state())) {
+          if (!ReservationState.RELEASED.equals(reservation.state())) {
             long held =
                 reservation.actualObject() == null ? reservation.amount() : reservation.actual();
             records.releaseRemovedSearchStorage(held, run.tenant());

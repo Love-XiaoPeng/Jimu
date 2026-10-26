@@ -2,6 +2,7 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.worker;
 
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
+import io.github.lovexiaopeng.jimu.kernel.worker.api.WorkerLeasePolicyV1;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -27,7 +28,7 @@ public final class LedgerMaintenance implements AutoCloseable {
           }
         },
         0,
-        10,
+        WorkerLeasePolicyV1.MAINTENANCE_SECONDS,
         TimeUnit.SECONDS);
   }
 

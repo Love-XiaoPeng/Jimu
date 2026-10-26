@@ -6,7 +6,11 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpRuntime;
 import io.github.lovexiaopeng.jimu.adapters.runtime.web.FetchRuntime;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.FileErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.McpErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -41,14 +45,14 @@ final class HostToolDefinitions {
     var result = new ArrayList<ToolDefinition>();
     for (String name : lease.capabilities()) {
       if (io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.NAMES.contains(name)) {
-        if (mcp == null) throw new TaskFailure(503, "MCP_NOT_CONFIGURED");
+        if (mcp == null) throw new TaskFailure(503, McpErrorCode.MCP_NOT_CONFIGURED);
         mcp.available();
         var contract = mcp.contract(name);
         var pin = pins.get(name);
         if (pin == null
             || !pin.version().equals(contract.descriptor().version())
             || !pin.digest().equals(contract.descriptor().outputSha256()))
-          throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+          throw new TaskFailure(409, TaskErrorCode.PLUGIN_PIN_MISMATCH);
         result.add(
             ToolDefinition.builder()
                 .name(name)
@@ -57,13 +61,13 @@ final class HostToolDefinitions {
                 .build());
         continue;
       }
-      if (name.equals("working_directory")) {
+      if (name.equals(ToolCapability.WORKING_DIRECTORY)) {
         var contracts =
             new io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryContracts();
         var pin = pins.get(name);
         if (!pin.version().equals(contracts.descriptor().version())
             || !pin.digest().equals(contracts.descriptor().outputSha256()))
-          throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+          throw new TaskFailure(409, TaskErrorCode.PLUGIN_PIN_MISMATCH);
         result.add(
             ToolDefinition.builder()
                 .name(name)
@@ -72,13 +76,13 @@ final class HostToolDefinitions {
                 .build());
         continue;
       }
-      if (name.equals("session_search")) {
+      if (name.equals(ToolCapability.SESSION_SEARCH)) {
         var contracts =
             new io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionContracts();
         var pin = pins.get(name);
         if (!pin.version().equals(contracts.descriptor().version())
             || !pin.digest().equals(contracts.descriptor().outputSha256()))
-          throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+          throw new TaskFailure(409, TaskErrorCode.PLUGIN_PIN_MISMATCH);
         result.add(
             ToolDefinition.builder()
                 .name(name)
@@ -87,13 +91,13 @@ final class HostToolDefinitions {
                 .build());
         continue;
       }
-      if (name.equals("session_event_trace")) {
+      if (name.equals(ToolCapability.SESSION_EVENT_TRACE)) {
         var contracts =
             new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTraceContracts();
         var pin = pins.get(name);
         if (!pin.version().equals(contracts.descriptor().version())
             || !pin.digest().equals(contracts.descriptor().outputSha256()))
-          throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+          throw new TaskFailure(409, TaskErrorCode.PLUGIN_PIN_MISMATCH);
         result.add(
             ToolDefinition.builder()
                 .name(name)
@@ -102,14 +106,14 @@ final class HostToolDefinitions {
                 .build());
         continue;
       }
-      if (name.equals("session_event_search")) {
+      if (name.equals(ToolCapability.SESSION_EVENT_SEARCH)) {
         var contracts =
             new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts(
-                lease.capabilities().contains("session_event_trace") ? 3 : 2);
+                lease.capabilities().contains(ToolCapability.SESSION_EVENT_TRACE) ? 3 : 2);
         var pin = pins.get(name);
         if (!pin.version().equals(contracts.descriptor().version())
             || !pin.digest().equals(contracts.descriptor().outputSha256()))
-          throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+          throw new TaskFailure(409, TaskErrorCode.PLUGIN_PIN_MISMATCH);
         result.add(
             ToolDefinition.builder()
                 .name(name)
@@ -118,18 +122,20 @@ final class HostToolDefinitions {
                 .build());
         continue;
       }
-      if (name.equals("session_event_read")) {
+      if (name.equals(ToolCapability.SESSION_EVENT_READ)) {
         var contracts =
             new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts(
-                lease.capabilities().contains("session_search")
+                lease.capabilities().contains(ToolCapability.SESSION_SEARCH)
                     ? 4
-                    : lease.capabilities().contains("session_event_trace")
+                    : lease.capabilities().contains(ToolCapability.SESSION_EVENT_TRACE)
                         ? 3
-                        : lease.capabilities().contains("session_event_search") ? 2 : 1);
+                        : lease.capabilities().contains(ToolCapability.SESSION_EVENT_SEARCH)
+                            ? 2
+                            : 1);
         var pin = pins.get(name);
         if (!pin.version().equals(contracts.descriptor().version())
             || !pin.digest().equals(contracts.descriptor().outputSha256()))
-          throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+          throw new TaskFailure(409, TaskErrorCode.PLUGIN_PIN_MISMATCH);
         result.add(
             ToolDefinition.builder()
                 .name(name)
@@ -138,12 +144,12 @@ final class HostToolDefinitions {
                 .build());
         continue;
       }
-      if (name.equals("todo_write")) {
+      if (name.equals(ToolCapability.TODO_WRITE)) {
         var contracts = new io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts();
         var pin = pins.get(name);
         if (!pin.version().equals(contracts.descriptor().version())
             || !pin.digest().equals(contracts.descriptor().outputSha256()))
-          throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+          throw new TaskFailure(409, TaskErrorCode.PLUGIN_PIN_MISMATCH);
         result.add(
             ToolDefinition.builder()
                 .name(name)
@@ -152,12 +158,12 @@ final class HostToolDefinitions {
                 .build());
         continue;
       }
-      if (name.equals("ask_user_question")) {
+      if (name.equals(ToolCapability.ASK_USER_QUESTION)) {
         var contract =
             new io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionContracts()
                 .contract(pins.get(name).version());
         if (!contract.descriptor().outputSha256().equals(pins.get(name).digest()))
-          throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+          throw new TaskFailure(409, TaskErrorCode.PLUGIN_PIN_MISMATCH);
         result.add(
             ToolDefinition.builder()
                 .name(name)
@@ -166,9 +172,9 @@ final class HostToolDefinitions {
                 .build());
         continue;
       }
-      boolean web = name.equals("web_fetch");
+      boolean web = name.equals(ToolCapability.WEB_FETCH);
       if (!web && (!fetch.publicMode() || workspace == null))
-        throw new TaskFailure(503, "WORKSPACE_NOT_CONFIGURED");
+        throw new TaskFailure(503, FileErrorCode.WORKSPACE_NOT_CONFIGURED);
       var descriptor =
           web
               ? fetch.descriptor()
@@ -178,7 +184,7 @@ final class HostToolDefinitions {
       if (pin == null
           || !descriptor.version().equals(pin.version())
           || !descriptor.outputSha256().equals(pin.digest()))
-        throw new TaskFailure(409, "PLUGIN_PIN_MISMATCH");
+        throw new TaskFailure(409, TaskErrorCode.PLUGIN_PIN_MISMATCH);
       if (web) {
         fetch.available();
         result.add(definition);

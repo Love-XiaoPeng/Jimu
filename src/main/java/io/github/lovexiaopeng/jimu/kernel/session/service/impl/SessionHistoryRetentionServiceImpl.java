@@ -1,5 +1,7 @@
 package io.github.lovexiaopeng.jimu.kernel.session.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionContentState;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionHistoryRetentions;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionHistoryRetentions.History;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionHistoryRetentions.LockedHistory;
@@ -9,7 +11,9 @@ import io.github.lovexiaopeng.jimu.kernel.session.port.SessionHistoryRetentions.
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionHistoryRetentionService;
 import io.github.lovexiaopeng.jimu.kernel.snapshot.api.SnapshotDigest;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -32,7 +36,7 @@ public final class SessionHistoryRetentionServiceImpl implements SessionHistoryR
         || h.version() != task.expectedVersion()
         || !task.expectedBinding().equals(h.binding())
         || !digest.hash(task.expectedBinding()).equals(h.digest()))
-      throw new TaskFailure(409, "SESSION_HISTORY_VERSION_UNSUPPORTED");
+      throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_VERSION_UNSUPPORTED);
     return h;
   }
 
@@ -43,9 +47,10 @@ public final class SessionHistoryRetentionServiceImpl implements SessionHistoryR
             records.lockBudget(candidate.tenant());
             var task = records.lockTask(candidate);
             var h = history(task);
-            if (!"PRESENT".equals(h.state())
+            if (!SessionContentState.PRESENT.equals(h.state())
                 || h.retained() && (!task.scoped() || !task.invalidated())
-                || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(task.state())
+                || !List.of(TaskState.SUCCEEDED, TaskState.FAILED, TaskState.CANCELLED)
+                    .contains(task.state())
                 || !task.writersQuiescent()
                 || task.activeInvocations()
                 || task.unsafeReservations()
@@ -65,7 +70,8 @@ public final class SessionHistoryRetentionServiceImpl implements SessionHistoryR
       total += 32;
       for (var value : row.scalars()) total += 8 + (value == null ? 1 : bytes(value));
     }
-    if (total > 65536) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (total > SessionHistoryPolicyV1.CLOSED_METADATA_BYTES)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
     return total;
   }
 
@@ -116,10 +122,10 @@ public final class SessionHistoryRetentionServiceImpl implements SessionHistoryR
       task.settleHistory(size);
       task.settleReservation(size);
       if (metadata(task) == size) {
-        task.releaseBudget(8388608 - size);
+        task.releaseBudget(SessionHistoryPolicyV1.TASK_RESERVE_BYTES - size);
         return;
       }
     }
-    throw new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+    throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
   }
 }

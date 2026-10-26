@@ -9,8 +9,12 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
+import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.WorkingDirectoryPort;
 import io.github.lovexiaopeng.jimu.plugins.builtin.workspace.WorkingDirectoryPlugin;
 import java.io.IOException;
@@ -18,7 +22,7 @@ import java.nio.charset.StandardCharsets;
 
 /** Packaged byte pins and strict JSON boundary for the new profile only. */
 public final class DirectoryContracts {
-  public static final String NAME = "working_directory";
+  public static final String NAME = ToolCapability.WORKING_DIRECTORY;
   public static final String PROFILE = "local-logical-directory-v1";
   private static final JsonMapper JSON =
       JsonMapper.builder(
@@ -124,7 +128,7 @@ public final class DirectoryContracts {
 
   public void binding(String raw, String namespace) {
     if (!binding(namespace).equals(raw))
-      throw new TaskFailure(409, "DIRECTORY_BINDING_UNSUPPORTED");
+      throw new TaskFailure(409, DirectoryErrorCode.DIRECTORY_BINDING_UNSUPPORTED);
   }
 
   public JsonNode json(String raw, int maxBytes) {
@@ -137,7 +141,7 @@ public final class DirectoryContracts {
       validateUnicode(node);
       return node;
     } catch (IOException | IllegalArgumentException e) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
@@ -159,7 +163,7 @@ public final class DirectoryContracts {
       in.validate(node);
       return new WorkingDirectoryPlugin.Input(node.has("cd") ? node.path("cd").textValue() : null);
     } catch (IllegalArgumentException e) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
@@ -175,7 +179,7 @@ public final class DirectoryContracts {
         throw new IllegalArgumentException("Canonical output");
       return result;
     } catch (RuntimeException e) {
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
     }
   }
 

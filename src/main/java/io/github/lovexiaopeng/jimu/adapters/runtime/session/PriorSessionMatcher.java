@@ -2,7 +2,9 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.session;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import io.github.lovexiaopeng.jimu.kernel.session.api.PriorSessionPolicyV4;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionSearchPort;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -52,16 +54,19 @@ public final class PriorSessionMatcher {
   }
 
   private boolean equal(int a, int b) {
-    if (++comparisons > 16777216) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-    if ((comparisons & 1023) == 0) deadline.run();
+    if (++comparisons > PriorSessionPolicyV4.COMPARISONS)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
+    if ((comparisons & PriorSessionPolicyV4.DEADLINE_CHECK_MASK) == 0) deadline.run();
     return a == b;
   }
 
   private void operation(long count) {
     operations += count;
     queryOperations.accept(count);
-    if (operations > 2097152) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
-    if ((operations & 1023) == 0 || count > 1023) deadline.run();
+    if (operations > PriorSessionPolicyV4.OPERATIONS)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
+    if ((operations & PriorSessionPolicyV4.DEADLINE_CHECK_MASK) == 0
+        || count > PriorSessionPolicyV4.DEADLINE_CHECK_MASK) deadline.run();
   }
 
   /** Provider must verify the full source event before applying these filters. */
@@ -95,7 +100,8 @@ public final class PriorSessionMatcher {
       }
     }
     if (count == 0) return;
-    int start = Math.max(0, first - 80), end = Math.min(document.length, start + 240);
+    int start = Math.max(0, first - PriorSessionPolicyV4.SNIPPET_BEFORE_CODEPOINTS),
+        end = Math.min(document.length, start + PriorSessionPolicyV4.SNIPPET_WINDOW_CODEPOINTS);
     var hit = new LinkedHashMap<String, Object>();
     for (String key : List.of("seq", "type", "time", "source", "redacted"))
       hit.put(key, event.get(key));
@@ -104,9 +110,9 @@ public final class PriorSessionMatcher {
     hit.put("snippet", snippet);
     hit.put("left_truncated", start > 0);
     hit.put("right_truncated", end < document.length);
-    if (SessionContracts.bytes(Payloads.json(snippet)) > 1536
-        || SessionContracts.bytes(Payloads.json(hit)) > 2048)
-      throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (SessionContracts.bytes(Payloads.json(snippet)) > PriorSessionPolicyV4.SNIPPET_JSON_BYTES
+        || SessionContracts.bytes(Payloads.json(hit)) > PriorSessionPolicyV4.HIT_JSON_BYTES)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
     var item = new LinkedHashMap<String, Object>();
     for (String key : List.of("session_id", "created_at", "history_version", "upper_seq"))
       item.put(key, source.get(key));
@@ -114,7 +120,8 @@ public final class PriorSessionMatcher {
     var candidate = new Hit(count, document.length, time, session, seq, item);
     var old = best.get(session);
     if (old == null || ORDER.compare(candidate, old) < 0) best.put(session, candidate);
-    if (best.size() > 8) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (best.size() > PriorSessionPolicyV4.SOURCES)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
   }
 
   public String output(String caller, String scopeDigest) {
@@ -125,15 +132,18 @@ public final class PriorSessionMatcher {
     value.put("version", 1);
     value.put("caller_session_id", caller);
     value.put("scope_sha256", scopeDigest);
-    value.put("boundary", "scoped-admission");
-    value.put("content_policy", "public-v1");
-    value.put("match_policy", "public-content-literal-v1");
-    value.put("ordering", "occurrences-desc,length-asc,time-desc,session-id-asc,seq-desc");
-    value.put("returned_count", Math.min(4, sorted.size()));
-    value.put("capped", sorted.size() > 4);
-    value.put("items", sorted.stream().limit(4).map(Hit::item).toList());
+    value.put("boundary", PriorSessionPolicyV4.BOUNDARY);
+    value.put("content_policy", PriorSessionPolicyV4.CONTENT_POLICY);
+    value.put("match_policy", PriorSessionPolicyV4.MATCH_POLICY);
+    value.put("ordering", PriorSessionPolicyV4.ORDERING);
+    value.put("returned_count", Math.min(PriorSessionPolicyV4.RETURNED_SOURCES, sorted.size()));
+    value.put("capped", sorted.size() > PriorSessionPolicyV4.RETURNED_SOURCES);
+    value.put(
+        "items",
+        sorted.stream().limit(PriorSessionPolicyV4.RETURNED_SOURCES).map(Hit::item).toList());
     String raw = Payloads.json(value);
-    if (SessionContracts.bytes(raw) > 16384) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (SessionContracts.bytes(raw) > PriorSessionPolicyV4.OUTPUT_BYTES)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
     return raw;
   }
 }

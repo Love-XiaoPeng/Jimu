@@ -2,6 +2,7 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.search;
 
 import io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore;
 import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SearchErrorCode;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -96,7 +97,8 @@ public final class SearchFiles {
   public static void project(
       Path root, SecureWorkspaceStore.WorkspaceSnapshot snapshot, Runnable checkpoint)
       throws IOException {
-    if (snapshot.files().size() > 4096) throw new FileFailure("SEARCH_WORKSPACE_LIMIT");
+    if (snapshot.files().size() > 4096)
+      throw new FileFailure(SearchErrorCode.SEARCH_WORKSPACE_LIMIT);
     Set<String> directories = new HashSet<>();
     long total = 0, metadata = 0;
     for (var entry : snapshot.files().entrySet()) {
@@ -106,16 +108,16 @@ public final class SearchFiles {
       metadata += path.getBytes(java.nio.charset.StandardCharsets.UTF_8).length + 160;
       String[] parts = path.split("/");
       if (parts.length > 512 || total > SecureWorkspaceStore.MAX_BYTES || metadata > 8388608)
-        throw new FileFailure("SEARCH_WORKSPACE_LIMIT");
+        throw new FileFailure(SearchErrorCode.SEARCH_WORKSPACE_LIMIT);
       String parent = "";
       for (int i = 0; i < parts.length - 1; i++) {
         parent = parent.isEmpty() ? parts[i] : parent + "/" + parts[i];
         if (snapshot.files().containsKey(parent))
-          throw new FileFailure("SEARCH_WORKSPACE_UNREPRESENTABLE");
+          throw new FileFailure(SearchErrorCode.SEARCH_WORKSPACE_UNREPRESENTABLE);
         directories.add(parent);
       }
     }
-    if (directories.size() > 8192) throw new FileFailure("SEARCH_WORKSPACE_LIMIT");
+    if (directories.size() > 8192) throw new FileFailure(SearchErrorCode.SEARCH_WORKSPACE_LIMIT);
     for (String name :
         directories.stream()
             .sorted(java.util.Comparator.comparingInt(s -> s.split("/").length))

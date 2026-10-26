@@ -3,6 +3,7 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.media;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskImages;
+import io.github.lovexiaopeng.jimu.plugin.api.ImageErrorCode;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -46,6 +47,6 @@ public final class ImageInputs {
   }
 
   private static TaskFailure invalid() {
-    return new TaskFailure(400, "INVALID_IMAGE_INPUT");
+    return new TaskFailure(400, ImageErrorCode.INVALID_IMAGE_INPUT);
   }
 }

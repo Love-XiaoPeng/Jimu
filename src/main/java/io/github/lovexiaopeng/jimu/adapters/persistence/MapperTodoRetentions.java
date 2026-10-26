@@ -15,6 +15,7 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoInvocati
 import io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoProjectionReadMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoRetentionMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoStepReadMapper;
+import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.todo.port.TodoRetentions;
 import java.time.Instant;
@@ -83,7 +84,7 @@ final class MapperTodoRetentions implements TodoRetentions {
             .eq(TodoProjectionReadEntity::getTenantId, candidate.tenant())
             .eq(TodoProjectionReadEntity::getTaskId, candidate.taskId());
         var rows = select(TodoProjectionReadMapper.class, wrapper);
-        if (rows.isEmpty()) throw new TaskFailure(404, "NOT_FOUND");
+        if (rows.isEmpty()) throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
         var p = rows.getFirst();
         return new Projection(
             n(p, "record_version"),

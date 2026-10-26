@@ -3,6 +3,8 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.directory;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.BoundaryProbe;
 import io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore;
+import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryOperation;
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.WorkingDirectoryLedger;
@@ -48,7 +50,8 @@ public final class DirectoryRuntime {
       ExecutionLedger.Call call,
       String raw,
       BoundaryProbe probe) {
-    if (!call.input().equals(raw)) throw new TaskFailure(409, "INVOCATION_MISMATCH");
+    if (!call.input().equals(raw))
+      throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
     var input = contracts.input(raw);
     var pin = ledger.toolSnapshot(lease).pins().get(call.tool());
     var directory = (WorkingDirectoryLedger) ledger;
@@ -81,14 +84,15 @@ public final class DirectoryRuntime {
 
           @Override
           public Result current() {
-            if (!frozen.mode().equals("READ")) throw new TaskFailure(409, "INVOCATION_MISMATCH");
+            if (!frozen.mode().equals(DirectoryOperation.READ))
+              throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
             return commit();
           }
 
           @Override
           public Result change(String path) {
-            if (!frozen.mode().equals("SET") || !path.equals(input.cd()))
-              throw new TaskFailure(409, "INVOCATION_MISMATCH");
+            if (!frozen.mode().equals(DirectoryOperation.SET) || !path.equals(input.cd()))
+              throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
             return commit();
           }
         };

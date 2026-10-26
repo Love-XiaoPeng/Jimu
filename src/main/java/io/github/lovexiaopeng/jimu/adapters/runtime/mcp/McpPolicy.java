@@ -1,7 +1,9 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.mcp;
 
+import io.github.lovexiaopeng.jimu.kernel.mcp.api.McpResourcePolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger.Profile;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.McpErrorCode;
 import java.net.URI;
 import java.util.Set;
 
@@ -14,7 +16,7 @@ public final class McpPolicy {
 
   public static boolean safe(String uri) {
     if (uri == null
-        || uri.length() > 2048
+        || uri.length() > McpResourcePolicyV1.URI_UTF16_UNITS
         || !uri.matches("[a-z][a-z0-9+.-]*://[A-Za-z0-9._-]+/[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*"))
       return false;
     return !FORBIDDEN.contains(uri.substring(0, uri.indexOf(':')));
@@ -27,7 +29,7 @@ public final class McpPolicy {
   }
 
   public static void require(Profile profile, String uri) {
-    if (!allowed(profile, uri)) throw new TaskFailure(403, "MCP_URI_NOT_AUTHORIZED");
+    if (!allowed(profile, uri)) throw new TaskFailure(403, McpErrorCode.MCP_URI_NOT_AUTHORIZED);
   }
 
   public static void profile(Profile p) {

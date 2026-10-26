@@ -5,9 +5,13 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
+import io.github.lovexiaopeng.jimu.kernel.session.api.PriorSessionPolicyV4;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionSearchPort;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.CodingErrorAction;
@@ -18,7 +22,7 @@ import java.util.List;
 
 /** ADR-0014 byte-pinned v4 contracts and strict untrusted input. */
 public final class PriorSessionContracts {
-  public static final String NAME = "session_search";
+  public static final String NAME = ToolCapability.SESSION_SEARCH;
   private final SessionContracts history = new SessionContracts(4);
   private final SchemaContract input, output, admission, authority, refs;
   private final ToolDescriptor descriptor;
@@ -114,10 +118,10 @@ public final class PriorSessionContracts {
 
   public Admission admission(byte[] raw) {
     try {
-      var value = history.strictJson(utf8(raw), 16384);
+      var value = history.strictJson(utf8(raw), PriorSessionPolicyV4.ADMISSION_BYTES);
       admission.validate(value);
       String goal = value.path("goal").textValue();
-      if (SessionContracts.bytes(goal) > 8192) throw invalid();
+      if (SessionContracts.bytes(goal) > PriorSessionPolicyV4.GOAL_UTF8_BYTES) throw invalid();
       return new Admission(
           goal, strings(value.path("history_session_ids")).stream().sorted().toList());
     } catch (IllegalArgumentException failure) {
@@ -131,7 +135,7 @@ public final class PriorSessionContracts {
 
   public SessionSearchPort.Input input(String raw) {
     try {
-      var value = history.strictJson(raw, 4096);
+      var value = history.strictJson(raw, PriorSessionPolicyV4.INPUT_BYTES);
       decimals(raw);
       input.validate(value);
       String query = value.path("query").textValue();
@@ -149,7 +153,8 @@ public final class PriorSessionContracts {
           || timeFrom != null && timeTo != null && timeFrom.isAfter(timeTo)) throw invalid();
       for (String field :
           List.of("parent_session_ids", "include_root_sessions", "availability", "event_surfaces"))
-        if (value.has(field)) throw new TaskFailure(400, "SESSION_SEARCH_FILTER_UNSUPPORTED");
+        if (value.has(field))
+          throw new TaskFailure(400, SessionErrorCode.SESSION_SEARCH_FILTER_UNSUPPORTED);
       return new SessionSearchPort.Input(
           query,
           strings(value.path("session_ids")).stream().sorted().toList(),
@@ -182,32 +187,35 @@ public final class PriorSessionContracts {
 
   private static void checkQuery(String value) {
     int count = value.codePointCount(0, value.length());
-    if (count < 1 || count > 256 || SessionContracts.bytes(value) > 1024 || value.indexOf(0) >= 0)
-      throw invalid();
+    if (count < 1
+        || count > PriorSessionPolicyV4.QUERY_CODEPOINTS
+        || SessionContracts.bytes(value) > PriorSessionPolicyV4.QUERY_UTF8_BYTES
+        || value.indexOf(0) >= 0) throw invalid();
   }
 
   private static TaskFailure invalid() {
-    return new TaskFailure(400, "TOOL_INPUT_INVALID");
+    return new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
   }
 
   public void output(String raw) {
-    validate(output, raw, 16384);
+    validate(output, raw, PriorSessionPolicyV4.OUTPUT_BYTES);
   }
 
   public void authority(String raw) {
-    validate(authority, raw, 4096);
+    validate(authority, raw, PriorSessionPolicyV4.AUTHORITY_BYTES);
   }
 
   public void refs(String raw) {
-    validate(refs, raw, 2048);
+    validate(refs, raw, PriorSessionPolicyV4.REFS_BYTES);
   }
 
   private void validate(SchemaContract contract, String raw, int max) {
-    if (SessionContracts.bytes(raw) > max) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (SessionContracts.bytes(raw) > max)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
     try {
       contract.validate(history.json(raw, max));
     } catch (IllegalArgumentException | TaskFailure failure) {
-      throw new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+      throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
     }
   }
 }

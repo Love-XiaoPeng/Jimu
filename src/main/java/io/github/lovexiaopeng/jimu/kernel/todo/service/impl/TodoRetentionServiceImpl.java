@@ -1,12 +1,18 @@
 package io.github.lovexiaopeng.jimu.kernel.todo.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.budget.api.BudgetErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.snapshot.api.SnapshotDigest;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
+import io.github.lovexiaopeng.jimu.kernel.todo.api.TodoContentState;
+import io.github.lovexiaopeng.jimu.kernel.todo.api.TodoPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.todo.port.TodoRetentions;
 import io.github.lovexiaopeng.jimu.kernel.todo.port.TodoRetentions.Body;
 import io.github.lovexiaopeng.jimu.kernel.todo.port.TodoRetentions.RetainedBody;
 import io.github.lovexiaopeng.jimu.kernel.todo.service.TodoRetentionService;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
+import io.github.lovexiaopeng.jimu.plugin.api.TodoErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,14 +42,14 @@ public final class TodoRetentionServiceImpl implements TodoRetentionService {
 
   private void binding(TodoRetentions.Projection p) {
     if (p.recordVersion() != 1 || p.todoVersion() != 1)
-      throw new TaskFailure(409, "TODO_BINDING_UNSUPPORTED");
+      throw new TaskFailure(409, TodoErrorCode.TODO_BINDING_UNSUPPORTED);
     if (!digest.hash(p.binding()).equals(p.bindingDigest()))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
     var versions = records.bindingVersions(p.binding());
     if (versions.version() != 1 || versions.todoVersion() != 1)
-      throw new TaskFailure(409, "TODO_BINDING_UNSUPPORTED");
+      throw new TaskFailure(409, TodoErrorCode.TODO_BINDING_UNSUPPORTED);
     if (!records.expectedBinding().equals(p.binding()))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
   }
 
   public void cleanup() {
@@ -54,9 +60,10 @@ public final class TodoRetentionServiceImpl implements TodoRetentionService {
             var task = records.lockTask(candidate);
             var p = task.projection();
             binding(p);
-            if ("PURGED".equals(p.state())
+            if (TodoContentState.PURGED.equals(p.state())
                 || p.retainUntil().isAfter(records.now())
-                || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(task.state())
+                || !List.of(TaskState.SUCCEEDED, TaskState.FAILED, TaskState.CANCELLED)
+                    .contains(task.state())
                 || !task.writersQuiescent()) return null;
             if (task.unsafeReservations() || task.activeInvocations() || task.dispatchedModels())
               return null;
@@ -76,12 +83,13 @@ public final class TodoRetentionServiceImpl implements TodoRetentionService {
               task.purgeDispatch(dispatch.id(), tombstone);
             }
             String metadata = records.metadata(retained);
-            if (metadata.getBytes(StandardCharsets.UTF_8).length > 65536)
-              throw new TaskFailure(429, "TODO_STORAGE_LIMIT");
+            if (metadata.getBytes(StandardCharsets.UTF_8).length > TodoPolicyV1.METADATA_BYTES)
+              throw new TaskFailure(429, TodoErrorCode.TODO_STORAGE_LIMIT);
             task.purgeTask(tombstone);
             task.markPurged(metadata);
             task.event();
-            if (task.releaseHold() != 1) throw new TaskFailure(409, "RESERVATION_STATE");
+            if (task.releaseHold() != 1)
+              throw new TaskFailure(409, BudgetErrorCode.RESERVATION_STATE);
             task.releaseBudget();
             return null;
           });

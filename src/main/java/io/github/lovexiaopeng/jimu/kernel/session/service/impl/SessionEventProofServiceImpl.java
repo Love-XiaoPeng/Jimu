@@ -1,8 +1,11 @@
 package io.github.lovexiaopeng.jimu.kernel.session.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationState;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionContentState;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionEventProofs.Proof;
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionEventProofService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
@@ -27,7 +30,8 @@ public final class SessionEventProofServiceImpl implements SessionEventProofServ
     var r = proof.stored();
     if (!task.tenant().equals(r.tenant()) || !task.task().equals(r.task())) throw corrupt();
     if (r.recordVersion() != 1 || r.eventVersion() != task.version()) throw unsupported();
-    if (!"PRESENT".equals(r.content())) throw new TaskFailure(410, "SESSION_HISTORY_EXPIRED");
+    if (!SessionContentState.PRESENT.equals(r.content()))
+      throw new TaskFailure(410, SessionErrorCode.SESSION_HISTORY_EXPIRED);
     io.github.lovexiaopeng.jimu.kernel.session.port.SessionEventProofs.Document value;
     try {
       value = proof.decode();
@@ -78,7 +82,7 @@ public final class SessionEventProofServiceImpl implements SessionEventProofServ
             || b.receipt() != r.seq()
             || !b.outcome().equals(i.state())
             || !proof.readReceipt().equals(value.data())) throw corrupt();
-        if (i.state().equals("SUCCEEDED")
+        if (i.state().equals(InvocationState.SUCCEEDED)
             && (!proof.hash(i.output()).equals(b.outputDigest())
                 || !b.outputDigest().equals(i.outputDigest())
                 || proof.bytes(i.output()) != b.outputBytes())) throw corrupt();
@@ -103,10 +107,10 @@ public final class SessionEventProofServiceImpl implements SessionEventProofServ
   }
 
   private static TaskFailure corrupt() {
-    return new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+    return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
   }
 
   private static TaskFailure unsupported() {
-    return new TaskFailure(409, "SESSION_HISTORY_VERSION_UNSUPPORTED");
+    return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_VERSION_UNSUPPORTED);
   }
 }

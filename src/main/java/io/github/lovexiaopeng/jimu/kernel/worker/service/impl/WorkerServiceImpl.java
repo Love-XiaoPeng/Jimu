@@ -1,8 +1,11 @@
 package io.github.lovexiaopeng.jimu.kernel.worker.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.WorkerProcess;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
 import io.github.lovexiaopeng.jimu.kernel.worker.port.WorkerRecords;
 import io.github.lovexiaopeng.jimu.kernel.worker.service.WorkerService;
@@ -55,10 +58,10 @@ public final class WorkerServiceImpl implements WorkerService {
                 var task = locked.get();
                 if (!task.runUnchanged()) return Optional.empty();
                 if (task.requiresStoppedWriters()
-                    && "RUNNING".equals(task.state())
+                    && TaskState.RUNNING.equals(task.state())
                     && !task.writersQuiescent()) return Optional.empty();
-                boolean queued = "QUEUED".equals(task.state()),
-                    resume = "RESUME_READY".equals(task.state());
+                boolean queued = TaskState.QUEUED.equals(task.state()),
+                    resume = TaskState.RESUME_READY.equals(task.state());
                 if (resume && (!task.writersQuiescent() || task.runReserved()))
                   return Optional.empty();
                 if ((queued || resume) && task.runningLimitReached()) return Optional.empty();
@@ -67,40 +70,44 @@ public final class WorkerServiceImpl implements WorkerService {
                     try {
                       task.requireScope();
                     } catch (TaskFailure failure) {
-                      if (!failure.code().equals("EVALUATION_SCOPE_LEGACY_UNBOUND")) throw failure;
+                      if (!failure.code().equals(ModelErrorCode.EVALUATION_SCOPE_LEGACY_UNBOUND))
+                        throw failure;
                     }
                   }
                   task.markRunningInvocationsUnknown();
-                  task.terminal("NEEDS_RECONCILIATION", "EFFECT_OUTCOME_UNKNOWN");
+                  task.terminal(
+                      TaskState.NEEDS_RECONCILIATION, TaskErrorCode.EFFECT_OUTCOME_UNKNOWN);
                   return Optional.empty();
                 }
                 String rejection = task.modelRejection();
                 if (rejection == null) rejection = task.runRejection();
                 if (rejection != null) {
-                  task.terminal("FAILED", rejection);
+                  task.terminal(TaskState.FAILED, rejection);
                   return Optional.empty();
                 }
                 try {
                   task.requireScope();
                 } catch (TaskFailure failure) {
-                  if (List.of("EVALUATION_SCOPE_MISMATCH", "BUSINESS_POLICY_CONFLICT")
+                  if (List.of(
+                          ModelErrorCode.EVALUATION_SCOPE_MISMATCH,
+                          ModelErrorCode.BUSINESS_POLICY_CONFLICT)
                       .contains(failure.code())) throw failure;
-                  task.terminal("FAILED", failure.code());
+                  task.terminal(TaskState.FAILED, failure.code());
                   return Optional.empty();
                 }
                 if (!queued) task.expireCurrentAttempt();
                 if (!task.withinDeadline()) {
-                  task.terminal("FAILED", "DEADLINE_EXCEEDED");
+                  task.terminal(TaskState.FAILED, TaskErrorCode.DEADLINE_EXCEEDED);
                   return Optional.empty();
                 }
                 try {
                   task.checkAdmission(resume);
                 } catch (TaskFailure failure) {
-                  task.terminal("FAILED", failure.code());
+                  task.terminal(TaskState.FAILED, failure.code());
                   return Optional.empty();
                 }
                 if (task.cancellationRequested()) {
-                  task.terminal("CANCELLED", "CANCELLED");
+                  task.terminal(TaskState.CANCELLED, TaskErrorCode.CANCELLED);
                   return Optional.empty();
                 }
                 String attempt = UUID.randomUUID().toString();

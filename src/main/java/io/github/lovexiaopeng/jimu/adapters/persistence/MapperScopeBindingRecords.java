@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.operator.entity.ExecutionScopeEntity;
 import io.github.lovexiaopeng.jimu.adapters.persistence.operator.mapper.ExecutionScopeMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.operator.mapper.OperatorMapper;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.operator.port.ScopeBindingRecords;
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
@@ -121,7 +122,7 @@ final class MapperScopeBindingRecords implements ScopeBindingRecords {
 
   public void insert(String tenant, String run, String snapshot, String digest, String boundBy) {
     if (sql.insert(query, tenant, run, snapshot, digest, boundBy) != 1)
-      throw new TaskFailure(409, "EVALUATION_SCOPE_BINDING_CONFLICT");
+      throw new TaskFailure(409, ModelErrorCode.EVALUATION_SCOPE_BINDING_CONFLICT);
   }
 
   public Map<String, Object> ledger(String tenant, String run) {

@@ -1,12 +1,15 @@
 package io.github.lovexiaopeng.jimu.adapters.runtime.contract;
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ArtifactErrorCode;
+import io.github.lovexiaopeng.jimu.kernel.artifact.api.ReportLimitsV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.FilePort;
 import io.github.lovexiaopeng.jimu.plugin.api.ImageReportPort;
 import io.github.lovexiaopeng.jimu.plugin.api.ReportCompositionPort;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -67,7 +70,8 @@ public final class ImageReportComposer {
     String summary = blocks(draft.summary(), web, images, bindings, urls, usedImages);
     String conclusions = blocks(draft.conclusions(), web, images, bindings, urls, usedImages);
     require(urls.size() <= 8 && usedImages.size() <= 4);
-    if (urls.isEmpty() && usedImages.isEmpty()) throw new TaskFailure(409, "NO_EVIDENCE");
+    if (urls.isEmpty() && usedImages.isEmpty())
+      throw new TaskFailure(409, ArtifactErrorCode.NO_EVIDENCE);
     var links = new StringBuilder();
     for (String url : urls) links.append("- [来源](").append(url).append(")。\n");
     int index = 0;
@@ -80,7 +84,7 @@ public final class ImageReportComposer {
           .append("\"></a>图片来源 I")
           .append(index)
           .append("：")
-          .append(ReportComposer.plain(r.filePath(), 512))
+          .append(ReportComposer.plain(r.filePath(), ReportLimitsV1.IMAGE_PATH_UTF16_UNITS))
           .append("；")
           .append(r.sourceRef())
           .append("；原始 SHA256 ")
@@ -99,14 +103,17 @@ public final class ImageReportComposer {
     }
     var limits = new StringBuilder();
     for (String limit : draft.limitations())
-      limits.append("- ").append(ReportComposer.plain(limit, 400)).append('\n');
+      limits
+          .append("- ")
+          .append(ReportComposer.plain(limit, ReportLimitsV1.LIMITATION_UTF16_UNITS))
+          .append('\n');
     if (!usedImages.isEmpty()) limits.append("图片文字与结论为模型解读，未作事实核验。\n");
     if (context.localProtocol()) limits.append("本地受控provider协议验证，未验证真实模型视觉能力。\n");
     if (partial) limits.append("部分来源失败。\n");
     if (limits.isEmpty()) limits.append("结构化内容按已保存资料组装，未作独立事实核验。\n");
     String markdown =
         "## 主题\n"
-            + ReportComposer.plain(draft.subject(), 120)
+            + ReportComposer.plain(draft.subject(), ReportLimitsV1.SUBJECT_UTF16_UNITS)
             + "\n\n## 摘要\n"
             + summary
             + "\n## 结论\n"
@@ -123,7 +130,7 @@ public final class ImageReportComposer {
     while (matcher.find()) rendered.add(matcher.group());
     require(
         rendered.equals(urls)
-            && markdown.getBytes(StandardCharsets.UTF_8).length <= 1048576
+            && markdown.getBytes(StandardCharsets.UTF_8).length <= ReportLimitsV1.REPORT_BYTES
             && path.endsWith(".md"));
     return new Composed(
         markdown,
@@ -173,14 +180,15 @@ public final class ImageReportComposer {
             || segment.protocol() != null
             || segment.identifier() != null
             || segment.evidence() != null)
-          throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
+          throw new TaskFailure(409, ArtifactErrorCode.REPORT_IMAGE_SOURCE_INVALID);
         var source = images.get(segment.sourceRef());
-        if (source == null) throw new TaskFailure(409, "REPORT_IMAGE_SOURCE_INVALID");
+        if (source == null)
+          throw new TaskFailure(409, ArtifactErrorCode.REPORT_IMAGE_SOURCE_INVALID);
         var r = source.result();
         usedImages.putIfAbsent(r.sourceRef(), source);
         int index = new ArrayList<>(usedImages.keySet()).indexOf(r.sourceRef()) + 1;
         text.append("- 图片解读（模型推断）：")
-            .append(ReportComposer.plain(segment.text(), 600))
+            .append(ReportComposer.plain(segment.text(), ReportLimitsV1.SEGMENT_UTF16_UNITS))
             .append(" [图片来源 I")
             .append(index)
             .append("](#image-I")
@@ -214,7 +222,7 @@ public final class ImageReportComposer {
       ImageLedger.ReportEvidence context) {
     try {
       var node = ReportComposer.parse(input);
-      var contract = new WorkspaceContracts().load("compose_report", "0.2.0");
+      var contract = new WorkspaceContracts().load(ToolCapability.COMPOSE_REPORT, "0.2.0");
       contract.in().validate(node);
       contract.out().validate(ReportComposer.parse(output));
       var call =
@@ -235,11 +243,11 @@ public final class ImageReportComposer {
                                   file.path(), file.version(), file.sha256(), file.size()))),
                       com.fasterxml.jackson.databind.JsonNode.class));
     } catch (java.io.IOException | IllegalArgumentException bad) {
-      throw new TaskFailure(409, "REPORT_COMPOSITION_INVALID");
+      throw new TaskFailure(409, ArtifactErrorCode.REPORT_COMPOSITION_INVALID);
     }
   }
 
   private static void require(boolean condition) {
-    if (!condition) throw new TaskFailure(409, "REPORT_DRAFT_INVALID");
+    if (!condition) throw new TaskFailure(409, ArtifactErrorCode.REPORT_DRAFT_INVALID);
   }
 }

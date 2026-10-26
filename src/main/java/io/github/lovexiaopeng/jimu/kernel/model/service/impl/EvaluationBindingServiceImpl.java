@@ -3,11 +3,15 @@ package io.github.lovexiaopeng.jimu.kernel.model.service.impl;
 import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan.Binding;
 import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan.Plan;
 import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan.Qualification;
+import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationRunState;
+import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.model.port.EvaluationBindingRecords;
 import io.github.lovexiaopeng.jimu.kernel.model.port.EvaluationBindingRecords.Run;
 import io.github.lovexiaopeng.jimu.kernel.model.port.EvaluationPlanCodec;
 import io.github.lovexiaopeng.jimu.kernel.model.service.EvaluationBindingService;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import java.util.List;
 
@@ -43,13 +47,13 @@ public final class EvaluationBindingServiceImpl implements EvaluationBindingServ
       throw unavailable();
     records.validateModel(plan, model);
     var run = records.run();
-    if (!records.hasTask() && "OPEN".equals(run.state()))
+    if (!records.hasTask() && EvaluationRunState.OPEN.equals(run.state()))
       checkRoom(
           records, run, plan.maxRequests(), plan.matrixWorstCostMicros(), plan.tenantTokenLimit());
     if (model.stream() != List.of("W2", "W4").contains(selection.sample())) throw unavailable();
     String qualification = null;
     if (selection.phase().equals("B")) {
-      if (!"OPEN".equals(run.state()) || records.hasUnknown()) throw phaseLocked();
+      if (!EvaluationRunState.OPEN.equals(run.state()) || records.hasUnknown()) throw phaseLocked();
       var q = qualify(plan, run.qualificationSnapshot(), run.qualificationDigest());
       if (!q.originalRunId().equals(run.id()) || !q.finalists().contains(model.model()))
         throw phaseLocked();
@@ -61,9 +65,10 @@ public final class EvaluationBindingServiceImpl implements EvaluationBindingServ
                   .filter(t -> candidate.equals(t.model()) && sample.equals(t.sample()))
                   .toList();
           if (match.size() != 1
-              || !List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(match.getFirst().state())
-              || q.finalists().contains(candidate) && !"SUCCEEDED".equals(match.getFirst().state()))
-            throw phaseLocked();
+              || !List.of(TaskState.SUCCEEDED, TaskState.FAILED, TaskState.CANCELLED)
+                  .contains(match.getFirst().state())
+              || q.finalists().contains(candidate)
+                  && !TaskState.SUCCEEDED.equals(match.getFirst().state())) throw phaseLocked();
         }
       if (!records.hasPhaseBTask()) {
         long rounds = 12L * q.finalists().size();
@@ -99,7 +104,7 @@ public final class EvaluationBindingServiceImpl implements EvaluationBindingServ
         || cost > tenant.cost()
         || tokens > tenant.tokens()
         || requests > tenant.models())
-      throw new TaskFailure(429, "EVALUATION_MATRIX_BUDGET_UNAVAILABLE");
+      throw new TaskFailure(429, ModelErrorCode.EVALUATION_MATRIX_BUDGET_UNAVAILABLE);
   }
 
   @Override
@@ -111,7 +116,7 @@ public final class EvaluationBindingServiceImpl implements EvaluationBindingServ
       return;
     }
     if (!codec.hash(stored.snapshot()).equals(stored.digest()))
-      throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+      throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
     var binding = codec.readBinding(stored.snapshot());
     if (!binding.equals(configured)
         || !binding.phase().equals(stored.phase())
@@ -154,10 +159,10 @@ public final class EvaluationBindingServiceImpl implements EvaluationBindingServ
   }
 
   private static TaskFailure unavailable() {
-    return new TaskFailure(409, "EVALUATION_CONFIG_UNAVAILABLE");
+    return new TaskFailure(409, ModelErrorCode.EVALUATION_CONFIG_UNAVAILABLE);
   }
 
   private static TaskFailure phaseLocked() {
-    return new TaskFailure(409, "EVALUATION_PHASE_LOCKED");
+    return new TaskFailure(409, ModelErrorCode.EVALUATION_PHASE_LOCKED);
   }
 }

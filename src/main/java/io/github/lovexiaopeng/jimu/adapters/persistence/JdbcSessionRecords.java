@@ -4,9 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;
+import io.github.lovexiaopeng.jimu.kernel.session.api.PriorSessionPolicyV4;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionSearchReadPolicyV2;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionTracePolicyV3;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionEventPort;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,11 +42,11 @@ final class JdbcSessionRecords {
 
   io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor descriptor(
       Map<String, Object> task, String name) {
-    return name.equals("session_event_read")
+    return name.equals(ToolCapability.SESSION_EVENT_READ)
         ? contract(task).descriptor()
-        : name.equals("session_search")
+        : name.equals(ToolCapability.SESSION_SEARCH)
             ? scopes.contracts.descriptor()
-            : name.equals("session_event_search")
+            : name.equals(ToolCapability.SESSION_EVENT_SEARCH)
                 ? searchContract(task).descriptor()
                 : trace.descriptor();
   }
@@ -66,7 +71,7 @@ final class JdbcSessionRecords {
     }
 
     SearchBudget(Runnable deadline, boolean trace) {
-      this(deadline, trace, 8388608);
+      this(deadline, trace, SessionSearchReadPolicyV2.SCRATCH_BYTES);
     }
 
     SearchBudget(Runnable deadline, boolean trace, long scratchLimit) {
@@ -83,7 +88,9 @@ final class JdbcSessionRecords {
     @Override
     public io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.ColumnMeter begin() {
       deadline.run();
-      if (++reads > (prior ? 4096 : 1024)) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+      if (++reads
+          > (prior ? PriorSessionPolicyV4.PROOF_READS : SessionSearchReadPolicyV2.PROOF_READS))
+        throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
       return new io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.ColumnMeter() {
         private long batchBytes;
 
@@ -98,16 +105,27 @@ final class JdbcSessionRecords {
           batchBytes += size;
           if (trace) operation(size);
           // Reject at the provider boundary, before collecting the next result field.
-          if (bytes > (prior ? 16777216 : 8388608)
-              || (prior ? batchBytes * 3 : bytes * (trace ? 3 : 2)) + 524288 > scratchLimit)
-            throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+          if (bytes
+                  > (prior
+                      ? PriorSessionPolicyV4.PROOF_BYTES
+                      : SessionSearchReadPolicyV2.PROOF_BYTES)
+              || (prior
+                          ? batchBytes * PriorSessionPolicyV4.SCRATCH_BATCH_COPIES
+                          : bytes
+                              * (trace
+                                  ? SessionSearchReadPolicyV2.TRACE_COPIES
+                                  : SessionSearchReadPolicyV2.SEARCH_COPIES))
+                      + SessionSearchReadPolicyV2.SCRATCH_HEADROOM_BYTES
+                  > scratchLimit)
+            throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
         }
       };
     }
 
     void operation(long count) {
       operations += count;
-      if (trace && operations > 1048576) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+      if (trace && operations > 1048576)
+        throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
       deadline.run();
     }
   }
@@ -167,7 +185,7 @@ final class JdbcSessionRecords {
   }
 
   List<String> sensitive() {
-    if (sensitive == null) throw new TaskFailure(503, "SESSION_EVENT_UNSAFE");
+    if (sensitive == null) throw new TaskFailure(503, SessionErrorCode.SESSION_EVENT_UNSAFE);
     return sensitive;
   }
 
@@ -186,7 +204,7 @@ final class JdbcSessionRecords {
   }
 
   static TaskFailure corrupt() {
-    return new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+    return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionHistoryProofService
@@ -379,8 +397,8 @@ final class JdbcSessionRecords {
       return readRows(task, input, upper, boundary);
     searchBudget =
         JdbcSessionScopes.task(task)
-            ? new SearchBudget(deadline, false, 16777216, true)
-            : new SearchBudget(deadline, true, 1048576);
+            ? new SearchBudget(deadline, false, PriorSessionPolicyV4.LIVE_SCRATCH_BYTES, true)
+            : new SearchBudget(deadline, true, SessionTracePolicyV3.SCRATCH_BYTES);
     try {
       return readRows(task, input, upper, boundary);
     } finally {
@@ -411,8 +429,8 @@ final class JdbcSessionRecords {
     String prefix = SessionContracts.prefix(text);
     summary.put("text", prefix);
     summary.put("summary_truncated", !prefix.equals(text));
-    if (SessionContracts.bytes(Payloads.json(summary)) > 1536)
-      throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (SessionContracts.bytes(Payloads.json(summary)) > SessionTracePolicyV3.SUMMARY_JSON_BYTES)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
     return summary;
   }
 
@@ -657,7 +675,7 @@ final class JdbcSessionRecords {
 
   io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeExecution.Budget priorBudget(
       Runnable deadline) {
-    searchBudget = new SearchBudget(deadline, false, 16777216, true);
+    searchBudget = new SearchBudget(deadline, false, PriorSessionPolicyV4.LIVE_SCRATCH_BYTES, true);
     return () -> searchBudget = null;
   }
 

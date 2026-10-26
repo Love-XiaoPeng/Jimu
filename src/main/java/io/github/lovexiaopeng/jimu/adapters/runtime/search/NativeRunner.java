@@ -2,9 +2,11 @@ package io.github.lovexiaopeng.jimu.adapters.runtime.search;
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.worker.OperationThreads;
+import io.github.lovexiaopeng.jimu.kernel.search.api.NativeResultPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger.NativeIdentity;
 import io.github.lovexiaopeng.jimu.kernel.task.api.NativeSearchLedger.ProcessIdentity;
 import io.github.lovexiaopeng.jimu.plugin.api.FileFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SearchErrorCode;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -171,7 +173,8 @@ public final class NativeRunner {
       Runnable checkpoint,
       Consumer<NativeIdentity> started,
       Consumer<NativeIdentity> stopped) {
-    if (!busy.compareAndSet(false, true)) throw new FileFailure("SEARCH_PROCESS_UNPROVEN");
+    if (!busy.compareAndSet(false, true))
+      throw new FileFailure(SearchErrorCode.SEARCH_PROCESS_UNPROVEN);
     operations.nativeStarted();
     boolean proven = false;
     Process process = null;
@@ -188,7 +191,8 @@ public final class NativeRunner {
           new ProcessBuilder(bundle.launcher(), directory.toString(), inode[0], inode[1]).start();
       ProcessIdentity launcher = NativeProcesses.identity(process.pid());
       identity = new NativeIdentity(launcher, null, null);
-      stdout = drain(process.getInputStream(), 20000000, false, overflow);
+      stdout =
+          drain(process.getInputStream(), NativeResultPolicyV1.RAW_STDOUT_BYTES, false, overflow);
       stderr = drain(process.getErrorStream(), 65536, true, overflow);
       process.getOutputStream().write('S');
       process.getOutputStream().flush();
@@ -200,7 +204,7 @@ public final class NativeRunner {
           break;
         } catch (NoSuchFileException pending) {
           if (!process.isAlive() || System.nanoTime() > startup)
-            throw new FileFailure("SEARCH_ISOLATION_UNAVAILABLE");
+            throw new FileFailure(SearchErrorCode.SEARCH_ISOLATION_UNAVAILABLE);
           Thread.sleep(10);
         }
       }
@@ -214,16 +218,16 @@ public final class NativeRunner {
       }
       byte[] raw = stdout.await(), errors = stderr.await();
       if (overflow.get() != null) throw new FileFailure(overflow.get());
-      if (!stopped(identity)) throw new FileFailure("SEARCH_PROCESS_UNPROVEN");
+      if (!stopped(identity)) throw new FileFailure(SearchErrorCode.SEARCH_PROCESS_UNPROVEN);
       stopped.accept(identity);
       proven = true;
       return new Output(
           raw, new String(errors, StandardCharsets.UTF_8), process.exitValue(), identity);
     } catch (InterruptedException interrupted) {
       Thread.currentThread().interrupt();
-      throw new FileFailure("SEARCH_PROCESS_UNPROVEN", interrupted);
+      throw new FileFailure(SearchErrorCode.SEARCH_PROCESS_UNPROVEN, interrupted);
     } catch (IOException error) {
-      throw new FileFailure("SEARCH_FAILED", error);
+      throw new FileFailure(SearchErrorCode.SEARCH_FAILED, error);
     } catch (RuntimeException error) {
       failure = error;
       throw error;
@@ -282,7 +286,7 @@ public final class NativeRunner {
         operations.nativeStopped();
         busy.set(false);
       } else if (!(failure instanceof io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure))
-        throw new FileFailure("SEARCH_PROCESS_UNPROVEN");
+        throw new FileFailure(SearchErrorCode.SEARCH_PROCESS_UNPROVEN);
     }
   }
 
@@ -313,7 +317,7 @@ public final class NativeRunner {
                     }
                     total += count;
                   } else if ((long) out.size() + count > bound) {
-                    overflow.compareAndSet(null, "SEARCH_RAW_OUTPUT_OVERFLOW");
+                    overflow.compareAndSet(null, SearchErrorCode.SEARCH_RAW_OUTPUT_OVERFLOW);
                     break;
                   } else out.write(block, 0, count);
                 }

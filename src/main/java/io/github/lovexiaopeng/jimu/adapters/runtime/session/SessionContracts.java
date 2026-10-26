@@ -8,9 +8,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.contract.SchemaContract;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionEventPort;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolDescriptor;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.CodingErrorAction;
@@ -21,7 +25,7 @@ import java.util.regex.Pattern;
 
 /** Byte-pinned public-v1 contracts, strict untrusted input and deterministic public projection. */
 public final class SessionContracts {
-  public static final String NAME = "session_event_read";
+  public static final String NAME = ToolCapability.SESSION_EVENT_READ;
   private static final JsonMapper JSON = mapper(32), INPUT = mapper(4);
   private static final Pattern TOKENS =
       Pattern.compile("[\\p{IsWhite_Space}\\uFEFF]+|[^\\p{IsWhite_Space}\\uFEFF]+");
@@ -146,7 +150,7 @@ public final class SessionContracts {
 
   public static void unicode(String value) {
     if (!StandardCharsets.UTF_8.newEncoder().canEncode(value))
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
   }
 
   private static void unicode(JsonNode node) {
@@ -164,7 +168,7 @@ public final class SessionContracts {
       unicode(node);
       return node;
     } catch (IOException | IllegalArgumentException e) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
@@ -177,7 +181,7 @@ public final class SessionContracts {
       unicode(node);
       return node;
     } catch (IOException | IllegalArgumentException e) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
@@ -191,14 +195,15 @@ public final class SessionContracts {
               .decode(ByteBuffer.wrap(raw))
               .toString());
     } catch (java.nio.charset.CharacterCodingException e) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
   public SessionEventPort.Input input(String raw) {
     try {
       unicode(raw);
-      if (bytes(raw) > 1024) throw new IllegalArgumentException("Input bytes");
+      if (bytes(raw) > SessionHistoryPolicyV1.READ_INPUT_BYTES)
+        throw new IllegalArgumentException("Input bytes");
       var node = INPUT.readTree(raw);
       if (node == null) throw new IllegalArgumentException("Missing input");
       unicode(node);
@@ -213,32 +218,32 @@ public final class SessionContracts {
           node.path("before").asInt(0),
           node.path("after").asInt(0));
     } catch (IOException | IllegalArgumentException e) {
-      throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
 
   public void event(String raw) {
-    validate(event, raw, 16384);
+    validate(event, raw, SessionHistoryPolicyV1.EVENT_BYTES);
   }
 
   public void output(String raw) {
-    validate(output, raw, 32768);
+    validate(output, raw, SessionHistoryPolicyV1.READ_OUTPUT_BYTES);
   }
 
   public void context(String raw) {
-    validate(context, raw, 4096);
+    validate(context, raw, SessionHistoryPolicyV1.CONTEXT_BYTES);
   }
 
   public void owner(String raw) {
-    validate(owner, raw, 4096);
+    validate(owner, raw, SessionHistoryPolicyV1.OWNER_BYTES);
   }
 
   private void validate(SchemaContract contract, String raw, int max) {
-    if (bytes(raw) > max) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (bytes(raw) > max) throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
     try {
       contract.validate(json(raw, max));
     } catch (IllegalArgumentException | TaskFailure e) {
-      throw new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+      throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
     }
   }
 
@@ -273,7 +278,7 @@ public final class SessionContracts {
     for (int i = 0; i < parts.size(); i++) result.append(hidden[i] ? "[redacted]" : parts.get(i));
     String text = result.toString();
     if (sensitive.stream().filter(s -> !s.isEmpty()).anyMatch(text::contains))
-      throw new TaskFailure(409, "SESSION_EVENT_UNSAFE");
+      throw new TaskFailure(409, SessionErrorCode.SESSION_EVENT_UNSAFE);
     return new PublicText(text, !raw.equals(text));
   }
 
@@ -286,12 +291,18 @@ public final class SessionContracts {
   public void callId(String value, List<String> sensitive) {
     if (!value.matches("[A-Za-z0-9_-]{1,128}")
         || sensitive.stream().filter(s -> !s.isEmpty()).anyMatch(value::contains))
-      throw new TaskFailure(400, "SESSION_EVENT_UNSAFE");
+      throw new TaskFailure(400, SessionErrorCode.SESSION_EVENT_UNSAFE);
   }
 
   public static String prefix(String text) {
-    int end = text.offsetByCodePoints(0, Math.min(256, text.codePointCount(0, text.length())));
-    while (bytes(text.substring(0, end)) > 1024) end = text.offsetByCodePoints(end, -1);
+    int end =
+        text.offsetByCodePoints(
+            0,
+            Math.min(
+                SessionHistoryPolicyV1.PUBLIC_PREFIX_CODEPOINTS,
+                text.codePointCount(0, text.length())));
+    while (bytes(text.substring(0, end)) > SessionHistoryPolicyV1.PUBLIC_PREFIX_UTF8_BYTES)
+      end = text.offsetByCodePoints(end, -1);
     return text.substring(0, end);
   }
 }

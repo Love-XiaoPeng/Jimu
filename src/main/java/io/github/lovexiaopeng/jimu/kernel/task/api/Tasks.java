@@ -1,5 +1,6 @@
 package io.github.lovexiaopeng.jimu.kernel.task.api;
 
+import io.github.lovexiaopeng.jimu.plugin.api.ImageErrorCode;
 import java.time.Instant;
 import java.util.List;
 
@@ -46,7 +47,12 @@ public interface Tasks {
     }
 
     public boolean terminal() {
-      return List.of("SUCCEEDED", "FAILED", "CANCELLED", "NEEDS_RECONCILIATION").contains(state);
+      return List.of(
+              TaskState.SUCCEEDED,
+              TaskState.FAILED,
+              TaskState.CANCELLED,
+              TaskState.NEEDS_RECONCILIATION)
+          .contains(state);
     }
   }
 
@@ -70,7 +76,7 @@ public interface Tasks {
 
   default View submit(
       Identity identity, String key, Request request, List<TaskImages.Input> images) {
-    if (!images.isEmpty()) throw new TaskFailure(503, "IMAGE_STORE_UNAVAILABLE");
+    if (!images.isEmpty()) throw new TaskFailure(503, ImageErrorCode.IMAGE_STORE_UNAVAILABLE);
     return submit(identity, key, request);
   }
 

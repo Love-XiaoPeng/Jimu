@@ -1,10 +1,15 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.UsageQuality;
+import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.invocation.port.InvocationWorkflowRecords;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 
 /** Named SQL and module-proof operations, sharing the original transaction and fence. */
 final class MapperInvocationWorkflows implements InvocationWorkflowRecords {
@@ -61,7 +66,7 @@ final class MapperInvocationWorkflows implements InvocationWorkflowRecords {
               input.path("url").asText(),
               input.path("file_path").asText(),
               files.size(),
-              call.tool().equals("present") && files.size() == 1
+              call.tool().equals(ToolCapability.PRESENT) && files.size() == 1
                   ? files.get(0).path("path").asText()
                   : null);
         }
@@ -121,10 +126,10 @@ final class MapperInvocationWorkflows implements InvocationWorkflowRecords {
             lease.taskId(),
             invocationId,
             invocationId,
-            "TOOL",
+            ReservationCategory.TOOL,
             1,
-            "RESERVED",
-            "KNOWN");
+            ReservationState.RESERVED,
+            UsageQuality.KNOWN);
       }
 
       public void markRunning() {
@@ -150,7 +155,7 @@ final class MapperInvocationWorkflows implements InvocationWorkflowRecords {
     var task = ledger.directoryTask(first) ? ledger.fenced(lease, true) : first;
     if (ledger.directoryTask(task)) {
       if (output.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 65536)
-        throw new TaskFailure(429, "DIRECTORY_STORAGE_LIMIT");
+        throw new TaskFailure(429, DirectoryErrorCode.DIRECTORY_STORAGE_LIMIT);
       ledger.directoryStorage(
           task, output.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
     }
@@ -169,7 +174,7 @@ final class MapperInvocationWorkflows implements InvocationWorkflowRecords {
       }
 
       public ImageProof imageProof() {
-        if ("read_image".equals(ledger.s(producer, "tool"))) {
+        if (ToolCapability.READ_IMAGE.equals(ledger.s(producer, "tool"))) {
           var committed =
               ledger
                   .mappers

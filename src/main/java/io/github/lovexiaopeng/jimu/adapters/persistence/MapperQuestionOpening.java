@@ -7,6 +7,7 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.PluginPin;
 import io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger.OpenResult;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.AnswerBatch;
 import io.github.lovexiaopeng.jimu.plugins.builtin.interaction.AskUserQuestionPlugin.Input;
 import java.sql.Timestamp;
@@ -99,7 +100,7 @@ final class MapperQuestionOpening
   }
 
   public PluginPin pin(Map<String, Object> task) {
-    return ledger.tools(task).pins().get("ask_user_question");
+    return ledger.tools(task).pins().get(ToolCapability.ASK_USER_QUESTION);
   }
 
   public String pinVersion(PluginPin pin) {

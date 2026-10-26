@@ -1,0 +1,53 @@
+package io.github.lovexiaopeng.jimu.kernel.model.api;
+
+/** 既有公开失败码的语义归属；保持原字符值、HTTP 映射和失败次序。 */
+public final class ModelErrorCode {
+  public static final String BUSINESS_POLICY_CONFLICT = "BUSINESS_POLICY_CONFLICT";
+  public static final String BUSINESS_POLICY_UNAVAILABLE = "BUSINESS_POLICY_UNAVAILABLE";
+  public static final String CURRENCY_BUDGET_NOT_CONFIGURED = "CURRENCY_BUDGET_NOT_CONFIGURED";
+  public static final String DISPATCH_REJECTED = "DISPATCH_REJECTED";
+  public static final String EVALUATION_CONFIG_UNAVAILABLE = "EVALUATION_CONFIG_UNAVAILABLE";
+  public static final String EVALUATION_MATERIAL_MISMATCH = "EVALUATION_MATERIAL_MISMATCH";
+  public static final String EVALUATION_MATRIX_BUDGET_UNAVAILABLE =
+      "EVALUATION_MATRIX_BUDGET_UNAVAILABLE";
+  public static final String EVALUATION_PHASE_LOCKED = "EVALUATION_PHASE_LOCKED";
+  public static final String EVALUATION_SAMPLE_ALREADY_BOUND = "EVALUATION_SAMPLE_ALREADY_BOUND";
+  public static final String EVALUATION_SCOPE_BINDING_CONFLICT =
+      "EVALUATION_SCOPE_BINDING_CONFLICT";
+  public static final String EVALUATION_SCOPE_LEGACY_UNBOUND = "EVALUATION_SCOPE_LEGACY_UNBOUND";
+  public static final String EVALUATION_SCOPE_MISMATCH = "EVALUATION_SCOPE_MISMATCH";
+  public static final String EVALUATION_SCOPE_UNAVAILABLE = "EVALUATION_SCOPE_UNAVAILABLE";
+  public static final String MODEL_BUDGET_EXCEEDED = "MODEL_BUDGET_EXCEEDED";
+  public static final String MODEL_CAPABILITY_UNSUPPORTED = "MODEL_CAPABILITY_UNSUPPORTED";
+  public static final String MODEL_CONFIG_UNAVAILABLE = "MODEL_CONFIG_UNAVAILABLE";
+  public static final String MODEL_COST_BOUND_UNAVAILABLE = "MODEL_COST_BOUND_UNAVAILABLE";
+  public static final String MODEL_EVALUATION_CLOSED = "MODEL_EVALUATION_CLOSED";
+  public static final String MODEL_INPUT_BOUND_UNAVAILABLE = "MODEL_INPUT_BOUND_UNAVAILABLE";
+  public static final String MODEL_INPUT_LIMIT_EXCEEDED = "MODEL_INPUT_LIMIT_EXCEEDED";
+  public static final String MODEL_INPUT_TOO_LARGE = "MODEL_INPUT_TOO_LARGE";
+  public static final String MODEL_INTERRUPTED = "MODEL_INTERRUPTED";
+  public static final String MODEL_LOOP_INCOMPLETE = "MODEL_LOOP_INCOMPLETE";
+  public static final String MODEL_MEDIA_LIMIT_EXCEEDED = "MODEL_MEDIA_LIMIT_EXCEEDED";
+  public static final String MODEL_RESPONSE_INVALID = "MODEL_RESPONSE_INVALID";
+  public static final String MODEL_RESPONSE_TOO_LARGE = "MODEL_RESPONSE_TOO_LARGE";
+  public static final String MODEL_SETTLEMENT_PROOF_INVALID = "MODEL_SETTLEMENT_PROOF_INVALID";
+  public static final String MODEL_STREAM_INCOMPLETE = "MODEL_STREAM_INCOMPLETE";
+  public static final String MODEL_TIMEOUT = "MODEL_TIMEOUT";
+  public static final String MODEL_UNAVAILABLE = "MODEL_UNAVAILABLE";
+
+  public static final String MODEL_AUTH_FAILED = "MODEL_AUTH_FAILED";
+
+  public static final String MODEL_NOT_FOUND = "MODEL_NOT_FOUND";
+
+  public static final String MODEL_RATE_LIMITED = "MODEL_RATE_LIMITED";
+
+  public static final String MODEL_COST_BOUND_EXCEEDED = "MODEL_COST_BOUND_EXCEEDED";
+
+  public static final String MODEL_USAGE_UNKNOWN = "MODEL_USAGE_UNKNOWN";
+
+  public static final String EVALUATION_SCOPE_NOT_ALLOWED = "EVALUATION_SCOPE_NOT_ALLOWED";
+
+  public static final String EVALUATION_SCOPE_LEDGER_UNPROVEN = "EVALUATION_SCOPE_LEDGER_UNPROVEN";
+
+  private ModelErrorCode() {}
+}

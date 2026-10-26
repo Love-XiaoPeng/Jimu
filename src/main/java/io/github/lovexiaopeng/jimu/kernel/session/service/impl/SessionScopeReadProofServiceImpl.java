@@ -1,8 +1,12 @@
 package io.github.lovexiaopeng.jimu.kernel.session.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionOutcome;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionScopeOperation;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeReadProofs.Proof;
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeReadProofService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 
 /** 保留原槽/step/scope/切点顺序、两次refs读取及失败传播，不重放provider。 */
 public final class SessionScopeReadProofServiceImpl implements SessionScopeReadProofService {
@@ -23,8 +27,8 @@ public final class SessionScopeReadProofServiceImpl implements SessionScopeReadP
             b.normalized(), b::normalizedDigest, b::normalizedBytes),
         proof);
     var event = proof.event();
-    if (!"READ".equals(b.operation())
-        || !"session_event_read".equals(i.tool())
+    if (!SessionScopeOperation.READ.equals(b.operation())
+        || !ToolCapability.SESSION_EVENT_READ.equals(i.tool())
         || !proof.hash(i.input()).equals(i.inputDigest())
         || !authority.equals(b.authority())
         || !b.authority().equals(cut.authority())
@@ -40,7 +44,7 @@ public final class SessionScopeReadProofServiceImpl implements SessionScopeReadP
         || !proof.receipt().equals(event.data())
         || !proof.refs().canonical().equals(event.refs())) throw corrupt();
     var refs = proof.refs().values();
-    if ("SUCCEEDED".equals(b.outcome())) {
+    if (SessionOutcome.SUCCEEDED.equals(b.outcome())) {
       String raw = i.output();
       proof.validateOutput(raw);
       if (!proof.hash(raw).equals(b.outputDigest())
@@ -100,6 +104,6 @@ public final class SessionScopeReadProofServiceImpl implements SessionScopeReadP
   }
 
   private static TaskFailure corrupt() {
-    return new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+    return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
   }
 }

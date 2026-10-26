@@ -6,8 +6,11 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import io.github.lovexiaopeng.jimu.kernel.mcp.api.McpResourcePolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.McpErrorCode;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.Proxy;
@@ -53,7 +56,10 @@ public final class McpWire implements AutoCloseable {
   static {
     JSON.getFactory()
         .setStreamReadConstraints(
-            StreamReadConstraints.builder().maxNestingDepth(32).maxStringLength(1048576).build());
+            StreamReadConstraints.builder()
+                .maxNestingDepth(32)
+                .maxStringLength(McpResourcePolicyV1.WIRE_STRING_UTF16_UNITS)
+                .build());
   }
 
   private final McpLedger.Profile profile;
@@ -61,7 +67,7 @@ public final class McpWire implements AutoCloseable {
   private final Audit audit;
   private final long end;
   private final HttpClient client;
-  private int remaining = 1048576;
+  private int remaining = McpResourcePolicyV1.WIRE_BYTES;
 
   public McpWire(
       McpLedger.Profile profile, String credential, Instant deadline, Duration limit, Audit audit) {
@@ -96,7 +102,7 @@ public final class McpWire implements AutoCloseable {
       if (value == null) throw invalid();
       return value;
     } catch (IOException error) {
-      throw new TaskFailure(502, "MCP_PROTOCOL_INVALID");
+      throw new TaskFailure(502, McpErrorCode.MCP_PROTOCOL_INVALID);
     }
   }
 
@@ -109,7 +115,7 @@ public final class McpWire implements AutoCloseable {
           .decode(ByteBuffer.wrap(bytes))
           .toString();
     } catch (CharacterCodingException error) {
-      throw new TaskFailure(502, "MCP_PROTOCOL_INVALID");
+      throw new TaskFailure(502, McpErrorCode.MCP_PROTOCOL_INVALID);
     }
   }
 
@@ -125,13 +131,13 @@ public final class McpWire implements AutoCloseable {
       buffer.get(bytes);
       return bytes;
     } catch (CharacterCodingException error) {
-      throw new TaskFailure(502, "MCP_PROTOCOL_INVALID");
+      throw new TaskFailure(502, McpErrorCode.MCP_PROTOCOL_INVALID);
     }
   }
 
   private void check() {
     audit.check();
-    if (System.nanoTime() >= end) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
+    if (System.nanoTime() >= end) throw new TaskFailure(409, TaskErrorCode.DEADLINE_EXCEEDED);
   }
 
   public void initialize() {
@@ -140,18 +146,19 @@ public final class McpWire implements AutoCloseable {
             "initialize",
             Map.of(
                 "protocolVersion",
-                "2025-06-18",
+                McpResourcePolicyV1.PROTOCOL_VERSION,
                 "capabilities",
                 Map.of(),
                 "clientInfo",
                 Map.of("name", "jimu", "version", "0.1.0")));
-    if (Payloads.json(value).getBytes(StandardCharsets.UTF_8).length > 8192)
-      throw new TaskFailure(429, "MCP_LIMIT_EXCEEDED");
+    if (Payloads.json(value).getBytes(StandardCharsets.UTF_8).length
+        > McpResourcePolicyV1.REQUEST_BYTES)
+      throw new TaskFailure(429, McpErrorCode.MCP_LIMIT_EXCEEDED);
     if (!value.path("protocolVersion").asText().equals(profile.protocolVersion()))
-      throw new TaskFailure(502, "MCP_PROFILE_UNSUPPORTED");
+      throw new TaskFailure(502, McpErrorCode.MCP_PROFILE_UNSUPPORTED);
     if (!value.path("serverInfo").equals(JSON.valueToTree(profile.serverInfo()))
         || !value.path("capabilities").equals(JSON.valueToTree(profile.serverCapabilities())))
-      throw new TaskFailure(409, "MCP_SNAPSHOT_MISMATCH");
+      throw new TaskFailure(409, McpErrorCode.MCP_SNAPSHOT_MISMATCH);
     notify("notifications/initialized", Map.of(), false);
   }
 
@@ -184,10 +191,10 @@ public final class McpWire implements AutoCloseable {
                 false);
             throw invalid();
           }
-          if (++notifications > 16) throw new TaskFailure(429, "MCP_LIMIT_EXCEEDED");
+          if (++notifications > 16) throw new TaskFailure(429, McpErrorCode.MCP_LIMIT_EXCEEDED);
           if (List.of("notifications/resources/list_changed", "notifications/resources/updated")
               .contains(value.path("method").asText()))
-            throw new TaskFailure(409, "MCP_SNAPSHOT_MISMATCH");
+            throw new TaskFailure(409, McpErrorCode.MCP_SNAPSHOT_MISMATCH);
           continue;
         }
         if (!value.path("id").isTextual()
@@ -202,8 +209,8 @@ public final class McpWire implements AutoCloseable {
           throw new TaskFailure(
               error.path("code").asInt() == -32002 ? 404 : 502,
               error.path("code").asInt() == -32002
-                  ? "MCP_RESOURCE_NOT_FOUND"
-                  : "MCP_UPSTREAM_ERROR");
+                  ? McpErrorCode.MCP_RESOURCE_NOT_FOUND
+                  : McpErrorCode.MCP_UPSTREAM_ERROR);
         }
         result = value.get("result");
         if (!result.isObject()) throw invalid();
@@ -212,7 +219,11 @@ public final class McpWire implements AutoCloseable {
       return result;
     } catch (TaskFailure error) {
       if (!method.equals("initialize")
-          && List.of("CANCEL_REQUESTED", "CANCELLED", "DEADLINE_EXCEEDED").contains(error.code())) {
+          && List.of(
+                  TaskErrorCode.CANCEL_REQUESTED,
+                  TaskErrorCode.CANCELLED,
+                  TaskErrorCode.DEADLINE_EXCEEDED)
+              .contains(error.code())) {
         try {
           notify(
               "notifications/cancelled", Map.of("requestId", id, "reason", "Task stopped"), true);
@@ -241,14 +252,15 @@ public final class McpWire implements AutoCloseable {
     CompletableFuture<HttpResponse<byte[]>> future = null;
     try {
       long timeout = cleanup ? TimeUnit.SECONDS.toNanos(1) : end - System.nanoTime();
-      if (timeout <= 0) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
+      if (timeout <= 0) throw new TaskFailure(409, TaskErrorCode.DEADLINE_EXCEEDED);
       var request =
           HttpRequest.newBuilder(URI.create(profile.endpoint()))
               .timeout(Duration.ofNanos(timeout))
               .header("Content-Type", "application/json")
               .header("Accept", "application/json, text/event-stream")
               .header("Authorization", "Bearer " + credential);
-      if (!method.equals("initialize")) request.header("MCP-Protocol-Version", "2025-06-18");
+      if (!method.equals("initialize"))
+        request.header("MCP-Protocol-Version", McpResourcePolicyV1.PROTOCOL_VERSION);
       future =
           client.sendAsync(
               request
@@ -262,25 +274,27 @@ public final class McpWire implements AutoCloseable {
           response = future.get(100, TimeUnit.MILLISECONDS);
           break;
         } catch (TimeoutException waiting) {
-          if (System.nanoTime() >= stop) throw new TaskFailure(409, "DEADLINE_EXCEEDED");
+          if (System.nanoTime() >= stop)
+            throw new TaskFailure(409, TaskErrorCode.DEADLINE_EXCEEDED);
           if (!cleanup) check();
         }
       }
       remaining -= response.body().length;
       if (response.headers().firstValue("Mcp-Session-Id").isPresent())
-        throw new TaskFailure(502, "MCP_PROFILE_UNSUPPORTED");
+        throw new TaskFailure(502, McpErrorCode.MCP_PROFILE_UNSUPPORTED);
       if (response.statusCode() == 401 || response.statusCode() == 403)
-        throw new TaskFailure(503, "MCP_UNAVAILABLE");
+        throw new TaskFailure(503, McpErrorCode.MCP_UNAVAILABLE);
       if (response.statusCode() != (id == null ? 202 : 200))
-        throw new TaskFailure(502, "MCP_UPSTREAM_ERROR");
+        throw new TaskFailure(502, McpErrorCode.MCP_UPSTREAM_ERROR);
       audit.responded(ordinal, null);
       return response;
     } catch (InterruptedException error) {
       java.lang.Thread.currentThread().interrupt();
-      audit.responded(ordinal, "CANCELLED");
-      throw new TaskFailure(409, "CANCELLED");
+      audit.responded(ordinal, TaskErrorCode.CANCELLED);
+      throw new TaskFailure(409, TaskErrorCode.CANCELLED);
     } catch (ExecutionException error) {
-      String code = subscriber.exceeded ? "MCP_LIMIT_EXCEEDED" : "MCP_UNAVAILABLE";
+      String code =
+          subscriber.exceeded ? McpErrorCode.MCP_LIMIT_EXCEEDED : McpErrorCode.MCP_UNAVAILABLE;
       audit.responded(ordinal, code);
       throw new TaskFailure(subscriber.exceeded ? 429 : 503, code);
     } catch (TaskFailure error) {
@@ -307,7 +321,7 @@ public final class McpWire implements AutoCloseable {
         if (!data.isEmpty()) {
           if (!event.equals("message")) throw invalid();
           result.add(parse(textBytes(data.substring(0, data.length() - 1))));
-          if (result.size() > 17) throw new TaskFailure(429, "MCP_LIMIT_EXCEEDED");
+          if (result.size() > 17) throw new TaskFailure(429, McpErrorCode.MCP_LIMIT_EXCEEDED);
         }
         data.setLength(0);
         event = "message";
@@ -325,7 +339,7 @@ public final class McpWire implements AutoCloseable {
   }
 
   private static TaskFailure invalid() {
-    return new TaskFailure(502, "MCP_PROTOCOL_INVALID");
+    return new TaskFailure(502, McpErrorCode.MCP_PROTOCOL_INVALID);
   }
 
   @Override

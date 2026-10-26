@@ -1,8 +1,13 @@
 package io.github.lovexiaopeng.jimu.kernel.session.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionContentState;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionOutcome;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionReadRelationProofs;
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionReadRelationProofService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.List;
 
 /** 保留来源/step/输入/槽位/pin/结果/直接端点的证明顺序与失败传播。 */
@@ -11,9 +16,9 @@ public final class SessionReadRelationProofServiceImpl implements SessionReadRel
     var b = p.sourceBinding();
     String raw = b.raw();
     if (b.version() != 1
-        || !"PRESENT".equals(b.state())
+        || !SessionContentState.PRESENT.equals(b.state())
         || raw == null
-        || p.bytes(raw) > 1024
+        || p.bytes(raw) > SessionHistoryPolicyV1.READ_INPUT_BYTES
         || p.bytes(raw) != b.bytes()
         || !p.hash(raw).equals(b.digest())) throw corrupt();
     var document = p.sourceDocument(raw);
@@ -24,7 +29,7 @@ public final class SessionReadRelationProofServiceImpl implements SessionReadRel
           || source.fields() != 2
           || !source.integral()
           || source.seq() <= previous
-          || source.seq() > 127
+          || source.seq() > SessionHistoryPolicyV1.LAST_PUBLIC_SEQ
           || !source.digest().matches("[0-9a-f]{64}")) throw corrupt();
       previous = source.seq();
     }
@@ -42,7 +47,7 @@ public final class SessionReadRelationProofServiceImpl implements SessionReadRel
         || st.upper().longValue() != b.upper()
         || !p.hash(i.input()).equals(i.inputDigest())
         || !i.inputDigest().equals(b.inputDigest())
-        || !"session_event_read".equals(i.tool())) throw corrupt();
+        || !ToolCapability.SESSION_EVENT_READ.equals(i.tool())) throw corrupt();
     var input = p.input(i.input());
     if (input.seq() != b.target()
         || input.before() != b.before()
@@ -65,11 +70,11 @@ public final class SessionReadRelationProofServiceImpl implements SessionReadRel
         || !pin.version().equals(i.pluginVersion())
         || !pin.digest().equals(i.pluginDigest())
         || pin.epoch() != i.epoch()) throw corrupt();
-    if ("FAILED".equals(b.outcome())) {
+    if (SessionOutcome.FAILED.equals(b.outcome())) {
       if (!sources.isEmpty() || i.output() != null || b.outputBytes() != 0) throw corrupt();
       return;
     }
-    if (!"SUCCEEDED".equals(b.outcome()) || sources.isEmpty()) throw corrupt();
+    if (!SessionOutcome.SUCCEEDED.equals(b.outcome()) || sources.isEmpty()) throw corrupt();
     String raw = i.output();
     p.validateOutput(raw);
     var output = p.output(raw);
@@ -99,6 +104,6 @@ public final class SessionReadRelationProofServiceImpl implements SessionReadRel
   }
 
   private static TaskFailure corrupt() {
-    return new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+    return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
   }
 }

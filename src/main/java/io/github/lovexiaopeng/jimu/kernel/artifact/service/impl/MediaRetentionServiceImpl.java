@@ -2,11 +2,16 @@ package io.github.lovexiaopeng.jimu.kernel.artifact.service.impl;
 
 import io.github.lovexiaopeng.jimu.kernel.artifact.port.MediaRetentions;
 import io.github.lovexiaopeng.jimu.kernel.artifact.service.MediaRetentionService;
+import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
+import io.github.lovexiaopeng.jimu.kernel.media.api.MediaCleanupState;
 import io.github.lovexiaopeng.jimu.kernel.snapshot.api.SnapshotDigest;
 import io.github.lovexiaopeng.jimu.kernel.snapshot.api.SnapshotObjectCodec;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ArtifactStore;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
 import io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork;
+import io.github.lovexiaopeng.jimu.plugin.api.ImageErrorCode;
 import java.util.List;
 
 /** 原媒体保留/清理用例；不从终态或Future取消推断writer已退出。 */
@@ -36,7 +41,7 @@ public final class MediaRetentionServiceImpl implements MediaRetentionService {
               () -> {
                 records.lockBudget(candidate.tenant());
                 var task = records.lockTask(candidate);
-                if (!"RETAINED".equals(task.cleanupState())
+                if (!MediaCleanupState.RETAINED.equals(task.cleanupState())
                     || !task.writersQuiescent()
                     || !terminal(task.state())) return false;
                 if (records.hasUnknownHold(candidate)) return false;
@@ -52,14 +57,14 @@ public final class MediaRetentionServiceImpl implements MediaRetentionService {
           () -> {
             records.lockBudget(candidate.tenant());
             var task = records.lockTask(candidate);
-            if ("DELETED".equals(task.cleanupState())) return null;
+            if (MediaCleanupState.DELETED.equals(task.cleanupState())) return null;
             if (!task.writersQuiescent()
                 || !terminal(task.state())
                 || records.hasUnknownHold(candidate))
-              throw new TaskFailure(409, "IMAGE_UNAVAILABLE");
+              throw new TaskFailure(409, ImageErrorCode.IMAGE_UNAVAILABLE);
             for (var checkpoint : records.lockCheckpoints(candidate)) {
               if (!digest.hash(checkpoint.snapshot()).equals(checkpoint.digest()))
-                throw new TaskFailure(409, "SNAPSHOT_CORRUPT");
+                throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
               // Retain original request/body/config/history digests; remove only the large body
               // copy.
               String retained = codec.withoutField(checkpoint.snapshot(), "requestBody");
@@ -67,7 +72,7 @@ public final class MediaRetentionServiceImpl implements MediaRetentionService {
             }
             for (var hold : records.lockHolds(candidate)) {
               long bytes = hold.actual() == null ? hold.amount() : hold.actual();
-              if ("MEDIA_CHECKPOINT".equals(hold.category()))
+              if (ReservationCategory.MEDIA_CHECKPOINT.equals(hold.category()))
                 records.releaseCheckpointBytes(candidate.tenant(), bytes);
               else records.releaseStorageBytes(candidate.tenant(), bytes);
               records.releaseHold(candidate, hold.id());
@@ -81,6 +86,6 @@ public final class MediaRetentionServiceImpl implements MediaRetentionService {
   }
 
   private static boolean terminal(String state) {
-    return List.of("SUCCEEDED", "FAILED", "CANCELLED").contains(state);
+    return List.of(TaskState.SUCCEEDED, TaskState.FAILED, TaskState.CANCELLED).contains(state);
   }
 }

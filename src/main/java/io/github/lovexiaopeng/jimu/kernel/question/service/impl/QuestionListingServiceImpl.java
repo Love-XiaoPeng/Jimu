@@ -1,8 +1,12 @@
 package io.github.lovexiaopeng.jimu.kernel.question.service.impl;
 
+import io.github.lovexiaopeng.jimu.kernel.question.api.QuestionPhase;
+import io.github.lovexiaopeng.jimu.kernel.question.api.QuestionPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.question.port.QuestionListing;
 import io.github.lovexiaopeng.jimu.kernel.question.service.QuestionListingService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
+import io.github.lovexiaopeng.jimu.plugin.api.QuestionErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +18,8 @@ public final class QuestionListingServiceImpl implements QuestionListingService 
           port.bucket(port.tenant());
           var task = port.visible();
           if (!java.util.Arrays.asList(s(task, "capabilities").split(","))
-              .contains("ask_user_question")) return Map.of("version", 1, "items", List.of());
+              .contains(ToolCapability.ASK_USER_QUESTION))
+            return Map.of("version", 1, "items", List.of());
           Instant now = port.now();
           var items = new java.util.ArrayList<Map<String, Object>>();
           for (var q : port.rows(port.tenant(), port.taskId())) {
@@ -39,7 +44,8 @@ public final class QuestionListingServiceImpl implements QuestionListingService 
                     && !port.view(task).terminal()
                     && task.get("cancel_requested_at") == null
                     && now.isBefore(time(q, "answer_expires_at"))
-                    && List.of("OPEN", "CONTINUED").contains(s(q, "phase")));
+                    && List.of(QuestionPhase.OPEN, QuestionPhase.CONTINUED)
+                        .contains(s(q, "phase")));
             if (q.get("answer_id") != null) {
               item.put("answerId", s(q, "answer_id"));
               item.put("answeredBy", s(q, "answered_actor_id"));
@@ -51,8 +57,9 @@ public final class QuestionListingServiceImpl implements QuestionListingService 
             items.add(item);
           }
           var result = Map.<String, Object>of("version", 1, "items", items);
-          if (port.encode(result).getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 524288)
-            throw new TaskFailure(409, "QUESTION_RESPONSE_TOO_LARGE");
+          if (port.encode(result).getBytes(java.nio.charset.StandardCharsets.UTF_8).length
+              > QuestionPolicyV1.OWNER_RESPONSE_BYTES)
+            throw new TaskFailure(409, QuestionErrorCode.QUESTION_RESPONSE_TOO_LARGE);
           return result;
         });
   }
