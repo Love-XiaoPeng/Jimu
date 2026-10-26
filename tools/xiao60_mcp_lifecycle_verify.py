@@ -95,7 +95,7 @@ def verify(e, old, classes):
     for name in NAMES:
         digest=hashlib.sha256((contracts/name/'output.schema.json').read_bytes()).hexdigest()
         e.sql("INSERT INTO installation(tenant_id,plugin_id,plugin_version,plugin_digest) VALUES('tenant-a','"+name+"','0.1.0','"+digest+"');")
-    profile={'version':1,'tenant':'tenant-a','server':'controlled','epoch':1,'hostId':e.common['jimu.host-id'],'endpoint':'http://127.0.0.1:1/mcp','credentialRef':'fixture','credentialVersion':1,'allowedActors':['alice'],'allowedUris':[],'allowedUriPrefixes':['jimu-fixture://tenant-a/docs/'],'allowedTemplates':['jimu-fixture://tenant-a/docs/{name}'],'protocolVersion':'2025-06-18','serverInfo':{'name':'jimu-controlled','version':'1'},'serverCapabilities':{'resources':{}},'schemaDigest':SCHEMA}
+    profile={'version':1,'tenant':'tenant-a','server':'controlled','epoch':1,'hostId':e.common['jimu.host-id'],'endpoint':'http://127.0.0.1:1/mcp','credentialRef':'fixture','credentialVersion':1,'allowedActors':['alice'],'allowedUris':[],'allowedUriPrefixes':['jimu-fixture://tenant-a/docs/'],'allowedTemplates':['jimu-fixture://tenant-a/docs/{name}','jimu-fixture://tenant-a/docs/{other}'],'protocolVersion':'2025-06-18','serverInfo':{'name':'jimu-controlled','version':'1'},'serverCapabilities':{'resources':{}},'schemaDigest':SCHEMA}
     raw=canonical(profile)
     e.sql("INSERT INTO mcp_server(tenant_id,server_id,enabled,epoch,profile_snapshot,profile_digest) VALUES('tenant-a','controlled',TRUE,1,'"+raw+"','"+hashlib.sha256(raw.encode()).hexdigest()+"');")
     e.common['jimu.mcp.enabled']='true'

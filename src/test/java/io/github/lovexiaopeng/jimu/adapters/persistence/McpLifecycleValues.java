@@ -24,7 +24,7 @@ final class McpLifecycleValues {
         List.of("alice"),
         List.of(),
         List.of("jimu-fixture://tenant-a/docs/"),
-        List.of("jimu-fixture://tenant-a/docs/{name}"),
+        List.of("jimu-fixture://tenant-a/docs/{name}", "jimu-fixture://tenant-a/docs/{other}"),
         "2025-06-18",
         new McpLedger.ServerInfo("jimu-controlled", "1"),
         Map.of("resources", Map.of()),

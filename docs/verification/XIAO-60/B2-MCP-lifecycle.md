@@ -26,13 +26,15 @@ capture-paths 实计 **77 静态 JDBC / 29 动态 / 241 静态 bind**，本批�
 
 36项单测/契约/架构/追踪检查全部通过，格式、Checkstyle、依赖门禁通过，SpotBugs bugs/errors=0。首轮 verify 因未传 Linux Java21 配置而在 IT 前置断言失败，因此不称整条 verify exit0。后续显式设置 `JIMU_IT_JAVA`，只运行必要 test-compile 和 B2McpLifecycleIT，不重跑已过无变化矩阵。
 
-最终第五轮 B2McpLifecycleIT：1项通过、无失败/错误/跳过，Maven exit0/BUILD SUCCESS。旧新各32次公开调用，各496条SQL（49普通Statement、447 prepared）、1,064个绑定位置；两页资源及模板成功/游标、normal/cleanup及应答/重复拒绝、重放/冲突、snapshot NULL、权限与fence均按各侧实际事实核过。独立离线审计每侧76项原SQL参数关系通过，全部18站点/65个静态绑定位置另由实际加载Mapper核对。
+最终第六轮 B2McpLifecycleIT：1项通过、无失败/错误/跳过，Maven exit0/BUILD SUCCESS；修正模板授权夹具后重验22项受影响检查，未变14项沿用原36项记录。旧新各32次公开调用，各496条SQL（49普通Statement、447 prepared）、1,064个绑定位置；两页资源及模板成功/游标、normal/cleanup及应答/重复拒绝、重放/冲突、snapshot NULL、权限与fence均按各侧实际事实核过。离线脚本审计每侧76项原SQL参数关系及资源/模板授权列表通过，全部18站点/65个静态绑定位置另由实际加载Mapper核对。
 
-同版受测原JAR：44,807,089字节，SHA256 `2a9aa00e153563e3da47a8cc0af49b07c6831ab8705fa15d673be4b0f158d7d5`。旧版为准确de5f32d原JAR，44,771,568字节、SHA256 `173f4ccc9009a166ec957af036a9748235986bd39bcb8e8faa2c2f49f2384dba`。第四轮已通过的原记录也保留；第五轮仅补采集器原来遗漏的getObject(column, Class)重载和值，生产源码/JAR未改，不将第四轮单实参getter统计冒称完整重载统计。
+同版受测原JAR：44,807,089字节，SHA256 `2a9aa00e153563e3da47a8cc0af49b07c6831ab8705fa15d673be4b0f158d7d5`。旧版为准确de5f32d原JAR，44,771,568字节、SHA256 `173f4ccc9009a166ec957af036a9748235986bd39bcb8e8faa2c2f49f2384dba`。第四/五轮通过的账本和schema原记录保留，但第二模板未进入profile授权列表，不称完整合法模板验收。第五轮补采集器原来遗漏的getObject(column, Class)重载和值；第六轮仅在两处夹具补齐原合法授权，生产源码/JAR未改。不将第四轮单实参getter统计冒称完整重载统计。
 
 真实 MySQL 场景通过原公开受理获得合法 MCP task，registerWorker/claim 仅作 setup，真实核 RUNNING/ACTIVE/live、current_attempt/fence/worker 完整绑定。显式合法 step/call/pin/TOOL reservation 和两页资源/模板结果不由 Host/provider 生成。清理与应答的原 admission=false 资格另证。全表原始回滚前/后快照含 worker_process；这是外层夹具 rollback，不能称逐调用持久提交、独立后记或整个重构验收。
 
 每次调用保存 SQL、Statement/prepared、setter/execute/getter/NULL 类型、connection、原值和前后业务事实。旧 JDBC 的 SELECT * 与新显式投影仅在比较器中按冻结列规范化；两侧原 SQL 保留。Integer/long 的 setObject 与 Mapper setInt/setLong、旧 executeQuery 与新 execute/getResultSet、索引与标签 getter 等真实差异按原日志记录，不冒称 JDBC API 相同。
+
+本轮直接公开 Ledger 分页调用覆盖 query=NULL；queryView 的预算/deadline、历史 FAILED 读取及独立 afterCompletion 等保持 OPEN 或沿用已有冻结证据，不扩记为本轮新增验收。
 
 保留原失败：最初生成器局部变量错误导致格式失败，修复 Mapper 路径并整合既有接口；首轮单测 lambda 捕获编译失败；首轮 IT 缺 Java21 环境；第二轮基础 Fixture 无 requests 属性；第三轮私有夹具漏 MCP 专用写授权，旧版 dispatch 正常分支收到 INSERT denied。后者原 cause/调用/全表恢复及 cleanup 完整保留，原日志未显式列 SQLState/vendor，不能追认为已采；未重放该失败来补故障证据。后续仅修私有夹具的既有最小授权，不授 mcp_server 写权。各次源码、class（编译失败时标为部分/旧 target，非受测品）、日志和清理分别封存。
 
