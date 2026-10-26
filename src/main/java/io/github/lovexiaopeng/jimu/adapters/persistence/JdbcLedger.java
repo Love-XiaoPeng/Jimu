@@ -1963,25 +1963,19 @@ public final class JdbcLedger
     questionResumption.resume(new MapperQuestionResume(this, task), requestId);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionContinuationService
+      questionContinuation =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl
+              .QuestionContinuationServiceImpl();
+
   private void continueQuestion(Map<String, Object> task, Map<String, Object> q) {
-    var invocation =
-        one(
-            "SELECT provider_id FROM invocation WHERE tenant_id=? AND id=? AND task_id=?",
-            s(task, "tenant_id"),
-            s(q, "invocation_id"),
-            s(task, "id"));
-    String output =
-        questions.pending(
-            tools(task).pins().get("ask_user_question").version(), s(invocation, "provider_id"));
-    questionToolResult(task, q, output);
-    if (db.update(
-            "UPDATE user_question SET phase='CONTINUED',revision=revision+1 WHERE tenant_id=? AND id=? AND phase='OPEN' AND revision=?",
-            s(task, "tenant_id"),
-            s(q, "id"),
-            n(q, "revision"))
-        != 1) throw new TaskFailure(409, "QUESTION_REVISION_CONFLICT");
-    questionResume(task, s(q, "id"));
-    event(task, "question-continued:" + s(q, "id"), "question.continued", null);
+    questionContinuation.continueQuestion(
+        new MapperQuestionContinuation(
+            this,
+            task,
+            q,
+            output -> questionToolResult(task, q, output),
+            requestId -> questionResume(task, requestId)));
   }
 
   private void closeQuestions(Map<String, Object> task, String code) {
