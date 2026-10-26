@@ -28,6 +28,34 @@ public interface ExecutionRecords {
     void terminal(String state, String code);
   }
 
+  interface DirectoryRequest {
+    int version();
+
+    String requestBody();
+
+    boolean messagesEmpty();
+
+    String lastRole();
+
+    String lastContent();
+
+    String expectedContext();
+
+    String cwd();
+  }
+
+  interface MediaBudget {
+    long limit();
+
+    long held();
+
+    void hold(long bytes);
+
+    void reserve(String reservation, long bytes, String category, String state, String quality);
+
+    void settle(String reservation);
+  }
+
   interface Admission {
     Optional<StoredStep> latest();
 
@@ -35,9 +63,33 @@ public interface ExecutionRecords {
 
     boolean unfinishedInvocations(String step);
 
-    void validateModuleRequest(String request);
+    boolean question();
 
-    void reserveMedia(String step, String request);
+    boolean todo();
+
+    boolean directory();
+
+    boolean session();
+
+    long recordVersion();
+
+    java.util.function.Supplier<String> requestBody(String request);
+
+    String publicSummary(String summary);
+
+    io.github.lovexiaopeng.jimu.kernel.question.service.QuestionStorageService.Facts
+        questionStorage();
+
+    io.github.lovexiaopeng.jimu.kernel.todo.service.TodoStorageService.Facts todoStorage();
+
+    io.github.lovexiaopeng.jimu.kernel.session.service.SessionHistoryStorageService.Facts
+        sessionStorage();
+
+    long directoryStorageBytes();
+
+    DirectoryRequest directoryRequest(String request);
+
+    MediaBudget lockMediaBudget();
 
     void insertStep(String step, int ordinal, String request);
 
@@ -46,8 +98,6 @@ public interface ExecutionRecords {
     void preparedEvent(String step);
 
     void commitFence();
-
-    void validateSummary(String summary);
 
     boolean pendingQuestions();
 

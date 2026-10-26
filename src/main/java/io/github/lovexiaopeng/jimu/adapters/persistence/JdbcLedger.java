@@ -9,7 +9,6 @@ import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
 import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
 import io.github.lovexiaopeng.jimu.kernel.budget.api.UsageQuality;
 import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryErrorCode;
-import io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationPlan;
 import io.github.lovexiaopeng.jimu.kernel.model.api.EvaluationRunState;
 import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
@@ -23,7 +22,6 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
 import io.github.lovexiaopeng.jimu.kernel.task.api.WebFetchObservation;
-import io.github.lovexiaopeng.jimu.kernel.todo.api.TodoContentState;
 import io.github.lovexiaopeng.jimu.model.api.ModelSnapshot;
 import io.github.lovexiaopeng.jimu.model.api.ModelUsage;
 import io.github.lovexiaopeng.jimu.plugin.api.ImageErrorCode;
@@ -69,6 +67,8 @@ public final class JdbcLedger
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeRevocationService
       scopeRevocations;
   private final io.github.lovexiaopeng.jimu.kernel.worker.service.WorkerService workerService;
+  private final io.github.lovexiaopeng.jimu.kernel.execution.service.ExecutionAdmissionService
+      executionAdmission;
   private final io.github.lovexiaopeng.jimu.kernel.execution.service.ExecutionService
       executionService;
   private final io.github.lovexiaopeng.jimu.kernel.model.service.ModelDispatchService modelService;
@@ -488,7 +488,7 @@ public final class JdbcLedger
             this, task, fact, type, source, data, redacted, sourceDigest, lease));
   }
 
-  private void sessionFact(Map<String, Object> task, String fact) {
+  void sessionFact(Map<String, Object> task, String fact) {
     sessionFacts.record(fact, new MapperSessionFacts(this, task));
   }
 
@@ -662,27 +662,6 @@ public final class JdbcLedger
     todosEnabled = enabled;
   }
 
-  void directoryContext(Map<String, Object> task, String request) {
-    var p = directoryProjection(task);
-    var wire =
-        Payloads.read(
-            request,
-            io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Checkpoint.class);
-    if (wire.version() != 2
-        || request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 131072
-        || wire.requestBody().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 65536)
-      throw new TaskFailure(429, ModelErrorCode.MODEL_INPUT_TOO_LARGE);
-    var messages = wire.messages();
-    if (messages.isEmpty()
-        || !messages.getLast().role().equals("user")
-        || !directories.context(s(p, "cwd"), n(p, "revision")).equals(messages.getLast().content()))
-      throw new TaskFailure(409, DirectoryErrorCode.DIRECTORY_REVISION_CONFLICT);
-    directoryStorage(
-        task,
-        request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length
-            + s(p, "cwd").getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
-  }
-
   boolean todoTask(Map<String, Object> task) {
     return caps(task).contains("todo_write");
   }
@@ -724,11 +703,11 @@ public final class JdbcLedger
           new io.github.lovexiaopeng.jimu.kernel.task.service.impl
               .TaskMetadataAccountingServiceImpl();
 
-  private void directoryMetadata(Map<String, Object> task, boolean closing) {
+  void directoryMetadata(Map<String, Object> task, boolean closing) {
     taskMetadata.directoryMetadata(new MapperTaskMetadataAccounting(this, task), closing);
   }
 
-  private void todoMetadata(Map<String, Object> task, boolean closing) {
+  void todoMetadata(Map<String, Object> task, boolean closing) {
     taskMetadata.todoMetadata(new MapperTaskMetadataAccounting(this, task), closing);
   }
 
@@ -1300,9 +1279,19 @@ public final class JdbcLedger
     workerService =
         new io.github.lovexiaopeng.jimu.kernel.worker.service.impl.WorkerServiceImpl(
             new MapperWorkerRecords(this), coreWork);
+    executionAdmission =
+        new io.github.lovexiaopeng.jimu.kernel.execution.service.impl.ExecutionAdmissionServiceImpl(
+            questionStorageBudget,
+            todoStorageBudget,
+            new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+                .SessionHistoryStorageServiceImpl());
     executionService =
         new io.github.lovexiaopeng.jimu.kernel.execution.service.impl.ExecutionServiceImpl(
-            new JdbcExecutionRecords(this, db), coreWork, leaseWork, Payloads::hash);
+            new JdbcExecutionRecords(this, db),
+            coreWork,
+            leaseWork,
+            Payloads::hash,
+            executionAdmission);
     modelService =
         new io.github.lovexiaopeng.jimu.kernel.model.service.impl.ModelDispatchServiceImpl(
             new MapperModelDispatchRecords(this),
@@ -1753,52 +1742,16 @@ public final class JdbcLedger
             query, tenant, reservation, task, dispatch, category, amount, state, quality);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.event.service.EventRecordingService
+      eventRecording =
+          new io.github.lovexiaopeng.jimu.kernel.event.service.impl.EventRecordingServiceImpl();
+
   void event(Map<String, Object> task, String fact, String type, String code) {
-    String tenant = s(task, "tenant_id"), taskId = s(task, "id");
-    if (!mappers.events().selectFactSequence(query, tenant, taskId, fact).isEmpty()) return;
-    if (todoTask(task) || directoryTask(task) || JdbcSessionRecords.task(task)) {
-      long seq = mappers.tasks().selectNextEventSequence(query, tenant, taskId);
-      boolean reserved =
-          type.equals("session_history.content_deleted")
-              || type.equals("working_directory.content_deleted")
-              || type.equals("todo.content_deleted")
-              || type.equals("task.completed")
-              || type.equals("task.failed")
-              || type.equals("task.cancelled")
-              || type.equals("task.needs_reconciliation");
-      if (seq >= (reserved ? 256 : 254))
-        throw new TaskFailure(
-            429,
-            JdbcSessionRecords.task(task)
-                ? SessionErrorCode.SESSION_HISTORY_LIMIT
-                : directoryTask(task)
-                    ? DirectoryErrorCode.DIRECTORY_EXECUTION_LIMIT
-                    : TodoErrorCode.TODO_EXECUTION_LIMIT);
-    }
-    mappers.tasks().advanceEventSequence(query, tenant, taskId);
-    long seq = mappers.tasks().selectNextEventSequence(query, tenant, taskId);
-    mappers
-        .events()
-        .insertFact(
-            query,
-            tenant,
-            taskId,
-            seq,
-            taskId + ":" + seq,
-            fact,
-            type,
-            code,
-            mappers.tasks().selectState(query, tenant, taskId),
-            "artifact.created".equals(type) ? fact.substring("published:".length()) : null);
-    sessionFact(task, fact);
-    if (JdbcSessionRecords.task(task))
-      sessions.account(
-          task, fact.equals("terminal") || type.equals("session_history.content_deleted"));
-    if (directoryTask(task))
-      directoryMetadata(
-          task, type.equals("working_directory.content_deleted") || fact.equals("terminal"));
-    if (todoTask(task))
-      todoMetadata(task, type.equals("todo.content_deleted") || fact.equals("terminal"));
+    eventRecording.record(new MapperEventRecords(this, task), fact, type, code);
+  }
+
+  long directoryStorageBytes(Map<String, Object> task) {
+    return directoryRetentionRecords.storageBytes(s(task, "tenant_id"), s(task, "id"));
   }
 
   @Override
@@ -2014,38 +1967,8 @@ public final class JdbcLedger
         || n(task, "live") != 1
         || !List.of(TaskState.RUNNING, TaskState.CANCEL_REQUESTED).contains(s(task, "state")))
       throw new TaskFailure(409, CommonErrorCode.FENCE_REJECTED);
-    if (admission) {
-      String rejection = modelRejection(task);
-      if (rejection == null) rejection = runRejection(evaluation);
-      if (rejection != null) throw new TaskFailure(409, rejection);
-      requireScope(lease.tenant(), evaluation, task, null);
-      checkMaterials(task);
-      access(task);
-      if (JdbcSessionRecords.task(task)) {
-        if (!lease.actor().equals(s(task, "owner_actor_id")))
-          throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
-        sessionAdmission(task);
-      }
-      if (directoryTask(task)) {
-        if (!lease.actor().equals(s(task, "owner_actor_id")))
-          throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
-        directoryAdmission(task);
-      }
-      if (todoTask(task)) {
-        if (!lease.actor().equals(s(task, "owner_actor_id")))
-          throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
-        if (!todosEnabled) throw new TaskFailure(403, TodoErrorCode.TODO_FEATURE_DISABLED);
-        if (TodoContentState.PURGED.equals(s(todoProjection(task), "content_state")))
-          throw new TaskFailure(410, TodoErrorCode.TODO_CONTENT_EXPIRED);
-        models.requireTodo(snapshot(task));
-      }
-      if (questionTask(task) && !questionsEnabled)
-        throw new TaskFailure(403, QuestionErrorCode.QUESTION_FEATURE_DISABLED);
-      if (task.get("cancel_requested_at") != null)
-        throw new TaskFailure(409, TaskErrorCode.CANCEL_REQUESTED);
-      if (n(task, "within_deadline") != 1)
-        throw new TaskFailure(409, TaskErrorCode.DEADLINE_EXCEEDED);
-    }
+    if (admission)
+      executionAdmission.lease(new MapperLeaseAdmission(this, task, evaluation), lease);
     if (mappers
             .tasks()
             .commitLiveFence(

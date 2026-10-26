@@ -48,7 +48,7 @@ final class MapperSessionCallBindings implements SessionCallBindings {
         bindingRow(
             ScopeQueryStepReadMapper.class,
             new QueryWrapper<>()
-                .select("*")
+                .select(Schema22Columns.STEP)
                 .eq("tenant_id", s(task, "tenant_id"))
                 .eq("id", stepId)
                 .eq("task_id", s(task, "id"))
@@ -92,7 +92,7 @@ final class MapperSessionCallBindings implements SessionCallBindings {
         records.bindingRows(
             HistoryInvocationReadMapper.class,
             new QueryWrapper<>()
-                .select("*")
+                .select(Schema22Columns.INVOCATION)
                 .eq("tenant_id", s(task, "tenant_id"))
                 .eq("task_id", s(task, "id"))
                 .eq("step_id", stepId)
@@ -243,7 +243,7 @@ final class MapperSessionCallBindings implements SessionCallBindings {
           bindingRow(
               ScopeQueryCutReadMapper.class,
               new QueryWrapper<>()
-                  .select("*")
+                  .select(Schema22Columns.STEP_SESSION_SCOPE)
                   .eq("tenant_id", s(task, "tenant_id"))
                   .eq("step_id", s(step, "id"))
                   .eq("caller_task_id", s(task, "id")));

@@ -19,6 +19,8 @@ import java.util.UUID;
 /** 租约内检查点、准备、结束用例；短事务和材料拒绝提交沿用原账本边界。 */
 public final class ExecutionServiceImpl implements ExecutionService {
   private final ExecutionRecords records;
+  private final io.github.lovexiaopeng.jimu.kernel.execution.service.ExecutionAdmissionService
+      policy;
   private final LedgerUnitOfWork work;
   private final LeaseUnitOfWork admissions;
   private final SnapshotDigest digest;
@@ -27,7 +29,9 @@ public final class ExecutionServiceImpl implements ExecutionService {
       ExecutionRecords records,
       LedgerUnitOfWork work,
       LeaseUnitOfWork admissions,
-      SnapshotDigest digest) {
+      SnapshotDigest digest,
+      io.github.lovexiaopeng.jimu.kernel.execution.service.ExecutionAdmissionService policy) {
+    this.policy = policy;
     this.records = records;
     this.work = work;
     this.admissions = admissions;
@@ -95,9 +99,9 @@ public final class ExecutionServiceImpl implements ExecutionService {
               && (previous.get().response() == null
                   || task.unfinishedInvocations(previous.get().id())))
             throw new TaskFailure(409, TaskErrorCode.CHECKPOINT_INCOMPLETE);
-          task.validateModuleRequest(request);
+          policy.request(task, request);
           String id = UUID.randomUUID().toString();
-          task.reserveMedia(id, request);
+          policy.media(task, id, request);
           task.insertStep(id, ordinal, request);
           task.prepareProjections(id, request);
           task.preparedEvent(id);
@@ -112,7 +116,7 @@ public final class ExecutionServiceImpl implements ExecutionService {
         lease,
         () -> {
           var task = records.lockAdmission(lease);
-          task.validateSummary(summary);
+          policy.summary(task, summary);
           if (task.pendingQuestions()) {
             String step = task.latestStepId();
             task.pauseQuestions(step);

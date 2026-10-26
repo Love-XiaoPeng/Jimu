@@ -3,13 +3,13 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcLedger.s;
 
 import io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoStorageMapper;
-import io.github.lovexiaopeng.jimu.kernel.todo.port.TodoStorage;
 import java.util.List;
 import java.util.Map;
 import org.springframework.dao.support.DataAccessUtils;
 
 /** 同DS/UoW/query的单条原汇总；构造不读取task或会话。 */
-final class MapperTodoStorage implements TodoStorage {
+final class MapperTodoStorage
+    implements io.github.lovexiaopeng.jimu.kernel.todo.service.TodoStorageService.Facts {
   private final JdbcLedger ledger;
   private final Map<String, Object> task;
 

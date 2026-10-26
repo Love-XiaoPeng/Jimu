@@ -51,7 +51,10 @@ final class MapperQuestionEligibility
   public Installation installation() {
     String tenant = s(task, "tenant_id");
     var wrapper = new QueryWrapper<InstallationEntity>();
-    wrapper.select("*").eq("tenant_id", tenant).eq("plugin_id", ToolCapability.ASK_USER_QUESTION);
+    wrapper
+        .select(Schema22Columns.INSTALLATION)
+        .eq("tenant_id", tenant)
+        .eq("plugin_id", ToolCapability.ASK_USER_QUESTION);
     var parameters = new HashMap<String, Object>();
     parameters.put("ew", wrapper);
     parameters.put("query", ledger.queryContext());

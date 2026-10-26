@@ -45,87 +45,16 @@ class PersistencePathTrackingTest {
     assertTrue(capture.path("mapperSql").size() >= 48);
     for (var mapper : capture.path("mapperSql")) {
       assertTrue(!mapper.path("sql").asText().contains("${"));
-      // These exact installation locks retain their original SELECT * projections.
-      if (java.util.Set.of(
-              "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionEligibilityMapper.lockInstallation",
-              "io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.DirectoryEligibilityMapper.lockInstallation",
-              "io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoEligibilityMapper.lockInstallation")
-          .contains(mapper.path("id").asText()))
-        assertEquals(
-            "SELECT * FROM installation WHERE tenant_id=#{tenant} AND plugin_id=#{plugin} FOR SHARE",
-            mapper.path("sql").asText());
-      else if (mapper
+      String sql = mapper.path("sql").asText();
+      if (mapper
           .path("id")
           .asText()
           .equals(
-              "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionMessagesMapper.pending"))
-        assertEquals(
-            "SELECT q.*,i.provider_id FROM user_question q JOIN invocation i ON i.tenant_id=q.tenant_id AND i.id=q.invocation_id WHERE q.tenant_id=#{tenant} AND q.task_id=#{task} AND q.delivery_state='PENDING' ORDER BY q.accepted_seq",
-            mapper.path("sql").asText());
-      else if (mapper
-          .path("id")
-          .asText()
-          .equals(
-              "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionListingMapper.list"))
-        assertEquals(
-            "SELECT q.*,i.provider_id FROM user_question q JOIN invocation i ON i.tenant_id=q.tenant_id AND i.id=q.invocation_id WHERE q.tenant_id=#{tenant} AND q.task_id=#{task} ORDER BY q.ordinal",
-            mapper.path("sql").asText());
-      else if (mapper
-          .path("id")
-          .asText()
-          .equals(
-              "io.github.lovexiaopeng.jimu.adapters.persistence.operator.mapper.ExecutionScopeMapper.consumptionReceipts"))
-        // The external receipt's original full projection must not become OperatorMapper's crop.
-        assertEquals(
-            "SELECT * FROM jimu_provisioning_receipt WHERE tenant_id=#{tenant}",
-            mapper.path("sql").asText());
-      else if (mapper
-          .path("id")
-          .asText()
-          .equals(
-              "io.github.lovexiaopeng.jimu.adapters.persistence.operator.mapper.ExecutionScopeMapper.consumptionScopes"))
-        assertEquals(
-            "SELECT * FROM evaluation_execution_scope WHERE tenant_id=#{tenant} AND run_id=#{run}",
-            mapper.path("sql").asText());
-      else if (mapper
-          .path("id")
-          .asText()
-          .equals(
-              "io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskMapper.selectSessionOwner"))
-        assertEquals(
-            "SELECT * FROM task WHERE tenant_id=#{tenant} AND id=#{task} AND owner_actor_id=#{actor} FOR UPDATE",
-            mapper.path("sql").asText());
-      else if (mapper.path("id").asText().endsWith(".metadataRows")) {
-        // Exact finite full-row scans are the original directory/todo billing inputs.
-        var expected =
-            java.util.Map.ofEntries(
-                java.util.Map.entry("task.mapper.TaskMapper", "task"),
-                java.util.Map.entry("directory.mapper.TaskDirectoryReadMapper", "task_directory"),
-                java.util.Map.entry(
-                    "directory.mapper.DirectoryPathReadMapper", "invocation_path_binding"),
-                java.util.Map.entry("todo.mapper.TodoProjectionReadMapper", "task_todo_projection"),
-                java.util.Map.entry("execution.mapper.TaskAttemptMapper", "task_attempt"),
-                java.util.Map.entry("execution.mapper.StepMapper", "step"),
-                java.util.Map.entry("invocation.mapper.InvocationMapper", "invocation"),
-                java.util.Map.entry("model.mapper.ModelDispatchMapper", "model_dispatch"),
-                java.util.Map.entry("budget.mapper.ReservationMapper", "reservation"),
-                java.util.Map.entry("event.mapper.EventMapper", "event"));
-        String id =
-            mapper
-                .path("id")
-                .asText()
-                .replace("io.github.lovexiaopeng.jimu.adapters.persistence.", "")
-                .replace(".metadataRows", "");
-        assertTrue(expected.containsKey(id));
-        String table = expected.get(id);
-        assertEquals(
-            "SELECT * FROM "
-                + table
-                + " WHERE tenant_id=#{tenant} AND "
-                + (table.equals("task") ? "id" : "task_id")
-                + "=#{task}",
-            mapper.path("sql").asText());
-      } else assertTrue(!mapper.path("sql").asText().matches("(?is).*SELECT\\s+(?:\\w+\\.)?\\*.*"));
+              "io.github.lovexiaopeng.jimu.adapters.persistence.operator.mapper.ExecutionScopeMapper.consumptionReceipts")) {
+        // External supplier owns the receipt schema; retain the original full projection.
+        assertEquals("SELECT * FROM jimu_provisioning_receipt WHERE tenant_id=#{tenant}", sql);
+      } else
+        assertTrue(!sql.matches("(?is).*SELECT\\s+(?:\\w+\\.)?\\*.*"), mapper.path("id").asText());
     }
     for (var entry : capture.path("baseline").path("entries")) {
       assertTrue(entry.hasNonNull("targetService"));

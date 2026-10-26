@@ -30,5 +30,5 @@
   </select>
 <select id="directorySourceAttempt" resultType="map"><![CDATA[SELECT id FROM task_attempt WHERE tenant_id=#{tenant} AND task_id=#{task} AND id=#{attempt} AND fence=#{fence}]]></select>
 <select id="directoryViewAttempt" resultType="map"><![CDATA[SELECT id FROM task_attempt WHERE tenant_id=#{tenant} AND task_id=#{task} AND id=#{attempt} AND fence=#{fence}]]></select>
-  <select id="metadataRows" resultType="org.springframework.util.LinkedCaseInsensitiveMap"><![CDATA[SELECT * FROM task_attempt WHERE tenant_id=#{tenant} AND task_id=#{task}]]></select>
+  <select id="metadataRows" resultType="org.springframework.util.LinkedCaseInsensitiveMap"><![CDATA[SELECT tenant_id,id,task_id,worker_id,fence,state,started_at,ended_at,record_version,quiescent FROM task_attempt WHERE tenant_id=#{tenant} AND task_id=#{task}]]></select>
 </mapper>

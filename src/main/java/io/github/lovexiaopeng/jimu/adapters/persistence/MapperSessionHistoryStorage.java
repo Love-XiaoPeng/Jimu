@@ -4,11 +4,12 @@ import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcSessionRecord
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;
-import io.github.lovexiaopeng.jimu.kernel.session.port.SessionHistoryStorage;
 import java.util.Map;
 
 /** Values stay lazy; both mutations use the original DS, query context and caller transaction. */
-final class MapperSessionHistoryStorage implements SessionHistoryStorage {
+final class MapperSessionHistoryStorage
+    implements io.github.lovexiaopeng.jimu.kernel.session.service.SessionHistoryStorageService
+        .Facts {
   private final JdbcSessionRecords records;
   private final Map<String, Object> task;
 

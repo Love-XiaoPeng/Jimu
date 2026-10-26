@@ -38,5 +38,5 @@
     <![CDATA[UPDATE model_dispatch SET state=#{state},code=#{code},ended_at=CURRENT_TIMESTAMP(6),input_tokens=#{input},output_tokens=#{output},total_tokens=#{total},usage_snapshot=#{usage},actual_cost=#{actual},cost_quality=#{quality} WHERE tenant_id=#{tenant} AND id=#{dispatchId}]]>
   </update>
 <select id="imageCompositionDispatch" resultType="map"><![CDATA[SELECT tenant_id,id,task_id,step_id,config_digest,request_digest,state,code,started_at,ended_at,input_tokens,output_tokens,total_tokens,usage_snapshot,price_version,currency,reserved_cost,actual_cost,cost_quality FROM model_dispatch WHERE tenant_id=#{tenant} AND task_id=#{task} AND id=#{dispatch}]]></select>
-  <select id="metadataRows" resultType="org.springframework.util.LinkedCaseInsensitiveMap"><![CDATA[SELECT * FROM model_dispatch WHERE tenant_id=#{tenant} AND task_id=#{task}]]></select>
+  <select id="metadataRows" resultType="org.springframework.util.LinkedCaseInsensitiveMap"><![CDATA[SELECT tenant_id,id,task_id,step_id,config_digest,request_digest,state,code,started_at,ended_at,input_tokens,output_tokens,total_tokens,usage_snapshot,price_version,currency,reserved_cost,actual_cost,cost_quality FROM model_dispatch WHERE tenant_id=#{tenant} AND task_id=#{task}]]></select>
 </mapper>

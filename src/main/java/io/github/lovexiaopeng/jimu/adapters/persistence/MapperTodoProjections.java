@@ -51,7 +51,10 @@ final class MapperTodoProjections implements TodoProjections<MapperTodoProjectio
 
   public Row projection() {
     var wrapper = new QueryWrapper<TodoProjectionReadEntity>();
-    wrapper.select("*").eq("tenant_id", s(task, "tenant_id")).eq("task_id", s(task, "id"));
+    wrapper
+        .select(Schema22Columns.TASK_TODO_PROJECTION)
+        .eq("tenant_id", s(task, "tenant_id"))
+        .eq("task_id", s(task, "id"));
     var parameters = new HashMap<String, Object>();
     parameters.put("ew", wrapper);
     parameters.put("query", ledger.queryContext());

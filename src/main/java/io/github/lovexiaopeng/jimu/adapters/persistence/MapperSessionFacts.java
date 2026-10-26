@@ -97,7 +97,7 @@ final class MapperSessionFacts implements SessionFacts.Fact {
         one(
             SessionFactStepMapper.class,
             new QueryWrapper<ScopeQueryStepEntity>()
-                .select("*")
+                .select(Schema22Columns.STEP)
                 .eq("tenant_id", s(task, "tenant_id"))
                 .eq("id", id)
                 .eq("task_id", s(task, "id")));
@@ -150,7 +150,7 @@ final class MapperSessionFacts implements SessionFacts.Fact {
         one(
             SessionFactAttemptMapper.class,
             new QueryWrapper<ScopeQueryAttemptEntity>()
-                .select("*")
+                .select(Schema22Columns.TASK_ATTEMPT)
                 .eq("tenant_id", s(task, "tenant_id"))
                 .eq("id", s(task, "current_attempt_id"))
                 .eq("task_id", s(task, "id")));

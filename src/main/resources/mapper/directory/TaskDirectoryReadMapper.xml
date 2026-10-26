@@ -8,5 +8,5 @@ FROM task t LEFT JOIN task_directory p ON p.tenant_id=t.tenant_id AND p.task_id=
 LEFT JOIN invocation i ON i.tenant_id=p.tenant_id AND i.id=p.source_invocation_id
 LEFT JOIN invocation_path_binding f ON f.tenant_id=i.tenant_id AND f.invocation_id=i.id
 WHERE t.tenant_id=#{tenant} AND t.id=#{task} AND t.owner_actor_id=#{actor}]]></select>
-  <select id="metadataRows" resultType="org.springframework.util.LinkedCaseInsensitiveMap"><![CDATA[SELECT * FROM task_directory WHERE tenant_id=#{tenant} AND task_id=#{task}]]></select>
+  <select id="metadataRows" resultType="org.springframework.util.LinkedCaseInsensitiveMap"><![CDATA[SELECT tenant_id,task_id,record_version,directory_version,path_policy_version,binding_snapshot,binding_digest,namespace_digest,revision,content_state,cwd,source_invocation_id,workspace_state,updated_at,retain_until,reserved_bytes,cleanup_generation,retained_digests,filesystem_receipt FROM task_directory WHERE tenant_id=#{tenant} AND task_id=#{task}]]></select>
 </mapper>

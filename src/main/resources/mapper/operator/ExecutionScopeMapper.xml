@@ -3,5 +3,5 @@
 <mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.operator.mapper.ExecutionScopeMapper">
  <select id="consumptionReceipts" resultType="map"><![CDATA[SELECT * FROM jimu_provisioning_receipt WHERE tenant_id=#{tenant}]]></select>
  <select id="boundRuns" resultType="string"><![CDATA[SELECT run_id FROM evaluation_execution_scope WHERE tenant_id=#{tenant}]]></select>
- <select id="consumptionScopes" resultType="map"><![CDATA[SELECT * FROM evaluation_execution_scope WHERE tenant_id=#{tenant} AND run_id=#{run}]]></select>
+ <select id="consumptionScopes" resultType="map"><![CDATA[SELECT tenant_id,run_id,record_version,scope_snapshot,scope_digest,bound_at_utc,bound_by FROM evaluation_execution_scope WHERE tenant_id=#{tenant} AND run_id=#{run}]]></select>
 </mapper>

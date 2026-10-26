@@ -1,0 +1,107 @@
+{
+  "base": "3e3fab8da3e7858a3590e973e21e956b7b573317",
+  "operations": [
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.budget.mapper.ReservationMapper.metadataRows",
+      "original": "SELECT * FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{task}",
+      "table": "reservation",
+      "file": "src/main/resources/mapper/budget/ReservationMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.DirectoryEligibilityMapper.lockInstallation",
+      "original": "SELECT * FROM installation WHERE tenant_id=#{tenant} AND plugin_id=#{plugin} FOR SHARE",
+      "table": "installation",
+      "file": "src/main/resources/mapper/directory/DirectoryEligibilityMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.DirectoryPathReadMapper.metadataRows",
+      "original": "SELECT * FROM invocation_path_binding WHERE tenant_id=#{tenant} AND task_id=#{task}",
+      "table": "invocation_path_binding",
+      "file": "src/main/resources/mapper/directory/DirectoryPathReadMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.TaskDirectoryReadMapper.metadataRows",
+      "original": "SELECT * FROM task_directory WHERE tenant_id=#{tenant} AND task_id=#{task}",
+      "table": "task_directory",
+      "file": "src/main/resources/mapper/directory/TaskDirectoryReadMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.event.mapper.EventMapper.metadataRows",
+      "original": "SELECT * FROM event WHERE tenant_id=#{tenant} AND task_id=#{task}",
+      "table": "event",
+      "file": "src/main/resources/mapper/event/EventMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper.metadataRows",
+      "original": "SELECT * FROM step WHERE tenant_id=#{tenant} AND task_id=#{task}",
+      "table": "step",
+      "file": "src/main/resources/mapper/execution/StepMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.TaskAttemptMapper.metadataRows",
+      "original": "SELECT * FROM task_attempt WHERE tenant_id=#{tenant} AND task_id=#{task}",
+      "table": "task_attempt",
+      "file": "src/main/resources/mapper/execution/TaskAttemptMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.invocation.mapper.InvocationMapper.metadataRows",
+      "original": "SELECT * FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{task}",
+      "table": "invocation",
+      "file": "src/main/resources/mapper/invocation/InvocationMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.model.mapper.ModelDispatchMapper.metadataRows",
+      "original": "SELECT * FROM model_dispatch WHERE tenant_id=#{tenant} AND task_id=#{task}",
+      "table": "model_dispatch",
+      "file": "src/main/resources/mapper/model/ModelDispatchMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.operator.mapper.ExecutionScopeMapper.consumptionScopes",
+      "original": "SELECT * FROM evaluation_execution_scope WHERE tenant_id=#{tenant} AND run_id=#{run}",
+      "table": "evaluation_execution_scope",
+      "file": "src/main/resources/mapper/operator/ExecutionScopeMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionListingMapper.list",
+      "original": "SELECT q.*,i.provider_id FROM user_question q JOIN invocation i ON i.tenant_id=q.tenant_id AND i.id=q.invocation_id WHERE q.tenant_id=#{tenant} AND q.task_id=#{task} ORDER BY q.ordinal",
+      "table": "user_question",
+      "file": "src/main/resources/mapper/question/QuestionListingMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionMessagesMapper.pending",
+      "original": "SELECT q.*,i.provider_id FROM user_question q JOIN invocation i ON i.tenant_id=q.tenant_id AND i.id=q.invocation_id WHERE q.tenant_id=#{tenant} AND q.task_id=#{task} AND q.delivery_state='PENDING' ORDER BY q.accepted_seq",
+      "table": "user_question",
+      "file": "src/main/resources/mapper/question/QuestionMessagesMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionEligibilityMapper.lockInstallation",
+      "original": "SELECT * FROM installation WHERE tenant_id=#{tenant} AND plugin_id=#{plugin} FOR SHARE",
+      "table": "installation",
+      "file": "src/main/resources/mapper/session/SessionEligibilityMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskMapper.selectSessionOwner",
+      "original": "SELECT * FROM task WHERE tenant_id=#{tenant} AND id=#{task} AND owner_actor_id=#{actor} FOR UPDATE",
+      "table": "task",
+      "file": "src/main/resources/mapper/task/TaskMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskMapper.metadataRows",
+      "original": "SELECT * FROM task WHERE tenant_id=#{tenant} AND id=#{task}",
+      "table": "task",
+      "file": "src/main/resources/mapper/task/TaskMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoEligibilityMapper.lockInstallation",
+      "original": "SELECT * FROM installation WHERE tenant_id=#{tenant} AND plugin_id=#{plugin} FOR SHARE",
+      "table": "installation",
+      "file": "src/main/resources/mapper/todo/TodoEligibilityMapper.xml"
+    },
+    {
+      "id": "io.github.lovexiaopeng.jimu.adapters.persistence.todo.mapper.TodoProjectionReadMapper.metadataRows",
+      "original": "SELECT * FROM task_todo_projection WHERE tenant_id=#{tenant} AND task_id=#{task}",
+      "table": "task_todo_projection",
+      "file": "src/main/resources/mapper/todo/TodoProjectionReadMapper.xml"
+    }
+  ]
+}

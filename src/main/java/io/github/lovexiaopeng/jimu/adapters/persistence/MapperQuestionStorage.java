@@ -3,13 +3,13 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcLedger.s;
 
 import io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionStorageMapper;
-import io.github.lovexiaopeng.jimu.kernel.question.port.QuestionStorage;
 import java.util.List;
 import java.util.Map;
 import org.springframework.dao.support.DataAccessUtils;
 
 /** 同DS/UoW/query的单条原汇总；构造不读取task或会话。 */
-final class MapperQuestionStorage implements QuestionStorage {
+final class MapperQuestionStorage
+    implements io.github.lovexiaopeng.jimu.kernel.question.service.QuestionStorageService.Facts {
   private final JdbcLedger ledger;
   private final Map<String, Object> task;
 

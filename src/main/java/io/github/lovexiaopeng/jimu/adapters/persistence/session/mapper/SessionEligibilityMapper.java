@@ -6,7 +6,7 @@ import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-/** Existing shared installation lock, retaining SELECT * and first-row behavior. */
+/** Installation lock with schema22 full columns and original first-row behavior. */
 @Mapper
 public interface SessionEligibilityMapper {
   List<Map<String, Object>> lockInstallation(

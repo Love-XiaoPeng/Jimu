@@ -59,5 +59,5 @@
 <update id="releaseSearchReservation"><![CDATA[UPDATE reservation SET state='RELEASED' WHERE tenant_id=#{tenant} AND id=#{reservation}]]></update>
 <update id="settleDirectoryReservation"><![CDATA[UPDATE reservation SET actual=1 WHERE tenant_id=#{tenant} AND id=#{invocation}]]></update>
 <update id="settleTodoReservation"><![CDATA[UPDATE reservation SET actual=1 WHERE tenant_id=#{tenant} AND id=#{invocation}]]></update>
-  <select id="metadataRows" resultType="org.springframework.util.LinkedCaseInsensitiveMap"><![CDATA[SELECT * FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{task}]]></select>
+  <select id="metadataRows" resultType="org.springframework.util.LinkedCaseInsensitiveMap"><![CDATA[SELECT tenant_id,id,task_id,dispatch_id,category,amount,actual,usage_quality,cost_quality,state,record_version FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{task}]]></select>
 </mapper>

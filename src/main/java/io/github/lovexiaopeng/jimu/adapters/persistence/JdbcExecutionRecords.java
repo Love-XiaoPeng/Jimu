@@ -1,22 +1,13 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
-import io.github.lovexiaopeng.jimu.kernel.budget.api.BudgetErrorCode;
-import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationCategory;
-import io.github.lovexiaopeng.jimu.kernel.budget.api.ReservationState;
-import io.github.lovexiaopeng.jimu.kernel.budget.api.UsageQuality;
-import io.github.lovexiaopeng.jimu.kernel.directory.api.DirectoryErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.execution.port.ExecutionRecords;
-import io.github.lovexiaopeng.jimu.kernel.model.api.ModelErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
-import io.github.lovexiaopeng.jimu.kernel.task.api.TaskErrorCode;
-import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
-import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-/** B1 具名记录端口；只保留同事务SQL及尚待B3/B4迁移的模块校验，B2替换真实Mapper。 */
+/** 同事务事实、codec和明确数据变更；准入、限额及结算顺序归执行Service。 */
 final class JdbcExecutionRecords implements ExecutionRecords {
   private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionDeliveryService
       questionDeliveries =
@@ -100,54 +91,125 @@ final class JdbcExecutionRecords implements ExecutionRecords {
             .isEmpty();
       }
 
-      public void validateModuleRequest(String request) {
-        if (ledger.questionTask(task)) {
-          if (request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 65536)
-            throw new TaskFailure(429, ModelErrorCode.MODEL_INPUT_TOO_LARGE);
-          ledger.questionStorage(
-              task, request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
-        }
-        if (ledger.todoTask(task)) {
-          var wire =
-              Payloads.read(
-                  request,
-                  io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Checkpoint.class);
-          if (io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(request)
-                  > 131072
-              || io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(
-                      wire.requestBody())
-                  > 65536) throw new TaskFailure(429, ModelErrorCode.MODEL_INPUT_TOO_LARGE);
-          ledger.todoStorage(
-              task, io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(request));
-        }
-        if (ledger.directoryTask(task)) ledger.directoryContext(task, request);
+      public boolean question() {
+        return ledger.questionTask(task);
       }
 
-      public void reserveMedia(String stepId, String request) {
-        if (ledger.n(task, "record_version") == 3) {
-          var budget = ledger.bucket(lease.tenant());
-          long bytes = request.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
-          if (bytes > ledger.n(budget, "storage_limit") - ledger.storageHeld(budget))
-            throw new TaskFailure(429, BudgetErrorCode.STORAGE_BUDGET_EXCEEDED);
-          ledger
-              .mappers
-              .budgets()
-              .holdMediaCheckpoint(ledger.queryContext(), bytes, lease.tenant());
-          ledger.reserve(
-              lease.tenant(),
-              lease.taskId(),
-              stepId + ":media-checkpoint",
-              null,
-              ReservationCategory.MEDIA_CHECKPOINT,
-              bytes,
-              ReservationState.SETTLED,
-              UsageQuality.KNOWN);
-          ledger
-              .mappers
-              .reservations()
-              .settleReservedAmount(
-                  ledger.queryContext(), lease.tenant(), stepId + ":media-checkpoint");
-        }
+      public boolean todo() {
+        return ledger.todoTask(task);
+      }
+
+      public boolean directory() {
+        return ledger.directoryTask(task);
+      }
+
+      public boolean session() {
+        return JdbcSessionRecords.task(task);
+      }
+
+      public long recordVersion() {
+        return ledger.n(task, "record_version");
+      }
+
+      public java.util.function.Supplier<String> requestBody(String request) {
+        var wire =
+            Payloads.read(
+                request,
+                io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Checkpoint.class);
+        return () -> wire.requestBody();
+      }
+
+      public String publicSummary(String summary) {
+        return ledger.sessions.contracts.publicText(summary, ledger.sessions.sensitive()).content();
+      }
+
+      public io.github.lovexiaopeng.jimu.kernel.question.service.QuestionStorageService.Facts
+          questionStorage() {
+        return new MapperQuestionStorage(ledger, task);
+      }
+
+      public io.github.lovexiaopeng.jimu.kernel.todo.service.TodoStorageService.Facts
+          todoStorage() {
+        return new MapperTodoStorage(ledger, task);
+      }
+
+      public io.github.lovexiaopeng.jimu.kernel.session.service.SessionHistoryStorageService.Facts
+          sessionStorage() {
+        return new MapperSessionHistoryStorage(ledger.sessions, task);
+      }
+
+      public long directoryStorageBytes() {
+        return ledger.directoryStorageBytes(task);
+      }
+
+      public DirectoryRequest directoryRequest(String request) {
+        var p = ledger.directoryProjection(task);
+        var wire =
+            Payloads.read(
+                request,
+                io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Checkpoint.class);
+        return new DirectoryRequest() {
+          public int version() {
+            return wire.version();
+          }
+
+          public String requestBody() {
+            return wire.requestBody();
+          }
+
+          public boolean messagesEmpty() {
+            return wire.messages().isEmpty();
+          }
+
+          public String lastRole() {
+            return wire.messages().getLast().role();
+          }
+
+          public String lastContent() {
+            return wire.messages().getLast().content();
+          }
+
+          public String expectedContext() {
+            return ledger.directories.context(ledger.s(p, "cwd"), ledger.n(p, "revision"));
+          }
+
+          public String cwd() {
+            return ledger.s(p, "cwd");
+          }
+        };
+      }
+
+      public MediaBudget lockMediaBudget() {
+        var budget = ledger.bucket(lease.tenant());
+        return new MediaBudget() {
+          public long limit() {
+            return ledger.n(budget, "storage_limit");
+          }
+
+          public long held() {
+            return ledger.storageHeld(budget);
+          }
+
+          public void hold(long bytes) {
+            ledger
+                .mappers
+                .budgets()
+                .holdMediaCheckpoint(ledger.queryContext(), bytes, lease.tenant());
+          }
+
+          public void reserve(
+              String reservation, long bytes, String category, String state, String quality) {
+            ledger.reserve(
+                lease.tenant(), lease.taskId(), reservation, null, category, bytes, state, quality);
+          }
+
+          public void settle(String reservation) {
+            ledger
+                .mappers
+                .reservations()
+                .settleReservedAmount(ledger.queryContext(), lease.tenant(), reservation);
+          }
+        };
       }
 
       public void insertStep(String stepId, int ordinal, String request) {
@@ -192,39 +254,6 @@ final class JdbcExecutionRecords implements ExecutionRecords {
       public void commitFence() {
         if (ledger.directoryTask(task) || JdbcSessionRecords.task(task))
           ledger.todoCommitFence(lease);
-      }
-
-      public void validateSummary(String summary) {
-        if (JdbcSessionRecords.task(task)) {
-          var publicSummary =
-              ledger.sessions.contracts.publicText(summary, ledger.sessions.sensitive());
-          if (!publicSummary.content().equals(summary))
-            throw new TaskFailure(409, SessionErrorCode.SESSION_EVENT_UNSAFE);
-          if (io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(summary)
-              > 8192) throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
-          ledger.sessions.body(
-              task,
-              io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts.bytes(summary));
-        }
-        if (ledger.directoryTask(task)) {
-          io.github.lovexiaopeng.jimu.adapters.runtime.directory.DirectoryPaths.unicode(summary);
-          long bytes = summary.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
-          if (bytes > 8192) throw new TaskFailure(429, DirectoryErrorCode.DIRECTORY_STORAGE_LIMIT);
-          ledger.directoryStorage(task, bytes);
-        }
-        if (ledger.todoTask(task)) {
-          io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.unicode(summary);
-          int bytes =
-              io.github.lovexiaopeng.jimu.adapters.runtime.todo.TodoContracts.bytes(summary);
-          if (bytes > 8192) throw new TaskFailure(409, TaskErrorCode.SUMMARY_TOO_LARGE);
-          ledger.todoStorage(task, bytes);
-        }
-        if (ledger.questionTask(task)) {
-          if (summary.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 8192)
-            throw new TaskFailure(409, TaskErrorCode.SUMMARY_TOO_LARGE);
-          ledger.questionStorage(
-              task, summary.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
-        }
       }
 
       public boolean pendingQuestions() {
