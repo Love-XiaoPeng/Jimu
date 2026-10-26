@@ -70,37 +70,7 @@ class PersistencePathTrackingTest {
         assertEquals(
             "SELECT q.*,i.provider_id FROM user_question q JOIN invocation i ON i.tenant_id=q.tenant_id AND i.id=q.invocation_id WHERE q.tenant_id=#{tenant} AND q.task_id=#{task} ORDER BY q.ordinal",
             mapper.path("sql").asText());
-      else if (mapper
-          .path("id")
-          .asText()
-          .equals(
-              "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionOpeningMapper.invocation"))
-        assertEquals(
-            "SELECT * FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{task} AND step_id=#{step} AND slot=#{slot} FOR UPDATE",
-            mapper.path("sql").asText());
-      else if (mapper
-          .path("id")
-          .asText()
-          .equals(
-              "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionMaintenanceMapper.due"))
-        assertEquals(
-            "SELECT * FROM user_question WHERE tenant_id=#{tenant} AND task_id=#{task} AND phase='OPEN' AND foreground_due_at<=CURRENT_TIMESTAMP(6) FOR UPDATE",
-            mapper.path("sql").asText());
-      else if (java.util.Set.of(
-              "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionAnswerMapper.lockQuestion",
-              "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionAnswerMapper.previous",
-              "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionAnswerMapper.reload")
-          .contains(mapper.path("id").asText())) {
-        var expected =
-            java.util.Map.of(
-                "lockQuestion",
-                "SELECT * FROM user_question WHERE tenant_id=#{tenant} AND task_id=#{task} AND id=#{request} FOR UPDATE",
-                "previous",
-                "SELECT * FROM user_question WHERE tenant_id=#{tenant} AND task_id=#{task} AND owner_actor_id=#{actor} AND answer_key=#{key}",
-                "reload",
-                "SELECT * FROM user_question WHERE tenant_id=#{tenant} AND id=#{request}");
-        assertEquals(expected.get(mapper.path("method").asText()), mapper.path("sql").asText());
-      } else assertTrue(!mapper.path("sql").asText().matches("(?is).*SELECT\\s+(?:\\w+\\.)?\\*.*"));
+      else assertTrue(!mapper.path("sql").asText().matches("(?is).*SELECT\\s+(?:\\w+\\.)?\\*.*"));
     }
     for (var entry : capture.path("baseline").path("entries")) {
       assertTrue(entry.hasNonNull("targetService"));

@@ -59,7 +59,9 @@ class QuestionOpeningPortTest {
     var expected =
         Map.of(
             "invocation",
-            "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND step_id=? AND slot=? FOR UPDATE",
+            "SELECT "
+                + QuestionProjectionTest.columns("invocation")
+                + " FROM invocation WHERE tenant_id=? AND task_id=? AND step_id=? AND slot=? FOR UPDATE",
             "ordinal",
             "SELECT COUNT(*)+1 FROM user_question WHERE tenant_id=? AND task_id=?",
             "insert",

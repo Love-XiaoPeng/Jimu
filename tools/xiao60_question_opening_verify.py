@@ -10,6 +10,7 @@ import traceback
 from p2_verify import Experiment,run
 from mcp_verify import McpExperiment
 from p3_model_verify import config
+from question_projection_sql import expected_sql,expanded_sql
 
 class QuestionOpeningExperiment(Experiment):
     start=McpExperiment.start
@@ -47,7 +48,7 @@ def compare(folder,result,expected):
         for name,proof in after.items():
             pre=before[name];rows=sql[name];texts=[v['text'] for v in rows];task=proof['task'];original=pre['task'];r=proof['result'];history=name=='history'
             assert len({v['connection'] for v in rows})==1
-            inv=[v for v in rows if v['text']=='SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND step_id=? AND slot=? FOR UPDATE']
+            inv=[v for v in rows if v['text']==expected_sql(role,'SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND step_id=? AND slot=? FOR UPDATE')]
             assert len(inv)==1 and list(inv[0]['binds'].values())==[task['tenant_id'],task['id'],proof['step'][0]['id'],'0:read_1']
             assert r['suspended']==(not history)
             assert sum(t.startswith('SELECT COUNT(*)+1 FROM user_question') for t in texts)==(0 if history else 1)
@@ -84,7 +85,7 @@ def compare(folder,result,expected):
         facts=[json.loads(v[6:]) for v in lines if v.startswith('FACTS ')]
         assert len(facts)==expected and all(v['before']==v['after'] and len(json.loads(v['before']))==21 for v in facts)
     for name in [v['name'] for v in summary if v['role']=='old']:
-        pair=[v for v in summary if v['name']==name];assert len(pair)==2 and [r['text'] for r in pair[0]['sql']]==[r['text'] for r in pair[1]['sql']]
+        pair=[v for v in summary if v['name']==name];assert len(pair)==2 and [expanded_sql(r['text']) for r in pair[0]['sql']]==[r['text'] for r in pair[1]['sql']]
     (folder/'opening-comparison.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2))
 
 

@@ -10,6 +10,7 @@ import traceback
 from p2_verify import Experiment,run
 from mcp_verify import McpExperiment
 from p3_model_verify import config
+from question_projection_sql import expected_sql,expanded_sql
 
 class QuestionMaintenanceExperiment(Experiment):
     start=McpExperiment.start
@@ -41,7 +42,7 @@ def compare(folder,result,expected):
             assert len({v['connection'] for v in rows})==1
             scan=rows[0];assert scan['text'].startswith('SELECT t.tenant_id,t.id FROM task t LEFT JOIN actor_access') and scan['text'].endswith('ORDER BY t.deadline,t.id LIMIT 64')
             assert list(scan['binds'].values())==[True]
-            due=[v for v in rows if v['text']=="SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND phase='OPEN' AND foreground_due_at<=CURRENT_TIMESTAMP(6) FOR UPDATE"]
+            due=[v for v in rows if v['text']==expected_sql(role,"SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND phase='OPEN' AND foreground_due_at<=CURRENT_TIMESTAMP(6) FOR UPDATE")]
             oldq=pre['user_question'][0];assert oldq['phase']=='OPEN' and pre['task']['state']=='WAITING_USER'
             assert pre['task_attempt'][0]['state']=='PAUSED'
             if name=='due':
@@ -58,7 +59,7 @@ def compare(folder,result,expected):
         facts=[json.loads(v[6:]) for v in lines if v.startswith('FACTS ')]
         assert len(facts)==expected and all(v['before']==v['after'] and len(json.loads(v['before']))==21 for v in facts)
     for name in [v['name'] for v in summary if v['role']=='old']:
-        pair=[v for v in summary if v['name']==name];assert len(pair)==2 and [r['text'] for r in pair[0]['sql']]==[r['text'] for r in pair[1]['sql']]
+        pair=[v for v in summary if v['name']==name];assert len(pair)==2 and [expanded_sql(r['text']) for r in pair[0]['sql']]==[r['text'] for r in pair[1]['sql']]
     (folder/'maintenance-comparison.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2))
 
 

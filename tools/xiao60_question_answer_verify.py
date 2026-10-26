@@ -10,6 +10,7 @@ import traceback
 from p2_verify import Experiment,run
 from mcp_verify import McpExperiment
 from p3_model_verify import config
+from question_projection_sql import expected_sql,expanded_sql
 
 class QuestionAnswerExperiment(Experiment):
     start=McpExperiment.start
@@ -31,13 +32,13 @@ class QuestionAnswerExperiment(Experiment):
 def compare(folder,result,expected):
     import datetime
     sha=lambda s:hashlib.sha256(s.encode()).hexdigest()
-    lock='SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND id=? FOR UPDATE'
-    previous='SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND owner_actor_id=? AND answer_key=?'
-    reload='SELECT * FROM user_question WHERE tenant_id=? AND id=?'
     seq='SELECT COALESCE(MAX(accepted_seq),0)+1 FROM user_question WHERE tenant_id=? AND task_id=?'
     update="UPDATE user_question SET phase='ANSWERED',revision=revision+1,answer_id=?,answered_actor_id=?,answered_at=?,accepted_seq=?,answer_snapshot=?,answer_digest=?,answer_key=?,answer_request_digest=?,answer_source_revision=?,receipt_snapshot=?,delivery_state=? WHERE tenant_id=? AND id=? AND revision=? AND answer_id IS NULL"
     allcalls={};summary=[]
     for role,data in result.items():
+        lock=expected_sql(role,'SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND id=? FOR UPDATE')
+        previous=expected_sql(role,'SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND owner_actor_id=? AND answer_key=?')
+        reload=expected_sql(role,'SELECT * FROM user_question WHERE tenant_id=? AND id=?')
         assert data['exit']==0 and len(data['results'])==len(data['restored'])==len(data['sql'])==expected
         lines=(folder/(role+'.log')).read_text().splitlines();calls=[json.loads(v[12:]) for v in lines if v.startswith('ANSWER_CALL ')]
         assert len(calls)==5
@@ -84,7 +85,7 @@ def compare(folder,result,expected):
             summary.append({'role':role,'name':name,'code':v['code'],'sqlCount':len(rows),'sql':rows,'proofSHA256':v['proofSHA256'],'proofBytes':v['proofBytes']})
     assert [v['name'] for v in allcalls['old']]==[v['name'] for v in allcalls['new']]
     for left,right in zip(allcalls['old'],allcalls['new']):
-        assert left['code']==right['code'] and [r['text'] for r in left['sql']]==[r['text'] for r in right['sql']]
+        assert left['code']==right['code'] and [expanded_sql(r['text']) for r in left['sql']]==[r['text'] for r in right['sql']]
     (folder/'answer-comparison.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2))
 
 

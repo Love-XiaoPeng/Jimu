@@ -86,10 +86,17 @@ class QuestionAnswerPortTest {
     var expected =
         Map.of(
             "lockQuestion",
-                "SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND id=? FOR UPDATE",
+                "SELECT "
+                    + QuestionProjectionTest.columns("user_question")
+                    + " FROM user_question WHERE tenant_id=? AND task_id=? AND id=? FOR UPDATE",
             "previous",
-                "SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND owner_actor_id=? AND answer_key=?",
-            "reload", "SELECT * FROM user_question WHERE tenant_id=? AND id=?",
+                "SELECT "
+                    + QuestionProjectionTest.columns("user_question")
+                    + " FROM user_question WHERE tenant_id=? AND task_id=? AND owner_actor_id=? AND answer_key=?",
+            "reload",
+                "SELECT "
+                    + QuestionProjectionTest.columns("user_question")
+                    + " FROM user_question WHERE tenant_id=? AND id=?",
             "sequence",
                 "SELECT COALESCE(MAX(accepted_seq),0)+1 FROM user_question WHERE tenant_id=? AND task_id=?",
             "answer",
