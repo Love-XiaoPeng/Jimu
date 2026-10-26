@@ -34,4 +34,14 @@
   <select id="selectUnpublishedArtifacts" resultType="map">
     <![CDATA[SELECT id FROM artifact WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state<>'PUBLISHED']]>
   </select>
+  <select id="selectReportInput" resultType="map"><![CDATA[SELECT input_snapshot FROM invocation WHERE tenant_id=#{tenant} AND id=#{invocation}]]></select>
+  <select id="selectReportReceipt" resultType="map"><![CDATA[SELECT tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,snapshot_key,sha256,size,media_type,created_at,updated_at,expires_at,record_version,file_receipt,receipt_digest FROM artifact WHERE tenant_id=#{tenant} AND task_id=#{task} AND producer_invocation=#{invocation} AND receipt_digest=#{digest}]]></select>
+  <select id="selectOtherReportProducer" resultType="map"><![CDATA[SELECT id FROM artifact WHERE tenant_id=#{tenant} AND task_id=#{task} AND producer_invocation<>#{invocation}]]></select>
+  <insert id="insertReport"><![CDATA[INSERT INTO artifact(tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,sha256,size,media_type,file_receipt,receipt_digest) VALUES(#{tenant},#{artifact},#{task},#{invocation},#{upload},#{fence},'STAGING',#{hash},#{size},#{mediaType},#{receipt},#{digest})]]></insert>
+  <select id="selectReportIds" resultType="map"><![CDATA[SELECT id FROM artifact WHERE tenant_id=#{tenant} AND task_id=#{task} AND producer_invocation=#{invocation}]]></select>
+  <select id="selectConfirmedCompositions" resultType="map"><![CDATA[SELECT id,input_snapshot,input_digest,output_snapshot,output_digest,plugin_version,plugin_digest FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{task} AND tool='compose_report' AND state='SUCCEEDED' ORDER BY ordinal]]></select>
+  <select id="selectReportArtifacts" resultType="map"><![CDATA[SELECT tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,snapshot_key,sha256,size,media_type,created_at,updated_at,expires_at,record_version,file_receipt,receipt_digest FROM artifact WHERE tenant_id=#{tenant} AND task_id=#{task} AND producer_invocation=#{invocation}]]></select>
+  <update id="publishReport"><![CDATA[UPDATE artifact SET state='PUBLISHED',snapshot_key=#{key},production_fence=#{fence},updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{artifact}]]></update>
+  <update id="succeedPresent"><![CDATA[UPDATE invocation SET state='SUCCEEDED',output_snapshot=#{output},output_digest=#{digest},updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{invocation}]]></update>
+  <update id="settlePresent"><![CDATA[UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=#{tenant} AND id=#{invocation}]]></update>
 </mapper>

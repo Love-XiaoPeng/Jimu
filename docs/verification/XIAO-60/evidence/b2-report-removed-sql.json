@@ -1,0 +1,342 @@
+{
+  "parent": "8c3cee6a1cca2fb3d7c587088c856b1d35b8ec83",
+  "removed": [
+    {
+      "method": "selectReportInput",
+      "originalSql": "SELECT input_snapshot FROM invocation WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "invocation",
+          "type": "String"
+        }
+      ],
+      "expandedSql": "SELECT input_snapshot FROM invocation WHERE tenant_id=#{tenant} AND id=#{invocation}",
+      "module": "artifact",
+      "mapper": "ArtifactMapper"
+    },
+    {
+      "method": "selectReportReceipt",
+      "originalSql": "SELECT * FROM artifact WHERE tenant_id=? AND task_id=? AND producer_invocation=? AND receipt_digest=?",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        },
+        {
+          "name": "invocation",
+          "type": "String"
+        },
+        {
+          "name": "digest",
+          "type": "String"
+        }
+      ],
+      "expandedSql": "SELECT tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,snapshot_key,sha256,size,media_type,created_at,updated_at,expires_at,record_version,file_receipt,receipt_digest FROM artifact WHERE tenant_id=#{tenant} AND task_id=#{task} AND producer_invocation=#{invocation} AND receipt_digest=#{digest}",
+      "module": "artifact",
+      "mapper": "ArtifactMapper"
+    },
+    {
+      "method": "selectOtherReportProducer",
+      "originalSql": "SELECT id FROM artifact WHERE tenant_id=? AND task_id=? AND producer_invocation<>?",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        },
+        {
+          "name": "invocation",
+          "type": "String"
+        }
+      ],
+      "expandedSql": "SELECT id FROM artifact WHERE tenant_id=#{tenant} AND task_id=#{task} AND producer_invocation<>#{invocation}",
+      "module": "artifact",
+      "mapper": "ArtifactMapper"
+    },
+    {
+      "method": "insertReport",
+      "originalSql": "INSERT INTO artifact(tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,sha256,size,media_type,file_receipt,receipt_digest) VALUES(?,?,?,?,?,?,'STAGING',?,?,?,?,?)",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "artifact",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        },
+        {
+          "name": "invocation",
+          "type": "String"
+        },
+        {
+          "name": "upload",
+          "type": "String"
+        },
+        {
+          "name": "fence",
+          "type": "long"
+        },
+        {
+          "name": "hash",
+          "type": "String"
+        },
+        {
+          "name": "size",
+          "type": "long"
+        },
+        {
+          "name": "mediaType",
+          "type": "String"
+        },
+        {
+          "name": "receipt",
+          "type": "String"
+        },
+        {
+          "name": "digest",
+          "type": "String"
+        }
+      ],
+      "expandedSql": "INSERT INTO artifact(tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,sha256,size,media_type,file_receipt,receipt_digest) VALUES(#{tenant},#{artifact},#{task},#{invocation},#{upload},#{fence},'STAGING',#{hash},#{size},#{mediaType},#{receipt},#{digest})",
+      "module": "artifact",
+      "mapper": "ArtifactMapper"
+    },
+    {
+      "method": "selectReportIds",
+      "originalSql": "SELECT id FROM artifact WHERE tenant_id=? AND task_id=? AND producer_invocation=?",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        },
+        {
+          "name": "invocation",
+          "type": "String"
+        }
+      ],
+      "expandedSql": "SELECT id FROM artifact WHERE tenant_id=#{tenant} AND task_id=#{task} AND producer_invocation=#{invocation}",
+      "module": "artifact",
+      "mapper": "ArtifactMapper"
+    },
+    {
+      "method": "selectConfirmedCompositions",
+      "originalSql": "SELECT id,input_snapshot,input_digest,output_snapshot,output_digest,plugin_version,plugin_digest FROM invocation WHERE tenant_id=? AND task_id=? AND tool='compose_report' AND state='SUCCEEDED' ORDER BY ordinal",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        }
+      ],
+      "expandedSql": "SELECT id,input_snapshot,input_digest,output_snapshot,output_digest,plugin_version,plugin_digest FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{task} AND tool='compose_report' AND state='SUCCEEDED' ORDER BY ordinal",
+      "module": "artifact",
+      "mapper": "ArtifactMapper"
+    },
+    {
+      "method": "selectReportArtifacts",
+      "originalSql": "SELECT * FROM artifact WHERE tenant_id=? AND task_id=? AND producer_invocation=?",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "task",
+          "type": "String"
+        },
+        {
+          "name": "invocation",
+          "type": "String"
+        }
+      ],
+      "expandedSql": "SELECT tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,snapshot_key,sha256,size,media_type,created_at,updated_at,expires_at,record_version,file_receipt,receipt_digest FROM artifact WHERE tenant_id=#{tenant} AND task_id=#{task} AND producer_invocation=#{invocation}",
+      "module": "artifact",
+      "mapper": "ArtifactMapper"
+    },
+    {
+      "method": "publishReport",
+      "originalSql": "UPDATE artifact SET state='PUBLISHED',snapshot_key=?,production_fence=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "String"
+        },
+        {
+          "name": "fence",
+          "type": "long"
+        },
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "artifact",
+          "type": "String"
+        }
+      ],
+      "expandedSql": "UPDATE artifact SET state='PUBLISHED',snapshot_key=#{key},production_fence=#{fence},updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{artifact}",
+      "module": "artifact",
+      "mapper": "ArtifactMapper"
+    },
+    {
+      "method": "succeedPresent",
+      "originalSql": "UPDATE invocation SET state='SUCCEEDED',output_snapshot=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "name": "output",
+          "type": "String"
+        },
+        {
+          "name": "digest",
+          "type": "String"
+        },
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "invocation",
+          "type": "String"
+        }
+      ],
+      "expandedSql": "UPDATE invocation SET state='SUCCEEDED',output_snapshot=#{output},output_digest=#{digest},updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{invocation}",
+      "module": "artifact",
+      "mapper": "ArtifactMapper"
+    },
+    {
+      "method": "settlePresent",
+      "originalSql": "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "invocation",
+          "type": "String"
+        }
+      ],
+      "expandedSql": "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=#{tenant} AND id=#{invocation}",
+      "module": "artifact",
+      "mapper": "ArtifactMapper"
+    },
+    {
+      "module": "invocation",
+      "mapper": "InvocationMapper",
+      "method": "selectTaskInvocation",
+      "originalSql": "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
+      "parameters": [
+        {
+          "name": "tenant"
+        },
+        {
+          "name": "taskId"
+        },
+        {
+          "name": "invocationId"
+        }
+      ]
+    },
+    {
+      "module": "artifact",
+      "mapper": "ArtifactMapper",
+      "method": "holdStorage",
+      "originalSql": "UPDATE tenant_budget SET storage_held=storage_held+? WHERE tenant_id=?",
+      "parameters": [
+        {
+          "name": "size"
+        },
+        {
+          "name": "tenant"
+        }
+      ]
+    },
+    {
+      "module": "artifact",
+      "mapper": "ArtifactMapper",
+      "method": "settleStorage",
+      "originalSql": "UPDATE reservation SET state='SETTLED',actual=amount WHERE tenant_id=? AND id=?",
+      "parameters": [
+        {
+          "name": "tenant"
+        },
+        {
+          "name": "artifact"
+        }
+      ]
+    }
+  ],
+  "columns": {
+    "artifact": [
+      "tenant_id",
+      "id",
+      "task_id",
+      "producer_invocation",
+      "upload_id",
+      "production_fence",
+      "state",
+      "snapshot_key",
+      "sha256",
+      "size",
+      "media_type",
+      "created_at",
+      "updated_at",
+      "expires_at",
+      "record_version",
+      "file_receipt",
+      "receipt_digest"
+    ],
+    "invocation": [
+      "tenant_id",
+      "id",
+      "task_id",
+      "step_id",
+      "attempt_id",
+      "ordinal",
+      "slot",
+      "provider_id",
+      "effect_intent_id",
+      "tool",
+      "plugin_version",
+      "plugin_digest",
+      "installation_epoch",
+      "input_snapshot",
+      "input_digest",
+      "state",
+      "output_snapshot",
+      "output_digest",
+      "projection_version",
+      "updated_at",
+      "record_version",
+      "todo_expected_revision",
+      "todo_applied_revision",
+      "todo_committed_attempt_id",
+      "todo_committed_fence",
+      "todo_event_seq",
+      "todo_committed_at"
+    ]
+  }
+}

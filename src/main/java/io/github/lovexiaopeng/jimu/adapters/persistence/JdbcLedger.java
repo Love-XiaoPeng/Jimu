@@ -4067,7 +4067,7 @@ public final class JdbcLedger
         });
   }
 
-  private ReportContext reportContext(Map<String, Object> task) {
+  ReportContext reportContext(Map<String, Object> task) {
     boolean composed = tools(task).pins().containsKey("compose_report");
     var fetchPin = tools(task).pins().get("web_fetch");
     var sources =
@@ -4099,7 +4099,7 @@ public final class JdbcLedger
     return leaseTx(lease, () -> imageReportContext(fenced(lease, true), invocation));
   }
 
-  private io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ReportEvidence imageReportContext(
+  io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger.ReportEvidence imageReportContext(
       Map<String, Object> task, String invocation) {
     var compose =
         one(
@@ -4173,214 +4173,20 @@ public final class JdbcLedger
         !snapshot(task).paid() && models.localEvaluation(snapshot(task)));
   }
 
-  private void requirePresent(Lease lease, Map<String, Object> task, String invocationId) {
-    if (!publicReport(task)) throw new TaskFailure(409, "REPORT_POLICY_REQUIRED");
-    var invocation =
-        one(
-            "SELECT * FROM invocation WHERE tenant_id=? AND task_id=? AND id=?",
-            lease.tenant(),
-            lease.taskId(),
-            invocationId);
-    if (!"present".equals(s(invocation, "tool")) || !"RUNNING".equals(s(invocation, "state")))
-      throw new TaskFailure(409, "INVOCATION_STATE");
-  }
+  private final io.github.lovexiaopeng.jimu.kernel.artifact.service.ReportPublicationService
+      reportPublications =
+          new io.github.lovexiaopeng.jimu.kernel.artifact.service.impl.ReportPublicationServiceImpl(
+              new MapperReportPublications(this));
 
   @Override
   public List<Upload> stageReports(Lease lease, String invocationId, List<ReportFile> files) {
-    return leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, true);
-          requirePresent(lease, task, invocationId);
-          if (files.isEmpty()
-              || files.size() > 4
-              || files.stream().map(ReportFile::path).distinct().count() != files.size())
-            throw new TaskFailure(400, "TOOL_INPUT_INVALID");
-          var input =
-              Payloads.read(
-                  s(
-                      one(
-                          "SELECT input_snapshot FROM invocation WHERE tenant_id=? AND id=?",
-                          lease.tenant(),
-                          invocationId),
-                      "input_snapshot"),
-                  com.fasterxml.jackson.databind.JsonNode.class);
-          var paths = new java.util.ArrayList<String>();
-          input.path("files").forEach(file -> paths.add(file.path("path").asText()));
-          if (!paths.equals(files.stream().map(ReportFile::path).toList()))
-            throw new TaskFailure(409, "INVOCATION_MISMATCH");
-          var result = new java.util.ArrayList<Upload>();
-          for (var file : files) {
-            requireComposition(task, file);
-            if (file.version() < 1
-                || file.size() < 1
-                || file.size() > 1048576
-                || !file.sha256().matches("[a-f0-9]{64}")
-                || !"text/markdown; charset=utf-8".equals(file.mediaType()))
-              throw new TaskFailure(400, "REPORT_INVALID");
-            String receipt = Payloads.json(file), digest = Payloads.hash(receipt);
-            var old =
-                rows(
-                    "SELECT * FROM artifact WHERE tenant_id=? AND task_id=? AND producer_invocation=? AND receipt_digest=?",
-                    lease.tenant(),
-                    lease.taskId(),
-                    invocationId,
-                    digest);
-            if (!old.isEmpty()) {
-              var a = old.getFirst();
-              if (!receipt.equals(s(a, "file_receipt")))
-                throw new TaskFailure(409, "ARTIFACT_MISMATCH");
-              result.add(
-                  new Upload(
-                      s(a, "id"),
-                      s(a, "upload_id"),
-                      s(a, "state"),
-                      file.sha256(),
-                      file.size(),
-                      s(a, "snapshot_key")));
-              continue;
-            }
-            if (!rows(
-                    "SELECT id FROM artifact WHERE tenant_id=? AND task_id=? AND producer_invocation<>?",
-                    lease.tenant(),
-                    lease.taskId(),
-                    invocationId)
-                .isEmpty()) throw new TaskFailure(409, "REPORT_ALREADY_STAGED");
-            var budget = bucket(lease.tenant());
-            if (storageHeld(budget) + file.size() > n(budget, "storage_limit"))
-              throw new TaskFailure(429, "STORAGE_BUDGET_EXCEEDED");
-            String artifact = id(), upload = id();
-            db.update(
-                "INSERT INTO artifact(tenant_id,id,task_id,producer_invocation,upload_id,production_fence,state,sha256,size,media_type,file_receipt,receipt_digest) VALUES(?,?,?,?,?,?,'STAGING',?,?,?,?,?)",
-                lease.tenant(),
-                artifact,
-                lease.taskId(),
-                invocationId,
-                upload,
-                lease.fence(),
-                file.sha256(),
-                file.size(),
-                file.mediaType(),
-                receipt,
-                digest);
-            db.update(
-                "UPDATE tenant_budget SET storage_held=storage_held+? WHERE tenant_id=?",
-                file.size(),
-                lease.tenant());
-            reserve(
-                lease.tenant(),
-                lease.taskId(),
-                artifact,
-                null,
-                "STORAGE",
-                file.size(),
-                "RESERVED",
-                "KNOWN");
-            event(task, "staging:" + artifact, "artifact.staging", null);
-            result.add(new Upload(artifact, upload, "STAGING", file.sha256(), file.size(), null));
-          }
-          if (rows(
-                      "SELECT id FROM artifact WHERE tenant_id=? AND task_id=? AND producer_invocation=?",
-                      lease.tenant(),
-                      lease.taskId(),
-                      invocationId)
-                  .size()
-              != files.size()) throw new TaskFailure(409, "ARTIFACT_MISMATCH");
-          return List.copyOf(result);
-        });
-  }
-
-  private void requireComposition(Map<String, Object> task, ReportFile file) {
-    var pin = tools(task).pins().get("compose_report");
-    if (pin == null) return;
-    var confirmed =
-        rows(
-            "SELECT id,input_snapshot,input_digest,output_snapshot,output_digest,plugin_version,plugin_digest FROM invocation WHERE tenant_id=? AND task_id=? AND tool='compose_report' AND state='SUCCEEDED' ORDER BY ordinal",
-            s(task, "tenant_id"),
-            s(task, "id"));
-    for (var row : confirmed) {
-      String input = s(row, "input_snapshot"), output = s(row, "output_snapshot");
-      if (!Payloads.hash(input).equals(s(row, "input_digest"))
-          || output == null
-          || !Payloads.hash(output).equals(s(row, "output_digest"))
-          || !pin.version().equals(s(row, "plugin_version"))
-          || !pin.digest().equals(s(row, "plugin_digest")))
-        throw new TaskFailure(409, "REPORT_COMPOSITION_INVALID");
-      if (pin.version().equals("0.2.0")) {
-        if (new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ImageReportComposer()
-            .matches(input, output, file, imageReportContext(task, s(row, "id")))) return;
-      } else if (new io.github.lovexiaopeng.jimu.adapters.runtime.contract.ReportComposer()
-          .matches(input, output, file, reportContext(task))) return;
-    }
-    throw new TaskFailure(409, "REPORT_COMPOSITION_REQUIRED");
+    return reportPublications.stage(lease, invocationId, files);
   }
 
   @Override
   public void presentSucceeded(
       Lease lease, String invocationId, List<Publication> publications, String output) {
-    leaseTx(
-        lease,
-        () -> {
-          var task = fenced(lease, true);
-          requirePresent(lease, task, invocationId);
-          var artifacts =
-              rows(
-                  "SELECT * FROM artifact WHERE tenant_id=? AND task_id=? AND producer_invocation=?",
-                  lease.tenant(),
-                  lease.taskId(),
-                  invocationId);
-          if (artifacts.size() != publications.size()
-              || artifacts.isEmpty()
-              || publications.stream().map(Publication::artifactId).distinct().count()
-                  != publications.size()) throw new TaskFailure(409, "ARTIFACT_MISMATCH");
-          var result =
-              Payloads.read(output, com.fasterxml.jackson.databind.JsonNode.class).path("files");
-          if (!result.isArray() || result.size() != publications.size())
-            throw new TaskFailure(409, "TOOL_OUTPUT_INVALID");
-          for (int index = 0; index < publications.size(); index++) {
-            var pub = publications.get(index);
-            var a =
-                artifacts.stream()
-                    .filter(row -> pub.artifactId().equals(s(row, "id")))
-                    .findFirst()
-                    .orElseThrow(() -> new TaskFailure(409, "ARTIFACT_MISMATCH"));
-            var receipt = Payloads.read(s(a, "file_receipt"), ReportFile.class);
-            var item = result.get(index);
-            if (!"STAGING".equals(s(a, "state"))
-                || !pub.key().equals(s(a, "upload_id") + "-" + s(a, "sha256"))
-                || !Payloads.hash(s(a, "file_receipt")).equals(s(a, "receipt_digest"))
-                || !pub.artifactId().equals(item.path("artifactId").asText())
-                || !receipt.path().equals(item.path("path").asText())
-                || receipt.version() != item.path("version").asLong()
-                || !receipt.sha256().equals(item.path("sha256").asText())
-                || receipt.size() != item.path("size").asLong()
-                || !receipt.mediaType().equals(item.path("mediaType").asText()))
-              throw new TaskFailure(409, "ARTIFACT_MISMATCH");
-            db.update(
-                "UPDATE artifact SET state='PUBLISHED',snapshot_key=?,production_fence=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
-                pub.key(),
-                lease.fence(),
-                lease.tenant(),
-                pub.artifactId());
-            db.update(
-                "UPDATE reservation SET state='SETTLED',actual=amount WHERE tenant_id=? AND id=?",
-                lease.tenant(),
-                pub.artifactId());
-            event(task, "published:" + pub.artifactId(), "artifact.created", null);
-          }
-          db.update(
-              "UPDATE invocation SET state='SUCCEEDED',output_snapshot=?,output_digest=?,updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=? AND id=?",
-              output,
-              Payloads.hash(output),
-              lease.tenant(),
-              invocationId);
-          db.update(
-              "UPDATE reservation SET state='SETTLED',actual=1 WHERE tenant_id=? AND id=?",
-              lease.tenant(),
-              invocationId);
-          event(task, "result:" + invocationId, "tool.succeeded", null);
-          return null;
-        });
+    reportPublications.succeed(lease, invocationId, publications, output);
   }
 
   @Override

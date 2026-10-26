@@ -75,4 +75,72 @@ public interface ArtifactMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("taskId") String taskId);
+
+  List<Map<String, Object>> selectReportInput(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("invocation") String invocation);
+
+  List<Map<String, Object>> selectReportReceipt(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("invocation") String invocation,
+      @Param("digest") String digest);
+
+  List<Map<String, Object>> selectOtherReportProducer(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("invocation") String invocation);
+
+  int insertReport(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("artifact") String artifact,
+      @Param("task") String task,
+      @Param("invocation") String invocation,
+      @Param("upload") String upload,
+      @Param("fence") long fence,
+      @Param("hash") String hash,
+      @Param("size") long size,
+      @Param("mediaType") String mediaType,
+      @Param("receipt") String receipt,
+      @Param("digest") String digest);
+
+  List<Map<String, Object>> selectReportIds(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("invocation") String invocation);
+
+  List<Map<String, Object>> selectConfirmedCompositions(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  List<Map<String, Object>> selectReportArtifacts(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("invocation") String invocation);
+
+  int publishReport(
+      @Param("query") SessionQueryContext query,
+      @Param("key") String key,
+      @Param("fence") long fence,
+      @Param("tenant") String tenant,
+      @Param("artifact") String artifact);
+
+  int succeedPresent(
+      @Param("query") SessionQueryContext query,
+      @Param("output") String output,
+      @Param("digest") String digest,
+      @Param("tenant") String tenant,
+      @Param("invocation") String invocation);
+
+  int settlePresent(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("invocation") String invocation);
 }
