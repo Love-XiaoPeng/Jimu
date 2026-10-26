@@ -143,4 +143,22 @@ public interface InvocationMapper
       @Param("tenant") String tenant,
       @Param("task") String task,
       @Param("step") String step);
+
+  List<Map<String, Object>> selectMcpInvocation(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("invocation") String invocation);
+
+  List<Map<String, Object>> selectMcpListInvocation(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("invocation") String invocation);
+
+  List<Map<String, Object>> selectMcpProducer(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("invocation") String invocation);
 }

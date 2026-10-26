@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.mcp.mapper.McpIoMapper"><select id="countMcpIo" resultType="java.lang.Integer"><![CDATA[SELECT COUNT(*) FROM mcp_io WHERE tenant_id=#{tenant} AND task_id=#{task} AND kind=#{kind}]]></select>
+<select id="countMcpCleanup" resultType="java.lang.Integer"><![CDATA[SELECT COUNT(*) FROM mcp_io WHERE tenant_id=#{tenant} AND task_id=#{task} AND invocation_id=#{invocation} AND kind='CLEANUP']]></select>
+<select id="nextMcpOrdinal" resultType="java.lang.Integer"><![CDATA[SELECT COALESCE(MAX(ordinal),0)+1 FROM mcp_io WHERE tenant_id=#{tenant} AND task_id=#{task} AND invocation_id=#{invocation}]]></select>
+<insert id="insertMcpIo"><![CDATA[INSERT INTO mcp_io(tenant_id,task_id,invocation_id,ordinal,request_id,method,kind,phase,request_digest) VALUES(#{tenant},#{task},#{invocation},#{ordinal},#{requestId},#{method},#{kind},'DISPATCHED',#{digest})]]></insert>
+<update id="respondMcpIo"><![CDATA[UPDATE mcp_io SET phase=#{phase},error_code=#{error} WHERE tenant_id=#{tenant} AND task_id=#{task} AND invocation_id=#{invocation} AND ordinal=#{ordinal} AND phase='DISPATCHED']]></update>
+</mapper>

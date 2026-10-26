@@ -107,4 +107,21 @@ public interface ReservationMapper {
       @Param("actual") long actual,
       @Param("tenant") String tenant,
       @Param("image") String image);
+
+  List<Integer> countMcpReservations(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  List<Map<String, Object>> selectMcpReservation(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("reservation") String reservation);
+
+  int settleMcpReservation(
+      @Param("query") SessionQueryContext query,
+      @Param("size") long size,
+      @Param("tenant") String tenant,
+      @Param("reservation") String reservation);
 }

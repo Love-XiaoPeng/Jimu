@@ -47,4 +47,11 @@ public interface TenantBudgetMapper {
       @Param("query") SessionQueryContext query,
       @Param("bytes") long bytes,
       @Param("tenant") String tenant);
+
+  int holdMcpStorage(@Param("query") SessionQueryContext query, @Param("tenant") String tenant);
+
+  int releaseMcpStorage(
+      @Param("query") SessionQueryContext query,
+      @Param("bytes") long bytes,
+      @Param("tenant") String tenant);
 }
