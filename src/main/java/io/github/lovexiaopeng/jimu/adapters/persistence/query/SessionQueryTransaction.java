@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionSystemException;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -66,7 +67,8 @@ public final class SessionQueryTransaction {
                                 } catch (java.sql.SQLException failure) {
                                   throw new org.springframework.dao
                                       .DataAccessResourceFailureException(
-                                      "Session connection reset unavailable", failure);
+                                      "Session connection reset unavailable (afterCompletion)",
+                                      failure);
                                 }
                               }
                             });
@@ -85,22 +87,39 @@ public final class SessionQueryTransaction {
                           statement.execute(
                               "SET SESSION max_execution_time=" + context.remainingMillis());
                         }
+                        Throwable primary = null;
                         try {
                           T result = work.get();
                           context.remainingMillis();
                           return result;
+                        } catch (RuntimeException | Error failure) {
+                          primary = failure;
+                          throw failure;
                         } finally {
                           try (var statement = connection.createStatement()) {
                             statement.execute("SET SESSION innodb_lock_wait_timeout=" + priorWait);
                             statement.execute("SET SESSION max_execution_time=" + priorMax);
+                          } catch (java.sql.SQLException | RuntimeException | Error cleanup) {
+                            // 清理失败不能替换业务首错；成功路径的清理失败仍须传播。
+                            if (primary == null) throw cleanup;
+                            if (cleanup != primary) primary.addSuppressed(cleanup);
                           }
                         }
                       }));
     } catch (RuntimeException failure) {
+      // Spring 的 rollback 首错另存在 applicationException，不一定在标准 cause 链中。
+      if (failure instanceof TransactionSystemException transactionFailure) {
+        Throwable application = transactionFailure.getApplicationException();
+        if (application != null && application != failure.getCause())
+          failure.addSuppressed(application);
+      }
       if (System.nanoTime() >= context.deadlineNanos()
           && (failure instanceof org.springframework.dao.DataAccessException
-              || failure instanceof org.springframework.transaction.TransactionException))
-        throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
+              || failure instanceof org.springframework.transaction.TransactionException)) {
+        var timeout = new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
+        timeout.initCause(failure);
+        throw timeout;
+      }
       throw failure;
     }
   }

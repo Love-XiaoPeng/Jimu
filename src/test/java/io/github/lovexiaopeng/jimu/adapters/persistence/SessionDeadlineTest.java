@@ -2,10 +2,12 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
+import io.github.lovexiaopeng.jimu.api.TaskErrors;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Identity;
 import java.io.ByteArrayOutputStream;
@@ -93,7 +95,15 @@ class SessionDeadlineTest {
         long elapsed = Duration.ofNanos(System.nanoTime() - started).toMillis();
         assertEquals(504, failure.status());
         assertEquals("SESSION_QUERY_TIMEOUT", failure.code());
-        assertEquals(null, failure.getCause(), "No JDBC SQL or credentials in exposed failure");
+        assertNotNull(failure.getCause(), "Internal diagnostic cause is retained");
+        var response = new TaskErrors().failure(failure);
+        assertEquals(504, response.getStatusCode().value());
+        var json =
+            new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(response.getBody());
+        assertEquals(3, json.size(), "Public response has only safe code/message/traceId");
+        assertEquals("SESSION_QUERY_TIMEOUT", json.get("code").asText());
+        assertEquals("SESSION_QUERY_TIMEOUT", json.get("message").asText());
+        assertNotNull(java.util.UUID.fromString(json.get("traceId").asText()));
         assertTrue(elapsed >= 1800 && elapsed < 2600, "whole connection budget elapsed=" + elapsed);
         assertTrue(peer.get(1, java.util.concurrent.TimeUnit.SECONDS));
       } finally {
