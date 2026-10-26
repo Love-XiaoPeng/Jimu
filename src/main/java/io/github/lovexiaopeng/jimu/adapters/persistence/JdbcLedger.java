@@ -1620,151 +1620,31 @@ public final class JdbcLedger
             () -> questionVisible(identity, taskId)));
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionAnswerService
+      questionAnswers =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl.QuestionAnswerServiceImpl();
+
   @Override
   public Submission answer(
       Identity identity, String taskId, String requestId, String key, Command command) {
-    var outcome =
-        tx(
-            () -> {
-              bucket(identity.tenant());
-              var task = questionVisible(identity, taskId);
-              var found =
-                  rows(
-                      "SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND id=? FOR UPDATE",
-                      identity.tenant(),
-                      taskId,
-                      requestId);
-              if (found.isEmpty()) throw new TaskFailure(404, "QUESTION_NOT_FOUND");
-              var q = found.getFirst();
-              var previous =
-                  rows(
-                      "SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND owner_actor_id=? AND answer_key=?",
-                      identity.tenant(),
-                      taskId,
-                      identity.actor(),
-                      key);
-              if (!previous.isEmpty()) {
-                var old = previous.getFirst();
-                String requestDigest;
-                try {
-                  requestDigest =
-                      questionAnswerDigest(
-                          requestId,
-                          command,
-                          questions.canonicalAnswers(questionInput(q, task).questions(), command));
-                } catch (TaskFailure invalid) {
-                  throw new TaskFailure(409, "IDEMPOTENCY_CONFLICT");
-                }
-                if (!requestDigest.equals(s(old, "answer_request_digest")))
-                  throw new TaskFailure(409, "IDEMPOTENCY_CONFLICT");
-                return new AdmissionResult<Submission>(new Submission(true, receipt(old)), null);
-              }
-              Instant now = questionNow();
-              if (!now.isBefore(time(q, "answer_expires_at"))) {
-                closeQuestions(task, "DEADLINE_EXCEEDED");
-                if (!view(task).terminal()) terminal(task, "FAILED", "DEADLINE_EXCEEDED");
-                return new AdmissionResult<Submission>(
-                    null, new TaskFailure(410, "QUESTION_EXPIRED"));
-              }
-              if (view(task).terminal()
-                  || task.get("cancel_requested_at") != null
-                  || "CLOSED".equals(s(q, "phase"))) throw new TaskFailure(409, "QUESTION_CLOSED");
-              if (!questionsEnabled) throw new TaskFailure(403, "QUESTION_FEATURE_DISABLED");
-              if (q.get("foreground_due_at") != null
-                  && !now.isBefore(time(q, "foreground_due_at"))
-                  && "OPEN".equals(s(q, "phase"))) {
-                continueQuestion(task, q);
-                q =
-                    one(
-                        "SELECT * FROM user_question WHERE tenant_id=? AND id=?",
-                        identity.tenant(),
-                        requestId);
-              }
-              if (q.get("answer_id") != null)
-                return new AdmissionResult<Submission>(
-                    null, new TaskFailure(409, "QUESTION_ALREADY_ANSWERED"));
-              if (command.questionVersion() != 1)
-                return new AdmissionResult<Submission>(
-                    null, new TaskFailure(409, "QUESTION_VERSION_UNSUPPORTED"));
-              if (command.expectedRevision() != n(q, "revision"))
-                return new AdmissionResult<Submission>(
-                    null, new TaskFailure(409, "QUESTION_REVISION_CONFLICT"));
-              java.util.List<io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.Answer>
-                  answers;
-              try {
-                answers = questions.canonicalAnswers(questionInput(q, task).questions(), command);
-              } catch (TaskFailure invalid) {
-                return new AdmissionResult<Submission>(null, invalid);
-              }
-              String answer = Payloads.json(answers);
-              String requestDigest = questionAnswerDigest(requestId, command, answers);
-              String answerId = id();
-              boolean foreground = "OPEN".equals(s(q, "phase"));
-              int seq =
-                  db.queryForObject(
-                      "SELECT COALESCE(MAX(accepted_seq),0)+1 FROM user_question WHERE tenant_id=? AND task_id=?",
-                      Integer.class,
-                      identity.tenant(),
-                      taskId);
-              var receipt =
-                  Map.<String, Object>of(
-                      "version",
-                      1,
-                      "requestId",
-                      requestId,
-                      "answerId",
-                      answerId,
-                      "questionVersion",
-                      1,
-                      "acceptedRevision",
-                      n(q, "revision") + 1,
-                      "answeredBy",
-                      identity.actor(),
-                      "answeredAt",
-                      now.toString(),
-                      "delivery",
-                      foreground ? "TOOL_RESULT" : "USER_MESSAGE");
-              try {
-                questionStorage(
-                    task,
-                    answer.getBytes(java.nio.charset.StandardCharsets.UTF_8).length
-                        + Payloads.json(receipt)
-                            .getBytes(java.nio.charset.StandardCharsets.UTF_8)
-                            .length
-                        + 16384);
-              } catch (TaskFailure invalid) {
-                return new AdmissionResult<Submission>(null, invalid);
-              }
-              if (db.update(
-                      "UPDATE user_question SET phase='ANSWERED',revision=revision+1,answer_id=?,answered_actor_id=?,answered_at=?,accepted_seq=?,answer_snapshot=?,answer_digest=?,answer_key=?,answer_request_digest=?,answer_source_revision=?,receipt_snapshot=?,delivery_state=? WHERE tenant_id=? AND id=? AND revision=? AND answer_id IS NULL",
-                      answerId,
-                      identity.actor(),
-                      java.sql.Timestamp.from(now),
-                      seq,
-                      answer,
-                      Payloads.hash(answer),
-                      key,
-                      requestDigest,
-                      command.expectedRevision(),
-                      Payloads.json(receipt),
-                      foreground ? "CHECKPOINTED" : "PENDING",
-                      identity.tenant(),
-                      requestId,
-                      n(q, "revision"))
-                  != 1) throw new TaskFailure(409, "QUESTION_REVISION_CONFLICT");
-              if (foreground) {
-                String output =
-                    Payloads.json(
-                        new io.github.lovexiaopeng.jimu.plugin.api.UserQuestionPort.AnswerBatch(
-                            answers, null, null, null));
-                questionToolResult(task, q, output);
-                questionResume(task, requestId);
-              }
-              event(task, "question-answer:" + answerId, "question.answered", null);
-              return new AdmissionResult<Submission>(new Submission(false, receipt), null);
-            });
-    if (outcome.rejection() != null) throw outcome.rejection();
-    return outcome.value();
+    return questionAnswers.answer(
+        new MapperQuestionAnswer(
+            this,
+            identity,
+            taskId,
+            requestId,
+            key,
+            command,
+            work -> tx(work),
+            () -> questionVisible(identity, taskId),
+            this::questionNow,
+            (q, task) -> questionInput(q, task).questions(),
+            (request, answers) -> questionAnswerDigest(request, command, answers),
+            this::receipt,
+            this::closeQuestions,
+            this::continueQuestion,
+            this::questionToolResult,
+            this::questionResume));
   }
 
   private String questionAnswerDigest(
