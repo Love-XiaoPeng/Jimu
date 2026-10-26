@@ -78,6 +78,14 @@ class PersistencePathTrackingTest {
         assertEquals(
             "SELECT * FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{task} AND step_id=#{step} AND slot=#{slot} FOR UPDATE",
             mapper.path("sql").asText());
+      else if (mapper
+          .path("id")
+          .asText()
+          .equals(
+              "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionMaintenanceMapper.due"))
+        assertEquals(
+            "SELECT * FROM user_question WHERE tenant_id=#{tenant} AND task_id=#{task} AND phase='OPEN' AND foreground_due_at<=CURRENT_TIMESTAMP(6) FOR UPDATE",
+            mapper.path("sql").asText());
       else if (java.util.Set.of(
               "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionAnswerMapper.lockQuestion",
               "io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionAnswerMapper.previous",

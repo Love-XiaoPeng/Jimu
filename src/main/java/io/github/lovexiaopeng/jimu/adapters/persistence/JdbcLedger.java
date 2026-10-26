@@ -1772,40 +1772,15 @@ public final class JdbcLedger
     questionStorageBudget.requireCapacity(new MapperQuestionStorage(this, task), additional);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionMaintenanceService
+      questionMaintenance =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl
+              .QuestionMaintenanceServiceImpl();
+
   void maintainQuestions() {
-    for (var candidate :
-        rows(
-            "SELECT t.tenant_id,t.id FROM task t LEFT JOIN actor_access a ON a.tenant_id=t.tenant_id AND a.actor_id=t.owner_actor_id LEFT JOIN installation i ON i.tenant_id=t.tenant_id AND i.plugin_id='ask_user_question' WHERE t.question_binding IS NOT NULL AND t.state IN ('WAITING_USER','RESUME_READY') AND (?=FALSE OR t.deadline<=CURRENT_TIMESTAMP(6) OR t.cancel_requested_at IS NOT NULL OR a.enabled=FALSE OR i.plugin_id IS NULL OR i.enabled=FALSE OR i.epoch<>t.installation_epoch OR i.plugin_version<>JSON_UNQUOTE(JSON_EXTRACT(t.tools_snapshot,'$.pins.ask_user_question.version')) OR i.plugin_digest<>JSON_UNQUOTE(JSON_EXTRACT(t.tools_snapshot,'$.pins.ask_user_question.digest')) OR EXISTS(SELECT 1 FROM user_question q WHERE q.tenant_id=t.tenant_id AND q.task_id=t.id AND q.phase='OPEN' AND q.foreground_due_at<=CURRENT_TIMESTAMP(6))) ORDER BY t.deadline,t.id LIMIT 64",
-            questionsEnabled)) {
-      tx(
-          () -> {
-            bucket(s(candidate, "tenant_id"));
-            var task = locked(s(candidate, "tenant_id"), s(candidate, "id"));
-            if (!List.of("WAITING_USER", "RESUME_READY").contains(s(task, "state"))) return null;
-            String rejection = null;
-            if (task.get("cancel_requested_at") != null) rejection = "CANCELLED";
-            else if (n(task, "within_deadline") != 1) rejection = "DEADLINE_EXCEEDED";
-            else if (!questionsEnabled) rejection = "QUESTION_FEATURE_DISABLED";
-            else
-              try {
-                access(task);
-              } catch (TaskFailure error) {
-                rejection = error.code();
-              }
-            if (rejection != null) {
-              closeQuestions(task, rejection);
-              terminal(task, rejection.equals("CANCELLED") ? "CANCELLED" : "FAILED", rejection);
-              return null;
-            }
-            for (var q :
-                rows(
-                    "SELECT * FROM user_question WHERE tenant_id=? AND task_id=? AND phase='OPEN' AND foreground_due_at<=CURRENT_TIMESTAMP(6) FOR UPDATE",
-                    s(task, "tenant_id"),
-                    s(task, "id"))) continueQuestion(task, q);
-            settleStoppedWriters(locked(s(task, "tenant_id"), s(task, "id")));
-            return null;
-          });
-    }
+    questionMaintenance.maintain(
+        new MapperQuestionMaintenance(
+            this, this::tx, this::closeQuestions, this::continueQuestion));
   }
 
   public void imageStorage(ArtifactStore store) {
