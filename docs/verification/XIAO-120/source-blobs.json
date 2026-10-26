@@ -1,0 +1,1509 @@
+{
+  "base": "26f1c23be0c155c9b9c69126e66f9dbf394bc946",
+  "source": "cfa2f51824cd84c1657bf6dcdc0f5cee83d5807a",
+  "tree": "d79dfacfee47c87bb5ba2c125e07c3d965f21696",
+  "mainTree": "86abccce3424b116e20ff594fb6329a51a738200",
+  "testTree": "34adcf9b37894e2dea2ac292d7a76ad96a316e7e",
+  "files": [
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+      "status": "M",
+      "baselineBlob": "1d85ff8dc4bef097e9beb245a974a1379160e9f5",
+      "sourceBlob": "086f48c84e2318e38f9bccb993ad78dce1250426"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/HostInvocationGateway.java",
+      "status": "M",
+      "baselineBlob": "ad4c08e83eb32168e241c46f932e2c5881c7ca88",
+      "sourceBlob": "ceb42068e4ef9e889c1ed64200acd8f40372aabd"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/HostToolDefinitions.java",
+      "status": "M",
+      "baselineBlob": "d445d1503a46a1344f7d244e83309a3fd3c196e9",
+      "sourceBlob": "820bfbcf0663f7a35e341d8b349e0b2205045b3c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/OpenAiProtocol.java",
+      "status": "M",
+      "baselineBlob": "fc5ae30f0f4bd758dcf46c9ec892e3d14db593a1",
+      "sourceBlob": "9107d5c837efa82ce6d82e6fd55a8ea935d00479"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionRecords.java",
+      "status": "M",
+      "baselineBlob": "0bcb0a93969bf76592dab0e987aa11dd41df9bb3",
+      "sourceBlob": "f458438be0c8db799e69806de034b87d88ecf4d5"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "status": "M",
+      "baselineBlob": "ee2619caf59c523cfe4f563703de85e6a226ecee",
+      "sourceBlob": "67dab35a92ac8fb2f821b44d16abf04c0c9d8b39"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "status": "M",
+      "baselineBlob": "d1e2ae8581a84929fbad1a364f029131a68032fd",
+      "sourceBlob": "bee2d33be692043aab5ea51a4f405dd849287a34"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "status": "M",
+      "baselineBlob": "e5d6994921fe03b860aba494a141d5c0f43d7281",
+      "sourceBlob": "17576f4ad180a54e4c046b47899acaa45866664e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/LedgerQuestionInput.java",
+      "status": "M",
+      "baselineBlob": "25d11b9d0ad0eafbb10660c7edc746c30313ec79",
+      "sourceBlob": "a3c349432772dea0b96d02f0f070ab09fabadd90"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperArtifactPublications.java",
+      "status": "M",
+      "baselineBlob": "017ebeced4e2565d527b3d033e56ee6f593bb6b2",
+      "sourceBlob": "b09263ab845f88d8660503eb6d951f7346aa53f5"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperDirectoryAvailability.java",
+      "status": "M",
+      "baselineBlob": "e362934ecb7b5ffb133ed97a78e66b30bf75c8a1",
+      "sourceBlob": "cce1b4faa0e72fed88c2f139091e11acc6ee1e77"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperDirectoryEligibility.java",
+      "status": "M",
+      "baselineBlob": "7397e8dc6677c05f7e4606f9bc60dfa2ee2a8f2d",
+      "sourceBlob": "78eb92fc53f0a588f23bd3728225eee46db18cc3"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperDirectoryRetentions.java",
+      "status": "M",
+      "baselineBlob": "bf5229672a959b560b7405f620ccad2da1bc6264",
+      "sourceBlob": "c8be5caad7c376ff244f7830b73184365979e537"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperInvocationRecords.java",
+      "status": "M",
+      "baselineBlob": "b5c159216d40dd06d95324a6b442b4f49a2e6bca",
+      "sourceBlob": "f9366305e98625f30692f072e9dc527960bd4462"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperInvocationWorkflows.java",
+      "status": "M",
+      "baselineBlob": "34819069395afeb1846cebf378886195824fdcd0",
+      "sourceBlob": "ec97f3d57818f847690e354119e8b74b95f91695"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperMediaRetentions.java",
+      "status": "M",
+      "baselineBlob": "6d54e273b9b33579932fe22235be6065f9c547d0",
+      "sourceBlob": "b3e0b8a6042af1acc707e7597776023624e896d7"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperModelWorkflows.java",
+      "status": "M",
+      "baselineBlob": "3710c7c3bf93e08b3137e1d6a7fa3510bb597fd7",
+      "sourceBlob": "f0754423e48bb75e042f65865da19b21c7b09418"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperQuestionContinuation.java",
+      "status": "M",
+      "baselineBlob": "0d412cbe83cb1a55ec17cd6168d993b538da3ebe",
+      "sourceBlob": "a071b1b02efbfe11e6d5b639acf7eb1c38d63ed9"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperQuestionEligibility.java",
+      "status": "M",
+      "baselineBlob": "cff744d74acbc60e7d222c320559b44ddcd43cec",
+      "sourceBlob": "c728d5f8c484593887cd0d7009b3b216009dca7a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperQuestionOpening.java",
+      "status": "M",
+      "baselineBlob": "0187b7197d7329f5927450474e65b1ecf1a7f395",
+      "sourceBlob": "0dd3175494f644640963cf5b98a18eb5e8f0f09b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperQuestionToolResult.java",
+      "status": "M",
+      "baselineBlob": "549151c03cc09fb9c67d58e71aa9c53084ba6a31",
+      "sourceBlob": "8fb60448931e19763a82b18e136d5b3e80e8dfea"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperReportPublications.java",
+      "status": "M",
+      "baselineBlob": "5f301c47d2446f851c98f72c6c1b5c11d6f6aebf",
+      "sourceBlob": "5cc382d87522ffe7beafd5009db9e66676bd43a9"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperScopeBindingRecords.java",
+      "status": "M",
+      "baselineBlob": "2c34267bdcbd9cbb78216cb5e3a7c464c5600119",
+      "sourceBlob": "35c97e4a8231f7d672920f05da26e8216c58f71e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionAvailability.java",
+      "status": "M",
+      "baselineBlob": "7e4af8e4946e65aa8414f6cc5e4cea990c890817",
+      "sourceBlob": "d658120da8fd79cc609f062c6962352ad35de322"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionCallBindings.java",
+      "status": "M",
+      "baselineBlob": "adf0b499c9481818cac31b7d17ceb59b128a2517",
+      "sourceBlob": "57e95c4aedf628407b492fedc1fb2441505118be"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionEligibility.java",
+      "status": "M",
+      "baselineBlob": "f90dd205b990c3525e75022fd402da8284befce1",
+      "sourceBlob": "1ac6673c7393cff1f0c0ff48f628778191e1f6ac"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionFacts.java",
+      "status": "M",
+      "baselineBlob": "b1b7bce383fc28e36d2f8e5f60634b380c98661e",
+      "sourceBlob": "e2d7a31b1421c2aa73f04a9d80cba86abb1d31af"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionHistoryRetentions.java",
+      "status": "M",
+      "baselineBlob": "b196f06801194efd9bb58a330aaf8759c58371a0",
+      "sourceBlob": "cd7c793687b31bba8c7b43680735b61d4c6ed0ca"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionReadRelationProofs.java",
+      "status": "M",
+      "baselineBlob": "06faebcf7820e0c14766138751631c7451ef97e0",
+      "sourceBlob": "b77fabd6bea38e0724fbcea021893a1c979f1d57"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionReads.java",
+      "status": "M",
+      "baselineBlob": "a8d733e575b787d5888cde317c7782f569a33091",
+      "sourceBlob": "1fb7e02923c467c785df22f93a378bbf20c5d594"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeMaintenanceRecords.java",
+      "status": "M",
+      "baselineBlob": "d3ae071e4933bc069ab0fb88bd9763d48042f5aa",
+      "sourceBlob": "3e4a70059187a9b4df5085929507ad5a844439a4"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeQueries.java",
+      "status": "M",
+      "baselineBlob": "22f492d8a4b66bfeadea762f5b5fb3cd450850b5",
+      "sourceBlob": "83917215eb3ddb7c11015352b0810d6ebdab15d1"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeReadProofs.java",
+      "status": "M",
+      "baselineBlob": "987970fbd23c6e4d4c64f8a1f02678bb7089f83d",
+      "sourceBlob": "c13c6511a2a57f20a4a6820e8cbe50e8203747a6"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionSearches.java",
+      "status": "M",
+      "baselineBlob": "cf55829aa97f86d1c98f8d500be0cc1fb40aff5a",
+      "sourceBlob": "a12aabc7681e860d5b2c66374d5c0aabe4082571"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionTraces.java",
+      "status": "M",
+      "baselineBlob": "26b7040fb6dd2b684ebe9a5e2b7d4c5d6ecfc3e5",
+      "sourceBlob": "4c19fc327707e3bc8802a690b4ced35c7114a065"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTaskAdmissions.java",
+      "status": "M",
+      "baselineBlob": "c5d2de40afe5ed171c12180c680ee552ba9729a0",
+      "sourceBlob": "ad05f6085442f0c753736c4aeb0fbe7837808dab"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTaskOperations.java",
+      "status": "M",
+      "baselineBlob": "48af1947ccde4f14fcb3fa5a4c8dac5947f88f8c",
+      "sourceBlob": "129e856cf48418cde63f8dad79cec44f6140fbe1"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTodoAvailability.java",
+      "status": "M",
+      "baselineBlob": "eb7a8498bcc2c7ec9bec2288f68f6ab1485e0904",
+      "sourceBlob": "6f9ee712403e9ae8b316aa424d3b0232223514bb"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTodoEligibility.java",
+      "status": "M",
+      "baselineBlob": "4a4348a05685d8809ff961a204bcc3eb938d6a2a",
+      "sourceBlob": "2396e143bb04f10f838bb9382c37d215ebea2634"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTodoProjections.java",
+      "status": "M",
+      "baselineBlob": "9fc9a642ab26924f3ce7c5516bde79df9902485c",
+      "sourceBlob": "07d77bcb475f91be5680abe7add90a4a5786de77"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTodoRetentions.java",
+      "status": "M",
+      "baselineBlob": "807479ea9444c7e4530976013404335a212d603f",
+      "sourceBlob": "acda15dfb52069592b8a389a4bcd2d3f7b1ef8c4"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReceipts.java",
+      "status": "M",
+      "baselineBlob": "c2c76f6594a7f48027553f341296759cf9a105b0",
+      "sourceBlob": "041f7e0dbccd8b0d2ef7210863eb1a86011d8193"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/BuiltinManifestLoader.java",
+      "status": "M",
+      "baselineBlob": "fe252c572748b3669e5898f7a78475a5693796d2",
+      "sourceBlob": "fabdfb19cb4efcec430b7207645791a2b8dd8bc0"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ImageReportComposer.java",
+      "status": "M",
+      "baselineBlob": "809423bd9bf7c67571604af5a5441d5a15e074e5",
+      "sourceBlob": "f944f1ca2c38ef497b0cbac5ee436abaf50ee072"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportComposer.java",
+      "status": "M",
+      "baselineBlob": "e2929f1c4b13426f2d76f1a3f6dbb6d418230d3d",
+      "sourceBlob": "4f88c1db3089e2ae3ab6d4873798cb34263ecb8a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceContracts.java",
+      "status": "M",
+      "baselineBlob": "30a7904307bedc2daebd8f2cc5cfeaeb1c7beb44",
+      "sourceBlob": "d2fc50fb744b8372494a3145234c94508305e187"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceRuntime.java",
+      "status": "M",
+      "baselineBlob": "64304b1537f5b6e777097090bdb98f885a70f705",
+      "sourceBlob": "986f1c179c5107969a1f32e1668f84db8f45eb01"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryContracts.java",
+      "status": "M",
+      "baselineBlob": "438aa5e3065a6bc896079b94795abd6877c45e25",
+      "sourceBlob": "ea6b0af1ba975cfcf3d42df19d79efc48f629012"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryPaths.java",
+      "status": "M",
+      "baselineBlob": "74f4d6ecc0abeb5530a28c9faf0287f0e82fa50d",
+      "sourceBlob": "ce1f112d44c84b9353f00a6b82bc8a789f6a467b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryRuntime.java",
+      "status": "M",
+      "baselineBlob": "a0551e52d86eec485d5dcf74c930f9c6687414b3",
+      "sourceBlob": "94632db336e05c39bffcfe1a4942ba6b271799a0"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/events/DatabaseEventFeed.java",
+      "status": "M",
+      "baselineBlob": "6f3c5e0feeb83d3b06acbf5ed312a956acbdf062",
+      "sourceBlob": "9fdf8b03ce1ec3f48cbcf7602c86e8be79be36e1"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/http/ProviderHttp.java",
+      "status": "M",
+      "baselineBlob": "574d8a2c3a134a52ff4eb51626a1847d39e06c6b",
+      "sourceBlob": "191d87a4f5b24562b54cc7bb66f87b60f56cdebf"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/identity/SignedIdentity.java",
+      "status": "M",
+      "baselineBlob": "c581d64b5aecf1c845b4e42e90f0728a7f943729",
+      "sourceBlob": "7b672b6d628d2411ff8d231cb69215084882d784"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/interaction/QuestionContracts.java",
+      "status": "M",
+      "baselineBlob": "f0c608ca31a0063ceb9be0c4f0fc87ad108ac808",
+      "sourceBlob": "5b16b6f49b1dc01204e75947bc6cc4555f1dbb7c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpPolicy.java",
+      "status": "M",
+      "baselineBlob": "5ca8e8d45d3e00b86119b9d82f65b8ffbfc39594",
+      "sourceBlob": "770b67510bdd89f3ed4cb72c097c72f3bedd9122"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpRuntime.java",
+      "status": "M",
+      "baselineBlob": "5c67a7418f5fc5a53a9e5e1ffc43320a3ee46e61",
+      "sourceBlob": "1dd5c5054d41fe7218b0d926a191aeb9ccbcf3e2"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpSettings.java",
+      "status": "M",
+      "baselineBlob": "3f6e48dc8c5c002453dc386f3f1bdc8132a70487",
+      "sourceBlob": "61e89dde8a2cfd8b35e1c5d3998ed090c8e2c69f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpWire.java",
+      "status": "M",
+      "baselineBlob": "37ee288207b82c2eb01525de892db5cad7159fa1",
+      "sourceBlob": "e2f73b1ecb29c32ce48da1ddddcb8de4b970c9c6"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageInputs.java",
+      "status": "M",
+      "baselineBlob": "78093fdce685164d3a9460a7242cc6dc1761398b",
+      "sourceBlob": "d08ad708f4b01d852aae5d97b08e28df9d08e3dc"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageNormalizer.java",
+      "status": "M",
+      "baselineBlob": "fd0f456b907a7f7b37024a7af467daf41ab364e8",
+      "sourceBlob": "567a30553dd513b7d299de81fe32b21ef74f4a28"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageRuntime.java",
+      "status": "M",
+      "baselineBlob": "e6ec2fae5c7018e01d6154a26e55aef94b3146e0",
+      "sourceBlob": "4903bba8b252b21fd79d8d183f672423f49ed476"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/BusinessPolicies.java",
+      "status": "M",
+      "baselineBlob": "72a4d23503dce8228a992596b66ea790ea8dc427",
+      "sourceBlob": "e9fae8d26f3936290b3a5a4a0859043f0f9bf95c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/EvaluationMaterials.java",
+      "status": "M",
+      "baselineBlob": "8e960c590bdf74808e67510f242999d10f297695",
+      "sourceBlob": "28c1b43844a16965f7c78b9f8c445dfd581b8173"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelImages.java",
+      "status": "M",
+      "baselineBlob": "b351b92697d284a1e228288f3798808db70c61b6",
+      "sourceBlob": "c20e97fcac98b4f33ef00b83cbe2a18470db9a63"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelInputBounds.java",
+      "status": "M",
+      "baselineBlob": "1bb4643cfbcb910c67ae4df28d3fead0a9f07a76",
+      "sourceBlob": "db72152376dee4aa55a317a9060d1201f9c3b6cf"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelProfiles.java",
+      "status": "M",
+      "baselineBlob": "cd286620fb58b087dab71ea244c4e2a265b79033",
+      "sourceBlob": "0eb2ef9f7860e569c6fdb70e26a77083656eb579"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeResults.java",
+      "status": "M",
+      "baselineBlob": "b49af14ae411c6b1d1ce934e694349b602e42883",
+      "sourceBlob": "6af2e525fdca0e88addcbd4278f55a7997c31601"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeRunner.java",
+      "status": "M",
+      "baselineBlob": "87d8a7399d8d023a3addf426000b53a558f1c1d5",
+      "sourceBlob": "b65d42887488c25f1d4b166ab765026be719eb57"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchQuery.java",
+      "status": "M",
+      "baselineBlob": "b54887f79fdf5c07d841c98873620ef1da7d4025",
+      "sourceBlob": "881dc69919a51d795c52be50c24634131f42dd67"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchRuntime.java",
+      "status": "M",
+      "baselineBlob": "6047365642bc3b28595cdb04b1831d39b961fbfa",
+      "sourceBlob": "411cb6a03304e6bf5d36d4af104a2d47798f5a2b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/SearchFiles.java",
+      "status": "M",
+      "baselineBlob": "00c5e6287903f13907d854e8f49d1059a8252950",
+      "sourceBlob": "f2080ddfd2686d10d67425c16069cc7fb4d62ea7"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionContracts.java",
+      "status": "M",
+      "baselineBlob": "3b3ae945748f0c1235f61b5fbbfd9e76e8dfcb86",
+      "sourceBlob": "55fd28b911658ca9258c573a38a455f72c771f2e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionMatcher.java",
+      "status": "M",
+      "baselineBlob": "c562da23ffc09d855241c624eceeb8bb21b0a19b",
+      "sourceBlob": "ab6a3e78e098b235710a94392679b9f53e37eff3"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionContracts.java",
+      "status": "M",
+      "baselineBlob": "313b45106fa1490e1fce9412a6fbb5a08714b97a",
+      "sourceBlob": "70d825b6a9bcac28e51c84d9f1344e17d3274cd6"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchBodyFilter.java",
+      "status": "M",
+      "baselineBlob": "89c282a2aa1b35ad03986f8d31ccafd529ed281d",
+      "sourceBlob": "bcba2de776ff55ed631e10c1d256f2b151ca59df"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchContracts.java",
+      "status": "M",
+      "baselineBlob": "b0d8817fd26f20fe63c0154dc1574c41ef72c60f",
+      "sourceBlob": "7a7e0826c44905def903ee23b74bfd0ec323f027"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchMatcher.java",
+      "status": "M",
+      "baselineBlob": "4922d6e75d7459a6c118586e15e43dfa7cfc4189",
+      "sourceBlob": "c69ba6f0182c482b4a4d2d3695cd474c7eddd0fe"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionTraceContracts.java",
+      "status": "M",
+      "baselineBlob": "09bef691ee5def66771241639aa67cbf01cd982c",
+      "sourceBlob": "d4e36dd2c9788990acf5d1de05ea1c2b20a8551d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/todo/TodoContracts.java",
+      "status": "M",
+      "baselineBlob": "4bc8275fed60b2f0f31f3d06cba7c0bf48d9fbe9",
+      "sourceBlob": "f8885bac83ae87897f30ecce31055edd09ef2da5"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/DisabledSearch.java",
+      "status": "M",
+      "baselineBlob": "5cca10e6dad3a7366314d0e00aad8c68bcb4ed34",
+      "sourceBlob": "322e955c353b6c3d39a61476d654c90b1936f0c8"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/FetchRuntime.java",
+      "status": "M",
+      "baselineBlob": "da8017a70ca7028c0b9a95e8a6a0111e37349db5",
+      "sourceBlob": "6884aeb707fd87ef0d3efc9ff2ecb5d070b77008"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LedgerMaintenance.java",
+      "status": "M",
+      "baselineBlob": "c6afe96ec6c3e0cc104fd44ae67b597b7a599aa6",
+      "sourceBlob": "36c29a23046bbb5de60d7ca9812075586d4c1f4e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/WorkerLoop.java",
+      "status": "M",
+      "baselineBlob": "345f797dedeb76fa30d8bdc70d8d4d75d8c4aad9",
+      "sourceBlob": "06765d67055432c13bb61e3934329248a0aefc9f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureImageStore.java",
+      "status": "M",
+      "baselineBlob": "4d2244d2f252635f0509b15efe24586594459895",
+      "sourceBlob": "9b4f9203f557d6f3e282fdd5b6d706fcf6718092"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureWorkspaceStore.java",
+      "status": "M",
+      "baselineBlob": "76cb4bf89d0bdeef640d055d4b7a416af2e5b9b0",
+      "sourceBlob": "731423629c7872de6c771256368a0d2d3a610457"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/SessionHistoryController.java",
+      "status": "M",
+      "baselineBlob": "f02ab9c8d9148b1cbabe66e26422649fb7c40dc2",
+      "sourceBlob": "6879988f673c247f6aa1893f3c87113b274dc7d9"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/SessionSearchController.java",
+      "status": "M",
+      "baselineBlob": "97d6e67a8321a869126236f3efe205b6e55b7448",
+      "sourceBlob": "7a64208ffdc74af65e615cb615b43e41f7246350"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskController.java",
+      "status": "M",
+      "baselineBlob": "7692e157d1b2b8a89cdeecef49720523e21df783",
+      "sourceBlob": "d353581641f1cd102018df40cb38f05cc5c748f9"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskErrors.java",
+      "status": "M",
+      "baselineBlob": "34b2c471674346e9d619adb68ead5e6a1c20ca3a",
+      "sourceBlob": "4b63ed4701f23c1768ecd170878c9fd889a349f2"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/WorkingDirectoryController.java",
+      "status": "M",
+      "baselineBlob": "8541b9c98f19075bb4b9eac8768133716ed9a183",
+      "sourceBlob": "ed2694d27243daa6eec5d2360bc42ce76d99134e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/interaction/dto/QuestionAnswerRequestDecoder.java",
+      "status": "M",
+      "baselineBlob": "609a9825b299d1f418d43ed09bd10c1602c05dd1",
+      "sourceBlob": "67a1f307ab4f8e5c524d85ee2d78c09659d861dd"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/session/dto/SessionEventRequest.java",
+      "status": "M",
+      "baselineBlob": "bea8c0d8b3ae2cab051a864029d108b2eafe23bb",
+      "sourceBlob": "740167e0215b5bc2926215366911dd57b096511c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/session/dto/SessionHistoryHttpRequest.java",
+      "status": "M",
+      "baselineBlob": "23c4cdc9dec213e7b1609a28992456e3bd372b63",
+      "sourceBlob": "ea5c92d24bd50d945a09ea9145be061746380d6e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/task/dto/TaskEventCursor.java",
+      "status": "M",
+      "baselineBlob": "a04f095cea9d80db4ed5ea3bcdc52d396f2150eb",
+      "sourceBlob": "9a0a9e72291be7450bc01e5fbfc5a5a9cd65782e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/task/dto/TaskRequestDecoder.java",
+      "status": "M",
+      "baselineBlob": "12753f1f4e5e6592f1d908ce9fcdcd21cc32a6bd",
+      "sourceBlob": "7d07e9e1e843d8e82c3b52b0138e10ce1efb253f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/api/ArtifactErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "8215a893eb4b577e34701a7cc62e0293454181fc"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/api/ArtifactReleaseReason.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "4a83aa4e6bc9d344e2381ca68c51a84de972bb39"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/api/ArtifactState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "69813fe07c9475bc317c46b8a740afdd5d6d64b5"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/api/ReportDraftReason.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "8a9f1877e32f58884a48d7a17c56515b9e1c63df"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/api/ReportLimitsV1.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "e26b3210c3ef2e393318063fbb5d4c43c2a96e11"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/domain/ReportValidationPolicy.java",
+      "status": "M",
+      "baselineBlob": "147f6a8951010d7d6cbdb392e230f770ad849242",
+      "sourceBlob": "f2db314fccc0ec89bdbe130f19364e89a50136b0"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/service/impl/ArtifactAccessServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "96644e35a4bd5830ee13985cb507dd5262d001f4",
+      "sourceBlob": "bee566bf49cba6552af69c39b42080121bfe0f39"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/service/impl/ArtifactPublicationServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "52f25e9f51bc5d2d110da12956d8a0e2b9f0c550",
+      "sourceBlob": "8e95bbae8cb7d1122b67cad31d2707dee4e85c17"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/service/impl/ArtifactRetentionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "e850827e76c7c0117cc25c879318286264d86179",
+      "sourceBlob": "5c3bc7407c33220d400a57645e7fb31710d8f33d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/service/impl/MediaRetentionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "afdb60f89adcf397a6282a1f94add7767a9ecdf9",
+      "sourceBlob": "dd0025d37c7c6d3bac8642067098032b317086f5"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/service/impl/ReportContextServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "2e5c65369813f8a4713aa4dfca7215446332d3e2",
+      "sourceBlob": "13feb56ec8349665843e8f83085cc33ba98a978b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/service/impl/ReportPublicationServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "14c81bcee2b787ecedab6eb3cc524c9d8f98e402",
+      "sourceBlob": "1305b4083c09631a5996d92705d50d6643896aee"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/budget/api/BudgetErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "2b680791accafeb2862c6c49a79a5e663578b456"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/budget/api/CostQuality.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "55633f8a838a8cf56f2ce049f39a4a87372d4e8e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/budget/api/ReservationCategory.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "c2475f71615312fadf497e2b3c3d5c6cdfd271af"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/budget/api/ReservationState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "158b6951e91a64471741de51273911c6ff5a80c3"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/budget/api/UsageQuality.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "a80c77443db92a4543729bc9fec0e58f0e07ac3e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/api/DirectoryContentState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "c01c1356d45261ba96dcd159d9085684596b53d2"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/api/DirectoryErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "60ad4279a39b0a671ea389d417d791f3a91587c1"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/api/DirectoryOperation.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "a01cd0fe8e3bf2982b0a170367409567d547eb2d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/api/DirectoryPolicyV1.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "25cb8f23f485a8fed6a1ed4ca0581c6f0c960fe1"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/api/DirectoryStorageLimit.java",
+      "status": "M",
+      "baselineBlob": "a33f8601c743966bec856d9b29c0a4148a88c1df",
+      "sourceBlob": "8c452bcca7b5432244593155d2da74dadcdd4a31"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/api/DirectoryWorkspaceState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "3fde1b94ec7afb0911e3e89a0146750540cd7b85"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/service/impl/DirectoryAdmissionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "92a5c0fd8d338fbd44f1e75990d6d9bc8ff193ff",
+      "sourceBlob": "1fd1c8fae99626b392f3d4716024a6e7955c5f06"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/service/impl/DirectoryAvailabilityServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "ee0f1b7f91949f2caa7449652876b7c034ba09b8",
+      "sourceBlob": "3d34e72eef168191db2b8bb5d11af97c32fb7f2e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/service/impl/DirectoryEligibilityServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "1c8fd8229cb057a651a3822d95fa3ff51a7f880c",
+      "sourceBlob": "e1944d7306b8e76b985e42b01b02f165422dc152"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/service/impl/DirectoryPersistenceServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "3a67dd9f149432760cee4b0c7bae680e776b1d16",
+      "sourceBlob": "61ba384f61ab897398ae58f3c50d9e89caeed336"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/service/impl/DirectoryRetentionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "d8f0c96f434d18c41db9a7d1ab17fb9627f0d179",
+      "sourceBlob": "f549556f64965c1a81b0b2577528249492cff6fa"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/event/api/EventErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "e8bb7e11138a05099137253660627612988f4445"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/event/api/EventFeedPolicyV1.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "bb1df31c87426a2f03186917fc635cf2a570b82f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/execution/api/StepState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "d7ed5470f0f64e8f9ca19d6c1c53966de6a44a59"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/execution/service/impl/CommitFenceServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "890645541c64483fa67bcd6d91818a572647ac2e",
+      "sourceBlob": "3bb68f7d71aeaefe415e0ac5f5382a95aeac1cdd"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/execution/service/impl/ExecutionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "e3fccdb7c3eeb87d3f72672a37fca7b8a571bffd",
+      "sourceBlob": "cd2fdc64330d0d8e212b2aae10e0d24c4ccca9b9"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/invocation/api/InvocationErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "a8b4c5c2572b3e1bee7030c5f0ec6c137b14b59a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/invocation/api/InvocationState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "c348b1c1ca763bb6835020165ca70884cd48ab9a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/invocation/service/impl/InvocationServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "f188ffaaa1038d56e6558b3035efa5cd955934c8",
+      "sourceBlob": "ea06336c537f9ae9c8b4d8ae462e4e6f4821b29a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/invocation/service/impl/WebFetchServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "fc384e6611cb4dfe27e9797dc9e8730745319e91",
+      "sourceBlob": "f7e0639652f7346fd303f116d9bc5a750680c39d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/mcp/api/McpAuditPhase.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "cc677dbe7fed3322034426b6fb813a36285a687c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/mcp/api/McpResourcePolicyV1.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "ab6bca9c2bce8314cecfa67fc491fe29c38ac500"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/mcp/service/impl/McpPersistenceServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "eb3534c02dab3731a670abccbf379fd8a4eba7c6",
+      "sourceBlob": "cd2d038ef85be41d21dc125cfcbb2e2821051203"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/mcp/service/impl/McpRetentionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "ce9675474037c2ebf2069cb9a026fbb68c91e103",
+      "sourceBlob": "18381ab9c588238a9e7ac679b76084bf026e407d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/media/api/ImagePolicyV1.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "8348095afa029906c64c1024e5fccb4fc4307f74"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/media/api/MediaCleanupState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "6e133b08b03f94ec1dace35e9c1a00cbc68031e3"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/media/service/impl/ImagePersistenceServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "ea73f07d493535303f35621f050f2906438a06ad",
+      "sourceBlob": "1f82a67c9cd0b3979ca312daa14b3b5ffda875f0"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/api/DispatchState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "32e5a692d13c2d6288bc3f1d1175b628a0ae0b65"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/api/EvaluationRunState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "fdf03fb83a2dc2f490c18de663450f95451a7f85"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/api/ModelErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "ae1a51bcd7c402f109fbb9a6c7abdae171d50e3a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/api/ModelResponseLimitsV1.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "227384749f6e942c3961f02632e3495a0e46fdbe"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/service/impl/EvaluationBindingServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "3b37a8223ecdb7a445942553244644c4fcc8495b",
+      "sourceBlob": "e10bb8255d43a92b948c8a4f399e6524ab1ff56b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/service/impl/MaterialEvidenceServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "d65b1c1493fc46b45362fa9e3a46596ddb00a680",
+      "sourceBlob": "6dcd1f755e3f7bd71e9e66560f8f421ba3a3e8da"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/service/impl/ModelCostSettlement.java",
+      "status": "M",
+      "baselineBlob": "27ae4dad4d02f2466913b58732f788812aea9cd6",
+      "sourceBlob": "7dc1ad560410f8a65c2d7fa0c2203137705a2626"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/service/impl/ModelDispatchServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "3706387e20688528fe506706139e48019078ac77",
+      "sourceBlob": "5f49548d2be2305c0085943561ac8129225919cd"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/service/impl/ModelEvaluationAdmission.java",
+      "status": "M",
+      "baselineBlob": "518964567ea0fe63f7c88324b555db3a1325a55a",
+      "sourceBlob": "72a2d57cc3485ffc2f9618194fdc484a76352a2d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/api/ExecutionScopeApprovalV1.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "bd50a0e7047642da20270982faad6f1cafb9fdd2"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/service/impl/ExecutionScopeConsumptionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "5d7ec854c7fef52089dda356402e14ef63739b0c",
+      "sourceBlob": "9341bf8d9e1ee5fbb0ad5fc7d0549113b3a82576"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/service/impl/ExecutionScopeServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "b9a8f74deeb50c3f49b81220cda39dc9a23eb64a",
+      "sourceBlob": "ff5f515d358bfd9f73b21dafec50876289b3aff1"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/service/impl/WebResultAssessmentServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "4cace32bca44f11840ffeabb2593ac7bdb8cef2e",
+      "sourceBlob": "8020886b95d2aa7818cd82c77049fd13cb5b15f0"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/api/QuestionCloseCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "1d415c5f1a3ecf251f1e776375f56daf0a2d1fdf"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/api/QuestionContentState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "47c79bb91000880d744ce9f3239afd860e3d411b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/api/QuestionDeliveryState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "4f61810bedd4e57a70eee46857d23bd06f941c1f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/api/QuestionPhase.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "743c5bad39818b40232db38086cb5ed3fa943d03"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/api/QuestionPolicyV1.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "f922d8b68ac93e68fce94095fdbb657b5f941327"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionAnswerServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "a4e0c30f39e21de231f9bf14915f0cdd9ad2d3ab",
+      "sourceBlob": "d71e6a58416428dcca858e966bd9a82a608b23b1"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionAuthorizationServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "51618967a81ce6990b1fd27260d2c5483ef5a25f",
+      "sourceBlob": "affebcb69f231cd7cb46bfc3e54c189b338d684e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionContinuationServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "34bb3a3c66fcce5061fb37743896c98cde08232d",
+      "sourceBlob": "2872165e8be0827683f552e81e5b4ee38a7cbb61"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionDeliveryServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "d266d92d170c8a0876bb51d8a2f0ced78f5a6026",
+      "sourceBlob": "0c6d2519d5307032c85019d80cd5129d14fee058"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionEligibilityServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "066ffacba3049b75da3c0e3bd73c89158014d280",
+      "sourceBlob": "88ae229b3e3215c6f7aaeae92f188aedd2fef322"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionInputServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "b87c28cb9461186fc73683bcbd2656bc098154ba",
+      "sourceBlob": "e37718eb7d92adf87fbac9164c92947688bf8b48"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionListingServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "b6e5d52279efa5df348f7342edc9b66aa3758507",
+      "sourceBlob": "8dae9a348e41f0eeaf303f9440db09ae0a7ccfa7"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionMaintenanceServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "ca629a232fffc483094d396fed3b3bd445ae9b9c",
+      "sourceBlob": "4114b97fa48aa357723242702948517259574b75"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionMessagesServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "b61dc098c58ac87641453d12933e103db2e22191",
+      "sourceBlob": "a7239dff8839c8a382e1638f1d7138543d31c547"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionOpeningServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "77d090ca3496e4ca1b5984cc2d6e7c4fd6e62d55",
+      "sourceBlob": "1a9341c0c5c47b2028af01ed6c9624898d468ed3"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionPauseServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "782efbf0711e417001a3905a9094cd38adc9743d",
+      "sourceBlob": "08a26255cb435fe9c3a09eacc925dcb81121a9e4"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionResumeServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "0bcbf8671aafc01ffcc4b640464b85731fcf4547",
+      "sourceBlob": "b3228bb05be94ad0e272b4333ae14f4cfe56bb3e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionStorageServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "1fa83a0434f89b95c15021eac5875cb4c2343b79",
+      "sourceBlob": "b3b1280c31c7f4d55f1340dbb8bdf8419d7e2445"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionToolResultServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "964b6532e24c0d46e78be40b9820156f3b1ef28b",
+      "sourceBlob": "5e79b3a5e4eb622b66fc0704395e74a24ef099ac"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionVisibilityServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "de4732be95227b519f353d214c5007d1e94d8d7e",
+      "sourceBlob": "73c4fd6df3c095efdfc484b9c730148db07692f4"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/search/api/NativeResultPolicyV1.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "21f0ecddcf9ffd9643ce9c658d6646ee16765f89"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/search/api/NativeSearchPhase.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "0e4b2f3be1c6fc56f0f861c5a6e1123f0de8c20f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/search/service/impl/NativeSearchPersistenceServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "a3356c7936a1d1de9ad78fcc467e9105d4454d63",
+      "sourceBlob": "0915b3ad6d437306efaf6529cab070eccd47a20c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/PriorSessionPolicyV4.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "2e568cd77af81a91428ac47de79b9b1665cc3aec"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionContentState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "fdc0ed1d294cb9bb204b7fc7cc80f6862af5472a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionEventSearchPolicyV1.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "8bfa3dfd18e0a2b91c82ffc878eb3cf38d2f642a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionGrantState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "eec7365f665a0f5cb0dd35573166610dd6b284bc"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionHistoryPolicyV1.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "ec09405afd4b2bc21515872f370bd5c61c699a6c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionOutcome.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "0f03f38ee5af4be60cba08863e8cd8929856ec0f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionScopeOperation.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "6dc3ea6054644f3aa83ef4802b68bf8c5dd22212"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionSearchReadPolicyV2.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "d8f962afe8e33c7aae8d0ccaa64bd71568441735"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionTracePolicyV3.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "43ef0e47c1fce56632b695e4bbfb5fe1d743a839"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionCallBindingServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "c49c76384cb8b83dbc98f53d4325e5127617a63a",
+      "sourceBlob": "2b0b1f3d83924658679b7c9da349b5132baedf57"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionCallProjectionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "156e5a399bee869a3991b3c8caf12cd7c720b479",
+      "sourceBlob": "175edb84034944ea4e0ac3ac6f75af92d3373aa9"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionCheckpointPreparationServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "6c488d2b90dfd34469cfc04a8e3c9f68235fa55b",
+      "sourceBlob": "faee4b93965d4d6b67fe26b723e4870d8bdc2509"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionContextServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "688ad32476864fcf683b2a94a0defb07d53d1442",
+      "sourceBlob": "e1be3518dc9dcc9d0924e7a138834608bc97371c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionEligibilityServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "02dd58c81574db3dc766367daca72ad589a186a8",
+      "sourceBlob": "f5a944c380819d65b86c746fc73b072d90edb655"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionEventAppendServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "031f1c390873fba0d448188ea3753c45c5fe9990",
+      "sourceBlob": "72b7bb4b28fe776cee220ab11336a0a26989eef3"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionEventProofServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "ada5796d0eca7ef24b8b502412d2551820400228",
+      "sourceBlob": "96647d87ea691667855bee5f4f666dd315084fcf"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionHistoryProofServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "a8f4a16c4de66d91247db7ccec55fc2dafc7246d",
+      "sourceBlob": "d5891b0b958dd4a2fa3a066822ccd3251a5dda4d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionHistoryRetentionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "74826eeea86611ae6c6805b755090146c990cd0b",
+      "sourceBlob": "d18a532bca18cef8f8d23af1b4df7a96fc39954a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionHistoryStorageServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "81b7780a04389816d0a30dcf57a6f45ca890787b",
+      "sourceBlob": "7039cbe5e233982f4aebd1faf98fb471e6d7b178"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionHistoryViewServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "f8bc7dd1e9b5d3ae516378ccf29f9a1f5490d6ab",
+      "sourceBlob": "bb3c06fb2d456c6e53b3eb08cd2f88066e9f4bf3"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionInputServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "b91c790d66e15eb21bc4c8db1d980f8a386c0aa9",
+      "sourceBlob": "ef2de966eca47037f4b3dba80996933480b14227"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionMetadataAccountingServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "12cad64ac7719060894f028f4069b2493be3d004",
+      "sourceBlob": "deb5b12ce62b33241fc1283fc744572c071f64ab"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionNativeSearchExecutionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "8581e7a85a4ac4b7909239f2766ca58a27d7de75",
+      "sourceBlob": "3706514be124a4838a5c79dd7b50500591757467"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionNativeTraceExecutionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "b8384ada40b4430006ef71695c803502e838f838",
+      "sourceBlob": "a160095a948bdc5df3e2b67d60936389e15a1500"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionOwnerServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "1793c12a3f1b9ca9f20bd35c8726df148ed443df",
+      "sourceBlob": "f96c39b0397f5269f64118d3a87d0477ae4f7b37"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionReadRelationProofServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "db1f9c7619dc4c9c52c460f91679607584d535f8",
+      "sourceBlob": "d422e2dc4c778ff895e41771b5cb714a449ecf86"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionReadServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "5ffef2515e57c59263e93f9c0c2ed4d5f0fd5662",
+      "sourceBlob": "a7c7474d2797837e6084f0344197bd4874771020"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionResponseServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "91d200c6b97aff5e2f8e6dd682c4c529908faec1",
+      "sourceBlob": "ceff071545e6e04ed9c9a54f212805a55c8ed449"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeCreationServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "8459404274625daf9c98d3fde2edbb66345d1a9d",
+      "sourceBlob": "cfff1bd5c38a8a959e3b9690c6ede927a310e8e5"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeEligibilityServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "a9899db57a292323968fe48a992bed8c0ce78983",
+      "sourceBlob": "0fd67e6ec49a6adc98293a62969597b34dcba46c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeExecutionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "caf1dc0e840e5d96242b9183daf76381426b0d5d",
+      "sourceBlob": "fda22c8ffc37b263ab10865632c30091b915143f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeMaintenanceServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "a7efe21ee460985465b7b617ce09f6930889c6a3",
+      "sourceBlob": "afd359077fa86cffe12434c55e1764448a190429"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeNormalizationServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "2fae41fb0c7349605ad47155dcb3b09165d603cd",
+      "sourceBlob": "76c8f7eba4ccf7570cd608cb0d903ecf20f2e9a3"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeQueryServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "712c69bbcf03df4f49e1c9814b70ed48fe25042a",
+      "sourceBlob": "5822fec13af8a9e5d66eb3115dbaf107a1b326f9"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeReadProofServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "6d3d1bcb5c23719099a2373cf61bf5af005e72b1",
+      "sourceBlob": "0185cee343e15d17eeb3b101ed44d413c037365b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeReadRefsServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "e83e9adc846e089a8d44f669a8cb97a57b3c4f38",
+      "sourceBlob": "e12afda30dc9d41677aef6b88b1a3ff524a62fcc"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeRevocationServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "051aaff3b6b216a2749f5c277187ee9a2f168c02",
+      "sourceBlob": "0d541def3f5793cceeadc5fcc7059026e9f875a6"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionSearchServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "afd5c0788e007fc0721576449364a59f62fdcd7b",
+      "sourceBlob": "02c9ed79ebe41e9cb71ce26151aa0ee43403fe88"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionTraceServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "45e507738f52c6ca43d262321587d3c83cbc4b90",
+      "sourceBlob": "9346be270a3ddf7032ce6c186d997eb18385511e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/shared/api/CommonErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "dcd4d4b94b0fd9f5306bddcb3ddc5f40aa429ea0"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/McpLedger.java",
+      "status": "M",
+      "baselineBlob": "43970d4601f5ffa380cd801a7d8c5dd38686086e",
+      "sourceBlob": "0bf128dbfe2cdebcd47162747bcccfa07831df46"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/TaskErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "d1c31b322253d19bb4bbbc269f6df03ec6bd1be5"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/TaskImages.java",
+      "status": "M",
+      "baselineBlob": "6d5055e317eab7734ac6d4d73bb4bca572ca4240",
+      "sourceBlob": "7e59a96a2c29724885d74c5d48e49c8572325062"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/TaskState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "a6501b5449d00cdd980f22a513c6b46648bbe093"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/Tasks.java",
+      "status": "M",
+      "baselineBlob": "4ec8b317cbc2793de9fa8e2e51669151f72e945b",
+      "sourceBlob": "07b275871e2bfd6918b3b97da16786b44358d418"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/domain/TaskExecutionLimitsV1.java",
+      "status": "M",
+      "baselineBlob": "20281779cf515245ada4bf88f5bb811fd0278045",
+      "sourceBlob": "fd682707b63ff9183cdac9bce9f39dec649ea8bd"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskAdmissionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "5fe0d818f05fba1fc83b0d520c6656be217f8066",
+      "sourceBlob": "f3d8bf8f00e2862ff70ed1527eb8f0410511969d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskBaseAccessServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "e09e867020053ea46d9a411efc1c3581bcba7715",
+      "sourceBlob": "710dcfd78b73811a97eb99a862b3d0e0a74d2ccb"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskCapabilitiesServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "729abb96336714bcf57fdb0d63aed9dae6d0ccfb",
+      "sourceBlob": "ee96f73e06bba7c91e1a37ec97cfc871814b0a54"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskIdentityServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "50abca51ee376eb6c3c5494c1d62fec4429a277f",
+      "sourceBlob": "7636888c5b6cd4399d419dbc3b5f127ab8779784"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskMetadataAccountingServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "5df128e8305dbcb977a1891fbf3ef6bbbe5e4db9",
+      "sourceBlob": "fc23275c9d15e8e1a86eec5cb9311b7225c004b4"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskOperationsServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "504f8d8610f1e790e9523d5388b35d2b559cadfa",
+      "sourceBlob": "8d2cd7e94a31638c34a72cc0c65f563e25a36509"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "aa9e798194aad1f8f541c9372b16d99382f36cce",
+      "sourceBlob": "e7be393fdd9cb6e9c99b7858818e859a7b91dd15"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/api/TodoContentState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "d20f26bee74787c844207798d278c7ac1f106113"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/api/TodoPolicyV1.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "bc6f9a64c527371c3e1f3c129035e3d75a584414"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoAvailabilityServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "669b82c0ae4228036c4d931687f2c24c2153ce83",
+      "sourceBlob": "c401d7bc8b1aaf7171888afb3f42a3c4b5ea5dda"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoEligibilityServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "c8f4add78c2c5fa5599b348707adbaebc2d7f905",
+      "sourceBlob": "923a4b231fe0071f2ce3a2931c0b790206c51c74"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoPersistenceServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "530f1e3759472c8d3353d9781597a3e9a165de36",
+      "sourceBlob": "7b9ded044294044cabc39bf15a6c3902aeb2df73"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoProjectionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "3c0b1706844feb4a54e1e8e9b286b0e403da3637",
+      "sourceBlob": "cd68699df1d7d47cce72402cf122320f9599f3b3"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoResultSourceServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "92a0ddb483b4edcad5dacb51de1ee07ed18e465a",
+      "sourceBlob": "ea7fe28006dae3b3a555f05ec67d1c6bb7d89c49"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoRetentionServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "16d717837dcdef4201146b2031851e567cd694f1",
+      "sourceBlob": "0bc2ed48b3ef27c9b00c424f8fcc9645eaad97af"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoStorageServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "65b3a5002c353ebf9145038554c8c0150f196a32",
+      "sourceBlob": "a742c9aee572a99cad068a94cb9770e29e0367bb"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/worker/api/AttemptState.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "e0ba9d616c25632e05eb11f4f0597958c0e18720"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/worker/api/WorkerLeasePolicyV1.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "cedcc9c4b6449a98824d50a2f05963fb572e7d64"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/worker/service/impl/WorkerServiceImpl.java",
+      "status": "M",
+      "baselineBlob": "b8f8325733ae8772c03158ae5a348a901340302c",
+      "sourceBlob": "a09562b810f6f2e544f41314ec2726f061639652"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/FileErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "844e4e5ebc5c54127c2f495f73a16099c9e05a67"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ImageErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "2dccac6d78203aa2fd4dfd0bd40b1aa448a6fe2b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/McpErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "9b8b1ebbb7709c8504fc3aea1a7988f1bed6dff1"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/QuestionErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "491a4763e18192e02827a3f8455d96ede85c48c3"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/SearchErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "ddd0cab9058b9c0b56ce1168e6b42f0db717542a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/SessionErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "1c09ba5f575eb4340fe9c10009563cf6bcd4bbc7"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/TodoErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "54ec141473c4c9aeebbbf57df6f0a090dd5a0e44"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ToolCapability.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "7a40f020f734696579120ead7c4d93d193423073"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/plugin/api/ToolErrorCode.java",
+      "status": "A",
+      "baselineBlob": null,
+      "sourceBlob": "4593ae15a583bd7384a2f1368c7008f9837e9f30"
+    },
+    {
+      "file": "src/test/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchContractTest.java",
+      "status": "M",
+      "baselineBlob": "c35a455ffb72c937dbd5917ae62444fd1d771220",
+      "sourceBlob": "69ad7a7753a3146dfbf7fbe6d70c1b2cedd04cc1"
+    }
+  ]
+}

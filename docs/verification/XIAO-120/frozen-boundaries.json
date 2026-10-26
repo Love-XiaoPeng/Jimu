@@ -1,0 +1,2316 @@
+{
+  "base": "26f1c23be0c155c9b9c69126e66f9dbf394bc946",
+  "comparison": "UTF8 text SHA256, only CRLF normalized to LF; entire protected files and 17 Ledger blocks including all constructors, transaction/query wrappers and synchronization",
+  "records": [
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/QueryResults.java",
+      "baselineBlob": "de2f1c0abb8e1314cca8b04c5675c730454f31c9",
+      "sha256": "32d0b967ba5dfc569eae2a59e8ff6690a5f3d636c3c71e425ea5856a618966d0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/QueryStatements.java",
+      "baselineBlob": "4d134789b3a5f04a5c7726f6285f0b903206ba55",
+      "sha256": "b43e340a11db70540c4aa5310f62cb6085ae5840c41f010d3e481193c7b43acb",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionJdbcTemplate.java",
+      "baselineBlob": "bac9c277ffbb94097f376dfa2b6490a6a408ca46",
+      "sha256": "22662845f838552ac6e47ced3c90b70d309ff79969f3c10d985d1a4023d3c02d",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryInterceptor.java",
+      "baselineBlob": "bd3589ac4a360020cbfa52bda6ea40dc3e551c4b",
+      "sha256": "1d6af23a37be7ab04ab716407332f4a075c330e4d63a3edb526d835a0ed44db6",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryTransaction.java",
+      "baselineBlob": "d1f1d1965910bbe16912cf5c859d5bdfdc08e97b",
+      "sha256": "cbb80ecdfe089fd5b0facc814fc14599ed19e2de0cba8a696fdb8cb8f9ac7b59",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/transaction/SpringLedgerUnitOfWork.java",
+      "baselineBlob": "8667ee844c316fa00dde3ae53fbb961036e80a2d",
+      "sha256": "b5fe10592bab58299bbffeb1f34969e1f1255b32775d4a8919acb9a5a87f3b6a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionQueryDeadline.java",
+      "baselineBlob": "f82c4e3372ec1aad5b21d4e4dbae865739588100",
+      "sha256": "ff1ad77a42cb525103988c93d5c229255ad289d8e35bce393d4840d7caba45a7",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/DurableConfiguration.java",
+      "baselineBlob": "929d813ce15191b3f077737b9758ad6e98486f33",
+      "sha256": "212ba660c10d4cd2563b422e902fee53a552965d5928ed115df1c082a4252477",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/JimuApplication.java",
+      "baselineBlob": "2fcc787dbb4fbac96a676cc21b520c33d7e8d204",
+      "sha256": "e190e2729e215c3d4d45cf0847a9c1c27279f093da28274da369f5b8823079c1",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/RuntimeConfiguration.java",
+      "baselineBlob": "03455591639462520febb13543fdb01e957dc987",
+      "sha256": "b5e5af32e0542faab38ddebd01549fb53cf6f49d6f02bf7d8d38301cad50bfc2",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/bootstrap/config/LedgerPersistenceConfiguration.java",
+      "baselineBlob": "83e9420ba917936a5ca4e55d2f3b7aa82ea9dd40",
+      "sha256": "362b94e69449c7fcb219dbd766ea00abb7c1c5037887ff1874ca78f661a2d02a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java",
+      "baselineBlob": "4d8756d86a1a695646b37bb9289afa26e32aded5",
+      "sha256": "e55eb3f382345cb4635f9ff20d4ac56783b79fc18d297440a55fa829081cb6c4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/transaction/port/LedgerUnitOfWork.java",
+      "baselineBlob": "9de83317a52926f38f04a45a194df4366bef9ef0",
+      "sha256": "6526d83ee32757bc16b9c55770a37e473a8ab41d5c1f31d29c676ae06384df33",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/application.properties",
+      "baselineBlob": "4613bcbd6aba5cc7a105e3df6989688f877bee0f",
+      "sha256": "0f5c14fe3fdbe9eeded11022891a2bee2a6dd5dbbca1aa4970ee2c0310838b5f",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V10__business_task_policy.sql",
+      "baselineBlob": "b0914ee1c41f4051b90d348ca70e27f059743ddb",
+      "sha256": "dd53e8624bbee3fb8e3ed4edf826d67bfa2a074ac1fe6262c4cc7517d5bb20e4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V11__native_search.sql",
+      "baselineBlob": "6145f1a0ef2e0f4cc9422bf2233a5a9f36f6658c",
+      "sha256": "6a13006bd44552a2507a4e15b3a5fec7dfab20326773d60b440fcd0c288fe6a9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V12__process_observer_identity.sql",
+      "baselineBlob": "63169cfd56ddfe914d7047b3c641a30f6493f86c",
+      "sha256": "0229b5e2064768f14806845e0045a3dfde817b08e397e6747b1f54caee2802d1",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V13__task_images.sql",
+      "baselineBlob": "cfa0c4f3610c63ba13e3931c87d5bfabb7204d42",
+      "sha256": "c6f4ad00f2bb2c618cdc5551420e272e883d6bfc53c64e877084d184817f147e",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V14__image_checkpoint_retention.sql",
+      "baselineBlob": "ad05f3f06ba2b4b11682a2b4e071da0cb3f20b16",
+      "sha256": "3efa3e1240e1f3917265915d0e3713d799b7839a45618f97577fc1029a9801ab",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V15__mcp_resources.sql",
+      "baselineBlob": "1259c73af80c1d26a6cb861ff447bff79dcf059c",
+      "sha256": "4a33b950278439feac9b11312381b78207f38f78a298f78923402db86bd03244",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V16__durable_user_questions.sql",
+      "baselineBlob": "64ee58e9b29a653fdd4d8893290ecf6941a6999e",
+      "sha256": "8b24cad2e4cd2c8118274972e81623a832ead2b47f0899f33b51a6ae93258c28",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V17__task_todo_projection.sql",
+      "baselineBlob": "6c2971e5d734e1929b5ea63394eafcf5f0133634",
+      "sha256": "1e5892b4409ff93c1c4fdd6e8928cd7b4e0c3dccf13bf10d2d9cf639642d1b04",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V18__task_logical_directory.sql",
+      "baselineBlob": "baf08792b1aa3bc4f43bbb40b004cb85098ec42f",
+      "sha256": "b0f0c5289e5fffafcdfc4a80f612b772cba40fa15c11f4fbb3a8487d1865fb63",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V19__authorized_session_history.sql",
+      "baselineBlob": "941c8bdd92fa11e791d40527860711f20aa9265e",
+      "sha256": "e507d7378f7737d104fd8a2ad8bd2a7e51d89c5dfe0e014ed106356cbc0866d7",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V1__p2_ledger.sql",
+      "baselineBlob": "180577db7e24ad8d5ad10738144022b5906cf578",
+      "sha256": "c1d4c158b1f5c5a9cc955bee9fe93a5cdbed7a2a80e3026f4c835da235977e70",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V20__bounded_session_event_search.sql",
+      "baselineBlob": "d3efca4bd697ddcb7af083e4914e7a9c21315c1a",
+      "sha256": "3ffb24906f323dd33a92d5e8d97278a542d7ae998df2d44ad857e172193cb857",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V21__captured_session_event_read_provenance.sql",
+      "baselineBlob": "6e2442e15e09b2c4fe5d8b81bc0dec15a44a30c0",
+      "sha256": "6d24e72f1260d49343f017af7f060ddec1afa8f70faaa60fef87a44ee8bb6fbc",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V22__explicit_prior_session_search_scope.sql",
+      "baselineBlob": "f6dc44e9b1a89a86732a1cb0496901467c1ef7e4",
+      "sha256": "be4e33f8b61abefd09269cdc1cdf38cca9514338de5cdc781b9d66b19bb500a6",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V2__local_worker_receipts.sql",
+      "baselineBlob": "890703c30a40b60d1dd9d104ada1f08c425c6809",
+      "sha256": "98497bd4a3d2adbe3f401036a123d11b9c2af17309f452c8090ac8158a9c02c5",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V3__attempt_quiescence.sql",
+      "baselineBlob": "1acd0b7fd43cf311691a8d2fe50e6aba0a1cc0a2",
+      "sha256": "f2095fb71fd867c5715f7a531ea79b72f4beb3c42f775dd421986d76ebb9e6df",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V4__model_snapshots_and_budgets.sql",
+      "baselineBlob": "500036c8e0688ac977416b734fca4d42205c4230",
+      "sha256": "1a1d5fa336be3d55decfab17cd7acf62abdfcab520b35414d3f8fb0cca7ac981",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V5__task_tool_snapshots.sql",
+      "baselineBlob": "5c2f81ace158b51b866646bfeb7f533c36171034",
+      "sha256": "f87c2370145760e4d712bb9ff62a1ebcfac0d3461aea67b0f4b7c59f32c72615",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V6__report_receipts.sql",
+      "baselineBlob": "0cefd0f2647c481a5fe09bfbe28975697454e217",
+      "sha256": "0678241322741e682f02c580f4894f68de8283a17538a2dd70ff350e394a5d7e",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V7__bounded_evaluation_plans.sql",
+      "baselineBlob": "f5f9a558234394520c237a42a3dc397038cd055b",
+      "sha256": "cbb04f1f00e5ee468def9fe9d3d309947e691f4f1b1ac54e426a856fc761a314",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V8__evaluation_material_binding.sql",
+      "baselineBlob": "465995432ef0b334fd11bfa910ae5704db83daaf",
+      "sha256": "f91f70a6fc008b02942ded03bf25bcb6870bc7f272df8546be0cfdcb7b12d28d",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/db/migration/V9__evaluation_execution_scope.sql",
+      "baselineBlob": "9261cecce311aa084506173ff4e0cd7892e492eb",
+      "sha256": "bd4e7327e825554ccf64b2110a9bec7e203a0443b99eb01bc65504ba4cba7066",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/directory/catalog.json",
+      "baselineBlob": "d6fb80bbedc9bc2ec30bc05665e57487f8240615",
+      "sha256": "efe109759f71352610fac1368c514df6a9e966df38f641d4f9d4e4a2e0af9139",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/directory/directory-view-v1.schema.json",
+      "baselineBlob": "20049e6205f66ef2872faa4252e607f3be15ff1b",
+      "sha256": "610686fe2244869ef1d34bae37a34b4e47f5f308a89359f66cc85627efe359ce",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/directory/examples/absent.json",
+      "baselineBlob": "732869370d6760e0ed029a85b8c349bb28e5c2de",
+      "sha256": "3d5298c592ac2b1db6da8052dce14576c70982b9c50bde029fc78fae875274b9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/directory/examples/binding.json",
+      "baselineBlob": "cb61751d21d7aa49733bdbb97d93484b9e4ea8c8",
+      "sha256": "e876b8390d85ccdf6d11cfb4d08891f18f8b69ea5c094d8ec6c92a9d130c71c3",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/directory/examples/changed.json",
+      "baselineBlob": "c37f58641efce1d8a666e922ad2f6249e4a54eef",
+      "sha256": "bac1b5ac7510d919e3b804f2d556769f323809616b11352db6277b9d934795a9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/directory/examples/initial.json",
+      "baselineBlob": "92d088075903df457f94fd3ae1bf953576046140",
+      "sha256": "ed4d7794dd9df661f9435f4477afc8b3c5eb8acc7fb210d2443ab9e1ba7eaabd",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/directory/examples/purged.json",
+      "baselineBlob": "009cf67788fa2c1437cf75908ab40bb1735ed860",
+      "sha256": "845f4dc416b99ef05d20f0634734d6a7b0e429f6a440906f27f0e0786aef3979",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/directory/examples/purging.json",
+      "baselineBlob": "c14c42527eaaac7bb4657e6f2fc37369c55aeabb",
+      "sha256": "cce000076e499896aa078be4af5b7e547eb1f485fab2a69a9b5c0b2c98f926ed",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/directory/task-binding-v1.schema.json",
+      "baselineBlob": "631571f52c69c190fd278cde691e0be82335e491",
+      "sha256": "b827ccf527750f03e52828247a44dcc17e46b7bedf281a537e943783ca477a1b",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/directory/working_directory-0.1.0/description.txt",
+      "baselineBlob": "6cb016e022fbb697231003356875f86452697755",
+      "sha256": "cefaa4e939e0bd1397847dedc0bdd77da5f84d42ee8c9e77fbeae02c4437a7df",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/directory/working_directory-0.1.0/input.schema.json",
+      "baselineBlob": "f0cffc4a11377a39cc2f0e5a2d1384ae4213c8da",
+      "sha256": "5c614cd160f74a9326226ee10faff2bd50739e972eb49a86c84827f43b98d81e",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/directory/working_directory-0.1.0/output.schema.json",
+      "baselineBlob": "f3f89eced8247610da0bdced19e6ac128f98a1ad",
+      "sha256": "5cb3ee7a0697a415a91b8ece2bc2bd3338dd8185e0fb7a3a68697abeec365492",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/directory/working_directory-0.1.0/plugin.yaml",
+      "baselineBlob": "8c0f2d6feeef5fdef45653c92e5365e30b91f7b7",
+      "sha256": "edfc01edef4ca2b4c528f9590bc832f66424cf1300ac72d6fec5ac3fa7d7eb14",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/evaluation/qwen-main-v1.json",
+      "baselineBlob": "f0a319fd5538d66fee39c719b1f94b0f020bd4b1",
+      "sha256": "f2c2ea68f6027b00b6af5162b8e999471f03844df53ca9298f9b613cd2fa68f4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/evaluation/qwen-main-v1.source.json",
+      "baselineBlob": "b2c4d7b4db4b2552d5d570fac0ab384f45e8b113",
+      "sha256": "b58e55e317cb070e64b1949ea7be623beaa75ad83fc315ca63feaae217bbaab8",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/evaluation/qwen-pro-optional-v1.json",
+      "baselineBlob": "b3860f5a20e5edd7c572f8f2519656455601dfea",
+      "sha256": "ff9bb43db5cc7377ec60a516dab560a7c25ffcd4e0c177fe2cf3eecaec750d37",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/evaluation/qwen-pro-optional-v1.source.json",
+      "baselineBlob": "3e19d3bee690cdd7408e7e6bdabb1daaf3ad1a0a",
+      "sha256": "7af19d6808e81c9d6c77904ff63ee9339fb14d6e5cf47fd2875736977fc024ef",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/LICENSE",
+      "baselineBlob": "c1f7a78e89e4e4dc7b86664c3b3c76eb5eee1785",
+      "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/THIRD_PARTY_NOTICES.txt",
+      "baselineBlob": "949c8b2da376c981366a9c18924b76546efcc127",
+      "sha256": "f89efbb13a2077bb2fe8e92abedefe5273ce9d3d9bb355e2fa5252ca34ec4160",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/answer-receipt-v1.schema.json",
+      "baselineBlob": "20ba4ab0438c77f98b1804abd3c354677cac255a",
+      "sha256": "869e2ca6debd97f80ac35378112c7a3cfab7c5f50d6e46b7059ccd41b0c05e6b",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/answer-request-v1.schema.json",
+      "baselineBlob": "821d8933d10d6f83f72b7cc55db80be42d7d9444",
+      "sha256": "35fbb2c105f94b3f3e3cd8507d4aa6412ea57912d54c4c3c6469ec93e4df4112",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/ask_user_question-0.1.0/description.txt",
+      "baselineBlob": "5f19dc940ca837b97b693f1144ee28c7f0cc9a80",
+      "sha256": "25aea8b40ebb02a055b0c8522f5a1c5c8982808a91e146fa316708719f69dd30",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/ask_user_question-0.1.0/input.schema.json",
+      "baselineBlob": "a4f264ee05bd1873956db9e31c0f11b7d8bc2829",
+      "sha256": "b4826a19462ff68aa2325843edf26b9d60ac0558d3f0c3f800e53875345102dc",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/ask_user_question-0.1.0/output.schema.json",
+      "baselineBlob": "0e6eb2e8ec80f053507a6f445880c9fe321c91d5",
+      "sha256": "01a8cfc1f700d5d7a6be665480284073143841a27d8fd99b4ad76f9e3a7a4fe0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/ask_user_question-0.1.0/plugin.yaml",
+      "baselineBlob": "5e7939473fc76a26f173184ff775afa911da47b5",
+      "sha256": "8131479a7640390bd1bbe282fe337588c2cec0bd101005b4262e1779a22cd60c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/ask_user_question-0.2.0/description.txt",
+      "baselineBlob": "3ac76e5504d94eaec6c697a66546350a3aaaf2b7",
+      "sha256": "6cf520f97ce9afb915f02dda551130f04f2c16f613b7ffa0e28fad38e7b76c52",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/ask_user_question-0.2.0/input.schema.json",
+      "baselineBlob": "091a4f6e7efbbfb96c745ade41f0eee77481de35",
+      "sha256": "57fabb51fa4dbfc961f455e559bdc17aac95ead256e46c0d6f9f41f8eee913f4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/ask_user_question-0.2.0/output.schema.json",
+      "baselineBlob": "b32506b4d00bf0f9a2a0e8a323262fb6c651e7a0",
+      "sha256": "298380b43ca65139d77a05ff886a21b82eead5444d86f7109b76ec04ba1853b7",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/ask_user_question-0.2.0/plugin.yaml",
+      "baselineBlob": "419b1d31efc914842773a81b3bde84fa0a7504bf",
+      "sha256": "c7d14d8bfa825bc249da3eb8457d90ffc20ca587855e64f612e17da482c26378",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/catalog.json",
+      "baselineBlob": "08873ec3f39242bc4c3b1e258fa8d1143ce9d7d5",
+      "sha256": "7ba04c41f8ce7129ff427d6202637ed9d4d9ec060028615a346359f0e88844b6",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/examples/answer-receipt.json",
+      "baselineBlob": "c859eacd1f960121f110a1642b32430a8995ae41",
+      "sha256": "23fc0e6f769bb1b22638310d3394f88016affa4d997042a8941bec58409021e5",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/examples/answer-request.json",
+      "baselineBlob": "e4bac7e628e98ad7357c8f4507fc3bbc92e7ad22",
+      "sha256": "1546a93beaf90cbfea486769a5f6292d3d6dedb0115ef6e108ee4289c62fb553",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/examples/answer-result.json",
+      "baselineBlob": "8859bb1ae9289d17daa2e7de2cc2f409062c4eda",
+      "sha256": "9079f80708d0236ba2ac34d68198a85d784de46bb7bc2c20772f39a7534d1e1e",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/examples/binding.json",
+      "baselineBlob": "1bb6932255464b9497c9f34705237a8572b00d16",
+      "sha256": "6babc22a82bc650f362bef630849aa2f63a6472648c44e9041e959d6e2988d75",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/examples/blocking-input.json",
+      "baselineBlob": "894c862030bdd9cc2d24ade792ede102c9cb1898",
+      "sha256": "e4d923be83f19acb12d25eb4914e79a035f5e314851a90124771291e5c287785",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/examples/empty-list.json",
+      "baselineBlob": "189020e18bc9acace96439ae7cb707449522be03",
+      "sha256": "da6fa0fb6dc64a3faf1f81f830b8696ccf02b9c654135111429090fa240870f8",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/examples/indefinite-input.json",
+      "baselineBlob": "5b1b65bf7e73a9879fb39746f45a748851a27c28",
+      "sha256": "bc172f14cc7308d559e7e3a516b86d304480eedf9b1c4a13fe8c8132c7ec8aa1",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/examples/late-reply.json",
+      "baselineBlob": "46744b50d2d665d9febfc55205c03d830cf5b404",
+      "sha256": "4c2e569c730506b3cc0e9b74531c70e50b5f529491839053573e89d37c8a73a4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/examples/open-list.json",
+      "baselineBlob": "8135382c92bbeb0794ffbb0dc323f0c7aa98ec4a",
+      "sha256": "e0eb63912914a4a380a3af10b0187e23616982e5415bd9aadf2cb390896c8742",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/examples/pending-result.json",
+      "baselineBlob": "df98c648c547c4eea64f2826f948921ae8e503ce",
+      "sha256": "d4a8617e6fa063e2da34e68b2e1ae02ae40953d1d49331996251ac145eaddedf",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/examples/skip-result.json",
+      "baselineBlob": "c7818b52164e9a9c96de8d47a030343f4218b0ea",
+      "sha256": "9631cdea506f30b8e818524e3c04ee27ad9325de3b5dcb3b2f3044107d5fd590",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/examples/timed-input.json",
+      "baselineBlob": "aa6fcfddc8ebcb21b6092a4a0843defbc4886bef",
+      "sha256": "3264ad23740d56b99bb328175007b4ebf864d769a139d4b644a18e3e9882dc11",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/late-reply-v1.schema.json",
+      "baselineBlob": "db8a00f0ba7b40e0736ac6e4ef2b095013541289",
+      "sha256": "e02623a944bc41114c0c0c8c1bbb7b66ab53fd133dd81a962f71edda42a65489",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/question-list-v1.schema.json",
+      "baselineBlob": "1d02cf91f3ff1a3c2a519729e83659e1beea902c",
+      "sha256": "e965de1b107ede8acf06a0f543ef595ddd3d1909e3baf1673e75ea61073ebe2f",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/schema-index.json",
+      "baselineBlob": "e9d0457c67d233348385040e3df09161df142294",
+      "sha256": "18a4863b00c5bb875ca9a62a3ed79b2fa99009a2cefa939a8c722cd7dc2ce005",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/interaction/task-binding-v1.schema.json",
+      "baselineBlob": "5259c6ab62b1f6146334c15bdf98ca755afd93bb",
+      "sha256": "d6d6828a4a16bf222d5af3eda83d44b222f11c22db8e2a100559e101313dfa89",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/artifact/ArtifactMapper.xml",
+      "baselineBlob": "563217559a947c836cbc2cae13100829b177115b",
+      "sha256": "5c57fe2fb121b3265a699adba69239f11ee3ba73f7f32003aea2ef4e3dd13508",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/artifact/ArtifactRetentionMapper.xml",
+      "baselineBlob": "dd67e1cf06f55a95acc031d6a3ce2f34a70ad58c",
+      "sha256": "7fd559abdd4d0f0ee2af6118fbbcec8071dcae2e1bbce0863567a8d283bf1738",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/artifact/ArtifactViewMapper.xml",
+      "baselineBlob": "888fcd4bd77b5dd8f98c60f6f7294cc641166012",
+      "sha256": "c22c46d350fe3c4fd656f5e0ccdd3c5b133fa4e890c196149500c38b65d5379b",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/budget/ReservationMapper.xml",
+      "baselineBlob": "40cf648ec0b2328e5efbcfafdd5b90108e8bddf5",
+      "sha256": "94d9ab1557957efdb06f360db41f6309eaf4b6963e3706bf0555bbdb1bf11afb",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/budget/ReservationReadMapper.xml",
+      "baselineBlob": "33386118cd6090ad82fc6be104a504a9269466e4",
+      "sha256": "96db5589e841b89ab6ee4885fbaff3422574a55a6625c58316bfbcbff512b5dd",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/budget/TenantBudgetMapper.xml",
+      "baselineBlob": "feee3ce1aa0acf31b69499ea91664068fc65c089",
+      "sha256": "c189a79780c7aaf854f9c6f5569f2f4e5db15c482b946e1d8492289cbf26a9c1",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/directory/DirectoryDispatchReadMapper.xml",
+      "baselineBlob": "832e262e11f74b15c925b5787e06c5722e7238d3",
+      "sha256": "36b1273800b36407f196f88feaa4b21dd647c34c2d99f08e04e11bc9bb059991",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/directory/DirectoryEligibilityMapper.xml",
+      "baselineBlob": "0f5eeef1c93ed0b6eb743f5b0f89a73bb52d8753",
+      "sha256": "c2ee5f6917aaffb08616d142711b28395c7fcb3afd182d0ccf53834c0c9a0bb2",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/directory/DirectoryInvocationReadMapper.xml",
+      "baselineBlob": "5f22dafa46ee0150940973b9fc306ff07cc010ed",
+      "sha256": "0636fbd51aa34df5b5047d183bb65bf5a90e4632e3d935f62a00ac7c12d34496",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/directory/DirectoryPathReadMapper.xml",
+      "baselineBlob": "ea13555b21c72d0d5608e1785e05bd64eee7c07a",
+      "sha256": "d8e47cb4358ee424275df73a96040dea751db388dc32eed3c4b588bf3eb18de9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/directory/DirectoryRetentionMapper.xml",
+      "baselineBlob": "fd4b475766957fe6ee149bd77d6c953e3ba8318b",
+      "sha256": "2d337b0878658094306403c5f44e641da373b88f519013980dca037a1ba6b9c3",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/directory/DirectoryStepReadMapper.xml",
+      "baselineBlob": "12df0ae7f2cc29be025660af2ce0fd73a3256bc4",
+      "sha256": "a7174ea3817c0f51521be1838a2d98f8795d7fd113e40c69d653b732db053806",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/directory/TaskDirectoryReadMapper.xml",
+      "baselineBlob": "41ec4cee797a4f4bbbca598b203adc5ed44a21f7",
+      "sha256": "2c4585cfe2f15bfdc98fba30535a0163e3ec8f66ecec3d44dcd84f4d101c1a00",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/event/EventMapper.xml",
+      "baselineBlob": "ea58425a01d2160eb984014899cf633874ecee92",
+      "sha256": "8d631ca9dc95c07f37706914c16056bc469218ed30d9f21a5c4949cc3b29fb37",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/execution/CommitFenceMapper.xml",
+      "baselineBlob": "905e37e84432f4c008c64eb5c62ec0efb737431a",
+      "sha256": "210db8e609e3267285281db008dea2185a1db086095e7d12a14b41457fa035e7",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/execution/StepMapper.xml",
+      "baselineBlob": "5f52b42abf07ecdb2dbe02845f90047912b18a9c",
+      "sha256": "4b70e2054db9af4a7b5f55137f11ab1f3adfdd623c4cb9899f787caf2c23d194",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/execution/TaskAttemptMapper.xml",
+      "baselineBlob": "bc906ef45043b8de445e4a26239490d43f8879c4",
+      "sha256": "fd4e5993fe490a0ef4e67610dc33b615ad7bbb7a48e9e7acd3a4674a345a7f25",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/execution/TaskAttemptReadMapper.xml",
+      "baselineBlob": "9f8d78d9fd114c0c39660ecf33202703a1be600f",
+      "sha256": "36bd53db90da6b3fc2d1ec93c441f314dbe28c6e8ac0f215e7bbd47fc2959a41",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/infrastructure/SchemaVersionMapper.xml",
+      "baselineBlob": "4bb0c67541458d766ccb02861e5cee80f07bfe93",
+      "sha256": "701e80e13d31222d41c3b1c7979ca113263f47b9040eaa8da83a6cc05e9c31b8",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/invocation/InvocationMapper.xml",
+      "baselineBlob": "f8a44ba0e3ddd815406d9a93a3811a688b9726e2",
+      "sha256": "a211188b59776e6520b87a46960e8c9a706da507ff1e7758903c9f3362174c56",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/mcp/McpCursorMapper.xml",
+      "baselineBlob": "b8e6db432f2756c2cef631248cedd95745e226f3",
+      "sha256": "52a7f67eed2d2eb51611703f6278b69ad2be8a97ef844cc9993b045c265a8afd",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/mcp/McpIoMapper.xml",
+      "baselineBlob": "8657e13a89a7ecb9e57bce41b4a348eb78c86f37",
+      "sha256": "13428772496ec613ff1885139edad55c4e6881671f76b580263764c4366ce533",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/mcp/McpResultMapper.xml",
+      "baselineBlob": "780b666017276f272109bef9bcfc37c697c31879",
+      "sha256": "e89f68861618ddbff5eb35c0d9c2466d129d6ecdf4a2566a94888787b373e8f1",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/mcp/McpRetentionMapper.xml",
+      "baselineBlob": "db0249a5d0a3affa6b6e0ebc9862c6926c5f5cb9",
+      "sha256": "d067e2898633fba4f1681d960e4cc6d37e3e448a7268be374776cb67f233e94b",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/mcp/McpServerMapper.xml",
+      "baselineBlob": "bb6d155ed5bd507541fd61f7cd5c5f827d2e5356",
+      "sha256": "4eccdca63ddf8a4e9e888b4d1629c497228b606c8968f9990d006982bf155afc",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/media/ImageInputMapper.xml",
+      "baselineBlob": "51f55933bae26b2d114fe0dfbdcc24b0bdac2876",
+      "sha256": "d28432fa75b279e5d65aebdad7f49f699ed771fadb74cf0f8d11f480bd7d3fdf",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/media/ImageObjectMapper.xml",
+      "baselineBlob": "8ee16270f9f6a80449b3e443eff9ff42cde6e3bc",
+      "sha256": "c51ca4670d750ae67031fced146215fa07bfd58b5f6f6d7a64bb031fa96d53f2",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/media/ImageObjectReadMapper.xml",
+      "baselineBlob": "c49ff6fec4f101b1334d8e3259df9e17bfc251bd",
+      "sha256": "fbc8f80b0279645d5bf840e769ccb0a1725bbef14e706a12a9e6c640268585ca",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/media/MediaRetentionMapper.xml",
+      "baselineBlob": "0f863ef3c9887b501a8d44ce0e90b20f3deb61d2",
+      "sha256": "dc0c0689588f03d950d2a9ad2f750fc5222252596fd3004e573a7c5467f4e9bc",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/model/EvaluationBudgetMapper.xml",
+      "baselineBlob": "0d17b417296774fb54739d6f254fa0c349ed04dc",
+      "sha256": "0088ee0e2f5ad7ce5eddebe9721b2cc71a3e8c4d531d9a3361d925f2bdffc122",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/model/ModelDispatchMapper.xml",
+      "baselineBlob": "43d2404ce614496aa209a4b2c5e5da17458e08d2",
+      "sha256": "9bfd2aed34bc6cf922c185221c128ffc184d249980ce49b0399de1addfb4486a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/operator/ExecutionScopeMapper.xml",
+      "baselineBlob": "547d6b405e636256ca8582b66819bb8aa353dfef",
+      "sha256": "7a61044e7ab6c654d8c8ebece193ec38fbe527da57b5196f7800d3ec0024e631",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/operator/OperatorEventMapper.xml",
+      "baselineBlob": "a8f6171bc9d6422f31cda756fe0d21c5c648e64e",
+      "sha256": "99b3bbc9fae678294e32c898c4427a333c2d86889cdead54f9638088891fba6a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/operator/OperatorInvocationMapper.xml",
+      "baselineBlob": "90d8f585b7a08be06fb54cf2d4bb057ad73fc3db",
+      "sha256": "2a173b3c32b6069f762fcea43f1fe1b13e10fb6fbaa417e50eedb5296cc41f9d",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/operator/OperatorMapper.xml",
+      "baselineBlob": "97b07edcf649e7ba5098e7ae9f8b7482f7e6b233",
+      "sha256": "920fa02b6e173182bf8dcd4730c1736f44b7c114e5ebb009ae8f1ea136fc901c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/operator/OperatorStepMapper.xml",
+      "baselineBlob": "7b7ef3ceeef4648609c54c7a854121990359aaaf",
+      "sha256": "42f660aa32e54c95a39590a0912d16c35c20ce74c9a1e4d1e12858b6295620bb",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/operator/OperatorTaskMapper.xml",
+      "baselineBlob": "0b8aa7da2b0f532b8b3579e0f8210271a49e233b",
+      "sha256": "c6a62105847daa3a0bc6631bee1a601fc10de95df934fb79b704de60be354c58",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/plugin/InstallationMapper.xml",
+      "baselineBlob": "f8e55699f186d09cce095e1f2772590bbd36bb42",
+      "sha256": "48438521d58a8818099bd371eb1bd8953610e56eff1fd87ed69cc49756e03402",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionAnswerMapper.xml",
+      "baselineBlob": "23ac22ecf552d6f2befea3f1a87d68b5fe61abc3",
+      "sha256": "9c09d8f2495508bec914998517ba69d4c8cdbb7cce53503da768acd676c12c96",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionBodyReadMapper.xml",
+      "baselineBlob": "7550d89c07a01e92fbe03b81187256b3cfac23f2",
+      "sha256": "92669841c5f25c8c61e7ecb60a126750ef710e23fa8395d20223bfbaf49a4d2c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionClockMapper.xml",
+      "baselineBlob": "cd97c7e5dabf34ecec919a9eec7a96f8539ce7ee",
+      "sha256": "16bc0ee1993fb868fb6e6dd773fbb6ec4834d3a4f951ae83a6a30a3e08e17d1d",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionContinuationMapper.xml",
+      "baselineBlob": "cfa2e9490cf710955e96dda3f49b7a5e46925a35",
+      "sha256": "4b1b3cd5631ba12e81351a6f566123d72728abb970aecafcb1db54abf1e6702c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionInvocationReadMapper.xml",
+      "baselineBlob": "b382b89cd9995ab631270cc3715279e991e32b58",
+      "sha256": "a37d9d15b4fc2bfdc20d6458762871aed7abcc2622b7ed80178c33e5e670702f",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionListingMapper.xml",
+      "baselineBlob": "af68f8a3a5d22ba7a0e9716c733be7165bd1f80f",
+      "sha256": "ffcfe7e0150a530f9ea0abd62324f46d022574e573dc36babf8e09bff562baf2",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionMaintenanceMapper.xml",
+      "baselineBlob": "7e0984cc724d512652ca1a9448428c245f5fdbb4",
+      "sha256": "7d0827082ea3b0c3859f3aace14367b1e2cd8732ae3a9e34781a3d85102fcaf9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionMessagesMapper.xml",
+      "baselineBlob": "d3443749101b5241f108b722af86e049227d537d",
+      "sha256": "5de1b819810115d7f7292ceb5860bce2f67fc2c24585ffb21342da939f090760",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionOpeningMapper.xml",
+      "baselineBlob": "c392fca35cec499a3a198bd603044d6b212540a7",
+      "sha256": "c477231723fb0f3406e2fa55f6e20a99ae584fd90285c4449e296c69038dc0df",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionPauseMapper.xml",
+      "baselineBlob": "b55646b771d351980b93f35bdf99991469d4f34b",
+      "sha256": "ede0005e25ee6129a6f4411b1848794619c05f704cae527ddad8efa48e84d9e4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionResumeMapper.xml",
+      "baselineBlob": "313410918117f69da6e7af6432154a18187e0814",
+      "sha256": "dd034977ce7ef72f9844a017162f6b3c9514f279ce4c4112402661d13a0036fa",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionRetentionMapper.xml",
+      "baselineBlob": "7d103f1ab233e62e7130f8b976d6294d4fa0b469",
+      "sha256": "4e01f29c892e448aa287b548a1fb88984f724264d6d0b0a76f867ccf7b0ef3df",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionStepReadMapper.xml",
+      "baselineBlob": "5bd304c419c99b0ed32ce40cf782e052f49ecc5b",
+      "sha256": "3e5ce034c8e269fbd2c94490b4774a08adb4cc46386f55a5d3a33efefb346308",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionStorageMapper.xml",
+      "baselineBlob": "b3d092b7b92db4f342a55bb868a65f0ca501589d",
+      "sha256": "e7e34cca54b6737e28abb032979c6014791aba3fef5070d340f1711af946207f",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/question/QuestionToolResultMapper.xml",
+      "baselineBlob": "2b409e9561c8698c9b638094cb9586367364757c",
+      "sha256": "1d7293fffb82abe0f41654809a3802c375eb866ac6bd0568d548b4bc2aa55490",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/search/NativeSearchRunMapper.xml",
+      "baselineBlob": "4fb46518a171ca29419372c8e966c07dd9582405",
+      "sha256": "6d07a8151b7c8d2a4eb9b1afb9619aacb80a0bc8e86e92d304d1b231bab1e903",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/search/NativeSearchStopMapper.xml",
+      "baselineBlob": "17466c2c81b1b23eb1e657378c3b4cd2c403b6a6",
+      "sha256": "336767a35e061e0814cbdf56ee89a5a524c07e90d0810f460d87d25f042f4fb6",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/HistoryInvocationReadMapper.xml",
+      "baselineBlob": "76c641ad985be5bf7e362b5d42bdea72ecd17971",
+      "sha256": "51012b6b50b4fd50058f419f3d3184e2ac4bb8339bf611a7e01fe57057e4fdc2",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/HistoryInvocationSessionReadReadMapper.xml",
+      "baselineBlob": "d9691995880994654caf2cc834f3bdebc4dafd67",
+      "sha256": "fd491866a2cc5b2d9a9dbc815d6b43cb8d7f64cd88ec4983749440b3b1a4b7d4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/HistoryInvocationSessionScopeQueryReadMapper.xml",
+      "baselineBlob": "161a3bda4bc52ab25df0268fa417750379551396",
+      "sha256": "406b5ce36953cc8aeea274fdc3b1b508a68034c9c1cf442598742467bb39c6a1",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/HistoryInvocationSessionSearchReadMapper.xml",
+      "baselineBlob": "66effc73be0a44829ca2440ed6ac255e09de50f4",
+      "sha256": "6ffc428b016249aa57db4651a800443ba386208ca40b45b35ef1ee0d6a022e49",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/HistoryInvocationSessionTraceReadMapper.xml",
+      "baselineBlob": "2a765adc2f10f6d851e3cee56d8e9f93b20b8f9b",
+      "sha256": "1110a982e19d034e4e651f1063dcbe8bf970c182f03aea0be838b2ae80759b11",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/HistoryModelDispatchReadMapper.xml",
+      "baselineBlob": "604692ae919e10aace829acc453339c057e65c50",
+      "sha256": "26d76ad020bbd99d439c673a118ca0f151fb76983b7af1020784fa397479462e",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/HistorySessionPublicEventReadMapper.xml",
+      "baselineBlob": "85c4a28ef560999c903a345cf86ed358c34f8a44",
+      "sha256": "772f89495ce4416111dfa7ae1ecde925044f6ea9be65949b65d7d90832ff0595",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/HistoryStepReadMapper.xml",
+      "baselineBlob": "67d5bef242132aeb66ad8a69d052f86f72a27ecf",
+      "sha256": "1a206f7a3a95f120bed632ffae190f11f4d5d48c824a56798a7fcfa02ca71f72",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/HistoryStepSessionScopeReadMapper.xml",
+      "baselineBlob": "5964bbe9af3862d5beb62276ab96755d31664912",
+      "sha256": "728b085f097f20453df126ec4bafb10814095fc69b65ae37dd81e1dfa2801e09",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/HistoryTaskReadMapper.xml",
+      "baselineBlob": "6ebad5dfa2bb7b4bd4d90609b1077923a74a281d",
+      "sha256": "c25b71515bd3f2b400464d71179f212f2beee9f9166089f5513ca14f07b93e1b",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/HistoryTaskSessionScopeReadMapper.xml",
+      "baselineBlob": "19ced4362b64782aa8b0850927ffd6fdb6d8ed5b",
+      "sha256": "9267e17e9319ceb676cc6f2d86ed79abf0b2bb9e7e7fa4b16ba36f57643d5582",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/HistoryTaskSessionScopeTargetReadMapper.xml",
+      "baselineBlob": "e3107a6d259aae57fa5074ad99384dc39d508e48",
+      "sha256": "1e37d63b34a2ed0f44f2fc6657a2ef8ea575d1c09095d410fca658826bd0af52",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/NativeReadReceiptMapper.xml",
+      "baselineBlob": "2c11242525e59e9bb9a067766a0c33866c119ce7",
+      "sha256": "9a9ecee9f4811bafd4aa8a672bfb4d3150bfc5f5e05ec69830cc4824ba3c9c82",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/ScopeQueryAttemptReadMapper.xml",
+      "baselineBlob": "34209a0cbeadfd92b7b14a43d78495b0017edd56",
+      "sha256": "7d301d3bf54d60a7df592bd892c36d1bfaf18dc12b8d4dc5e82b1a07ad7f9354",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/ScopeQueryBindingReadMapper.xml",
+      "baselineBlob": "06c8821c6b048d9de705c37276afdc7eedc512ea",
+      "sha256": "dbe1c697202eac3f29c858fbe8b6114183cec24aa51cb14c4d4ef17d0439b9f0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/ScopeQueryCutReadMapper.xml",
+      "baselineBlob": "5915d06850bd0f44e7f534c16f52269ec9f25997",
+      "sha256": "e17fd69dfff3d4ee251eed324805de3cd79a59a28d2f1ca068ab9f7a765997e4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/ScopeQueryNativeReadMapper.xml",
+      "baselineBlob": "3056043e172332095ab3bf41e9e654127c447d6d",
+      "sha256": "a7921def7389ea18969a9cb64ed5cc30fe251904c9c5dc5774e4ca7d8e62b28c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/ScopeQueryReceiptReadMapper.xml",
+      "baselineBlob": "b2ac952b543f94bc42f91796f08e903e6688abff",
+      "sha256": "c5f91ce2c69742728604d48e9fee198e270e9f58ad1565a9f61eff386dd51038",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/ScopeQueryReservationReadMapper.xml",
+      "baselineBlob": "a7beea96fb4650b23090a33df014baed86f09718",
+      "sha256": "cad9c6d5a4bab6623d367954f0e0b5509ee56d77db3b7b211e17ccf157e7700e",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/ScopeQueryStepReadMapper.xml",
+      "baselineBlob": "749933bbd5d36d55384d024b369ecfbd1e190b0b",
+      "sha256": "4eaee4a7105cedafa11b72aa2b2a695e61d5e4c73f39c812ba2deb53ebd637ba",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/ScopeSourceReadMapper.xml",
+      "baselineBlob": "eb1e44bc14c316d8cf316778eac62028f87fb193",
+      "sha256": "75f3fd40476b14264da6453cfe58eca962ef636c05f30d4e1157d5b12d8fcf90",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionContextMapper.xml",
+      "baselineBlob": "6165038e32ecd2bcbb7883eb1ec65a6508ad31d0",
+      "sha256": "addda74af2fd51c5b24b6ee279bdeb2475caecc8e27a1f5a13c7e46e6c4b536c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionEligibilityMapper.xml",
+      "baselineBlob": "c43473166261c5d6a7b56352fd7a7a24a0927105",
+      "sha256": "86c6fcf91067768b3b7e7e84b59120e8df0d6ed5df47b9f5a395a32803e1a844",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionEventAppendMapper.xml",
+      "baselineBlob": "455385876beceb2be6cb75a6be4197608a8c79ed",
+      "sha256": "2625eb33706cb506e9d1c7a7073753516ef978a1436cf0f52e69de7a97f360da",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionFactAttemptMapper.xml",
+      "baselineBlob": "0f089b2a44e752723248f32beaf8fcaa6f14e0a2",
+      "sha256": "f80d7c59189bcba6e7f2d9b14240d40db66d8f68021773af194fcaf5bcd571e4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionFactStepMapper.xml",
+      "baselineBlob": "ea0bcf3b58b859a241e290d47c0041eeab09da12",
+      "sha256": "bc72ea001cd79eaed9c9a875e88be4202d9183eba53c7fc9c9094ca84489971e",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionFactTerminalMapper.xml",
+      "baselineBlob": "7d08c2b5b1a640810ce03a9d53b3b4da43123aa4",
+      "sha256": "34927b723492bc2a6d8e502e01303cff20d271fe8bfd84da9676d5cc36e817ab",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionHistoryRetentionMapper.xml",
+      "baselineBlob": "8c51e63dc9d5f3d207de973d64bbb4fb47feb28b",
+      "sha256": "57c3da4ec8da474e9fa0a7be72a6b7e18ec54b0084a8cd00b0054b9dbf9c14c1",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionHistoryStorageMapper.xml",
+      "baselineBlob": "1bdd0726b0576f2bed028a99daecebdd22366ad0",
+      "sha256": "eba12b27a81cefd59c3a4e73e219ae2bf0e09a7a0db2e87635df39c7fefb998c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionNativeSearchScanMapper.xml",
+      "baselineBlob": "7af5da8af5191b931222c82281368ffb0d0a5fe3",
+      "sha256": "f8ae3fbd51def2a3be0bd66ac2e4af3fb010d8b30f082a036c04735aa7837da0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionPreparedScopeMapper.xml",
+      "baselineBlob": "372c83ce9eaec961c1717b65a805410ded1168c6",
+      "sha256": "6edca70d6b563e18f8b24b8b29b53d50899e160d4a2e3b903a19be6043dd5424",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionPriorScanMapper.xml",
+      "baselineBlob": "007bd838054033a13a803903be5cce2ddde88cb4",
+      "sha256": "1fdbe8ee7b305251a1a12e62555b9964274262711ae0a7de85e9fe3f4e2f10bd",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionPublicEventAppendMapper.xml",
+      "baselineBlob": "81d38a01a36c6c5b4c94b1bad24c27ac9b7c9743",
+      "sha256": "c297af974fd1b02d5e9ff36ba57f2edff5008dd52912726a837a737c493b39a3",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionReadBindingMapper.xml",
+      "baselineBlob": "f0fe05965b74464f4298cc3fdb05818c4a5e6683",
+      "sha256": "f9f858ebd7f47af6671c1649de111f624cf36b4c07a5a8cad693fc3a299308d1",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionReadMapper.xml",
+      "baselineBlob": "10430abc69423c3f933b346f58762fc569be2f71",
+      "sha256": "d398673ef068b8037e25375062705b4e104f8816d81bdba871e8664dd2aabb49",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionScopeBindingMapper.xml",
+      "baselineBlob": "1a06dfe0c5c3654c6be2aca9d2145218418bd6e0",
+      "sha256": "cad3c83e9b20260dae2d8c9f5d4e5a2c971fcd1aa2fb625d3957cc0be01e0992",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionScopeMapper.xml",
+      "baselineBlob": "27d767aa95430c2068c789feb2be97197e072105",
+      "sha256": "709935451dcf03feec022b52c8ad25ac3c0e97ebcf94ebc588c48825cef6ec95",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionScopeQueryMapper.xml",
+      "baselineBlob": "229cfcda3d7ab1e7177ef5467b2c4cda59294cda",
+      "sha256": "65e45005729e07eacb804efd15e63ace28dab313ae26b898492cae9f31bf1d6a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionScopeReadProofMapper.xml",
+      "baselineBlob": "9c1c89655355aaeed11d12a344b018408314a785",
+      "sha256": "a3c6a9babc6d6d76c776530140f99b18b4c6f4d1d80f6e51f308573e520d98c2",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionScopeRevocationMapper.xml",
+      "baselineBlob": "4f2025ad1a9acc64b65f758ebfa4f4bd9eda2d51",
+      "sha256": "5e132f93518204cb96b28206ff3586fb621e45f70488f4ea2923011eb4834ea7",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionSearchBindingMapper.xml",
+      "baselineBlob": "34d3a7116f37ae71a008cea909789042dbde1453",
+      "sha256": "75b88a1024abfa74aa8422b0b3bffdc7dfc4a21dfd4a3acf0d706173d528a04d",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionSearchMapper.xml",
+      "baselineBlob": "16892365f41acca40188ee737bb32abbd5f60f42",
+      "sha256": "9f03bbc5dde69471e78c1a80fe8c10bfeadc1918e8269c1efb37dc1026094951",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionTraceBindingMapper.xml",
+      "baselineBlob": "913876fd4e6c70c803dbb53ccf2bbe0fff1ad941",
+      "sha256": "edb636ff1b5ca288b84c5cc8d485ec57ba780259334523a97fe5ec16bde69fad",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/session/SessionTraceMapper.xml",
+      "baselineBlob": "8a8df6ce1b6207e63ccc77618c69c58e923225ab",
+      "sha256": "73e31697b79354b4e633679604aa1df8da861c7dcfed44b3de6512a3c13c68a0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/task/TaskAdmissionMapper.xml",
+      "baselineBlob": "996b0a8631a69f096fe43a7e1647f568cdff49c5",
+      "sha256": "bccb3ab280758acfce1bb255d50c62e91cd96c4578e17b17b3f2d4b4ecc3267a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/task/TaskLookupMapper.xml",
+      "baselineBlob": "db40bfae06346dfa461a3477ace540e34299c5e5",
+      "sha256": "7482d7a378e4d31416cdc062b17729ded851abf161097315bccc94da7714feda",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/task/TaskMapper.xml",
+      "baselineBlob": "6add19af0a59d46537e11f1797737078d3d23e63",
+      "sha256": "0872d432379bff0c887bcb971d77ffcef40067fe817d709eb127f6e45c3cf2a9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/task/TaskOperationsMapper.xml",
+      "baselineBlob": "d7bcfb4996bf44de9bafb7d12471f470b0e129c2",
+      "sha256": "49ba763dabf79980e9ca4b03b873e6b2c218469a4f51e8cda11c1abff9cb44e9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/task/TaskVisibilityMapper.xml",
+      "baselineBlob": "cef4f5e7a799e923a9363c646ef7339eb894f7e1",
+      "sha256": "fd80edd53bd32fa2fc7f8d47b0481f693595d4dc26ea7e3cb1edddde7d19a007",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/todo/TodoDispatchReadMapper.xml",
+      "baselineBlob": "d8d296cae5f78427d42d63ff30166ef9335ad567",
+      "sha256": "cbff3b80689e00537c8fde60a05977515491dcff225ac9ed631d0d748d8a2931",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/todo/TodoEligibilityMapper.xml",
+      "baselineBlob": "0fe8cadfe98445837fdab2dfd29c6dc3bd13c9e7",
+      "sha256": "76078085483af1f33b56a27cd4eb8e1f0995d36de0f57acffc8896c98fccf575",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/todo/TodoInvocationReadMapper.xml",
+      "baselineBlob": "20049bcf1b69cdcd737b8e132e24cfe4edd16b7d",
+      "sha256": "698ab4c22dd7f1e2ecfab1bd5b65a51c377c8a06c53015741f46ffed678c5182",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/todo/TodoProjectionReadMapper.xml",
+      "baselineBlob": "da5484030eb3a5f21d6511a59e63f799aaa5686f",
+      "sha256": "5a4211630f763e0e886e0ea41a730185684c8f4d15d79ebf7c3c816529be5090",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/todo/TodoRetentionMapper.xml",
+      "baselineBlob": "68283b51e9487d23fe523b48bdccca8c3736952b",
+      "sha256": "e2d73b896dd8298af76b11d375fbe76e0ed2a4a8eb837d0deeb628fbf002d973",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/todo/TodoStepReadMapper.xml",
+      "baselineBlob": "930f6140502cb6a4a62e6bcd7cf050ee1b89100f",
+      "sha256": "ea48bd98d3b36350a6a4fa00e717cfe313dcbfa59779cfbe41fab80d5358a81b",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/todo/TodoStorageMapper.xml",
+      "baselineBlob": "e24db9262dba10b541432cbef26b17776bdd487e",
+      "sha256": "2a99c5dc8812d1a515058160098cec152134c48cd6ac99407972f3dfc1140405",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mapper/worker/WorkerProcessMapper.xml",
+      "baselineBlob": "0e92b253b19f2d12f46d882a6a00f5c45f6611ea",
+      "sha256": "053f1c5389e8895779c71d6ac987817b8eb2397a3301231632da54d008c9b3b5",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/catalog.json",
+      "baselineBlob": "7b1857eb2ad71dd87a55641fc1484c11e00a087f",
+      "sha256": "c5da8a217cd0c5fe2b2a4ef118187f3ed737f7e8ccb2f412218e875381ad82d9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/examples/list-input.json",
+      "baselineBlob": "ed0a807a0d94e6461b7718c0881fd7488da5485c",
+      "sha256": "a158decdb2a26324110b4e0488dbfa0d93329501bde3a7e2101f952e3ebeb838",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/examples/read-input.json",
+      "baselineBlob": "616c22810829ce1b2548f4b70cb8ca2af8b9abdc",
+      "sha256": "60567f9cebf49e1b65fe4ebd9e15f8c822e904983c24cf8a54ba1a9bda866697",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/examples/read-output.json",
+      "baselineBlob": "f15d8f6ee9e57f0d4ffab3653a32f6b02f008335",
+      "sha256": "c1aa6e3f9b4360cda805461f3a1e1bed8ae9e70116d6de7ff811e148deb40c49",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/examples/resources-output.json",
+      "baselineBlob": "6a61b3660b0d1f88c883b76e644beead3e9ddba4",
+      "sha256": "ff521850353c6a48c64d964c09e359ba734252ad851987a4e2476ab6dcdcb9fa",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/examples/server-profile.json",
+      "baselineBlob": "f73ec277edbae25dac7f5eb719f2e714f95920b0",
+      "sha256": "01fc79b51eb1357174a40c14df5efb5c751d5817116fcd3fd52c264be1be2494",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/examples/templates-output.json",
+      "baselineBlob": "5a1365a61f9a550392adb95c68c2173ba45a43bb",
+      "sha256": "3cbfcd1598d0dcff359f1ed05e86871815db573d059a10d2709700f012b07d53",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/list-snapshot-v1.schema.json",
+      "baselineBlob": "7ad45b4d414094d911373f5819dae926bdf40404",
+      "sha256": "3305bee394e407a1cd376f07a159e2b01028141efca037a136189de99a0409af",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/list_mcp_resource_templates/input.schema.json",
+      "baselineBlob": "521fed758c5cadbda1fa93fab57c80555fc4c41a",
+      "sha256": "3286b79a0d26f83175b185cbedaa3169b12ca4b7f42ea583ca4c6d4156793332",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/list_mcp_resource_templates/output.schema.json",
+      "baselineBlob": "daba999c8621b14354852c19c169d6c17369e33d",
+      "sha256": "757410a2b9e69a156dd294e30c6b67dc98e03d89c5aef2735c212ef6da06ebb0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/list_mcp_resource_templates/plugin.yaml",
+      "baselineBlob": "eb2c5237edf09a92a0d421aad1dc7a7e7edc0266",
+      "sha256": "415f4670e231a68ec062c2284163f60c1c514c849df2e196e86acb58ce49dcaf",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/list_mcp_resources/input.schema.json",
+      "baselineBlob": "c16938accf210a7b49d8c00272714a1b718a129a",
+      "sha256": "29fd7302a672247a952d9abbe4fb35174e97c64e91a3a60b0612e97f8454ddb5",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/list_mcp_resources/output.schema.json",
+      "baselineBlob": "23a38f340fecfe93d491da2594cfd50a35c002a4",
+      "sha256": "1d97dc3c26c23f3ff7576d2022e18d8ca87f78531a64284addbe1472b8ac3087",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/list_mcp_resources/plugin.yaml",
+      "baselineBlob": "6c644467833fa510013dd6760122e84d4ae56c02",
+      "sha256": "12f874c8b47a8600cb50742c683c60bb1bbc01d43e5c69aa0b5350bd415dd472",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/read_mcp_resource/input.schema.json",
+      "baselineBlob": "4702941beff26986a5e390da50a0b45645be0198",
+      "sha256": "99bb5fea5f44d507585a3ba512addda2050c9a54ac99647977f2fe0932563650",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/read_mcp_resource/output.schema.json",
+      "baselineBlob": "cb13d3b65e59c3d0df4d7523bd1b9d303054ec50",
+      "sha256": "913b8a04ef378864565dfe764d0a84e8c4434557f998cb67bcc6a21f89c8f1c9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/read_mcp_resource/plugin.yaml",
+      "baselineBlob": "0236a156593bee0491f7814136308afff32d5a55",
+      "sha256": "3f3c6e3397da857f1d57c6ee4522d3ed71ae49c086da6a61149edf218e45f42b",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/schema-index.json",
+      "baselineBlob": "0798f5188bf06dacf3702ba4a5c0145d7b9f68a3",
+      "sha256": "4ff8e6e0c9ef697c02517426a948479f5976806c9f4249c954a69fa579b826db",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/server-profile-v1.schema.json",
+      "baselineBlob": "51f8dfd3e91220566df93c3458a18014966177b2",
+      "sha256": "906bffc7e23bfb3a7065d2059aff541a07061c8941318855462d0999a75c5b13",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/mcp/task-binding-v1.schema.json",
+      "baselineBlob": "33ad813ba84f817828da4dfebe6801637bbe2f67",
+      "sha256": "eac67f85d9d731b12a51bb7bcd214776da07566ec0a25db7aba5bf2d158961cf",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/compose_report-0.2.0/input.schema.json",
+      "baselineBlob": "c0ef299117f3ec37361cfd33042f4d42551cd210",
+      "sha256": "4901da65bf56c28822d76e4a8eee0803097c3c43a6a8ccd026529b061d3a4400",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/compose_report-0.2.0/output.schema.json",
+      "baselineBlob": "f0e72bce8770c56a82f479aa07527a608978b13c",
+      "sha256": "183994b16bdc7b3f0de711674a639c741fa85a58ff618ac7d3d378d3dca1fe79",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/compose_report-0.2.0/plugin.yaml",
+      "baselineBlob": "3947bc4e19ea4f01c3a1d794845f3e6e6aae8b16",
+      "sha256": "894bd18c387715169d9117cd9dde2a8392141e8cc03e6f7865a1b0bdd409f430",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/compose_report/input.schema.json",
+      "baselineBlob": "aabd08de40ce946ed01b234e14af85600fc2ad87",
+      "sha256": "b3263debdaff7e1de56fc0e3970b70055e57ff53f8db80157cbd7031984cbcac",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/compose_report/output.schema.json",
+      "baselineBlob": "9805b39542d6cae61ea2085e1eb1b430dd2416c4",
+      "sha256": "7bc3e97873dc92d84906d7c924875ada06dc420bd398686f030a36363115ade3",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/compose_report/plugin.yaml",
+      "baselineBlob": "5c34a95e1d86201e6d0d0d46e2e5ab928831deb7",
+      "sha256": "3059c113b5527e885f4851bf13a21a7d47a68fdc49c4b31d69da9c9315ac5e99",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/edit/input.schema.json",
+      "baselineBlob": "7df7ecac660423a4ff6adb4ba7d6993c6584d00f",
+      "sha256": "7d9e0154760864950d077222757e190534777039c953fde1262cc0ef343fe622",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/edit/output.schema.json",
+      "baselineBlob": "b244576a1c4f16598116b02184f62ca3399aa6f0",
+      "sha256": "af70998ce690b0a518dee65617424900e9ccdb4e7dacc9efd0bf7c4e2d163127",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/edit/plugin.yaml",
+      "baselineBlob": "ebfe3044c32e556ab7dbcdce3918fcaf24b3e6d5",
+      "sha256": "7f63221c4e64380013294a81f0735756b5e570b9a6753d79cfa04d79275662fa",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/glob/input.schema.json",
+      "baselineBlob": "86f6f664f5d711d03bab89782d185d1df50448e8",
+      "sha256": "58891d77d67bf50e19d67ba82278bd9f156112d1d8627d05dfe17fca524881d5",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/glob/output.schema.json",
+      "baselineBlob": "dca649e4845727178f0ba59d373e08f94209d613",
+      "sha256": "03c0d326d3c0053135e31b487e2e54424fc9befcf05b5c47cc73a52177e0d761",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/glob/plugin.yaml",
+      "baselineBlob": "613b689dfcf1cb053488d7ca1a57a1e882b8d69e",
+      "sha256": "4607188b5c909d7450cfbfda5f644dd32ad783607cefa4e1a03ecfbf47ab3024",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/grep/input.schema.json",
+      "baselineBlob": "34e09e90874435c977505f7fd9e0930624afb9cd",
+      "sha256": "fd6e5607007ee218e7033a93647e225e2eb7f1f1b52d726c06c9aed1abae7d9d",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/grep/output.schema.json",
+      "baselineBlob": "d3454cac1c810ed57918107e85531116158ae44d",
+      "sha256": "ea926abbc8c8ce00a68559c79421ba7df4f8c006526fc7acc7dde761148bd37a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/grep/plugin.yaml",
+      "baselineBlob": "3f91b0e81426dadc0185856736a206a014299d18",
+      "sha256": "7731999146b96b1967f3f0f4bff9ec70cf4b80980a20b2b7022f4c9c1da2327e",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/present/input.schema.json",
+      "baselineBlob": "aebf51f9c660c4b2f9acbf73100d50b6c2af5476",
+      "sha256": "5ee1eecd2798c0795be14c6430133251e56b48f36ea12ab12500a74739401190",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/present/output.schema.json",
+      "baselineBlob": "45588d120d396b2834b8a662f534544c9ee74108",
+      "sha256": "29533528d028fa1d254fcbe73b189c6500c21202e6b52055382a42ad17a0886a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/present/plugin.yaml",
+      "baselineBlob": "db1950abf0cc5c60169e013a73086c1cb1513a80",
+      "sha256": "6aa35e5900356d675d6e35934ed88f4f725452b2a0e54db0351bc7b93fc7b583",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/read/input.schema.json",
+      "baselineBlob": "ccdd2c829899b1480f473c2047ec19f5109aaf06",
+      "sha256": "dd957a70a488c9167ee4b1ff79e65790f073492b05c9933919e89adf0dd26cec",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/read/output.schema.json",
+      "baselineBlob": "5df8286cb1a1d28ff23f65615fe6348b3e7811eb",
+      "sha256": "3afdd8ce04586f381583d26eb91f3000745bf519a3571f702fd8da5b6cfaf4a9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/read/plugin.yaml",
+      "baselineBlob": "a7b8295d0a8a3e7a1c3c8011cd4e43d0e6a498fb",
+      "sha256": "9857ab76822692529c5f3ad5fadd3198e161fd08951825f9cc1cdd2b6b0f8759",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/read_image/input.schema.json",
+      "baselineBlob": "67e2f677b9b5e66ef00087593be6ed864e906d42",
+      "sha256": "cdf5a6395bfa7123c880d03869b8d595e15e2e4c8f0cda188278afb21990355c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/read_image/output.schema.json",
+      "baselineBlob": "5229d854e476de4b0af4140f415c3e2edebb6dd9",
+      "sha256": "2b3e16c2ba0318dc62f26fb6410622997eb2591d074e1f7acf8c8c5d2da68108",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/read_image/plugin.yaml",
+      "baselineBlob": "f3e580e038054805cba258f05c001cef87663fbe",
+      "sha256": "9b08fea3c0de3facd8fc6898a27981176ad28970683962a48568a2cbf0a50d1e",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/webfetch-public/plugin.yaml",
+      "baselineBlob": "cbe826994d62b9c7bc8b09fb2afcf9f785b10ba4",
+      "sha256": "3c9d26608f61deb39c86c931daeb5775d20886ce4884d5a4cf862d6121d11483",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/webfetch/input.schema.json",
+      "baselineBlob": "f611126494f437c9330be3669582f7842c225a59",
+      "sha256": "a08d14641ebb1101f0f95757c569035cf134a17d8faced55ccf11baee1e2163a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/webfetch/plugin.yaml",
+      "baselineBlob": "2348d83ee196bc14fb2d491e0ad8e198c04c0b6a",
+      "sha256": "b728d072dee18aae4a9eeea46336c2163e70309fcbb1c15fbc23092575be3c45",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/write/input.schema.json",
+      "baselineBlob": "558fcbd337c63dc586531f37446e9c42a1cca612",
+      "sha256": "26fbf190900805f120cfdc5f112526fa8b4c683a8f76a629619dcd4a24eeb0b7",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/write/output.schema.json",
+      "baselineBlob": "869c0ed415c7e90636364841e2ebdaf20834aa00",
+      "sha256": "b80d38a29e6fe4f73bf070971bfdd49bfc06d3f7fbd0e07b41890aef853020af",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/plugins/builtin/write/plugin.yaml",
+      "baselineBlob": "b9a4a5e937d7a639fadd0f4de09669c41a0dc9da",
+      "sha256": "41cb80aa705f2588508601b4f2db718d0dca6d55291d28ac0351fe3d01999546",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/catalog.json",
+      "baselineBlob": "d2327f71ade0995956662e88bb08413b814b7e99",
+      "sha256": "82ac8d60427d7b60632c8d0072d2c6c4fff2858f9f8c342ca412080a703b24e0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/context-v1.schema.json",
+      "baselineBlob": "0c302b2da10bf6aa12dba2d64d1b6f606b150274",
+      "sha256": "94a3ab013b2decf90cdf2ab54e3554ad6fa10d63037d0fdef36988697a3cb6f1",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/event-v1.schema.json",
+      "baselineBlob": "121703501650b89190976ac6e85b25792ead4767",
+      "sha256": "7626dd1e7b1f599e3b5bcc90ca0190c44e48f4142b462ddf48634286fc2a8471",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/examples/binding.json",
+      "baselineBlob": "83d2e26dde24171671ecfbd77f4eb185cc1103d8",
+      "sha256": "c7accb59b5216ffeda05ae7608a5ec49c033813412cb2abe49a3b2ca7ed9fb64",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/examples/context.json",
+      "baselineBlob": "788f891e0bd44d4755c9c72132a60006caf91c17",
+      "sha256": "d5b25eb7aea02b09c50eb693082c9db0c301b6cc27a1a12cd67dcd1a7e1955b2",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/examples/current-input.json",
+      "baselineBlob": "40333a85f9a2576765214701c0545d86dfd4bfd9",
+      "sha256": "07dbea2c5b19f100cb80c455186e46af86b7277de004c2acf306b93ad44e3466",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/examples/first-read-output.json",
+      "baselineBlob": "14ebdbed5f8e1066c6f5c34bb9a813aac452b80a",
+      "sha256": "6b297e8e7110908d598cf568f9877ab17b879251058c38571db8b69604411d6b",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/examples/first-read-output.wire.json",
+      "baselineBlob": "270b2b5213a9a58af5baf480753d0ce493af5a71",
+      "sha256": "7bed00eb1df7fa697d67d82c8e7bbe5e97101bec7df8d8c5cf7bc64f522509bb",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/examples/input.json",
+      "baselineBlob": "3af976b07bd7a091b7c442453db764e6c1e32262",
+      "sha256": "dad416dfb699bd23f447b0c282ca2d796f4215563b24357b194ae2d8c1cb9e23",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/examples/owner-history.json",
+      "baselineBlob": "d752d28232de74ae49cd5d0dac39955eedcaf0c5",
+      "sha256": "dd54b0d7de30ffff68d3ee1ff195f893d7f579278b0b076633bc6051686078f4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/examples/read-output.json",
+      "baselineBlob": "bff037f81dd5de6b86a4de44658fcaf248e8b227",
+      "sha256": "b78f42c46e704513d4970bb4f9e825867acaa13a98c967a6466ae4776ade388c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/examples/read-receipt.json",
+      "baselineBlob": "dd37c97058598f5e67d1bfe6edeb482786b6e0a1",
+      "sha256": "ab4da31188b0bb9a2bc994147b9400222faaef3f90759cc8c11ca8a64f85cfe4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/examples/response-event.json",
+      "baselineBlob": "bf9ff1000d72acd94c96e6bd995afdfde8b0408d",
+      "sha256": "4cb9c684aae3315095eeb7ac36e87ef4dee4140b85274c8bd4582bc54fc38844",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/examples/trace.json",
+      "baselineBlob": "a36a735465b24c5173ab6eb47a7969884c0af38c",
+      "sha256": "557c5cd40fbd110bc47fcb7eb2f3d4510d6396c9eeb7607eaf5380dad1ea6653",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/examples/user-event.json",
+      "baselineBlob": "5b33f58889846e706242aa969b17d68f805c5e9c",
+      "sha256": "bdbb1a52d412ab2d3b3064f5f717952bc3f28b3b2434e988d452b153d521f026",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/owner-history-v1.schema.json",
+      "baselineBlob": "fd0816e71f78d647e79f4fad011f6d96b40e742f",
+      "sha256": "dd4291e10d0d60abc930826fa5f88c233281ea66c79868d93fa9b8e6118d6ee6",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/session_event_read-0.1.0/description.txt",
+      "baselineBlob": "895116d6f58405ce3d53d2436f1db07fe3c2e122",
+      "sha256": "353537c1d241ce90d0a707d60ac25fa615516ad3a28c37e41f64b9465549f563",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/session_event_read-0.1.0/input.schema.json",
+      "baselineBlob": "2cfff2b88012c0efbb30b5396b3f00b62ea2c721",
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/session_event_read-0.1.0/output.schema.json",
+      "baselineBlob": "0e4bf4fd2091341fc0386a9814df8146bcb22452",
+      "sha256": "266801da14857cee3bb79a7ffcd2fadcda33e8bb5480c451917302171ed4c9b7",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/session_event_read-0.1.0/plugin.yaml",
+      "baselineBlob": "3eebfd5f17a7e94231b020ae514c770324128e53",
+      "sha256": "bb28507cfd9486a96ab2996e577342733816dd3d72923c2ae0e07f6dcdef2294",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/task-binding-v1.schema.json",
+      "baselineBlob": "8cefda4c09636a65b39b8b05c6ed01c8ac75d6b3",
+      "sha256": "54a30c835bb7b27dc30f48e2d091703d051a13a2f3fe989232c4c43a1ddbca9c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/catalog-v2.json",
+      "baselineBlob": "dd4038ac60eb5be2ebcbd44e6952b4dbc70848ca",
+      "sha256": "3b46a1165221462186eb862d4c86ed6e9f7258b0a05abfe03d5e35896db1a3dd",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/context-v2.schema.json",
+      "baselineBlob": "e63d671eda1e9e18f7d313e19a3c91972daea5bc",
+      "sha256": "3116de9c3a95c4e5eac7f870915b1fb5fbc7d48a8771768ce713dc29884521b0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/event-v2.schema.json",
+      "baselineBlob": "751f3a900d4e1544246c35885ceb09f3830fee1b",
+      "sha256": "05046a2212bd106d7026e94db1d124ba50365182da7963a443bd965e5f4e7075",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/examples/binding.json",
+      "baselineBlob": "d1def56041c3bf4943047af841a045832037e809",
+      "sha256": "1b0f5990bd940a2d60863406e041d4a0305502811c81d0fef4d37b4260def6dc",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/examples/context.json",
+      "baselineBlob": "8602dc17122818180a874bc93cc2dd7926ebf0c2",
+      "sha256": "21adf98084445e197287f42bcc7a68915c7350f1fbafcafa0b2fd748b5e794a4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/examples/empty-output.json",
+      "baselineBlob": "841a8786be9328e180fcf9176a1e3e9b35d725b9",
+      "sha256": "afd5e4474bf2a95e652926ada7bb06c02224e22986353c5b1807f46935fe349c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/examples/model-event.json",
+      "baselineBlob": "484958b511bed7b4cb643b690d9171baf67f8231",
+      "sha256": "65e33209db0e85ae9a73eedf2e25ba95bcc511d3430055d02cb132c79e9a46af",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/examples/normalized-query.json",
+      "baselineBlob": "6f58b1939989ce859a90dc237dbf7b2fbe1361c6",
+      "sha256": "1614325666c02c9af5634fbb571cded1961c1ba51235f2fd3095396e1b30fc73",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/examples/owner-history.json",
+      "baselineBlob": "53809a3c94d7ece696cf5782535b09844790f9de",
+      "sha256": "f2338f789f73fd00f75c5aa4971c470f21627207305fc89af4618036f13f8287",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/examples/read-output.json",
+      "baselineBlob": "09fd0833b5bec24a6c9dde0030e82bd2a808e06c",
+      "sha256": "579dc12addbaa3d593cf640f17bbe970d44c6b47034fbf57252e1f0377a36e3c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/examples/search-input.json",
+      "baselineBlob": "8969d29f6d47fefdcf6f02970f2fa14ae122bcdd",
+      "sha256": "b6549424b28f5305661ab3faa2f85b0cd3a48587d5767d4fb47b71855c8df925",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/examples/search-output.json",
+      "baselineBlob": "dbb540e8d6266b9580ae686c04ba8fac71913a79",
+      "sha256": "f6cfe33e796d3121fa4ad900b3c502ec7e698a4aa4b4f6a844332beb5cbeb516",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/examples/search-output.wire.json",
+      "baselineBlob": "445b6f7b0840fd92ca9fccfc3b4f8a91f30f9b37",
+      "sha256": "29edda7a86d3306e13a7e5c5121a8c4b84a7c1332dd39e863a12334232e56997",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/examples/user-event.json",
+      "baselineBlob": "f5defede5bc8c04a3945577efc9114d720aa4f6a",
+      "sha256": "3cf0082ba1e3255ebc0e0be0ccc721c138dfa0621f3681fe11217cf9993ad1a8",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/owner-history-v2.schema.json",
+      "baselineBlob": "2f8fee77cecfa39dba00845e46e703b10f51132c",
+      "sha256": "a76d748919da9650e87179fede4d1a469fdfd1d0f4d3b8e882167ecc514e690c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/session_event_read-0.2.0/description.txt",
+      "baselineBlob": "fe17b8c773f39b2101c37072470505a14667421c",
+      "sha256": "14b708a833e18d2e887ce72b00de2d1ef8715ee90322fdf20cbf5b9f4a9d64f9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/session_event_read-0.2.0/input.schema.json",
+      "baselineBlob": "2cfff2b88012c0efbb30b5396b3f00b62ea2c721",
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/session_event_read-0.2.0/output.schema.json",
+      "baselineBlob": "d143c106a9bfed9ca701f2a80ecfc2466bd8cd90",
+      "sha256": "7823e04505d76cb80e7d6a644d10504ece4260be0e01e7026206df833a7ea6d9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/session_event_read-0.2.0/plugin.yaml",
+      "baselineBlob": "85e58e01b6e3df8312c9940772fc2b134620afe4",
+      "sha256": "968cf2ab9e3557b995151bce2bac40ea32a41b8d489550a38938e2e61d768ffa",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/session_event_search-0.1.0/description.txt",
+      "baselineBlob": "386717fe36fa02e243770edaa561633c8558c392",
+      "sha256": "b91db9e0ccd349b8d0d23185f642f6350b04c472d5ec406455238659a0290209",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/session_event_search-0.1.0/input.schema.json",
+      "baselineBlob": "fb700776111e5a6903fd53fb72145cacbbd47de8",
+      "sha256": "52fdd4305f6791d80469a4f2537d1b544790e8dec59e24960f731cf5f9295584",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/session_event_search-0.1.0/output.schema.json",
+      "baselineBlob": "7e41c06c7232d08b65d4fc4f3d0fbacee10608e1",
+      "sha256": "51356d3c17c2bf298c653f21160bbe052e5638f189dc932b40cce75f12e53076",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/session_event_search-0.1.0/plugin.yaml",
+      "baselineBlob": "8858ef0aaeedb237ddc17f4130bd34940e41cde7",
+      "sha256": "cec185661a7afac5cbf4ceb558c949cf166779e018c409ac5098f6568c195d9b",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v2/task-binding-v2.schema.json",
+      "baselineBlob": "dd27cc7d02ddc033534dcad7d4e4d3ded74e1886",
+      "sha256": "fa5b2bf3542723a2cb98f4aaa30357659523520107502bde153ace6cc1b02634",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/catalog-v3.json",
+      "baselineBlob": "3f9aea1a83f3f33ad4594243f831f272e6593214",
+      "sha256": "064089523d52fe0161d53530c1d8b088ee5e8e20c1d7f57f75badeec15b0d0c7",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/context-v3.schema.json",
+      "baselineBlob": "5ccff5fba9bc494a22e12356c3ae34f5476820f7",
+      "sha256": "5691a2e400d7f8006715512524cf25b6e84c4387ba64b10f7501ac08f85f310e",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/event-v3.schema.json",
+      "baselineBlob": "6bb87230a1a5b6d74ddab8bd519fd57c38026489",
+      "sha256": "ba3eed79df80f9eafccf121badd8bd88d5c211344775e143b199d3cc1831edb7",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/examples/binding.json",
+      "baselineBlob": "02172f1513495e3956238bfa1a98aad0ce38bafd",
+      "sha256": "7771ece9ad5e134403b13c91a532c1479a254d3a9ab47f9a975eb3260a2b5769",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/examples/context.json",
+      "baselineBlob": "d92ad54734905be846611fa8fe8e9bfe6c1fcc7b",
+      "sha256": "66ec916ace04676e2ed23831d57c5147615bed47401aa803438e33362752bfed",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/examples/owner-history.json",
+      "baselineBlob": "7586ddc5344ba920811ca76646b6f170b5daf974",
+      "sha256": "25c276f24e6a488e1e8f50fd17cbb170821cc20e84c5e9e4f9ee41b2e4c940e3",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/examples/read-output.json",
+      "baselineBlob": "f55cc45d211ac2fb3820e24af20801e0751570d6",
+      "sha256": "d1735727fa9118c4075674327fdd4c5dcf20da7d232796e58a87828b8c6d9a70",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/examples/read-receipt.json",
+      "baselineBlob": "40c98f325b4efc86c2b36194480de8c7dccca99b",
+      "sha256": "9492c7dbc9e3cd8753adb63d06f551636d8941753707e33ff73e7e26ad49b589",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/examples/read-sources.json",
+      "baselineBlob": "8188abbc652449c8250e6e8178c866fa8655a56d",
+      "sha256": "129d0b1748f5fc075e396e7a7f32ee90beba0f1fc5bd49dd10331e0457675ca0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/examples/search-output.json",
+      "baselineBlob": "7dd86e43e0b9360909ee27a52204b6fb0d423904",
+      "sha256": "610c0ec2dce73068d618b8fb713220b7367d306e56fff1c594250ae86280a199",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/examples/trace-input.json",
+      "baselineBlob": "27cd12676dee096917a0e59b1140cdb195fc3810",
+      "sha256": "60f43ffef07c31271f73f931ffce77379518c410946df4aa23817c02e921311e",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/examples/trace-output.json",
+      "baselineBlob": "637c14e4e859efc1f5e4529be62734d423991ca8",
+      "sha256": "a275605eb69624afcd601c55da57ad1aaeb37b4624423083e343829544484199",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/examples/user-event.json",
+      "baselineBlob": "71e11f87a57d684ad8ba4b0efbac106e0f65915b",
+      "sha256": "418efab7e13cffd37c7fd478a543ae09206c329edfa0faa26b2e9a2160d980c9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/owner-history-v3.schema.json",
+      "baselineBlob": "22e199726cec6db25199c6af347ed340d47f2843",
+      "sha256": "9e0924f0d307ae3ddbf61780fab12a6c190a1a83a186995aaf2c79116d04053d",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/read-sources.schema.json",
+      "baselineBlob": "15ce4186e6cf2943b16f68ec3fce58aa3c827228",
+      "sha256": "819c3b54a9b68aa8dd18ecbec487397821e2c82db2e0b76a81b80d3fad41c3ee",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/session_event_read-0.3.0/description.txt",
+      "baselineBlob": "a994bd2041ad1b8f6f2d4d1e5d8f54d89c774c7f",
+      "sha256": "d4dd2398b320d91ba355ff30a45506696b433aa02d81e7bdad34a37a5f45ad8c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/session_event_read-0.3.0/input.schema.json",
+      "baselineBlob": "2cfff2b88012c0efbb30b5396b3f00b62ea2c721",
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/session_event_read-0.3.0/output.schema.json",
+      "baselineBlob": "e8b5a2579d77d6545b578950956fc53d12002e0c",
+      "sha256": "762f4ca547c81156a35937e0fd2120deb7a4aa5da9f401b9f4ecde778db14da2",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/session_event_read-0.3.0/plugin.yaml",
+      "baselineBlob": "b07eef7c7fa91457e4dfb707237dc78b14544401",
+      "sha256": "3b99e0428a0e3605724a8b7790539b3ed17b06fe24afc9c7c48678ced1be4cb6",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/session_event_search-0.2.0/description.txt",
+      "baselineBlob": "0532e70ed320e16c9332dbd1ae682334785c3040",
+      "sha256": "04b04c1a490134039e95a864a9d25dafc4e93cc595196d26b16746cc285b9989",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/session_event_search-0.2.0/input.schema.json",
+      "baselineBlob": "fb700776111e5a6903fd53fb72145cacbbd47de8",
+      "sha256": "52fdd4305f6791d80469a4f2537d1b544790e8dec59e24960f731cf5f9295584",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/session_event_search-0.2.0/output.schema.json",
+      "baselineBlob": "0e304d87aa30bcfd0d5af92635a065bfb794acf1",
+      "sha256": "457e3723413e6c9b2b548a27ca6832159dfff6c5741fd3b021a5825dffb695e7",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/session_event_search-0.2.0/plugin.yaml",
+      "baselineBlob": "2ba3c0cdd592656ee26bb53656fefaf5b12205e0",
+      "sha256": "e73db11770e860c29f9d24de477f8107355cebfdefab45bed945234fc1a1a6b7",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/session_event_trace-0.1.0/description.txt",
+      "baselineBlob": "f2eb0f0889e11f8313e79309e78332e9539c3d03",
+      "sha256": "a604404610101a18c86797e38f3725bf21a5a6d961ca7d8656fd071519567a60",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/session_event_trace-0.1.0/input.schema.json",
+      "baselineBlob": "4ca7d8f24c99cb5e2e9f80ab684df970bc9686bb",
+      "sha256": "7849c52bcc5b58775f5a7dec28bf41399746ef1780c815a88dc8630e03227c91",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/session_event_trace-0.1.0/output.schema.json",
+      "baselineBlob": "921ef97d26cca5d26c676350ba5cc4db7ae001ac",
+      "sha256": "5595052fbd89307318bc1593438ff208117c29ddfdf747d0f86c15fb5ae532dc",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/session_event_trace-0.1.0/plugin.yaml",
+      "baselineBlob": "0beff495b6822274149e9c3a9b3b905fd2cb0889",
+      "sha256": "5ed8ee7d9db15d5c10cb644d3172977e6e174a5e4135f69fa999172ed5fc7c0a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v3/task-binding-v3.schema.json",
+      "baselineBlob": "a591df6112b7c3e513fb8855c0e5d16261695225",
+      "sha256": "fded13d824326d679d306d6a24512414c9e0c1ae170768fbce860b3627fe6b17",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/admission-input.schema.json",
+      "baselineBlob": "a549ac19ccc5a7ff1b819b18aeff257b5fe6c340",
+      "sha256": "014b4d6b78a574967b81882b1e1b2fc541e9bb299095b127db771f435947575f",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/admission-output.schema.json",
+      "baselineBlob": "bd8b27836fa435a0d91003bb6a6bf4f2e896cbde",
+      "sha256": "a404b3c299c60f0b0698915e0d28bbf59b1aebe85f9b74f1f75fb02cd88ca222",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/authority-scope.schema.json",
+      "baselineBlob": "528e314471fc83aeeaaf79cd081317b5e5712f86",
+      "sha256": "77ced585e1815c23b3d00251ca88f00de1c8eec5f5245fe3c8ff658f2bd0f8bc",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/catalog-v4.json",
+      "baselineBlob": "08667a89d88568b9ff00a77e4abdb1db0c164c1e",
+      "sha256": "cca1703817362eca300b745b9111177a7d295c9791e17515b104c037bd084a15",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/context-v4.schema.json",
+      "baselineBlob": "3a7d3cd017e4853d027b12e4aa99e2c69ac91e97",
+      "sha256": "240fe19ecc91ebd7bc55e4604f4038d1d9890ca3301551c43aa62bee8f5bb5c0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/event-v4.schema.json",
+      "baselineBlob": "26a768bb394029fcbd71f83729797f7999fc1706",
+      "sha256": "105f63550e64f5cf893d3c6b2df4e3f7fe14c015fcd65a3deca9aee09a87b5f0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/admission-empty-scope.json",
+      "baselineBlob": "7b4a5a62eb9949f069b24266925af506f0c7b28c",
+      "sha256": "a68222a637d809369ece40fc595c725a84a104f59414eb8499f32fb658d80b55",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/admission-output.json",
+      "baselineBlob": "ffd969548d2ec23896020f45614b021b09dee43f",
+      "sha256": "f78eaaf573170c74db8f0abf1a72193926daec336242c8b6498082ca1e5dcf40",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/admission.json",
+      "baselineBlob": "d24646779ccaae2ad43358109efad4eb3bdfa29d",
+      "sha256": "e0658ceb9959001c56d6f7cd0fcee59ffd4e0e0c5e8e6cc5e72781db62f85b44",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/binding.json",
+      "baselineBlob": "cbebfb9f055f3d0bf0d401a545fed1341928c7e7",
+      "sha256": "ab7ec75b98fd97dcd8a0145573f70b5b552305d65d773e4a9e086031c120b8f3",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/context.json",
+      "baselineBlob": "670bdad535e871267035e056fa5d9b67a1065546",
+      "sha256": "6025f0f565ab7f4abb01504ef45d2bc3e04bb5e270efc9db802947d2856d774a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/empty-output.json",
+      "baselineBlob": "9746738cbdba74af5e741c98eb5ce0343f11ecae",
+      "sha256": "7ca6d9d3dbff131d8c0e65511910b5b63e9a1afe9abaffb02a79acddd3ac8898",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/owner-history.json",
+      "baselineBlob": "2ef544cfe6d1f29930f0817c739ae92f5614a3fd",
+      "sha256": "d03c8d59bc4a3b3160b04ce74f7ed8886785587ee7219e9ae391be3054179428",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/read-output.json",
+      "baselineBlob": "9435dadc680f1aa43830ae42f6f95275aaec878a",
+      "sha256": "962d40839045c4f3db265d926647c8fc2155cb604920b0721e9772c26611fff5",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/read-receipt.json",
+      "baselineBlob": "b3c8c226924047b97d97d22257e5cc2a72f53957",
+      "sha256": "9ccae5c18da9f87c294e54a2bbba78b2a34f2686fbb191a98ceee6bea41fe746",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/read-refs.json",
+      "baselineBlob": "3a6bdd1b9eb4c00c440f970c31857769b0ff7dda",
+      "sha256": "e98dfc8527f29f9fcbab3fcf70b4dc94d3413e3e641368f725c814f435d2bc43",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/scope.json",
+      "baselineBlob": "7fef6f581749de87347ae3fa0e8070814152afd2",
+      "sha256": "a639bd34258b3afb5257aa79742ab9be678adf162eecf682551bb1cec932d5d0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/search-input.json",
+      "baselineBlob": "4dc945b4172fbe15bf08ccb4c12cdf623ed46d43",
+      "sha256": "af424ee455391aedcebc49ab823d23130568bfe665e09f10bf50094baae83fe2",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/search-output.json",
+      "baselineBlob": "c5f9d386f2de477cba3ca293d045bd07cb7768fe",
+      "sha256": "a1c7c1580bcdbe2d41e7b4a7b2c4ce652bdad9d9084124403e3d0a3bff878a87",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/examples/user-event.json",
+      "baselineBlob": "8e78916b1902b7ac77b9cc3860c681e88ba0dccc",
+      "sha256": "37f41bbc645b13e39eee107e47d77ea108aed85c71eb19cdb9f69086d5fdbf23",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/http-catalog.json",
+      "baselineBlob": "5ab8ef733e3193aeea6103b411d17eedf5da02fc",
+      "sha256": "d37d96e64547870818496abae82f65800664a507718f7d85fd17a24993a87de2",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/owner-history-v4.schema.json",
+      "baselineBlob": "3623e1eb5789c61ba68d342df73dfa1cd3d5ae64",
+      "sha256": "a735462f235e43fbf6c1e83f0ff55d36a2014a0a730b173cfae99b176c0e207a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/read-refs.schema.json",
+      "baselineBlob": "0bc7b9ae42c66ddfa49ab84acdb46ec68c672546",
+      "sha256": "3f907834c55f81e783e1a48d822aeb0fc7646d9bacf603c729dd99cb20c94dd7",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/session_event_read-0.4.0/description.txt",
+      "baselineBlob": "9deea5e8411d225b1474b1c9c769a97a48843088",
+      "sha256": "695b9ea5f0fac218aa5abfbb207c803995502eb8de516c5b5404ba32a1095412",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/session_event_read-0.4.0/input.schema.json",
+      "baselineBlob": "2cfff2b88012c0efbb30b5396b3f00b62ea2c721",
+      "sha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/session_event_read-0.4.0/output.schema.json",
+      "baselineBlob": "9d6c448bd5d39488a8d5cdedd4e8403dca4ac2d6",
+      "sha256": "361a97e7da6592d44989759f0256c05c6bd1ec6041c5b11c30ad4e0b162208e4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/session_event_read-0.4.0/plugin.yaml",
+      "baselineBlob": "7698158aa6f8a359e84beaa4fc7044e6a26651a7",
+      "sha256": "d31a4fefdd020bf8c598cc10d4c35afc2b4a72482c4e4938e58b3c979d7ea4c7",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/session_search-0.1.0/description.txt",
+      "baselineBlob": "a3a837289bc420a7c695ca8d9933a2db7e0c3627",
+      "sha256": "77cc9f0ab2b2534f0277aa5469822a7212802f89836b538f058ec79dc112b756",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/session_search-0.1.0/input.schema.json",
+      "baselineBlob": "3f323270073b83227d3350d0b2ce80690a7e403d",
+      "sha256": "a3055ae0da20e6815ad712163f66461db483728bdee928aa599c442a1ab055b8",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/session_search-0.1.0/output.schema.json",
+      "baselineBlob": "548dc24902a6fcc92d819ce249d5f5389f9d0070",
+      "sha256": "8ad3904e0d7d6d946fb84efd34935e5b35c0ee240b17034f8b2a0c9fbe0b4778",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/session_search-0.1.0/plugin.yaml",
+      "baselineBlob": "6f4e4ea6b17037964bfc6b8fc61b7a796af762bc",
+      "sha256": "97b81f0b7c07b869f810592dc8e335c0b7957d4ea7e96650ff12390344ce26d4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/session/v4/task-binding-v4.schema.json",
+      "baselineBlob": "62daf0b76afa2e428f7936982e0f5a01d4c8dbc2",
+      "sha256": "4446f01591b241122073fba2f6de8634b5a3f845c5a4719bb7bcedda09f3fee4",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/catalog.json",
+      "baselineBlob": "d3e798c2b5c71058bd3c4991bb691d1d804f1106",
+      "sha256": "af06bd067b9d7a4ba55f71dbebe32b0e106af3a8fcae88b53557ca487951afdc",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/examples/absent.json",
+      "baselineBlob": "9d0c56edfca2dd85eee624e4d734113cc5c13897",
+      "sha256": "2def954a202f5a24497336c44b620d8b970c6e6fd70f1d975ba3e34974142356",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/examples/binding.json",
+      "baselineBlob": "141d0217dad1f1243e87b28b43519eeb435b254f",
+      "sha256": "9334726a83a7c4e22533889d9a9efb31360cdc7d2f417db9d7136afadc89abb5",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/examples/empty-input.json",
+      "baselineBlob": "e57ea09d1d533bd73e0ad784821a98a50d271d76",
+      "sha256": "b0589fd879719ad744379d0a2f24e0fbbff61aeef4cf957c795682c62cef08ed",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/examples/empty-output.json",
+      "baselineBlob": "ef7b440d9941ca3135968ff520081cdf83125539",
+      "sha256": "282ed6832d874f3d4d44d2f71c242658cfff48575dedfd7d3a13294ff3da71bc",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/examples/empty-view.json",
+      "baselineBlob": "393b1a933d1e6ab5983af79c4ca6269d671295c2",
+      "sha256": "a58652093c839a9498977b63f577fd3afe1b3c630faf3a3d1bceac2b4a3d7940",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/examples/latest-view.json",
+      "baselineBlob": "f16710c05d69b50adbf043d9d8263095c930fdfe",
+      "sha256": "89a739383119ed10f80a9642d987ee87cf70c23dd4304d58383d86cdc680bc9a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/examples/purged-unwritten.json",
+      "baselineBlob": "82d16d45a23ffd34d00aca64ff4af44ea4d3f840",
+      "sha256": "1c331bca326d87534dff72caff968573370d843b62106add1004b58c44f15634",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/examples/purged-view.json",
+      "baselineBlob": "ab8e4b203a9e811eae9dc0ef86c8891afaffdc4e",
+      "sha256": "1292c739f81b420118b05395a6f6d052ea347b559310a2b74f3f3e76db92996b",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/examples/replacement-input.json",
+      "baselineBlob": "a754cc381f582ac667940c81b6d4e5ca9f7f67a0",
+      "sha256": "abbb8dc744dcca375163d78d8ad1de166893f153b86b5ac8de69360fa3c0355f",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/examples/replacement-output.json",
+      "baselineBlob": "bea63bbcf396f64f4cfafe9f300f3f3f459c157f",
+      "sha256": "eedafa744e0b80d774efb92c280ea51ca40a3d6f2ddbea12ef48d94ce5f1522f",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/examples/unwritten.json",
+      "baselineBlob": "bd09d877db5ce77db22546be27b89fc61f351e45",
+      "sha256": "97b66eac66628f1726e86e67c8fbd78c1328069e86725adb3f78ec5ed92ea2a2",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/task-binding-v1.schema.json",
+      "baselineBlob": "1b0ee9a42849b5edf89bca85ed713c3112ef5088",
+      "sha256": "2650d93bac1aa35cb9ae958fb045a1d3ef1299beedc879d32ac682a2bf8f8530",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/todo-view-v1.schema.json",
+      "baselineBlob": "742c7fe963d39b890f4a494d21ab6673a432fbc0",
+      "sha256": "039171d4ecec7cb31f7edfe40a53785d6bb9593385b0b1b72aecbcaed43f0ca2",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/todo_write-0.1.0/description.txt",
+      "baselineBlob": "bdd9192de2b1d918fd7e75233f2c86b0dadbe904",
+      "sha256": "05bef58a8da85fa207fddd674a930d36ef4225db37575e4c5cb1c638c757b644",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/todo_write-0.1.0/input.schema.json",
+      "baselineBlob": "eae9fcec81dd28e1301fb74fda839346ffef548d",
+      "sha256": "18f340ae56366ad533d2ed6eb3dce4cda9022110ac4be2750b1134f05096b1d1",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/todo_write-0.1.0/output.schema.json",
+      "baselineBlob": "0f04fa95b3c098cb650cfef7404a326ee172a77c",
+      "sha256": "5aaeeadb3ce3e7e8c34e991dcc85b87cf4ce5e9502163b9b8668523bf49df99c",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/resources/todo/todo_write-0.1.0/plugin.yaml",
+      "baselineBlob": "401501adfab3cd0e5875bb6a14db320d492979a7",
+      "sha256": "fbece39d857c7576cade7a0132ba466ed9476b86fb4d3280308234a6ca3dc36f",
+      "unchanged": true
+    },
+    {
+      "file": "src/test/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryTransactionTest.java",
+      "baselineBlob": "6f6743d31877ce61fa87bba3fd78d3c7a18b173c",
+      "sha256": "b51a87220d4ae7b694baba2e1e3b60e3ae55e3d879e31d758fa73887345591c5",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "private <T> T sessionTransaction(java.util.function.Supplier<T> work)",
+      "sha256": "de54dad8d2576184a9ba01e98fc6bef26ab97d1dae78fc5a81c218585b9cef16",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "<T> T sessionTransaction(java.util.function.Supplier<T> work, long end)",
+      "sha256": "69ed2ab70651a6a000d5b229c68afb0f008df17e96688902bf31402d7f0a6a33",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "<T> T sessionOwnerRead(java.util.function.Supplier<T> work)",
+      "sha256": "9362fda8a871b0d7be8ce3e71c36a80f669dbcf524a11dcec5096343a0a8b871",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "<T> T sessionSearchOwnerRead(Supplier<T> work, long deadlineNanos)",
+      "sha256": "89539ddb6f79abcd30f1d12ecb8b60d3cb10083fee8de6ee4242949e40fdbde9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "public JdbcLedger(DataSource source, ModelProfiles models)",
+      "sha256": "28bc99c6f12f947706dc59ad28880270ea8c713ff73af89e66e23f71a7eaa953",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "public JdbcLedger(\n      DataSource source,\n      ModelProfiles models,\n      DataSourceTransactionManager manager,\n      io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork unitOfWork,\n      Runnable schemaCheck)",
+      "sha256": "ba56969f430b41f4d50f7b86cab19898ad367f81d18ed4da6c21295ce806f94a",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "public JdbcLedger(\n      DataSource source,\n      ModelProfiles models,\n      DataSourceTransactionManager manager,\n      io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork unitOfWork,\n      Runnable schemaCheck,\n      org.mybatis.spring.SqlSessionTemplate sessions)",
+      "sha256": "3a411521f7c216ff411cb2aaf412d08c4001163a297bf4dafe013256eb7640ac",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "private JdbcLedger(\n      LedgerPersistenceDependencies persistence,\n      ModelProfiles models,\n      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query)",
+      "sha256": "29b7e0b7c7a0c205eb10d19ac41eebba5ddb35e31a83a9fc0c46eef00f5072c9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "private JdbcLedger queryView(long end, QueryResources resources)",
+      "sha256": "520382de6d9adbde8faad50abe63159390c08b16c49b7cbc3c7584eb20bb48d9",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "private record QueryViewConfiguration(\n      java.util.function.BooleanSupplier searchAvailable,\n      ArtifactStore imageStore,\n      boolean questionsEnabled,\n      boolean todosEnabled,\n      boolean directoryEnabled,\n      io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore directoryWorkspace,\n      boolean sessionReadEnabled,\n      boolean sessionSearchEnabled,\n      boolean sessionTraceEnabled,\n      boolean priorSessionSearchEnabled,\n      JdbcSessionRecords.Configuration session,\n      io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings mcp)",
+      "sha256": "2e3c7136e44d65ff0bb15ab3cf70602fcfd8e856579ad7f60a00774cfe392dd5",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "private JdbcLedger queryView(Lease lease, boolean metered)",
+      "sha256": "1425ba3f7c6ec355fb1dd75ad95aae576a81aa80625fb345af2ed09bc45a9b40",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "<T> T tx(Supplier<T> work)",
+      "sha256": "7cd74e45d635491d68af2e858f49e67a07c2f9939d26db180717080a3a568556",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "<T> T leaseTx(Lease lease, Supplier<T> work)",
+      "sha256": "af5e2a9eee4c4dae9486b8a2e556d0858090435810e961235d61809648fc8340",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "<T> T directoryTransaction(Lease lease, Supplier<T> work)",
+      "sha256": "5f500a63830b488cc77872ee8a2551f46543afb690667f258561955ffa72a346",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "private final class ScopeInvalidation\n      implements org.springframework.transaction.support.TransactionSynchronization",
+      "sha256": "816ac34a3bfcdd6ba9f03354e85bfa2021c258dbbe4a6b08236b3460aa23b24e",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "<T> T scopeRequiresNew(java.util.function.Supplier<T> work)",
+      "sha256": "ebb4dac6a04be856a1df4a7b324ce093d06554af0ec89ceb5e4fd93fbeed0a6b",
+      "unchanged": true
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "signature": "void invalidateScopeAfterTransaction(Map<String, Object> task)",
+      "sha256": "4b5176a4cd690d8dae29c92947760e4c33aa78068dd317ceab3481626067c95d",
+      "unchanged": true
+    }
+  ]
+}

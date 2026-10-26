@@ -1,0 +1,1177 @@
+{
+  "base": "26f1c23be0c155c9b9c69126e66f9dbf394bc946",
+  "source": "cfa2f51824cd84c1657bf6dcdc0f5cee83d5807a",
+  "sourceTree": "d79dfacfee47c87bb5ba2c125e07c3d965f21696",
+  "sourceCleanAfterBuild": true,
+  "jar": {
+    "name": "jimu-0.1.0-SNAPSHOT.jar",
+    "bytes": 45044219,
+    "sha256": "118cff817309314c0f38d68644541483e7456d836259f276196b29266c0ba2df"
+  },
+  "windows": {
+    "log": "xiao120-final-source-windows.log",
+    "exitCode": 0,
+    "tests": 1615,
+    "spotbugsBugs": 0,
+    "spotbugsErrors": 0
+  },
+  "posix": {
+    "log": "xiao120-final-posix.log",
+    "exitCode": 0,
+    "tests": 10
+  },
+  "reports": [
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.ImageAvailabilityWiringTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "a6687dbb5b85d911e77c8be65f18fea53206b7dd48e9e2cf1fa60425e60ad2cc"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.ImagePersistenceServiceTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "969af235b611cae62584cc1ffcca0c2b85008ead30c8ce03264a8cc786fbcb1c"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.McpListValidationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8eb650a9c57dcf320ca9cbda3de4f71385d01f1fd110a4b3e5eed590f1e0379c"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.McpPersistenceServiceTest",
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8770eaa9e7c896b1081efcb4e8873ebc3299933c059b665d87d205ea921e6451"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransactionTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "418f98af40c97fdbda1124af96fb4c340d552403700c42db17702525477aeddf"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionAnswerPortTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "7a10fe8de5d7d428a11b3f790b411597af3807d2181f8efe6a35aaa434aad9e0"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionAuthorizationPortTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "40c50f5a3bb9fac5404e61ebc926dcf7ce7dd4b2a2cc0bcde3b806dbd056d0f0"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionClockPortTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5f6a732fc65b6d7a22b1a473331d41696205cf7f85bc42c54771012da4b45a44"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionContinuationPortTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5ebb94cfbaacd3f54860295f9d565651c3b877d874b4c2059458166b34041b17"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionEligibilityPortTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5ceaa04fb8f2a683c44de4a6dee010fe84d428ae221ff8f668dbc00741b4fe95"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionInputPortTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "9c233647c53e4956eb9e920c27c17d505916639da37d7b3d147f27a9a4bf4f83"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionListingPortTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "aa1f72c06256a70226eff7749c3be195c74d3fa63c4d249d0b6e55e524cb74a0"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionMaintenancePortTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "c8746ee1c0b45c5220a83d9749ab7c4d13c4e0fe3fed8c7c079ba02e98b8915e"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionMessagesPortTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "45b84c43c4ec3a93ec279fbb117de20d279ddb275dafdf18b8d98908cc38444b"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionOpeningPortTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "e3d0f0f375932ded0a90c1c9f3aa4e4077a9e5f14ce6b949dfca461a9114a5f9"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionPausePortTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "727d059b3ac85b94d67bb45928197933ba57caca356e09b4af17fe56060e8d35"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionProjectionTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "fcaf817bcd16372b3d4dd865c9115ee795b0895e5eb8363c0bbc971ee4a42712"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionResumePortTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "44749977c3bc08136768513639bfb10230e5d2748236b97a51e68d87191b645c"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionStoragePortTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "447d28067ae595768967d5bddcf0bd995977c830dddf849a6c5283fab48f62df"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionToolResultPortTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8229bcea2dfc8258292bd57c9b7db98144dcb27d9eefe248acf6423c1eb427d9"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.QuestionVisibilityPortTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "37a28bfa88846b740e2180ba788d03ab882ee1689edb37e6830a52b64c7ffd92"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.ReportPublicationServiceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "b5e597d625aae81f352ca0ed5d75baaf7c77923914ddb363fa981f53293ca7b3"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.SessionCallBindingServiceTest",
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "c3c47e722d1eb8c30f28602a4ae836c48af1bf3378453e9655a2630840d66121"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.SessionCallProjectionServiceTest",
+      "tests": 17,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "f32aa44e6c7307a131ee1059538fa17a9a2d8d022b3d744833e9bf0c329b8fc5"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.SessionCheckpointPreparationAdapterTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8d0b7768970a65502573ddfa022b895f4348a5a10cbb3973a0d0586d24116c7f"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.SessionDeadlineTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "cb598b0b3096e3b2ce09ee082b866ac8ba52477890b456c0d8db6151c9ff6984"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.SessionEligibilityMapperTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "73fe7467695879cff6eafbe4cbaca455cbc065088a7704790b012afd0c8a532f"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.SessionFactEvidenceTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "ea2b4dc7626dd806db8cade177199ba5b6eed9bb670a57f5230e8b395064192e"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.SessionFactMapperTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "067395cc606e55b1e711e45bc918d7e62dc925999adffcef71fcc81d654949d0"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.SessionHistoryStorageAdapterTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "f6420521c9230960760be8da95513e9d4541d754ac413485d44da24a1af75091"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.SessionInputServiceTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d2ddc67d23966512a3520feac502f08d90825edff8aad3534ee0aaeb2891f5d3"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.SessionReceiptServiceTest",
+      "tests": 27,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "04c31098aff6f2909eee7a77f9961822ac3674a7f12b3ae71bf6f9bd5236003d"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.SessionResponseServiceTest",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "ad1ecb16c76515978d3a40b3f21a96bfae202fb9e878c9b615e717ef4fe9b151"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.SessionScopeCreationServiceTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "139dc983ca5db3666bc326a00b6e06ee1e30ed40438c1bb9521e0ee77c81e6d2"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.SessionScopeNormalizationServiceTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "c2eb7903eafa015df3720873aba9c76cf3d4b097f07d1dff73be408f46f00100"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.TodoEligibilityRowTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "f94992eef801aad70e69b23e2a64fafd018352ff56efbabfe0a22afa30c141a4"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.TodoPersistenceServiceTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "f2ce89efdaaae73bb8b07a64035105237437dce60af3a9ef84880975ee22bf7d"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.TodoProjectionPortTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "78b707c4d44d18c39c3973d1d45bdcb15162e6fa6cdfecf7231a15f631ea0d81"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.TodoResultSourcePortTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "30a6395ee5b4321c6f92595d85db3f37a39413689cc8312f734458b8843a8b74"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.persistence.TodoStoragePortTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8a85d842cb2035537eaf16c145d411585f819e1086c0623731927341b9b0e8a1"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpWireTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "2ad4d42d4c9bfd0218e0a25563362979a0ff8afba8c4bb6254ead310857513c9"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageInputContractTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "abfe837a4de5e2ab5bc432d436dadf62a5918e264c81f236437bacdd850198bf"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageNormalizerTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5ad5447c0f915cc5df9d3ebf4db2ddb476f3e70057722beada5aa7cc2bbae96b"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeSearchContractTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "119eab5a06e41deae14213fa84eec498e70de1941d6ba7f92ae0a8541b431652"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.architecture.PackageBoundariesTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "6dfc67eb231dd2fafb8098f9b3c9b256aaee4e901d539fb5a04d49b0e54f5131"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.ImageAvailabilityServiceTest",
+      "tests": 17,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "23e75fee82b8ec125cdb4d69bbf5e71c2af223cc8ca36597ee89eb9a2f37341a"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.ImageLifecycleMapperTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "eddc72cc8a5dd3a42d05edbc8b974463bd8fd2f70808b6e1a5e8c4b75e80ebb5"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.McpContractTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "507ab86adbfecea11fda0e1bb7adb7a3c41358677e08a3994e8b5e21c70a6261"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.McpLifecycleMapperTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "78c365d6d4d02ec5069bb7da7d0755a488f3d0a46cea2a322d185cc242ff5bdc"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.McpRetentionServiceTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8fa5eecaa8903a84d56f5176981e8f930a26d7d45ec65c1e25bd74df6ddf6194"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.PriorSessionContractsTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "233d2153ea04ee69a29d97ffd806ad8cc3297b36a0fef5c8748cb3c657c3ebf2"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionAnswerRequestDecoderTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "e077f0394bc75b1bb4a3df3352f50debd65254d8b17bc7094cb8c3b62614b6f0"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionAnswerServiceTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "0888d99bf09ddfae9eaaf8fa1cf0216f594f949b39f3a69185e9a61f264d55a9"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionAuthorizationControllerTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "098b71cfd3c4d61082f31fceac0bc97b76a98b6d869bed3fcd89c97199f76797"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionAuthorizationServiceTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "f73eb66480bc005083ec599a5deb8e425f3a3055579f79f7fd41ac7a0fa3c57e"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionClockServiceTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "db9f3bb23719cfb941b85b4f843d6526c71a504d7f0ae5a8d1b7d344f9d6f27d"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionContinuationServiceTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "38c064e44efaa70e8102f8331b3107a4e62dc288433f0d371e48f890a3fcd31e"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionDeliveryServiceTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "6d19433b1c2932a8e07eaac6debd4bc82b81ac484c968282982f27fca597caf9"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionEligibilityServiceTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "902a4e103c4c8c7a279efa997938aee41905b2fb78115aade47d7ed2291c7bd5"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionInputServiceTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "a94198a3d6d9177435e5c0ac57250edc206ca457256481c276bc90fa359196b3"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionListingServiceTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "75ed81053d2b4a3bf75979458db1a735374104833f122b415f8daece061c3e88"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionMaintenanceServiceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "46a738484ae7bdfddf65e0109a32c246b00bb640001890de41fee15245fcfe44"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionMessagesServiceTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "988216491d54954e9ae5b3fd7f815f8ff739df5944e3baf057dac2d2adbd0976"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionOpeningServiceTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "c7eda4386c2dd4b1d6a8aa474c2b4c83faccfe2c489135d730a3919833601822"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionPauseServiceTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "acc25d4691efdb8363a7f585c9ed650457324241ef5fa78cf7f732fe6ba92f36"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionResumeServiceTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "53d292a1c6bdb73c2ef966067eb36bbb72c9a22c83bd2c7202dbb68172b8fca0"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionRetentionServiceTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "811595030c286edfad21e07558c0f7392956d65be487ef9ab8edac39b11f025f"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionStorageServiceTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "42651c8ed99827be7eba9ac2e3423d294334cd35d62e086d24b103e5f3d8882b"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionToolResultServiceTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d2a45b8f1da7daa67382cf65f18108726ac4fe375472b20a108da0309ea62143"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.QuestionVisibilityServiceTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "aa887c803fdf3882c1eecffdb8513940b4e50e6a1367504e9b86754d01bbba9e"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.ReportComposerTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "71a5dfbd4ebaf96e997ff731d3cfef5e7142b9abc5b25230c59662fa13bf081c"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.ReportContextServiceTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "4eeec28cac5f57631feff3849a63d4e26cb24443001f245e5b09a4871a5b78c5"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.ReportPolicyTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5e47677183796ea79dfa9d3e93f3e0bc4454122de95833619052550d27e553ea"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.ReportPublicationMapperTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d2e4ce0e069dc0fc5858cd5e10cc778656fe2dbf93caab2b7d4d15cbd5dc63ac"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.ReportValidationPolicyTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "bc96be615e84a3de94cbfde08405f7c1a7ef5df191e056f74f79ae49bd024392"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionAvailabilityServiceTest",
+      "tests": 33,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "f0c420744203f472d5504572d84228d61fc66197e00260cdb464554ec8875ea0"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionCheckpointPreparationServiceTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "6b7a212131396950c318cdf68357c5fb5c85da08d4cbb074a025853358d1f6eb"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionContextServiceTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "0bb2e14002adacb62fd5080f8bf15924543f830bec443328fed34804a9530b1b"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionContractsTest",
+      "tests": 23,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d048ece261dae11f504ec882589f067bcff2b32f0d6cfd4fa26bdcd825272f11"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionEligibilityServiceTest",
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "1f5c8bd8104029da2eee8b2cd438d72f00b37539f3ac9984abf7dbb20b628bf8"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionEventAppendServiceTest",
+      "tests": 17,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "04f8ce048ec55433527c9aff3f293cce0cc75445f174fa2418bd79fe354f8c96"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionEventProofServiceTest",
+      "tests": 52,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "267f32de3d3f6382b5c54534ea873297900b4de5eec1c967e6fdd4a2c8487e7f"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionFactServiceTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "a4383ad15b79f58b1ae51744840d7bd9a6eb2dead23caf11ea0d20f29b8342be"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionHistoryHttpAdapterTest",
+      "tests": 25,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "926c98fec34699c795044f73ebf9decf45eda8e23fa90e5afcaf2d51479cdbb0"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionHistoryProofServiceTest",
+      "tests": 48,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "794a8d911891a7c24bc9c4336aca508e432a696e8e4586a2964df306eadac325"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionHistoryRetentionServiceTest",
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "fde9aa85a07771f50579f8d364ab1c6632562e050a4c19b771e4a3231956ca77"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionHistoryStorageServiceTest",
+      "tests": 17,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "bfa58d1d56fd2a2a9559a728d8edec9e0fba98fd0ebd76065d3fc0d327d68430"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionHistoryViewServiceTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "95df55910adb6556403cf9d41294e9ad491c3c936ec3fc4cf7b34c04dbbbbb7d"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionMetadataAccountingServiceTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "df5b89fd2ade640891e894f668726e04ff944725719b657014aecaf790d3fc0d"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionNativeSearchExecutionServiceTest",
+      "tests": 23,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "59c46b1fb79c9e139392dafe1eca307f0dbfcac96dc1b4f8ff174eb7bf2a0498"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionNativeTraceExecutionServiceTest",
+      "tests": 40,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "72f919b39516b55f0f822546b71e0722abe747351b102216727c53b39e01e404"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionOwnerServiceTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "3b01991387d1eaa62ad74ce1cf894b6144f632f5d359c856fe011025ea1f6575"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionReadRelationProofServiceTest",
+      "tests": 74,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "61c0a8f8668fe00cbee76b8c61b095e66848a60e77616aa1f85931d376b9f101"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionReadServiceTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "267c0d273a04d91966e1c543a1207a953e087654f7a82d1e92c1ff6b65e9755e"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionScopeCreationMapperTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5f14de91fe8689a6020336edf4c8110ca2976bd21ffe95472842f231f1e7315f"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionScopeEligibilityServiceTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8d8fbcd16e29b5f52b34c33f3b0562a611ad58ec2d565046ddadba7032ab3179"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionScopeExecutionServiceTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5dad5cade77568f095d38e34aeb4439b29e671a7f6858393444aa8a7fbe05bbc"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionScopeMaintenanceServiceTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "03ff434086852f4b8ee6f363ed6ecd920371a863a06026d7e9225323761b5808"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionScopeQueryServiceTest",
+      "tests": 28,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "110f69c3cffe97127ed2daf9d722f34b59d0d87134bf0061ade58d2dc98dd97a"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionScopeReadProofServiceTest",
+      "tests": 59,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d46f298e447bcf70d13c8788feaf6dc6663b1aa9281bca171d2e5981adf01780"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionScopeReadRefsServiceTest",
+      "tests": 25,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "b86e68647abf93e462cabdd6fcd27487ada165c681d457119cea97d6d4e7bb21"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionScopeRevocationServiceTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "60ce152092bd10c34c1383f4dada203610dc9588728e0952bfffa19560d05d5d"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionSearchContractsTest",
+      "tests": 45,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "a646f4da88aed9ed41fadbb93370d9b3057331a4252678e02528914eea811e5f"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionSearchServiceTest",
+      "tests": 27,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "14a187f022c69148b50e109ddcc5241bd939ffc35461645482cf6767c8192e99"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionTraceContractsTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "0350aa4be9ceedb15011bb921624dd2ddf2ae31c29392a2342dc448083248d7d"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.SessionTraceServiceTest",
+      "tests": 30,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "26ca9a3ae7e22d5011ce28d526e587358136e68e473226a6572afc43545eb4fb"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TaskAdmissionDifferentialTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8fe14368baf6af675959a2f0d602ff41ea7710cb10e576bf89da551c7ded5456"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TaskAdmissionServiceTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8e7e5a16d66f9174b356b8c0af9f69dc77b62f11c201fbe4b9f1a96e506b6e7a"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TaskBaseAccessServiceTest",
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "7a185be02f0e0826a3a16902bf2eb37337c14d1919dfa7b38236b12199cd17cb"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TaskCapabilitiesServiceTest",
+      "tests": 27,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5eba63ae5a7c593b8c7fc5e84fe3815462edc2b5279c9049d6095fec1ea5d507"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TaskHttpParsingDifferentialTest",
+      "tests": 56,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "a7bce4c88ea7cdbb1445de87cfe4a4f72988d7158f14866fbe50df2c4d6bb977"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TaskIdentityServiceTest",
+      "tests": 28,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "eb2daeefe3184a3f4df68aee17134b7d88e57aa637cdb43927de5b166579890f"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TaskMetadataAccountingServiceTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "eba2ef7da8cb344fb1be0c63d2f52e7cf28c2569ff3268be31aad095f58f200b"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TaskOperationsServiceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "b23d9a24d93dfc33897b35b6bd2cbf6df376f68713564567593b1d8ef4aea0a1"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TaskResponseDifferentialTest",
+      "tests": 17,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "99c1ce0febceb7e1c6748c69152975c328258ae34022c2a4df2fc0ec43f8e704"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TodoAvailabilityServiceTest",
+      "tests": 45,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "b2b15efd9e09947d5cc1e6622d4d077f00805cbe1db550ef995ccae1912ee72c"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TodoContractTest",
+      "tests": 46,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "2c8f43f56de9d22cb380720d0d9d042e98a4c2cf7bfd9702679f845663a13376"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TodoEligibilityServiceTest",
+      "tests": 29,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "37b9edbb2ac4c2528e7ed3ff6b89a5b8d805950925241745ac01ffed703b76b8"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TodoProjectionServiceTest",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "4b6366f9c11c29b9f5e52bcb01133d7b43fac33b706a4b994332fb744ad45795"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TodoResultSourceServiceTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "52511b41d1a2ec8c70436817093f1f791af08a039d693a5e0c8437f9d53b6369"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TodoRetentionServiceTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "7b00239cc3480c444f34e4ba7c689a4d5e15cfa63719d43536ea0069b08c25aa"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TodoStorageServiceTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "cf1c193131be4a0f49229366921ffad1faf6ee87d3df06b8ef3f6673a0774a1c"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.TodoWorkflowMapperTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "71ca5647ad301ad864f680597cdb9a0f18d69bc2e6d0644851d35f5eca288ea6"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.WebFetchPluginContractTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5f8f50b08f76ba92537e2feb313e128d407d64d3750b199dda0cf75446b93065"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.WorkingDirectoryContractTest",
+      "tests": 42,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8824e56fc4b0fc898a85aad64efac5c35b47d220a16e57fa5485f638bcbd62f2"
+    },
+    {
+      "platform": "windows",
+      "name": "io.github.lovexiaopeng.jimu.contract.WorkspaceToolContractTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "ec4005aad7592efb65388cac352a1d7b7daa68e0a6f74ed75f4a92b91b24059c"
+    },
+    {
+      "platform": "posix",
+      "name": "io.github.lovexiaopeng.jimu.adapters.runtime.search.NativeSearchContractTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8952f2acbff7efe55276406c1453f067c96117c57b22f16eef45286f1913f43e"
+    },
+    {
+      "platform": "posix",
+      "name": "io.github.lovexiaopeng.jimu.adapters.storage.WorkspaceEditContractTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8119405d9617d5f80ec9f751e1fd58a68807d7f7869899611fda775598de16fe"
+    }
+  ]
+}
