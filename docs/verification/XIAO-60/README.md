@@ -1,5 +1,7 @@
 # XIAO-60 B0/B1 基础检查点
 
+> 当前逐表与B0–B5对账见[兼容门面及调用者收口](facade-callers.md)及`evidence/facade-closure.json.gz`：35表＋只读receipt的业务迁移已交，必要基础设施和具体验证缺口分别登记。下文保留原检查点事实，全OPEN不代表当前全部未迁。
+
 > 最新 B2 ModelDispatch 实现、55处旧 SQL 替换及定向证据边界见 [模型调用检查点](b2-model-checkpoint.md)。35表＋receipt仍全部 OPEN，B2 继续实施。
 
 > 本页保留 `9dabdbea` 首次基础检查点及其失败记录。`363214a` 的历史记录见 [核心业务及显式查询检查点](core-query-checkpoint.md)，B1 核心用例见 [核心工作流与路径复核](core-workflow-checkpoint.md)，媒体修复见 [媒体锁序检查点](media-lock-checkpoint.md)。当前 B2 已激活，最新实现、剩余及旧1205摘要勘误见 [B2 Mapper 部分检查点](b2-mapper-checkpoint.md)。不能将历史“未实现”说明、行号或测试数量当作新源码结论。全项仍为 in_progress。

@@ -248,7 +248,7 @@ public final class ExecutionScopeConsumptionScenario {
       javax.sql.DataSource source,
       Properties scoped,
       io.github.lovexiaopeng.jimu.adapters.persistence.ExecutionScopeBinding.Input input) {
-    call("no-scope-target", () -> ledger.executionScopes.targetRun("tenant-a", null), "OK");
+    call("no-scope-target", () -> ledger.scopeConsumption.targetRun("tenant-a", null), "OK");
     call("no-scope-consume", () -> ledger.requireScope("tenant-a", null, null, null), "OK");
     call(
         "ordinary-submit",
@@ -303,7 +303,7 @@ public final class ExecutionScopeConsumptionScenario {
         raw,
         Payloads.hash(raw),
         "local-synthetic-explicit-fixture");
-    call("receipt-target", () -> ledger.executionScopes.targetRun("tenant-a", "unused"), "OK");
+    call("receipt-target", () -> ledger.scopeConsumption.targetRun("tenant-a", "unused"), "OK");
     var run =
         db.queryForMap(
             "SELECT * FROM evaluation_budget WHERE tenant_id='tenant-a' AND id=?", req.runId());
@@ -415,7 +415,7 @@ public final class ExecutionScopeConsumptionScenario {
         req.runId());
     call("scope-recovered", () -> ledger.checkpoint(lease), "OK");
     db.update("DELETE FROM jimu_provisioning_receipt WHERE tenant_id='tenant-a'");
-    call("bound-target", () -> ledger.executionScopes.targetRun("tenant-a", null), "OK");
+    call("bound-target", () -> ledger.scopeConsumption.targetRun("tenant-a", null), "OK");
   }
 
   public static void main(String[] args) throws Exception {

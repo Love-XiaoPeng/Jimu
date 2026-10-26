@@ -90,6 +90,6 @@ final class MapperTaskBaseAccess implements TaskBaseAccess {
   }
 
   public void mcpBinding() {
-    ledger.mcp.binding(row);
+    ledger.mcpService.binding(ledger.mcpRecords.bind(row));
   }
 }

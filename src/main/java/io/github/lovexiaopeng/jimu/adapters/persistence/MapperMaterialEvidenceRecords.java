@@ -465,15 +465,15 @@ final class MapperMaterialEvidenceRecords implements MaterialEvidenceRecords {
   }
 
   public TaskImages.Snapshot imageSnapshot(Row task) {
-    return ledger.images.snapshot(unwrap(task));
+    return ledger.imageService.snapshot(ledger.imageRecords.bind(unwrap(task)));
   }
 
   public List<ImageLedger.ObjectValue> stepImages(Row task, String step) {
-    return ledger.images.step(unwrap(task), step);
+    return ledger.imageService.step(ledger.imageRecords.bind(unwrap(task)), step);
   }
 
   public ImageLedger.ObjectValue imageObject(Row task, ImagePort.Result ref) {
-    return ledger.images.object(unwrap(task), ref);
+    return ledger.imageService.object(ledger.imageRecords.bind(unwrap(task)), ref);
   }
 
   public byte[] readImage(String tenant, String key, String hash, long size) {

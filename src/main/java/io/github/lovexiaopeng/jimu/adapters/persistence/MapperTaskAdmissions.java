@@ -51,7 +51,7 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
   }
 
   public boolean mcpEnabled() {
-    return ledger.mcp.enabled();
+    return ledger.mcpRecords.enabled();
   }
 
   private List<Map<String, Object>> lookup(LambdaQueryWrapper<TaskLookupEntity> wrapper) {
@@ -81,7 +81,7 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     var found = binding(identity, key);
     String run;
     if (found.isEmpty()) {
-      run = ledger.executionScopes.targetRun(identity.tenant(), null);
+      run = ledger.scopeConsumption.targetRun(identity.tenant(), null);
       if (run == null) {
         var candidate = ledger.models.selected(identity.tenant());
         run = candidate.paid() ? ledger.models.evaluationRunId() : null;
@@ -180,7 +180,7 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     }
 
     public McpLedger.Binding bindMcp() {
-      return ledger.mcp.bind(identity.tenant(), identity.actor());
+      return ledger.mcpService.bind(identity.tenant(), identity.actor());
     }
 
     public boolean searchAvailable() {
@@ -408,7 +408,7 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
         List<TaskImages.Input> input,
         List<TaskImages.Descriptor> descriptors,
         long held) {
-      ledger.images.insert(identity, task, input, descriptors);
+      ledger.imageService.insert(identity, task, input, descriptors);
       if (held > 0) {
         sql.holdImages(ledger.queryContext(), held, identity.tenant());
         ledger.reserve(

@@ -83,15 +83,13 @@ public final class JdbcLedger
   private final io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork unitOfWork;
   private final Runnable schemaCheck;
   final ModelProfiles models;
-  final JdbcExecutionScopes executionScopes;
   final io.github.lovexiaopeng.jimu.kernel.operator.service.ExecutionScopeConsumptionService
       scopeConsumption;
   java.util.function.BooleanSupplier searchAvailable = () -> false;
-  final JdbcImageRecords images;
-  private final io.github.lovexiaopeng.jimu.kernel.media.service.ImagePersistenceService
-      imageService;
-  final JdbcMcpRecords mcp;
-  private final io.github.lovexiaopeng.jimu.kernel.mcp.service.McpPersistenceService mcpService;
+  final MapperImageRecords imageRecords;
+  final io.github.lovexiaopeng.jimu.kernel.media.service.ImagePersistenceService imageService;
+  final MapperMcpRecords mcpRecords;
+  final io.github.lovexiaopeng.jimu.kernel.mcp.service.McpPersistenceService mcpService;
   private final io.github.lovexiaopeng.jimu.kernel.search.service.NativeSearchPersistenceService
       nativeSearchService;
   private final io.github.lovexiaopeng.jimu.kernel.directory.service.DirectoryPersistenceService
@@ -1046,7 +1044,7 @@ public final class JdbcLedger
   }
 
   public void mcpSettings(io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings settings) {
-    mcp.configure(settings);
+    mcpRecords.configure(settings);
   }
 
   @Override
@@ -1185,16 +1183,14 @@ public final class JdbcLedger
             new MapperSessionTraces(this));
     sessions.scopes = sessionScopes;
     sessionScopes.invalidated = this::invalidateScopeAfterTransaction;
-    var imageRecords = new MapperImageRecords(this);
+    imageRecords = new MapperImageRecords(this);
     imageService =
         new io.github.lovexiaopeng.jimu.kernel.media.service.impl.ImagePersistenceServiceImpl(
             imageRecords);
-    images = new JdbcImageRecords(imageService, imageRecords);
-    var mcpRecords = new MapperMcpRecords(this);
+    mcpRecords = new MapperMcpRecords(this);
     mcpService =
         new io.github.lovexiaopeng.jimu.kernel.mcp.service.impl.McpPersistenceServiceImpl(
             mcpRecords);
-    mcp = new JdbcMcpRecords(mcpService, mcpRecords);
     nativeSearchService =
         new io.github.lovexiaopeng.jimu.kernel.search.service.impl
             .NativeSearchPersistenceServiceImpl(new MapperNativeSearchRecords(this));
@@ -1211,7 +1207,6 @@ public final class JdbcLedger
     scopeConsumption =
         new io.github.lovexiaopeng.jimu.kernel.operator.service.impl
             .ExecutionScopeConsumptionServiceImpl(new MapperExecutionScopeConsumption(this, db));
-    executionScopes = new JdbcExecutionScopes(scopeConsumption);
     queryTransactions =
         new io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction(
             source, persistence.manager());
@@ -1343,7 +1338,7 @@ public final class JdbcLedger
           ledger.sessionTraceEnabled,
           ledger.priorSessionSearchEnabled,
           ledger.sessions.configuration(),
-          ledger.mcp.configuration());
+          ledger.mcpRecords.configuration());
     }
 
     void apply(JdbcLedger ledger) {
@@ -1358,7 +1353,7 @@ public final class JdbcLedger
       ledger.sessionTraceEnabled = sessionTraceEnabled;
       ledger.priorSessionSearchEnabled = priorSessionSearchEnabled;
       ledger.sessions.configure(session);
-      ledger.mcp.configure(mcp);
+      ledger.mcpRecords.configure(mcp);
     }
   }
 
@@ -1809,7 +1804,7 @@ public final class JdbcLedger
     candidate.put("id", key.taskId());
     candidate.put("evaluation_run_id", key.evaluationRun());
     var evaluation =
-        evaluation(tenant, executionScopes.targetRun(tenant, s(candidate, "evaluation_run_id")));
+        evaluation(tenant, scopeConsumption.targetRun(tenant, s(candidate, "evaluation_run_id")));
     var budget = bucket(tenant);
     sessionScopes.lock(tenant, s(candidate, "id"));
     var candidates = mappers.tasks().claimExactCandidate(query, tenant, s(candidate, "id"));
@@ -2139,7 +2134,7 @@ public final class JdbcLedger
             first(mappers.tasks().selectEvaluationRun(query, lease.tenant(), lease.taskId())),
             "evaluation_run_id");
     return evaluation(
-        lease.tenant(), admission ? executionScopes.targetRun(lease.tenant(), run) : run);
+        lease.tenant(), admission ? scopeConsumption.targetRun(lease.tenant(), run) : run);
   }
 
   Map<String, Object> evaluation(String tenant, String run) {

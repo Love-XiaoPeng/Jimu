@@ -89,7 +89,7 @@ class QueryViewAssemblyTest {
               "queryTransactions",
               "transactions",
               "sessions",
-              "mcp",
+              "mcpRecords",
               "contextRecords",
               "executionService",
               "workerService",
@@ -155,7 +155,7 @@ class QueryViewAssemblyTest {
     assertSame(store, field(query, "imageStore"));
     assertSame(workspace, field(query, "directoryWorkspace"));
     assertSame(root.sessions.sensitive(), query.sessions.sensitive());
-    assertSame(mcp, query.mcp.configuration());
+    assertSame(mcp, query.mcpRecords.configuration());
     for (String name : flags()) assertEquals(true, field(query, name), name);
     // Replacement is a later snapshot; mutation through the same settings reference stays visible.
     root.sessionReadEnabled(false, List.of("replacement"));
@@ -167,8 +167,8 @@ class QueryViewAssemblyTest {
     var later = view(root, System.nanoTime() + 2_000_000_000L, null);
     assertEquals(List.of("synthetic-sensitive"), query.sessions.sensitive());
     assertEquals(List.of("replacement"), later.sessions.sensitive());
-    assertSame(mcp, query.mcp.configuration());
-    assertNotSame(mcp, later.mcp.configuration());
+    assertSame(mcp, query.mcpRecords.configuration());
+    assertNotSame(mcp, later.mcpRecords.configuration());
     assertSame(availability, query.searchAvailable);
     assertNull(field(later, "imageStore"));
     assertNull(field(later, "directoryWorkspace"));
@@ -178,10 +178,10 @@ class QueryViewAssemblyTest {
     }
     var values = new java.util.HashMap<String, Object>();
     environment.getPropertySources().addFirst(new MapPropertySource("mutable", values));
-    assertFalse(query.mcp.configuration().enabled());
+    assertFalse(query.mcpRecords.configuration().enabled());
     values.put("jimu.mcp.enabled", true);
-    assertTrue(query.mcp.configuration().enabled());
-    assertThrows(IllegalStateException.class, () -> query.mcp.configuration().hostId());
+    assertTrue(query.mcpRecords.configuration().enabled());
+    assertThrows(IllegalStateException.class, () -> query.mcpRecords.configuration().hostId());
   }
 
   @Test
@@ -194,7 +194,7 @@ class QueryViewAssemblyTest {
     assertNull(field(query, "directoryWorkspace"));
     assertEquals(
         "SESSION_EVENT_UNSAFE", assertThrows(TaskFailure.class, query.sessions::sensitive).code());
-    assertSame(root.mcp.configuration(), query.mcp.configuration());
+    assertSame(root.mcpRecords.configuration(), query.mcpRecords.configuration());
   }
 
   @Test

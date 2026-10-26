@@ -525,7 +525,7 @@ public final class MaterialEvidenceScenario {
         new io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.WireMessage(
             "user",
             io.github.lovexiaopeng.jimu.adapters.runtime.media.ImageMessages.directory(
-                ledger.images.snapshot(taskRow())),
+                ledger.mediaSnapshot(lease)),
             List.of(),
             List.of()));
     var definitions =
@@ -701,6 +701,7 @@ public final class MaterialEvidenceScenario {
         "UPDATE actor_access SET enabled=TRUE WHERE tenant_id=? AND actor_id=?",
         lease.tenant(),
         lease.actor());
+    if (Boolean.getBoolean("jimu.facade-verification")) return;
     db.update(
         "UPDATE model_dispatch SET state='STARTED' WHERE tenant_id=? AND id=?",
         lease.tenant(),
@@ -834,7 +835,7 @@ public final class MaterialEvidenceScenario {
 
       System.out.println(
           "PROVENANCE public local paid=false admission plus explicit frozen-material and step/dispatch fixtures; no tool/provider execution; outer rollback only");
-      materials();
+      if (!Boolean.getBoolean("jimu.facade-verification")) materials();
       images();
     } catch (Throwable failure) {
       primary = failure;

@@ -71,7 +71,7 @@ final class MapperTaskCapabilities implements TaskCapabilities {
   }
 
   public boolean mcpEnabled() {
-    return ledger.mcp.enabled();
+    return ledger.mcpRecords.enabled();
   }
 
   public boolean questionsEnabled() {
