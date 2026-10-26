@@ -1732,9 +1732,14 @@ public final class JdbcLedger
     taskOperations.closeQuestions(taskOperationRecords.row(task), code);
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.PendingQuestionMessagesService
+      pendingQuestionMessages =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl
+              .PendingQuestionMessagesServiceImpl();
+
   @Override
   public List<String> pendingQuestionMessages(Lease lease) {
-    return leaseTx(lease, () -> questionMessages(fenced(lease, true)).values().stream().toList());
+    return pendingQuestionMessages.pending(lease, new LedgerPendingQuestionMessages(this));
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionMessagesService
