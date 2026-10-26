@@ -2,4 +2,5 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.question.mapper.QuestionMessagesMapper">
  <select id="pending" resultType="java.util.LinkedHashMap"><![CDATA[SELECT q.*,i.provider_id FROM user_question q JOIN invocation i ON i.tenant_id=q.tenant_id AND i.id=q.invocation_id WHERE q.tenant_id=#{tenant} AND q.task_id=#{task} AND q.delivery_state='PENDING' ORDER BY q.accepted_seq]]></select>
+<update id="checkpoint"><![CDATA[UPDATE user_question SET delivery_state='CHECKPOINTED',delivery_step_id=#{step} WHERE tenant_id=#{tenant} AND id=#{question} AND delivery_state='PENDING']]></update>
 </mapper>

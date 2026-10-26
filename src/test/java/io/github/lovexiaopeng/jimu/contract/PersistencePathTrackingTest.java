@@ -87,6 +87,14 @@ class PersistencePathTrackingTest {
         assertEquals(
             "SELECT * FROM evaluation_execution_scope WHERE tenant_id=#{tenant} AND run_id=#{run}",
             mapper.path("sql").asText());
+      else if (mapper
+          .path("id")
+          .asText()
+          .equals(
+              "io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskMapper.selectSessionOwner"))
+        assertEquals(
+            "SELECT * FROM task WHERE tenant_id=#{tenant} AND id=#{task} AND owner_actor_id=#{actor} FOR UPDATE",
+            mapper.path("sql").asText());
       else assertTrue(!mapper.path("sql").asText().matches("(?is).*SELECT\\s+(?:\\w+\\.)?\\*.*"));
     }
     for (var entry : capture.path("baseline").path("entries")) {

@@ -9,6 +9,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /** B1 具名记录端口；只保留同事务SQL及尚待B3/B4迁移的模块校验，B2替换真实Mapper。 */
 final class JdbcExecutionRecords implements ExecutionRecords {
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionDeliveryService
+      questionDeliveries =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl
+              .QuestionDeliveryServiceImpl();
   private final JdbcLedger ledger;
   private final JdbcTemplate db;
 
@@ -168,27 +172,8 @@ final class JdbcExecutionRecords implements ExecutionRecords {
                   lease.tenant(),
                   stepId);
         }
-        if (ledger.questionTask(task)) {
-          var wire =
-              Payloads.read(
-                  request,
-                  io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Checkpoint.class);
-          for (var pending : ledger.questionMessages(task).entrySet()) {
-            if (wire.messages().stream()
-                .anyMatch(m -> m.role().equals("user") && pending.getValue().equals(m.content()))) {
-              if (db.update(
-                      "UPDATE user_question SET delivery_state='CHECKPOINTED',delivery_step_id=? WHERE tenant_id=? AND id=? AND delivery_state='PENDING'",
-                      stepId,
-                      lease.tenant(),
-                      pending.getKey())
-                  != 1) throw new TaskFailure(409, "QUESTION_DELIVERY_CONFLICT");
-            }
-          }
-          ledger
-              .mappers
-              .tasks()
-              .clearQuestionContinuation(ledger.queryContext(), lease.tenant(), lease.taskId());
-        }
+        questionDeliveries.prepare(
+            stepId, request, new MapperQuestionDeliveries(ledger, task, lease));
       }
 
       public void preparedEvent(String step) {

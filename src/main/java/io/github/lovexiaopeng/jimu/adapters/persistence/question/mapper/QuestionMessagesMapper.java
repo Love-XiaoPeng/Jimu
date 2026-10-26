@@ -8,6 +8,12 @@ import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface QuestionMessagesMapper {
+  int checkpoint(
+      @Param("query") SessionQueryContext query,
+      @Param("step") String step,
+      @Param("tenant") String tenant,
+      @Param("question") String question);
+
   List<Map<String, Object>> pending(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,

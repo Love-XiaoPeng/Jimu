@@ -123,6 +123,9 @@ public final class JdbcLedger
     sessionSearchEnabled = enabled;
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionOwnerService
+      sessionOwners =
+          new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionOwnerServiceImpl();
   final JdbcSessionRecords sessions;
   final JdbcSessionScopes sessionScopes;
   boolean priorSessionSearchEnabled;
@@ -310,22 +313,7 @@ public final class JdbcLedger
   }
 
   Map<String, Object> sessionOwner(Identity identity, String taskId) {
-    if (!taskId.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))
-      throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
-    // Same lock order as worker commits: bucket -> task -> actor/installation -> history.
-    bucket(identity.tenant());
-    sessionScopes.lock(identity.tenant(), taskId);
-    var found =
-        rows(
-            "SELECT * FROM task WHERE tenant_id=? AND id=? AND owner_actor_id=? FOR UPDATE",
-            identity.tenant(),
-            taskId,
-            identity.actor());
-    if (found.isEmpty()) throw new TaskFailure(404, "SESSION_EVENT_NOT_FOUND");
-    var task = found.getFirst();
-    if (!JdbcSessionScopes.task(task)) identity(identity);
-    access(task);
-    return task;
+    return sessionOwners.owner(identity, taskId, new MapperSessionOwners(this));
   }
 
   <T> T sessionOwnerRead(java.util.function.Supplier<T> work) {
