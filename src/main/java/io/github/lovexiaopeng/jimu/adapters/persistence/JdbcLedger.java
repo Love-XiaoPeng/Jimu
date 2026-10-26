@@ -1577,60 +1577,21 @@ public final class JdbcLedger
     return questionVisibility.visible(new MapperQuestionVisibility(this, identity, taskId));
   }
 
+  private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionListingService
+      questionListing =
+          new io.github.lovexiaopeng.jimu.kernel.question.service.impl.QuestionListingServiceImpl();
+
   @Override
   public Map<String, Object> listQuestions(Identity identity, String taskId) {
-    return tx(
-        () -> {
-          bucket(identity.tenant());
-          var task = questionVisible(identity, taskId);
-          if (!questionTask(task)) return Map.of("version", 1, "items", List.of());
-          Instant now = questionNow();
-          var items = new java.util.ArrayList<Map<String, Object>>();
-          for (var q :
-              rows(
-                  "SELECT q.*,i.provider_id FROM user_question q JOIN invocation i ON i.tenant_id=q.tenant_id AND i.id=q.invocation_id WHERE q.tenant_id=? AND q.task_id=? ORDER BY q.ordinal",
-                  identity.tenant(),
-                  taskId)) {
-            var item = new java.util.LinkedHashMap<String, Object>();
-            item.put("requestId", s(q, "id"));
-            item.put("questionVersion", n(q, "question_version"));
-            item.put("revision", n(q, "revision"));
-            item.put("invocationId", s(q, "invocation_id"));
-            item.put("callId", s(q, "provider_id"));
-            item.put("mode", s(q, "mode"));
-            item.put("phase", s(q, "phase"));
-            item.put("questions", questionInput(q, task).questions());
-            item.put(
-                "foregroundDueAt",
-                q.get("foreground_due_at") == null
-                    ? null
-                    : time(q, "foreground_due_at").toString());
-            item.put("answerExpiresAt", time(q, "answer_expires_at").toString());
-            item.put(
-                "answerable",
-                questionsEnabled
-                    && !view(task).terminal()
-                    && task.get("cancel_requested_at") == null
-                    && now.isBefore(time(q, "answer_expires_at"))
-                    && List.of("OPEN", "CONTINUED").contains(s(q, "phase")));
-            if (q.get("answer_id") != null) {
-              item.put("answerId", s(q, "answer_id"));
-              item.put("answeredBy", s(q, "answered_actor_id"));
-              item.put("answeredAt", time(q, "answered_at").toString());
-              item.put(
-                  "answers",
-                  Payloads.read(
-                      s(q, "answer_snapshot"), com.fasterxml.jackson.databind.JsonNode.class));
-              item.put("deliveryState", s(q, "delivery_state"));
-            }
-            if (q.get("close_code") != null) item.put("closeCode", s(q, "close_code"));
-            items.add(item);
-          }
-          var result = Map.<String, Object>of("version", 1, "items", items);
-          if (Payloads.json(result).getBytes(java.nio.charset.StandardCharsets.UTF_8).length
-              > 524288) throw new TaskFailure(409, "QUESTION_RESPONSE_TOO_LARGE");
-          return result;
-        });
+    return questionListing.list(
+        new MapperQuestionListing(
+            this,
+            identity,
+            taskId,
+            work -> tx(work),
+            () -> questionVisible(identity, taskId),
+            this::questionNow,
+            (q, task) -> questionInput(q, task).questions()));
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.question.service.QuestionInputService
