@@ -1,0 +1,946 @@
+{
+  "base": "26f1c23be0c155c9b9c69126e66f9dbf394bc946",
+  "meaning": "Imports/comments/format ignored; named constant references expand to their exact literals. Only documented compile-time arithmetic/casts are folded. SQL/string bytes remain intact.",
+  "records": [
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/DurableAgent.java",
+      "equivalent": true,
+      "sha256": "9c74bf7ff0fa0a2ba538465b781d4f6c5cbc328cdaa45aff7422621d895117de"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/HostInvocationGateway.java",
+      "equivalent": true,
+      "sha256": "a8a3a5a7cb923dd347b60ce6b0afbfe4684e06e6c1ad611b73ce0d0b19e92b25"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/HostToolDefinitions.java",
+      "equivalent": true,
+      "sha256": "5ab70d1f19139e32590531bf5cfd21b64033b9ecf40e7329312028106516a750"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/ai/springai/OpenAiProtocol.java",
+      "equivalent": true,
+      "sha256": "fa89c20c5773b39776ee3b3408f0444bc5150219534674a1c4b99c62fc0f3446"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcExecutionRecords.java",
+      "equivalent": true,
+      "sha256": "e4fa35c3d95934a0b9c5bd157e733e7d40e149a7e76637364eedc9c40bfebb6a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcLedger.java",
+      "equivalent": true,
+      "sha256": "d2352e0e4c4c252474257c3e89269dc7d9916412e39438ed0995aa6ae356dfa4"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java",
+      "equivalent": true,
+      "sha256": "e90a87b4e15a6f1d85e85537adc87883b390003505d27ae2b1a736dc79c13623"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionScopes.java",
+      "equivalent": true,
+      "sha256": "6c2b31793981410131e3b8ce8c9a7314f4e2449cebc79140a803858ccaf2f212"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/LedgerQuestionInput.java",
+      "equivalent": true,
+      "sha256": "e3569d13f61f9f2cd636717f4106a648ebb814ac77ea27fe392c9248238eef83"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperArtifactPublications.java",
+      "equivalent": true,
+      "sha256": "faf9446d328db3b0acb90b4d6be1f62e2044f41e42eabe81b2795ce73133d16f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperDirectoryAvailability.java",
+      "equivalent": true,
+      "sha256": "e714f9a4711a96ddff5db457635b542f8f3b4054a1dba613937f930f934b950f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperDirectoryEligibility.java",
+      "equivalent": true,
+      "sha256": "2ba6ccbd73440f125e16c3f8cc9ae2ac69e0b97f9d2d3483d2c92fd969bc8084"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperDirectoryRetentions.java",
+      "equivalent": true,
+      "sha256": "277989ef00f4f42d2704561712cc5ecb50e2279d269e0c72ff0b4e969d3f2632"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperInvocationRecords.java",
+      "equivalent": true,
+      "sha256": "867ac178b2f552fb7ed36ac2bba2163c178cfeeecd34937f537016adcfc9e35c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperInvocationWorkflows.java",
+      "equivalent": true,
+      "sha256": "ef4457665958581707f604de2abe519e550ca9cac57bce137090f6a0c04dabb2"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperMediaRetentions.java",
+      "equivalent": true,
+      "sha256": "1283f521d3b15b83b0f6e7f9afed59c561c7cc9972aa9a5daf1e18808b80c85e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperModelWorkflows.java",
+      "equivalent": true,
+      "sha256": "05ac23b6610713d25d385e41ce890e6cc72a6a5b4d318ab14a8233bb4012231c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperQuestionContinuation.java",
+      "equivalent": true,
+      "sha256": "2e46116a8db248e5566f5379fafdd35a54ded84a20faa91f0a6703b9d1211c03"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperQuestionEligibility.java",
+      "equivalent": true,
+      "sha256": "3b72a7f218e5f6b485f0ae6fe18bce4d01c837e79a7bb808406e601d7685bc43"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperQuestionOpening.java",
+      "equivalent": true,
+      "sha256": "e8be5e2f3260e9e4444a26d8c8e09cb0815fddbc5ba3c2d856c3bd984b3bc140"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperQuestionToolResult.java",
+      "equivalent": true,
+      "sha256": "0aa33d175fa0cc2c89a5f8a620dde11b0a86f42c54a6d5422b09ab8b819f5fe0"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperReportPublications.java",
+      "equivalent": true,
+      "sha256": "cfd6ea5f7d3d6925d757f4707235cd0dfe67bfbcd3104f55bc0ae74c433cd0a7"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperScopeBindingRecords.java",
+      "equivalent": true,
+      "sha256": "4e03e6f7ae3fd146afc79adea011874c41d6a668ab287e777a54820cd1d6ec4b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionAvailability.java",
+      "equivalent": true,
+      "sha256": "9a09ceb9f169d2f4bba2bb23ba7e25510651774c38bcbebd4c9d90c23aad9981"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionCallBindings.java",
+      "equivalent": true,
+      "sha256": "b70f072d75b9eb329c726c9dd50414a6851f168bd810132db98195da4cf73f31"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionEligibility.java",
+      "equivalent": true,
+      "sha256": "4cd1fb86fec5f0d86c6070e1f8db5d2c6abec283870101e983a926391cba55d9"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionFacts.java",
+      "equivalent": true,
+      "sha256": "db218b46fc95b075870265d4e494693e132a220cca606e830deb6fec3c6e2190"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionHistoryRetentions.java",
+      "equivalent": true,
+      "sha256": "bfacbceb7903f2c27d2e157d4b49b66f9abb39d71b0dc83e4a05e653f3d4c8f7"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionReadRelationProofs.java",
+      "equivalent": true,
+      "sha256": "0c96266ede88d8c124198d8853ada672d24b1487f06ec0d06072923324896513"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionReads.java",
+      "equivalent": true,
+      "sha256": "95065400c9a4c226b5d55b490832cd52d181b92b742d148c39a43aba5bd1ee11"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeMaintenanceRecords.java",
+      "equivalent": true,
+      "sha256": "53ce74635d3f8095405cbe90dbb4ed967a45f340bbfda7fecfde4d8c4e640684"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeQueries.java",
+      "equivalent": true,
+      "sha256": "868038b87a0f34102fceb34f1afaffa1c5ad593092790b1fd1987b6d6fce224a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionScopeReadProofs.java",
+      "equivalent": true,
+      "sha256": "2e5b1645d0a7db497b7daac1a7bdd8111abd0923fcabd84785e1fbf240408183"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionSearches.java",
+      "equivalent": true,
+      "sha256": "49bd68ea0ef6e27cb219bb07c1a24cb80b3d0b6f7d8a03af704124e57eecb96f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionTraces.java",
+      "equivalent": true,
+      "sha256": "baa0f9b5b5d6af319d55689f3582011c63a365db1659349b89cdd1f958b959b5"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTaskAdmissions.java",
+      "equivalent": true,
+      "sha256": "c4c3ccb8fcbc70bddeeddd173375a88835286f1d97b1262a726623a60c79a3cf"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTaskOperations.java",
+      "equivalent": true,
+      "sha256": "a0e747794a9bc5ebd9ee82c2a3fe4cde02b1ebb76903e4bb37b9307e7945cfa5"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTodoAvailability.java",
+      "equivalent": true,
+      "sha256": "0943e6208ef57a205edd6c0111ca2c44199d7747b4257cd07252f701cc9776fd"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTodoEligibility.java",
+      "equivalent": true,
+      "sha256": "59ebf0c5daf50fea97a378f8269d8b0a5ab71b8fdfb6fe567a30f75b9320b75c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTodoProjections.java",
+      "equivalent": true,
+      "sha256": "65527dc6dd02f296a42e613d69ade193597b778d9b223db5832d1369da072a62"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperTodoRetentions.java",
+      "equivalent": true,
+      "sha256": "4bf7dd9a2e15aed0cc926050c58846bae3d0d79d6e1e0430cbf6be4cd0f1f3aa"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/WebFetchReceipts.java",
+      "equivalent": true,
+      "sha256": "d886d9655f77594f8d735a3ee520606c9776dc0168e03d642910ffa34cdb3f66"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/BuiltinManifestLoader.java",
+      "equivalent": true,
+      "sha256": "da54ed027d01feedd0fad83f695bc70e96128656746932b8caa6ffa3c28ad33e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ImageReportComposer.java",
+      "equivalent": true,
+      "sha256": "104ea927c3905342524276fe43c8a80dcecec9a69265e1e51c49e9165ec25f1b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/ReportComposer.java",
+      "equivalent": true,
+      "sha256": "da6fab26cee666b4fbe9eec46c55e66c904fa7da8dd5fda241a8bc43ff3d3d71"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceContracts.java",
+      "equivalent": true,
+      "sha256": "6aeeb7381d832ae8fb33c422564376806a31d2de8d96e490f4588d5ff37aca6b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/contract/WorkspaceRuntime.java",
+      "equivalent": true,
+      "sha256": "5b3845825a8634f1640805a4226499d1b61171b3718af45c297710e36d7b5b44"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryContracts.java",
+      "equivalent": true,
+      "sha256": "ff36a3ae8d89238e80ec2beb11008162b0ec52523324ff8ac7e422d213df7fb1"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryPaths.java",
+      "equivalent": true,
+      "sha256": "df77eb8775b22cc92c96677963cfe4a3d161b17f96bb05f12b46b0bc58da6ae8"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/directory/DirectoryRuntime.java",
+      "equivalent": true,
+      "sha256": "7d36a5f84b9dc2ef7c829d7439e49c42513e8453b6c0fe082b76590c35368ffa"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/events/DatabaseEventFeed.java",
+      "equivalent": true,
+      "sha256": "42f1a379889ee52c9c903eaa17a46e1d348e0cda25c46c6af82eb10dc47c2721"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/http/ProviderHttp.java",
+      "equivalent": true,
+      "sha256": "d9ff32fe8d9392a1d05a6b170824b6a36434dde1a285c1f785cbc0c800eab446"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/identity/SignedIdentity.java",
+      "equivalent": true,
+      "sha256": "4266977e695d4e8c5a5ef5ba48531036d1de861553bbab52c2636909538102af"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/interaction/QuestionContracts.java",
+      "equivalent": true,
+      "sha256": "12923b8abcb150d6acedca523f74dc9d4e81d86b91467bfab19c61d9b240536a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpPolicy.java",
+      "equivalent": true,
+      "sha256": "30f7ad47094690ae8d5de9704c90a6c7b16dbb171602b6381b02e52381cd234f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpRuntime.java",
+      "equivalent": true,
+      "sha256": "9dfcbc3ef90f3de544180ed8a9d2821efbe422d0283e6539964bf2d311348ef1"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpSettings.java",
+      "equivalent": true,
+      "sha256": "3a7cd019d8a0264ec0ad767dcfe8df60286bdb09803dc635d94922944cb13c3d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/mcp/McpWire.java",
+      "equivalent": true,
+      "sha256": "857f44ac92b854631deda1bd5afcee7540565ccbce5be757972db956d195109b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageInputs.java",
+      "equivalent": true,
+      "sha256": "2e68de595cb5af1e3302fb8c40357f25101dd7a4becdcc61e0fe30737a805b42"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageNormalizer.java",
+      "equivalent": true,
+      "sha256": "463dc695fe58b5f4f091796622ccf9642bbaa994b26ba0314539c90ad2a1ed66"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/media/ImageRuntime.java",
+      "equivalent": true,
+      "sha256": "459c0a68151fdaf1dd0149ecb8ba24cfdd6ebf3dc81ec3908490f79ba6c418a7"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/BusinessPolicies.java",
+      "equivalent": true,
+      "sha256": "8565dde36576f1f70a3c434ad01b420fba2b211e709554db74c8d1bb792cdaaf"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/EvaluationMaterials.java",
+      "equivalent": true,
+      "sha256": "986f1ddb6bf72b993a07ff8274669bdb073ce77a610f1f71d4e1847001855f0c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelImages.java",
+      "equivalent": true,
+      "sha256": "502521b9dfc65f162025a50267cb2b21838247a17d82ae2c857e33b6e8ca29fb"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelInputBounds.java",
+      "equivalent": true,
+      "sha256": "ba5de68b244b96147395cf6972de0fab765d994238a8b85cf3df9d4836258557"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/model/ModelProfiles.java",
+      "equivalent": true,
+      "sha256": "e78781ce88d55b9dac48449677f9a3815e4da37ab454f9052abefb5f1af2f224"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeResults.java",
+      "equivalent": true,
+      "sha256": "1f99cc22608977affaf7208802bc30df975042c282ea91123d3945e8ed1848e2"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeRunner.java",
+      "equivalent": true,
+      "sha256": "e3ed7aa711f7e44f0857fb6d4010e123ae2663e7a6b6c8dff6d13c9981184f04"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchQuery.java",
+      "equivalent": true,
+      "sha256": "ecd248e0fbeb76a8424908234704e9233e42cd61b86d85fcb3c1ccbab02426df"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/NativeSearchRuntime.java",
+      "equivalent": true,
+      "sha256": "74be9a2fdb6df409ebe8ca1672fcc224943e8f9e9660c3575d47be1324c06678"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/search/SearchFiles.java",
+      "equivalent": true,
+      "sha256": "91ed4751436a9c1a90d2dcee98e8392fe6e4ae183281ceccb7b998c33cbab4c9"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionContracts.java",
+      "equivalent": true,
+      "sha256": "7cff3e36436172a2d5d76c2bf5f04864e423cd2ec3b0fd30c7dd79460e04294e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/PriorSessionMatcher.java",
+      "equivalent": true,
+      "sha256": "4c3bb62813396e8bb0c8b44f037caf75a977be28d68221da8c80983b49138e39"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionContracts.java",
+      "equivalent": true,
+      "sha256": "9ab20abcf9e425b39976205abcc785f0e402a7cc2940b6845209a0eed20622aa"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchBodyFilter.java",
+      "equivalent": true,
+      "sha256": "57e2ef3add4482d91858c998aad714f4e7cfc69282aeed47beaa7ad580e926ae"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchContracts.java",
+      "equivalent": true,
+      "sha256": "d7d5bf882ba33762a80dc921b75cb1ad71a040a94e29be9abcd9482a956b288d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionSearchMatcher.java",
+      "equivalent": true,
+      "sha256": "144c924c0f0aae20f0b7c955b3d3f065ccc03c70e9629d25991216162e932c6d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/session/SessionTraceContracts.java",
+      "equivalent": true,
+      "sha256": "86682a2d0ad2626c857ed5f8c21cb98455d58549011c4cff1dcbe49230880e24"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/todo/TodoContracts.java",
+      "equivalent": true,
+      "sha256": "e1cadd6ed35a4bd43607709a316091541df3bdd1e0dee180dafc748c76a59ede"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/DisabledSearch.java",
+      "equivalent": true,
+      "sha256": "06c85cdf800b2e2585ffc06547e6ca6f5b549b447f311bb4ecc44980ca663607"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/web/FetchRuntime.java",
+      "equivalent": true,
+      "sha256": "aa1ef96a2918a126fd1abaed11c7bab5037c2fe50848784b1d7c2c45d19d8d40"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/LedgerMaintenance.java",
+      "equivalent": true,
+      "sha256": "f96bb83053689414b6abf63fe56acec4b38b2112cf6315c8638e0a8fe27909e5"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/runtime/worker/WorkerLoop.java",
+      "equivalent": true,
+      "sha256": "59125806af66f93381a87fbb050392aea43c51212e646457f055abdd9454eeae"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureImageStore.java",
+      "equivalent": true,
+      "sha256": "28d1af707daa52669343351a66ff1449678f3e4fa9c42d9c5eb0fd3fc257d9bc"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/adapters/storage/SecureWorkspaceStore.java",
+      "equivalent": true,
+      "sha256": "8b51e1a5c862352959c95ad6a1c8a7c73ed97a67746f6e9c6916e01e24384980"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/SessionHistoryController.java",
+      "equivalent": true,
+      "sha256": "017a690203973b61cf40c329e3cd475bddb79e52a681fd669cf81de3aebcd6d0"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/SessionSearchController.java",
+      "equivalent": true,
+      "sha256": "ee2372bf825be644c4c4042b93b49b342f5db43d060a3b664cafface4a5a745c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskController.java",
+      "equivalent": true,
+      "sha256": "08af40a90da0fcbd55c0f17ee5aa9703a32cb65ed7cc7332560ef2ab745efb81"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/TaskErrors.java",
+      "equivalent": true,
+      "sha256": "b26c28a335c6796100d8689bd94a495e88aa9f0306b317cc438c5e4728a087ab"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/WorkingDirectoryController.java",
+      "equivalent": true,
+      "sha256": "d8aec56bda2abe07691ad11364d8f82aebd193a4336c0ada80f1f5a9681e5413"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/interaction/dto/QuestionAnswerRequestDecoder.java",
+      "equivalent": true,
+      "sha256": "f6214f9db99dac8a9566081ffc87155b2787cb7fb7070e8bfbff445a0b661ffc"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/session/dto/SessionEventRequest.java",
+      "equivalent": true,
+      "sha256": "a425fb42279cbe9b4ba6207d0f07dcc613acac66667b657ad6e59715ce9abe25"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/session/dto/SessionHistoryHttpRequest.java",
+      "equivalent": true,
+      "sha256": "a312a110e85d2c7c799b8f5c61eb9ee9db9efd8cbe253812e8eeb3c7b69b995b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/task/dto/TaskEventCursor.java",
+      "equivalent": true,
+      "sha256": "52b0936720820be5aeadca318bfe96b9da45b2b76f9ae13f7ab66647291b942f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/api/task/dto/TaskRequestDecoder.java",
+      "equivalent": true,
+      "sha256": "befa97db1cfd0fc204aa1b2c819686b8b94c52ab42a3065ec4a000fc9569219b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/domain/ReportValidationPolicy.java",
+      "equivalent": true,
+      "sha256": "a5cb7e41dd52618f8cdfabe8962976adedc4fab32bda808b096ca2a815bd159c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/service/impl/ArtifactAccessServiceImpl.java",
+      "equivalent": true,
+      "sha256": "a0d6beef7ccafde94bec488d6f0ae7c5fcab13eae2eb50c322bfc25164635cf3"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/service/impl/ArtifactPublicationServiceImpl.java",
+      "equivalent": true,
+      "sha256": "92b03133982fc44060ef281e835acd8bf9d164cb6f19d7200f3c938602633c7f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/service/impl/ArtifactRetentionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "9146f5bdc49ac07594e6338b8e11208c56d4a6a5cd73b366dd62758c3edb0791"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/service/impl/MediaRetentionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "9b7bb5921f2fdbc8c42a3ba621d2d37fc965137f84ac08ed54bf17563467821b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/service/impl/ReportContextServiceImpl.java",
+      "equivalent": true,
+      "sha256": "129f3725ba26652329b4f20d766175a18edaffa15a85dd1d89ecbccfefc04b3e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/artifact/service/impl/ReportPublicationServiceImpl.java",
+      "equivalent": true,
+      "sha256": "0aabf4164bb6e7301a704072d7b230cace2b1cf1a1b97f41cb35c4ec73ffd1ea"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/api/DirectoryStorageLimit.java",
+      "equivalent": true,
+      "sha256": "11e7c3f2f1bd7412317d1332682fbc4f2ef16eb6f8123e7ad2389bbc628d7d82"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/service/impl/DirectoryAdmissionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "67d81da72f9a248e6f2ba3bae55bad505cfbe96e4954f156952e682970f28c38"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/service/impl/DirectoryAvailabilityServiceImpl.java",
+      "equivalent": true,
+      "sha256": "60faeff479b30922447081acf19d0de554736b7bca0b76a9b3eb7ccfab91ccc7"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/service/impl/DirectoryEligibilityServiceImpl.java",
+      "equivalent": true,
+      "sha256": "099359be566521f5cef87c35f00e30cecc9989b66660a46bad9ecc782af6f1f7"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/service/impl/DirectoryPersistenceServiceImpl.java",
+      "equivalent": true,
+      "sha256": "9d670d4a18f88b6035ad0db330fa137fd7594420f65f16406faf4a3da9e52a09"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/directory/service/impl/DirectoryRetentionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "2bc8b49882829548585fa5fad47cdf37ca546f36783eb314e30f492e3c4fe480"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/execution/service/impl/CommitFenceServiceImpl.java",
+      "equivalent": true,
+      "sha256": "1f4218ea8f3b154e86d786ebf07e1b9040145533f90745b98dcd214c25601627"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/execution/service/impl/ExecutionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "a2142a73a554fa677b1aa1df9970cb3cbc88b5c00f74676d1b5c83964440da65"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/invocation/service/impl/InvocationServiceImpl.java",
+      "equivalent": true,
+      "sha256": "cb4034b6e34574417155eb697d06b4ca9bc925283e30cd311fdf02821b93595d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/invocation/service/impl/WebFetchServiceImpl.java",
+      "equivalent": true,
+      "sha256": "b5c9a1f7698677be94073f8353cd8185de7b9f9d321200af696a44933722c62e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/mcp/service/impl/McpPersistenceServiceImpl.java",
+      "equivalent": true,
+      "sha256": "43a37488710c0ac64f725a7798d084d9f4921d8a7d83693dcb7ca647fc611a4d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/mcp/service/impl/McpRetentionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "7f8fd00b09aeaa0256e0fa0da7a77a6977fd199845ce15ad0e98b49836898086"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/media/service/impl/ImagePersistenceServiceImpl.java",
+      "equivalent": true,
+      "sha256": "ec23f9e8307c135eb68e7b72917594d84fabee46ce413f0177675cc67b2d2540"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/service/impl/EvaluationBindingServiceImpl.java",
+      "equivalent": true,
+      "sha256": "9b32dc45f833009711c22074207d93fc9c71ac83f2bf35d492def4eb44013569"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/service/impl/MaterialEvidenceServiceImpl.java",
+      "equivalent": true,
+      "sha256": "acf89d623265e0d0a18c3c24874bbbbec7e280bc764a36eaf860fcaa9b24fffa"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/service/impl/ModelCostSettlement.java",
+      "equivalent": true,
+      "sha256": "217851d61d464cf45f1585b6287fc16aed674a463624ad596dd94536d14e9d21"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/service/impl/ModelDispatchServiceImpl.java",
+      "equivalent": true,
+      "sha256": "ef2e16985903c0eb24fdc54506af0ac6cf77592f2c2cbc3b09e3cb3b336e4d1a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/model/service/impl/ModelEvaluationAdmission.java",
+      "equivalent": true,
+      "sha256": "a30991b85375a8420254bfd6e66983ef318a120c0d2a86e93377e4edd7b252b3"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/service/impl/ExecutionScopeConsumptionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "02096f95ce195c2d4b55b2a6e80d6998322cce19962491f50491008f4906d4ce"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/service/impl/ExecutionScopeServiceImpl.java",
+      "equivalent": true,
+      "sha256": "9c9a8cda98a1d43828d364e3d52b11651b5fed68c25be6517e3cf1f378516d8f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/operator/service/impl/WebResultAssessmentServiceImpl.java",
+      "equivalent": true,
+      "sha256": "810f08ed7a0e058b6beb25aa85f69bb2ab1362536b27e80c7dfdbcb0ee92edcf"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionAnswerServiceImpl.java",
+      "equivalent": true,
+      "sha256": "43bc1c01eed2c9a36773e168c58e6a777ebb3e8b39ca3494e991bd38afa7ca01"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionAuthorizationServiceImpl.java",
+      "equivalent": true,
+      "sha256": "4446133c545c3372e94a1906cd6fa80d56b7dcca81439cf1bb7ae482d90505ef"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionContinuationServiceImpl.java",
+      "equivalent": true,
+      "sha256": "e3d393056bb927406c9981e19a1faf269d8e00895fa4406d517701c95dc26d3c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionDeliveryServiceImpl.java",
+      "equivalent": true,
+      "sha256": "2a1110fec61396d97f1b0b8a1bff2aa16986cf520b4aeb26640e2adbc37eec97"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionEligibilityServiceImpl.java",
+      "equivalent": true,
+      "sha256": "f7cd2911842a053789cbb75d9db5752de706aa975e672e36076331578de6a86a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionInputServiceImpl.java",
+      "equivalent": true,
+      "sha256": "6ce795671470339a21b8700a5c5bc1e399d9bb677bffb381565c487f32514140"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionListingServiceImpl.java",
+      "equivalent": true,
+      "sha256": "c8df869c912fed41f2752e7a7df54af10d6de6d86afe2fbccc219570c7649346"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionMaintenanceServiceImpl.java",
+      "equivalent": true,
+      "sha256": "15bbd19863a729a424c1f9e9f04a8666f503e06f83ade76b19ca4fe20cf1ecb6"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionMessagesServiceImpl.java",
+      "equivalent": true,
+      "sha256": "091aee2f66290f1ba0e3cb87479f098f5c5580ed5ed8f23eb4329656d75f418f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionOpeningServiceImpl.java",
+      "equivalent": true,
+      "sha256": "0c92bd11064116165cb0df7407ebac144ab9705ec64fe46085f92d53fef5497f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionPauseServiceImpl.java",
+      "equivalent": true,
+      "sha256": "fd29eb2001bb2adf6ec61708a8fdbe3253c1200a2805626a0d4236527e28ede7"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionResumeServiceImpl.java",
+      "equivalent": true,
+      "sha256": "833108c80174b3e6aac3bc8e8ab2ea2dba37213429b81e7802a56132f538c228"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionStorageServiceImpl.java",
+      "equivalent": true,
+      "sha256": "1089184730f8d3879171daacddcb111245b44b76f1920e023cace346f4e715f5"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionToolResultServiceImpl.java",
+      "equivalent": true,
+      "sha256": "3bdcd529655ffe882c996987aafdf8e9b7a79f51707ed65fde8bca2868622f20"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/question/service/impl/QuestionVisibilityServiceImpl.java",
+      "equivalent": true,
+      "sha256": "2bb7539f7b4fcf741da19e11d07563e4249d9c636715faec7374e2c5bd73b732"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/search/service/impl/NativeSearchPersistenceServiceImpl.java",
+      "equivalent": true,
+      "sha256": "bb52eb9481c1449b6bf7b02428783f52b6f43012165c2fc5193fc835cc187cc9"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionCallBindingServiceImpl.java",
+      "equivalent": true,
+      "sha256": "0f72d92b82b40ae3533e0e45b21d2ef54b31e044f20f0708b4dd791bc463114d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionCallProjectionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "1c1a7aab18ea5d8da040e305a3d5059502982766f4147a9ba096cda386661fbc"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionCheckpointPreparationServiceImpl.java",
+      "equivalent": true,
+      "sha256": "296f2cd2bed83a934a5a4dc6841bcfc1e7ad7bd9e5eedf2439ced4ef1d45d56d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionContextServiceImpl.java",
+      "equivalent": true,
+      "sha256": "1803b6acf6fc35397a33df5229f8ec5ae2227829cb334b9e05299f1dc754438c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionEligibilityServiceImpl.java",
+      "equivalent": true,
+      "sha256": "fac633428faea148e67d5b5c7a5f0e9196fb3abbab334dfea3b087fbddfd348d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionEventAppendServiceImpl.java",
+      "equivalent": true,
+      "sha256": "5e4309e88e61e9302e3cb8bb33c78a100a80f8712ea328c8f2c881dd5d08f901"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionEventProofServiceImpl.java",
+      "equivalent": true,
+      "sha256": "f26aeb6cf3a3fd19ad02d355331b5dae07d87e1f1189cf7e2d6760228331ae5a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionHistoryProofServiceImpl.java",
+      "equivalent": true,
+      "sha256": "8e44738aee9631d62de907e5732bc50bb20db9757c43c1e34bb886e43f5358e1"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionHistoryRetentionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "931a72138c281e084af0861b444ce748476c836e2139998976fb0a030ad2e8c6"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionHistoryStorageServiceImpl.java",
+      "equivalent": true,
+      "sha256": "1597f1bf97ef8947c960abbcb0406be95a98b7d5a5e99234799db09e0603fc0e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionHistoryViewServiceImpl.java",
+      "equivalent": true,
+      "sha256": "179d54a0dd81b6baffd690e92a9ecc53b9b7080a37a225890dbbf412a9ea2dad"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionInputServiceImpl.java",
+      "equivalent": true,
+      "sha256": "2f36f0b5cbd10ea1f124083b1266be829ba919a174fbb23adb2c509c7b27eddf"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionMetadataAccountingServiceImpl.java",
+      "equivalent": true,
+      "sha256": "d29e8fdb0167d0135ca966170f619ccdb4010c475cb853eedd23a81d377028cd"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionNativeSearchExecutionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "d01bb6bc41077bf0c42aef54142b2cb5d9cc920ba7833bc78668af3f7d343047"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionNativeTraceExecutionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "df2d1506b09087c4a1ee3abf326a29733f7ab6fcec5889f71fffe3da0d36ba8c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionOwnerServiceImpl.java",
+      "equivalent": true,
+      "sha256": "a9057881e9b770ee431b0adcd02b65e289d1614aeb3c7557426a558f5d082c5f"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionReadRelationProofServiceImpl.java",
+      "equivalent": true,
+      "sha256": "ab998cd02c3bbb040c355b28abf40b121bc4e40d590de757db0f8d0eaa971e6e"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionReadServiceImpl.java",
+      "equivalent": true,
+      "sha256": "9971526a2b5f0a3ac62ae7b23a6e24ee67de637d405bfa223d17c56a1afd865a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionResponseServiceImpl.java",
+      "equivalent": true,
+      "sha256": "b75375f72dcdf7c7297f8217daa3c6704b952e47011638e8d7fdce738330188b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeCreationServiceImpl.java",
+      "equivalent": true,
+      "sha256": "214f2f533a65068b50c7e8c1a39c430a147652ef59952ce630ac67c93aa69509"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeEligibilityServiceImpl.java",
+      "equivalent": true,
+      "sha256": "08537833c9168603c9e9224458e34014f52cd67f5f19b43b7d41e938dbc04cbb"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeExecutionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "a3a5a8dd1987ec656982c10dc78c01743182fc1caade15748eab1a459c92c984"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeMaintenanceServiceImpl.java",
+      "equivalent": true,
+      "sha256": "8b1624381e1d50c9271094bcefc2ffa1cb25cc76e41f7eb4345a88823ad4133a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeNormalizationServiceImpl.java",
+      "equivalent": true,
+      "sha256": "163a691d0d06caec4c4641b403eaa55df3a1264d879967affa9a4274b0833a33"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeQueryServiceImpl.java",
+      "equivalent": true,
+      "sha256": "5fa7d980cc53ddbe0773f13eb26ff7e157aa25f1a0816832acd4dee2cde18656"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeReadProofServiceImpl.java",
+      "equivalent": true,
+      "sha256": "69818824bb0c424f299df860e9598ebf06842677159c9fc15db9f67c12b8ae2a"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeReadRefsServiceImpl.java",
+      "equivalent": true,
+      "sha256": "9768f3d33496b144e28e4791549d84b35f842fd34a15c95a72b6c7dd5a62a65d"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionScopeRevocationServiceImpl.java",
+      "equivalent": true,
+      "sha256": "fe68a24ae40f222362c2281841a5cd300a4a868bb0e0a5dc456c6310c21d82fe"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionSearchServiceImpl.java",
+      "equivalent": true,
+      "sha256": "e32e375b732acad11a7e6bc434d507d483e27b64dfda3279cf88090b5d7fbd69"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/session/service/impl/SessionTraceServiceImpl.java",
+      "equivalent": true,
+      "sha256": "adf57d035e433f4e00aa03ac953066198209a230d9a69a7b1d05a2a993d9734b"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/McpLedger.java",
+      "equivalent": true,
+      "sha256": "a93b30987d60a0c71d6112bad0010fb171b6c3496d02232edf78125d395f0172"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/TaskImages.java",
+      "equivalent": true,
+      "sha256": "2bf601ead632df2afc4da3f8dd58207b1ca6bb255da61ee189a138882c5cd591"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/api/Tasks.java",
+      "equivalent": true,
+      "sha256": "ac68bba259c9de28069ef6df531787bde982e39a7748f756930780a03268e151"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/domain/TaskExecutionLimitsV1.java",
+      "equivalent": true,
+      "sha256": "b5d471235752b8e7b557df8d5593db5cee727db0eaa0f1e8c620dfbcd1b1cd36"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskAdmissionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "f812d45d33ab51a278b808704ae5c82b163a80c2987b41002127613a8b5c850c"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskBaseAccessServiceImpl.java",
+      "equivalent": true,
+      "sha256": "19ba9d93aa1851af9f0ceee1d141b77c165dda86db142e6a9317e61419139365"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskCapabilitiesServiceImpl.java",
+      "equivalent": true,
+      "sha256": "cae567d84ac17a65507ce59943c6bba045696629de3732c28c0b390431810670"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskIdentityServiceImpl.java",
+      "equivalent": true,
+      "sha256": "4763e407d608eed104b868aae3ef4a695415a3e051e2fc08d1b852454b344fef"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskMetadataAccountingServiceImpl.java",
+      "equivalent": true,
+      "sha256": "99e04835d8d90b5275f37bff0e39eb46314aec4a85fc734730ba29a8d8db5263"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskOperationsServiceImpl.java",
+      "equivalent": true,
+      "sha256": "9ad799bb6429f36f422e993ca7e5d346d11610efcec6f0c195ff7c4232c89316"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/task/service/impl/TaskServiceImpl.java",
+      "equivalent": true,
+      "sha256": "2356361cf989a793cb8d0545dab0ed797cb20b6af7c97f1d619fa55b4fa378fa"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoAvailabilityServiceImpl.java",
+      "equivalent": true,
+      "sha256": "b595e7e44baec4cab70bbf28a988e89c8d7a42f958f1de94290111da97d73a45"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoEligibilityServiceImpl.java",
+      "equivalent": true,
+      "sha256": "edb68c18236844c216d63b8e739888721c75dcc1e84c9f318bae7b342f5f7365"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoPersistenceServiceImpl.java",
+      "equivalent": true,
+      "sha256": "a2f92af2971de3ed7a3c53686f6c67c4f48df2212e1f34d0c2bdf7a8a30c7611"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoProjectionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "126cb5fa1dfdf839a77b002e04fda7f678cc90762cef651ee9f6f69c46d4e978"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoResultSourceServiceImpl.java",
+      "equivalent": true,
+      "sha256": "96561280eab430ebbae00743b0686bf0148365275d18439010bbce9dfd06d4b8"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoRetentionServiceImpl.java",
+      "equivalent": true,
+      "sha256": "d410dff3522019ac654db980dc6c4b24d7282341542b9a714ea21356158c83b0"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/todo/service/impl/TodoStorageServiceImpl.java",
+      "equivalent": true,
+      "sha256": "ad71304bc274cefd3ff2a8ab95b6d2d4ea1058065b8a6370d8d24e275cfb6402"
+    },
+    {
+      "file": "src/main/java/io/github/lovexiaopeng/jimu/kernel/worker/service/impl/WorkerServiceImpl.java",
+      "equivalent": true,
+      "sha256": "ce309573d262d6a53b6303253e9c92fc3db8f6e5bd7a8eeeae22f4c5df059484"
+    }
+  ]
+}
