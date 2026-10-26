@@ -20,8 +20,8 @@ final class JdbcMcpRecords {
     records.configure(settings);
   }
 
-  void copyConfiguration(JdbcMcpRecords original) {
-    records.copyConfiguration(original.records);
+  McpSettings configuration() {
+    return records.configuration();
   }
 
   boolean enabled() {

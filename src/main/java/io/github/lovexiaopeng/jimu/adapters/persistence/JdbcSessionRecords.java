@@ -152,8 +152,14 @@ final class JdbcSessionRecords {
     this.mapperSession = mapperSession;
   }
 
-  void copyConfiguration(JdbcSessionRecords original) {
-    this.sensitive = original.sensitive;
+  record Configuration(List<String> sensitive) {}
+
+  Configuration configuration() {
+    return new Configuration(sensitive);
+  }
+
+  void configure(Configuration configuration) {
+    sensitive = configuration.sensitive();
   }
 
   void sensitive(List<String> values) {

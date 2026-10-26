@@ -319,7 +319,18 @@ public final class OwnerDeliveryScenario {
         io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionQueryDeadline.source(source);
     db = new JdbcTemplate(shared);
     transactions = new DataSourceTransactionManager(shared);
-    ledger = new JdbcLedger(shared, new ModelProfiles(env), null, null, null);
+    ledger =
+        args.length == 4
+            ? new JdbcLedger(
+                shared,
+                new ModelProfiles(env),
+                transactions,
+                new io.github.lovexiaopeng.jimu.adapters.persistence.transaction
+                    .SpringLedgerUnitOfWork(transactions),
+                null,
+                io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure.LedgerMapperSessions
+                    .create(shared))
+            : new JdbcLedger(shared, new ModelProfiles(env), null, null, null);
     ledger.sessionReadEnabled(
         true,
         List.of(
@@ -333,6 +344,11 @@ public final class OwnerDeliveryScenario {
     ledger.questionsEnabled(true);
     String initial = facts();
     System.out.println("FULLBEFORE " + initial);
+    if (args.length == 4) {
+      require("query-view".equals(args[3]), "explicit bounded fixture mode");
+      queryViews(ownerTask, initial);
+      return;
+    }
     for (boolean conflict : List.of(false, true)) {
       var tx = transactions.getTransaction(new DefaultTransactionDefinition());
       Throwable primary = null;
@@ -456,11 +472,68 @@ public final class OwnerDeliveryScenario {
 
   private static String conflictQuestion;
 
+  private static void queryViews(String ownerTask, String initial) {
+    var tx = transactions.getTransaction(new DefaultTransactionDefinition());
+    Throwable primary = null;
+    try {
+      call("owner", () -> ledger.sessionHistory(owner(), ownerTask), "OK");
+      var view =
+          queryLedger(
+              System.nanoTime() + 2_000_000_000L,
+              new io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger
+                  .QueryResources(2, 12, 4));
+      System.out.println("METER_BEFORE " + Payloads.json(view.queryContext().resources()));
+      call("owner-metered", () -> view.sessionHistory(owner(), ownerTask), "OK");
+      System.out.println("METER_MIDDLE " + Payloads.json(view.queryContext().resources()));
+      call("owner-metered-again", () -> view.sessionHistory(owner(), ownerTask), "OK");
+      System.out.println("METER_AFTER " + Payloads.json(view.queryContext().resources()));
+      var plain = queryLedger(System.nanoTime() + 2_000_000_000L, null);
+      call("owner-unmetered", () -> plain.sessionHistory(owner(), ownerTask), "OK");
+      System.out.println("UNMETERED " + Payloads.json(plain.queryContext().resources()));
+      call(
+          "cross-owner",
+          () ->
+              ledger.sessionHistory(
+                  new io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Identity(
+                      "tenant-a", "carol"),
+                  ownerTask),
+          "SESSION_EVENT_NOT_FOUND");
+      call(
+          "cross-tenant",
+          () ->
+              ledger.sessionHistory(
+                  new io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Identity(
+                      "tenant-b", "alice"),
+                  ownerTask),
+          "SESSION_EVENT_NOT_FOUND");
+    } catch (Throwable failure) {
+      primary = failure;
+      errors(failure, "scenario");
+    } finally {
+      measuring = false;
+      try {
+        transactions.rollback(tx);
+      } catch (Throwable failure) {
+        errors(failure, "rollback");
+        if (primary == null) primary = failure;
+        else primary.addSuppressed(failure);
+      }
+    }
+    String restored = facts();
+    System.out.println(
+        "RESTORATION "
+            + Payloads.json(
+                Map.of("before", initial, "after", restored, "equal", initial.equals(restored))));
+    require(initial.equals(restored), "all private tables restored including worker_process");
+    if (primary != null) throw new AssertionError("original failure retained", primary);
+  }
+
   private static void call(String name, Supplier<Object> work, String expected) {
     sql.clear();
     settings.clear();
     var before = Payloads.read(captureProof(task), Map.class);
     int prior = db.queryForObject("SELECT @@SESSION.innodb_lock_wait_timeout", Integer.class);
+    int priorMax = db.queryForObject("SELECT @@SESSION.max_execution_time", Integer.class);
     Object result = null;
     Throwable primary = null;
     measuring = true;
@@ -472,6 +545,7 @@ public final class OwnerDeliveryScenario {
       measuring = false;
     }
     int after = db.queryForObject("SELECT @@SESSION.innodb_lock_wait_timeout", Integer.class);
+    int afterMax = db.queryForObject("SELECT @@SESSION.max_execution_time", Integer.class);
     var out = new LinkedHashMap<String, Object>();
     out.put("name", name);
     out.put("before", before);
@@ -481,6 +555,8 @@ public final class OwnerDeliveryScenario {
     out.put("settings", new ArrayList<>(settings));
     out.put("sessionPrior", prior);
     out.put("sessionAfter", after);
+    out.put("maxExecutionPrior", priorMax);
+    out.put("maxExecutionAfter", afterMax);
     String code =
         primary == null
             ? "OK"
@@ -489,6 +565,7 @@ public final class OwnerDeliveryScenario {
     System.out.println("CALL " + Payloads.json(evidenceValue(out)));
     if (primary != null) errors(primary, "call-" + name);
     require(prior == after, "session restored");
+    require(priorMax == afterMax, "max execution restored");
     require(code.equals(expected), name + " expected " + expected + " got " + code);
   }
 

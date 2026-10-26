@@ -36,8 +36,8 @@ final class MapperMcpRecords implements McpRecords {
     this.settings = settings;
   }
 
-  void copyConfiguration(MapperMcpRecords original) {
-    settings = original.settings;
+  McpSettings configuration() {
+    return settings;
   }
 
   Task bind(Map<String, Object> row) {

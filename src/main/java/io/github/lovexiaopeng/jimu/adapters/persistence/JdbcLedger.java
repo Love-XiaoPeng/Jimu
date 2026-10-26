@@ -74,6 +74,7 @@ public final class JdbcLedger
   private final MapperTaskOperations taskOperationRecords;
   private final JdbcTemplate db;
   final CoreMappers mappers;
+  private final LedgerPersistenceDependencies persistence;
   private final DataSource source;
   private final io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query;
   private final io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
@@ -1139,19 +1140,20 @@ public final class JdbcLedger
       io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork unitOfWork,
       Runnable schemaCheck,
       org.mybatis.spring.SqlSessionTemplate sessions) {
-    this(source, models, manager, unitOfWork, schemaCheck, CoreMappers.from(sessions), null);
+    this(
+        LedgerPersistenceDependencies.create(
+            source, manager, unitOfWork, schemaCheck, CoreMappers.from(sessions)),
+        models,
+        null);
   }
 
   private JdbcLedger(
-      DataSource source,
+      LedgerPersistenceDependencies persistence,
       ModelProfiles models,
-      DataSourceTransactionManager manager,
-      io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork unitOfWork,
-      Runnable schemaCheck,
-      CoreMappers mappers,
       io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
-    this.source = source;
-    this.mappers = mappers;
+    this.persistence = persistence;
+    source = persistence.source();
+    mappers = persistence.mappers();
     this.query = query;
     this.models = models;
     db =
@@ -1210,20 +1212,14 @@ public final class JdbcLedger
         new io.github.lovexiaopeng.jimu.kernel.operator.service.impl
             .ExecutionScopeConsumptionServiceImpl(new MapperExecutionScopeConsumption(this, db));
     executionScopes = new JdbcExecutionScopes(scopeConsumption);
-    var shared = manager == null ? new DataSourceTransactionManager(source) : manager;
     queryTransactions =
         new io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction(
-            source, shared);
-    transactions = new TransactionTemplate(shared);
+            source, persistence.manager());
+    transactions = new TransactionTemplate(persistence.manager());
     transactions.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     transactions.setTimeout(10);
-    this.unitOfWork =
-        unitOfWork == null
-            ? new io.github.lovexiaopeng.jimu.adapters.persistence.transaction
-                .SpringLedgerUnitOfWork(shared)
-            : unitOfWork;
-    this.schemaCheck = schemaCheck;
-    var records = new JdbcCoreRecords(this, db);
+    unitOfWork = persistence.unitOfWork();
+    schemaCheck = persistence.schemaCheck();
     var coreWork =
         new io.github.lovexiaopeng.jimu.kernel.transaction.port.LedgerUnitOfWork() {
           @Override
@@ -1293,7 +1289,7 @@ public final class JdbcLedger
             new MapperWorkerRecords(this), coreWork);
     executionService =
         new io.github.lovexiaopeng.jimu.kernel.execution.service.impl.ExecutionServiceImpl(
-            records.execution(), coreWork, leaseWork, Payloads::hash);
+            new JdbcExecutionRecords(this, db), coreWork, leaseWork, Payloads::hash);
     modelService =
         new io.github.lovexiaopeng.jimu.kernel.model.service.impl.ModelDispatchServiceImpl(
             new MapperModelDispatchRecords(this),
@@ -1313,26 +1309,57 @@ public final class JdbcLedger
   private JdbcLedger queryView(long end, QueryResources resources) {
     var scoped =
         new JdbcLedger(
-            source,
+            persistence,
             models,
-            (DataSourceTransactionManager) transactions.getTransactionManager(),
-            unitOfWork,
-            schemaCheck,
-            mappers,
             new io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext(end, resources));
-    scoped.searchAvailable = searchAvailable;
-    scoped.imageStore = imageStore;
-    scoped.questionsEnabled = questionsEnabled;
-    scoped.todosEnabled = todosEnabled;
-    scoped.directoryEnabled = directoryEnabled;
-    scoped.directoryWorkspace = directoryWorkspace;
-    scoped.sessionReadEnabled = sessionReadEnabled;
-    scoped.sessionSearchEnabled = sessionSearchEnabled;
-    scoped.sessionTraceEnabled = sessionTraceEnabled;
-    scoped.priorSessionSearchEnabled = priorSessionSearchEnabled;
-    scoped.sessions.copyConfiguration(sessions);
-    scoped.mcp.copyConfiguration(mcp);
+    QueryViewConfiguration.capture(this).apply(scoped);
     return scoped;
+  }
+
+  /** Capture after view construction, without evaluating availability, stores or credentials. */
+  private record QueryViewConfiguration(
+      java.util.function.BooleanSupplier searchAvailable,
+      ArtifactStore imageStore,
+      boolean questionsEnabled,
+      boolean todosEnabled,
+      boolean directoryEnabled,
+      io.github.lovexiaopeng.jimu.adapters.storage.SecureWorkspaceStore directoryWorkspace,
+      boolean sessionReadEnabled,
+      boolean sessionSearchEnabled,
+      boolean sessionTraceEnabled,
+      boolean priorSessionSearchEnabled,
+      JdbcSessionRecords.Configuration session,
+      io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings mcp) {
+    static QueryViewConfiguration capture(JdbcLedger ledger) {
+      return new QueryViewConfiguration(
+          ledger.searchAvailable,
+          ledger.imageStore,
+          ledger.questionsEnabled,
+          ledger.todosEnabled,
+          ledger.directoryEnabled,
+          ledger.directoryWorkspace,
+          ledger.sessionReadEnabled,
+          ledger.sessionSearchEnabled,
+          ledger.sessionTraceEnabled,
+          ledger.priorSessionSearchEnabled,
+          ledger.sessions.configuration(),
+          ledger.mcp.configuration());
+    }
+
+    void apply(JdbcLedger ledger) {
+      ledger.searchAvailable = searchAvailable;
+      ledger.imageStore = imageStore;
+      ledger.questionsEnabled = questionsEnabled;
+      ledger.todosEnabled = todosEnabled;
+      ledger.directoryEnabled = directoryEnabled;
+      ledger.directoryWorkspace = directoryWorkspace;
+      ledger.sessionReadEnabled = sessionReadEnabled;
+      ledger.sessionSearchEnabled = sessionSearchEnabled;
+      ledger.sessionTraceEnabled = sessionTraceEnabled;
+      ledger.priorSessionSearchEnabled = priorSessionSearchEnabled;
+      ledger.sessions.configure(session);
+      ledger.mcp.configure(mcp);
+    }
   }
 
   private JdbcLedger queryView(Lease lease, boolean metered) {
