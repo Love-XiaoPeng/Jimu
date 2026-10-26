@@ -140,4 +140,9 @@ public interface ReservationMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("reservation") String reservation);
+
+  int settleDirectoryReservation(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("invocation") String invocation);
 }

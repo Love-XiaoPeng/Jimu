@@ -148,4 +148,14 @@ public interface TaskMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("task") String task);
+
+  List<Map<String, Object>> originalDirectoryTask(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  int countDirectoryTool(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
 }

@@ -1,3 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.TaskDirectoryReadMapper"/>
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.directory.mapper.TaskDirectoryReadMapper"><update id="readyWorkspace"><![CDATA[UPDATE task_directory SET workspace_state='READY' WHERE tenant_id=#{tenant} AND task_id=#{task} AND workspace_state='UNINITIALIZED']]></update>
+<update id="advanceDirectoryRevision"><![CDATA[UPDATE task_directory SET cwd=#{cwd},revision=#{revision},source_invocation_id=#{invocation},updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND task_id=#{task} AND revision=#{base} AND content_state='PRESENT']]></update>
+<select id="directoryOwnerView" resultType="map"><![CDATA[SELECT t.next_event_seq,p.tenant_id,p.task_id,p.record_version,p.directory_version,p.path_policy_version,p.binding_snapshot,p.binding_digest,p.namespace_digest,p.revision,p.content_state,p.cwd,p.source_invocation_id,p.workspace_state,p.updated_at,p.retain_until,p.reserved_bytes,p.cleanup_generation,p.retained_digests,p.filesystem_receipt,i.id AS invocation_id,i.task_id AS invocation_task,i.step_id,i.attempt_id,i.provider_id,i.tool,i.state AS invocation_state,i.output_snapshot,i.output_digest,
+f.mode,f.base_revision,f.base_cwd,f.target_cwd,f.applied_revision,f.changed,f.committed_attempt_id,f.committed_fence,f.changed_event_seq,f.committed_at
+FROM task t LEFT JOIN task_directory p ON p.tenant_id=t.tenant_id AND p.task_id=t.id
+LEFT JOIN invocation i ON i.tenant_id=p.tenant_id AND i.id=p.source_invocation_id
+LEFT JOIN invocation_path_binding f ON f.tenant_id=i.tenant_id AND f.invocation_id=i.id
+WHERE t.tenant_id=#{tenant} AND t.id=#{task} AND t.owner_actor_id=#{actor}]]></select>
+</mapper>

@@ -66,4 +66,7 @@ public interface TenantBudgetMapper {
       @Param("query") SessionQueryContext query,
       @Param("bytes") long bytes,
       @Param("tenant") String tenant);
+
+  int countDirectoryBudget(
+      @Param("query") SessionQueryContext query, @Param("tenant") String tenant);
 }

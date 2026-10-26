@@ -28,4 +28,6 @@
   <select id="selectActiveNativeTask" resultType="map">
     <![CDATA[SELECT root_invocation FROM native_search_run WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND phase<>'STOPPED' LIMIT 1]]>
   </select>
+<select id="directorySourceAttempt" resultType="map"><![CDATA[SELECT id FROM task_attempt WHERE tenant_id=#{tenant} AND task_id=#{task} AND id=#{attempt} AND fence=#{fence}]]></select>
+<select id="directoryViewAttempt" resultType="map"><![CDATA[SELECT id FROM task_attempt WHERE tenant_id=#{tenant} AND task_id=#{task} AND id=#{attempt} AND fence=#{fence}]]></select>
 </mapper>

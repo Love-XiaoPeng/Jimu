@@ -38,4 +38,18 @@ public interface EventMapper {
       @Param("tenant") String tenant,
       @Param("taskId") String taskId,
       @Param("factId") String factId);
+
+  List<Map<String, Object>> directorySourceEvent(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("seq") long seq,
+      @Param("fact") String fact);
+
+  List<Map<String, Object>> directoryViewEvent(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("seq") long seq,
+      @Param("fact") String fact);
 }

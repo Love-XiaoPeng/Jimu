@@ -57,4 +57,18 @@ public interface TaskAttemptMapper {
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("taskId") String taskId);
+
+  List<Map<String, Object>> directorySourceAttempt(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("attempt") String attempt,
+      @Param("fence") long fence);
+
+  List<Map<String, Object>> directoryViewAttempt(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("attempt") String attempt,
+      @Param("fence") long fence);
 }
