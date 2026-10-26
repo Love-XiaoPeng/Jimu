@@ -1,0 +1,59 @@
+{
+  "operations": [
+    {
+      "name": "consumptionReceipts",
+      "original": "SELECT * FROM jimu_provisioning_receipt WHERE tenant_id=?",
+      "args": [
+        {
+          "name": "tenant"
+        }
+      ],
+      "domain": "operator",
+      "mapper": "ExecutionScopeMapper"
+    },
+    {
+      "name": "boundRuns",
+      "original": "SELECT run_id FROM evaluation_execution_scope WHERE tenant_id=?",
+      "args": [
+        {
+          "name": "tenant"
+        }
+      ],
+      "domain": "operator",
+      "mapper": "ExecutionScopeMapper"
+    },
+    {
+      "name": "consumptionScopes",
+      "original": "SELECT * FROM evaluation_execution_scope WHERE tenant_id=? AND run_id=?",
+      "args": [
+        {
+          "name": "tenant"
+        },
+        {
+          "name": "run"
+        }
+      ],
+      "domain": "operator",
+      "mapper": "ExecutionScopeMapper"
+    },
+    {
+      "name": "stopRun",
+      "original": "UPDATE evaluation_budget SET state='STOPPED' WHERE tenant_id=? AND id=?",
+      "args": [
+        {
+          "name": "tenant"
+        },
+        {
+          "name": "runId"
+        }
+      ],
+      "domain": "model",
+      "mapper": "EvaluationBudgetMapper"
+    }
+  ],
+  "metadataExceptions": [
+    "information_schema.TABLES COUNT Integer.class",
+    "@@server_uuid String.class",
+    "DATABASE() String.class"
+  ]
+}

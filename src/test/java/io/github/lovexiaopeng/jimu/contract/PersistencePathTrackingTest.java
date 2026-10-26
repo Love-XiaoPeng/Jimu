@@ -70,6 +70,23 @@ class PersistencePathTrackingTest {
         assertEquals(
             "SELECT q.*,i.provider_id FROM user_question q JOIN invocation i ON i.tenant_id=q.tenant_id AND i.id=q.invocation_id WHERE q.tenant_id=#{tenant} AND q.task_id=#{task} ORDER BY q.ordinal",
             mapper.path("sql").asText());
+      else if (mapper
+          .path("id")
+          .asText()
+          .equals(
+              "io.github.lovexiaopeng.jimu.adapters.persistence.operator.mapper.ExecutionScopeMapper.consumptionReceipts"))
+        // The external receipt's original full projection must not become OperatorMapper's crop.
+        assertEquals(
+            "SELECT * FROM jimu_provisioning_receipt WHERE tenant_id=#{tenant}",
+            mapper.path("sql").asText());
+      else if (mapper
+          .path("id")
+          .asText()
+          .equals(
+              "io.github.lovexiaopeng.jimu.adapters.persistence.operator.mapper.ExecutionScopeMapper.consumptionScopes"))
+        assertEquals(
+            "SELECT * FROM evaluation_execution_scope WHERE tenant_id=#{tenant} AND run_id=#{run}",
+            mapper.path("sql").asText());
       else assertTrue(!mapper.path("sql").asText().matches("(?is).*SELECT\\s+(?:\\w+\\.)?\\*.*"));
     }
     for (var entry : capture.path("baseline").path("entries")) {

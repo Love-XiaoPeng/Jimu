@@ -1,7 +1,6 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
-import io.github.lovexiaopeng.jimu.adapters.runtime.model.BusinessPolicies;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.EvaluationMaterials;
 import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionQueryDeadline;
@@ -84,6 +83,8 @@ public final class JdbcLedger
   private final Runnable schemaCheck;
   final ModelProfiles models;
   final JdbcExecutionScopes executionScopes;
+  final io.github.lovexiaopeng.jimu.kernel.operator.service.ExecutionScopeConsumptionService
+      scopeConsumption;
   java.util.function.BooleanSupplier searchAvailable = () -> false;
   final JdbcImageRecords images;
   private final io.github.lovexiaopeng.jimu.kernel.media.service.ImagePersistenceService
@@ -1306,7 +1307,10 @@ public final class JdbcLedger
         new io.github.lovexiaopeng.jimu.kernel.model.service.impl.MaterialEvidenceServiceImpl(
             new MapperMaterialEvidenceRecords(this));
     db.setQueryTimeout(5);
-    executionScopes = new JdbcExecutionScopes(db, models);
+    scopeConsumption =
+        new io.github.lovexiaopeng.jimu.kernel.operator.service.impl
+            .ExecutionScopeConsumptionServiceImpl(new MapperExecutionScopeConsumption(this, db));
+    executionScopes = new JdbcExecutionScopes(scopeConsumption);
     var shared = manager == null ? new DataSourceTransactionManager(source) : manager;
     queryTransactions =
         new io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction(
@@ -1510,94 +1514,16 @@ public final class JdbcLedger
       Map<String, Object> evaluation,
       Map<String, Object> task,
       ModelSnapshot model) {
-    try {
-      if (task == null && models.businessPolicy() != null || task != null && businessTask(task)) {
-        requireBusiness(tenant, evaluation, task, model);
-        return null;
-      }
-      if (!executionScopes.needed(tenant, task)) return null;
-      if (task != null) {
-        if (task.get("execution_scope_digest") == null)
-          throw new TaskFailure(409, "EVALUATION_SCOPE_LEGACY_UNBOUND");
-        try {
-          model = historicalSnapshot(task);
-        } catch (TaskFailure | IllegalArgumentException corrupt) {
-          throw new TaskFailure(409, "EVALUATION_SCOPE_MISMATCH");
-        }
-      }
-      String digest = executionScopes.require(tenant, evaluation, task, model);
-      if (task != null) {
-        try {
-          models.available(model);
-          checkEvaluation(task, evaluation, model);
-        } catch (TaskFailure | IllegalArgumentException corrupt) {
-          throw new TaskFailure(409, "EVALUATION_SCOPE_MISMATCH");
-        }
-      }
-      return digest;
-    } catch (org.springframework.dao.DataAccessException unavailable) {
-      throw new TaskFailure(503, "EVALUATION_SCOPE_UNAVAILABLE");
-    } catch (TaskFailure failure) {
-      if (List.of("EVALUATION_SCOPE_MISMATCH", "BUSINESS_POLICY_CONFLICT").contains(failure.code())
-          && evaluation != null) {
-        db.update(
-            "UPDATE evaluation_budget SET state='STOPPED' WHERE tenant_id=? AND id=?",
-            tenant,
-            s(evaluation, "id"));
-        if (task != null)
-          event(
-              task,
-              "scope-rejected:" + n(task, "fence"),
-              "evaluation.scope_rejected",
-              failure.code());
-      }
-      throw failure;
-    }
+    return scopeConsumption.requireScope(tenant, evaluation, task, model);
   }
 
   boolean businessTask(Map<String, Object> task) {
-    return n(task, "record_version") == 2
-        || task.get("business_policy_snapshot") != null
-        || task.get("business_policy_digest") != null;
+    return scopeConsumption.businessTask(task);
   }
 
   private void requireBusiness(
       String tenant, Map<String, Object> run, Map<String, Object> task, ModelSnapshot model) {
-    BusinessPolicies.Policy policy;
-    try {
-      if (task == null) policy = models.businessPolicy();
-      else {
-        String json = s(task, "business_policy_snapshot");
-        if (!(n(task, "record_version") == 2 || n(task, "record_version") == 3)
-            || json == null
-            || !Payloads.hash(json).equals(task.get("business_policy_digest"))
-            || task.get("execution_scope_digest") != null
-            || task.get("evaluation_snapshot") != null
-            || !java.util.Objects.equals(
-                task.get("evaluation_run_id"), run == null ? null : run.get("id")))
-          throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
-        policy = Payloads.read(json, BusinessPolicies.Policy.class);
-        if (!(n(task, "record_version") == 2 && policy.version() == 1
-            || n(task, "record_version") == 3 && policy.version() == 2))
-          throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
-        if (!BusinessPolicies.canonical(policy).equals(json))
-          throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
-        model = historicalSnapshot(task);
-      }
-      BusinessPolicies.validate(policy);
-      models.retainedBusiness(policy);
-      if (!tenant.equals(policy.anchor().tenantId()))
-        throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
-      executionScopes.businessAnchor(policy, run);
-      if (plan(run) == null) throw new TaskFailure(503, "BUSINESS_POLICY_UNAVAILABLE");
-      BusinessPolicies.profile(policy, model, models.localEvaluation(model));
-      models.available(model);
-    } catch (IllegalArgumentException corrupt) {
-      throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
-    } catch (TaskFailure invalid) {
-      if (invalid.status() == 409) throw new TaskFailure(409, "BUSINESS_POLICY_CONFLICT");
-      throw invalid;
-    }
+    scopeConsumption.requireBusiness(tenant, run, task, model);
   }
 
   private record AdmissionResult<T>(T value, TaskFailure rejection) {}
