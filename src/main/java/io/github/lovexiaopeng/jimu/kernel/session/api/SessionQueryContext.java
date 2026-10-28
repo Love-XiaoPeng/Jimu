@@ -122,6 +122,7 @@ public final class SessionQueryContext {
     scratchLimit = Math.min(scratchLimit, SessionLineagePolicyV5.PROOF_BYTES);
     scratchReserve = Math.min(scratchReserve, 65536);
     checkLimits();
+    scratch(0);
   }
 
   private void checkLimits() {

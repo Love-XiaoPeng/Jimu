@@ -76,22 +76,28 @@ class SessionQueryTransactionTest {
     var primary = new IllegalStateException("primary");
     fixture.reset = new SQLException("reset", "08003", 9001);
     fixture.rollback = new SQLException("rollback ACK", "08006", 9003);
-    var caught = assertThrows(TransactionSystemException.class, () -> fixture.fail(primary));
-    assertSame(fixture.rollback, caught.getCause());
+    var caught =
+        assertThrows(
+            io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionUnconfirmed
+                .class,
+            () -> fixture.fail(primary));
+    var original = (TransactionSystemException) caught.getCause();
+    assertSame(fixture.rollback, original.getCause());
     assertSame(primary, caught.getApplicationException());
-    assertSame(primary, caught.getSuppressed()[0]);
+    assertSame(primary, original.getSuppressed()[0]);
     assertSame(fixture.reset, primary.getSuppressed()[0]);
   }
 
   @Test
-  void timeoutKeepsCauseAndRollbackApplicationExceptionWithoutChangingCode() {
+  void timeoutCannotOverrideUnknownRollback() {
     var fixture = new Fixture();
     var primary = new DataAccessResourceFailureException("primary");
     fixture.reset = new SQLException("reset", "08003", 9001);
     fixture.rollback = new SQLException("rollback ACK", "08006", 9003);
     var caught =
         assertThrows(
-            TaskFailure.class,
+            io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionUnconfirmed
+                .class,
             () ->
                 fixture.execute(
                     () -> {
@@ -99,13 +105,18 @@ class SessionQueryTransactionTest {
                       fixture.active.set(true);
                       throw primary;
                     }));
-    assertEquals(504, caught.status());
-    assertEquals("SESSION_QUERY_TIMEOUT", caught.code());
-    assertEquals("SESSION_QUERY_TIMEOUT", caught.getMessage());
-    var transaction = (TransactionSystemException) caught.getCause();
-    assertSame(fixture.rollback, transaction.getCause());
-    assertSame(primary, transaction.getApplicationException());
-    assertSame(primary, transaction.getSuppressed()[0]);
+    assertEquals(
+        io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionOutcome.Completion
+            .UNKNOWN,
+        caught.outcome().completion());
+    assertEquals(
+        io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionOutcome.Phase
+            .BUSINESS,
+        caught.outcome().phase());
+    var original = (TransactionSystemException) caught.getCause();
+    assertSame(fixture.rollback, original.getCause());
+    assertSame(primary, original.getApplicationException());
+    assertSame(primary, original.getSuppressed()[0]);
     assertSame(fixture.reset, primary.getSuppressed()[0]);
     assertEquals(1, fixture.rollbacks);
   }
@@ -117,7 +128,7 @@ class SessionQueryTransactionTest {
     fixture.afterCompletion = new SQLException("afterCompletion", "08003", 9002);
     assertSame(primary, assertThrows(IllegalStateException.class, () -> fixture.fail(primary)));
     assertEquals(1, fixture.afterHits);
-    assertEquals(0, primary.getSuppressed().length);
+    assertSame(fixture.afterCompletion, primary.getSuppressed()[0]);
   }
 
   @Test
@@ -184,7 +195,7 @@ class SessionQueryTransactionTest {
     fixture.commit = new SQLException("commit ACK", "08006", 9005);
     var failure =
         assertThrows(TransactionSystemException.class, () -> fixture.execute(() -> "staged"));
-    assertSame(fixture.commit, failure.getCause());
+    assertSame(fixture.commit, failure.getCause().getCause());
     assertEquals(1, fixture.commits);
     assertEquals(0, fixture.rollbacks);
     assertEquals(7000, fixture.network);

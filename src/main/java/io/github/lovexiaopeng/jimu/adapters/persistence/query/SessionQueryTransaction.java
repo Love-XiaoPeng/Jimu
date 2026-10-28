@@ -1,6 +1,10 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence.query;
 
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionQueryDeadline;
+import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionOutcome;
+import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionOutcome.Completion;
+import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionOutcome.Phase;
+import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionUnconfirmed;
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import java.util.function.Supplier;
@@ -53,8 +57,17 @@ public final class SessionQueryTransaction {
     transaction.setPropagationBehavior(propagation);
     transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     transaction.setTimeout(2);
+    boolean borrowed =
+        propagation == TransactionDefinition.PROPAGATION_REQUIRED && current(context) != null;
+    if (!borrowed
+        && propagation == TransactionDefinition.PROPAGATION_REQUIRED
+        && TransactionSynchronizationManager.isActualTransactionActive())
+      throw new IllegalStateException("Session query requires an owned transaction");
+    var receipt = new Receipt(context);
     context.remainingMillis();
     try (var deadline = new SessionQueryDeadline(context.deadlineNanos())) {
+      receipt.phase = Phase.BEGIN;
+      receipt.completion = Completion.BEGIN_UNCONFIRMED;
       return transaction.execute(
           status ->
               db.execute(
@@ -74,43 +87,55 @@ public final class SessionQueryTransaction {
                           throw new IllegalStateException(
                               "Session query requires an owned transaction");
                         var owner = new SessionQueryWork(context);
-                        int priorNetwork = connection.getNetworkTimeout();
-                        TransactionSynchronizationManager.registerSynchronization(
-                            new ConnectionSettings(context, connection, priorNetwork, owner));
-                        connection.setNetworkTimeout(Runnable::run, context.remainingMillis());
-                        int priorWait, priorMax;
-                        try (var statement = connection.createStatement();
-                            var result =
-                                statement.executeQuery(
-                                    "SELECT @@SESSION.innodb_lock_wait_timeout,@@SESSION.max_execution_time")) {
-                          result.next();
-                          priorWait = result.getInt(1);
-                          priorMax = result.getInt(2);
-                        }
-                        Throwable primary = null;
+                        receipt.owner = System.identityHashCode(owner.token());
+                        receipt.connection = System.identityHashCode(connection);
+                        receipt.phase = Phase.CONNECTION_SETUP;
+                        receipt.completion = Completion.UNKNOWN;
+                        var settings = new ConnectionSettings(context, connection, owner, receipt);
+                        TransactionSynchronizationManager.registerSynchronization(settings);
                         try {
-                          // 即使第二条SET或截止检查失败，已修改的第一项也必须恢复。
-                          try (var statement = connection.createStatement()) {
-                            statement.execute("SET SESSION innodb_lock_wait_timeout=1");
-                            statement.execute(
-                                "SET SESSION max_execution_time=" + context.remainingMillis());
+                          settings.priorNetwork = connection.getNetworkTimeout();
+                          connection.setNetworkTimeout(Runnable::run, context.remainingMillis());
+                          int priorWait, priorMax;
+                          try (var statement = connection.createStatement();
+                              var result =
+                                  statement.executeQuery(
+                                      "SELECT @@SESSION.innodb_lock_wait_timeout,@@SESSION.max_execution_time")) {
+                            result.next();
+                            priorWait = result.getInt(1);
+                            priorMax = result.getInt(2);
                           }
-                          T result = work.get();
-                          owner.finish();
-                          context.remainingMillis();
-                          return result;
+                          Throwable primary = null;
+                          try {
+                            // 即使第二条SET或截止检查失败，已修改的第一项也必须恢复。
+                            try (var statement = connection.createStatement()) {
+                              statement.execute("SET SESSION innodb_lock_wait_timeout=1");
+                              statement.execute(
+                                  "SET SESSION max_execution_time=" + context.remainingMillis());
+                            }
+                            receipt.phase = Phase.BUSINESS;
+                            T result = work.get();
+                            receipt.phase = Phase.FINALIZE;
+                            owner.finish();
+                            context.remainingMillis();
+                            return result;
+                          } catch (java.sql.SQLException | RuntimeException | Error failure) {
+                            primary = failure;
+                            throw failure;
+                          } finally {
+                            try (var statement = connection.createStatement()) {
+                              statement.execute(
+                                  "SET SESSION innodb_lock_wait_timeout=" + priorWait);
+                              statement.execute("SET SESSION max_execution_time=" + priorMax);
+                            } catch (java.sql.SQLException | RuntimeException | Error cleanup) {
+                              // 清理失败不能替换业务首错；成功路径的清理失败仍须传播。
+                              if (primary == null) throw cleanup;
+                              if (cleanup != primary) primary.addSuppressed(cleanup);
+                            }
+                          }
                         } catch (java.sql.SQLException | RuntimeException | Error failure) {
-                          primary = failure;
+                          receipt.primary = failure;
                           throw failure;
-                        } finally {
-                          try (var statement = connection.createStatement()) {
-                            statement.execute("SET SESSION innodb_lock_wait_timeout=" + priorWait);
-                            statement.execute("SET SESSION max_execution_time=" + priorMax);
-                          } catch (java.sql.SQLException | RuntimeException | Error cleanup) {
-                            // 清理失败不能替换业务首错；成功路径的清理失败仍须传播。
-                            if (primary == null) throw cleanup;
-                            if (cleanup != primary) primary.addSuppressed(cleanup);
-                          }
                         }
                       }));
     } catch (RuntimeException failure) {
@@ -120,9 +145,24 @@ public final class SessionQueryTransaction {
         if (application != null && application != failure.getCause())
           failure.addSuppressed(application);
       }
+      if (!borrowed
+          && receipt.completion != Completion.COMMITTED
+          && receipt.completion != Completion.ROLLED_BACK) {
+        if (receipt.primary != null
+            && receipt.primary != failure
+            && receipt.primary != failure.getCause()
+            && java.util.Arrays.stream(failure.getSuppressed())
+                .noneMatch(t -> t == receipt.primary)) failure.addSuppressed(receipt.primary);
+        LOG.warn(
+            "Session transaction unconfirmed outcome={} failure={} primary={}",
+            receipt.outcome(),
+            failure.getClass().getSimpleName(),
+            receipt.primary == null ? "none" : receipt.primary.getClass().getSimpleName());
+        throw new SessionTransactionUnconfirmed(failure, receipt.outcome());
+      }
       // MyBatis/Spring may wrap deterministic meter refusals in a persistence exception.
       // A confirmed rollback is not an unknown commit and must not trigger slot retries.
-      if (!(failure instanceof TransactionSystemException)) {
+      if (!borrowed && receipt.completion == Completion.ROLLED_BACK) {
         Throwable cause = failure;
         for (int depth = 0; cause != null && depth < 32; depth++, cause = cause.getCause()) {
           if (cause instanceof TaskFailure refusal) throw refusal;
@@ -139,37 +179,72 @@ public final class SessionQueryTransaction {
     }
   }
 
+  private static final class Receipt {
+    private final SessionQueryContext context;
+    private Completion completion = Completion.NOT_STARTED;
+    private Phase phase = Phase.BEFORE_EXECUTE;
+    private int owner, connection;
+    private Throwable primary;
+
+    Receipt(SessionQueryContext context) {
+      this.context = context;
+    }
+
+    SessionTransactionOutcome outcome() {
+      return new SessionTransactionOutcome(
+          completion,
+          phase,
+          System.identityHashCode(context),
+          owner,
+          connection,
+          context.deadlineNanos());
+    }
+  }
+
   private static final class ConnectionSettings implements TransactionSynchronization {
     private final SessionQueryContext context;
     private final java.sql.Connection connection;
-    private final int priorNetwork;
+    private Integer priorNetwork;
     private final SessionQueryWork work;
+    private final Receipt receipt;
 
     ConnectionSettings(
         SessionQueryContext context,
         java.sql.Connection connection,
-        int priorNetwork,
-        SessionQueryWork work) {
+        SessionQueryWork work,
+        Receipt receipt) {
       this.context = context;
       this.connection = connection;
-      this.priorNetwork = priorNetwork;
       this.work = work;
+      this.receipt = receipt;
     }
 
     @Override
     public void beforeCommit(boolean readOnly) {
-      work.beforeCommit();
+      receipt.phase = Phase.BEFORE_COMMIT;
       try {
-        connection.setNetworkTimeout(Runnable::run, context.remainingMillis());
-      } catch (java.sql.SQLException failure) {
-        throw new org.springframework.dao.DataAccessResourceFailureException(
-            "Session query unavailable", failure);
+        work.beforeCommit();
+        try {
+          connection.setNetworkTimeout(Runnable::run, context.remainingMillis());
+        } catch (java.sql.SQLException failure) {
+          throw new org.springframework.dao.DataAccessResourceFailureException(
+              "Session query unavailable", failure);
+        }
+      } catch (RuntimeException | Error failure) {
+        receipt.primary = failure;
+        throw failure;
       }
     }
 
     @Override
     public void afterCompletion(int completion) {
       work.complete();
+      receipt.completion =
+          switch (completion) {
+            case STATUS_COMMITTED -> Completion.COMMITTED;
+            case STATUS_ROLLED_BACK -> Completion.ROLLED_BACK;
+            default -> Completion.UNKNOWN;
+          };
       LOG.info(
           "Session query totals query={} deadlineNanos={} reads={} bytes={} operations={} scratchPeak={} groups={} statements={}",
           System.identityHashCode(context),
@@ -181,19 +256,20 @@ public final class SessionQueryTransaction {
           context.groups(),
           context.statements());
       LOG.info(
-          "Session query transaction completion={} totalReads={} remainingMicros={}",
-          switch (completion) {
-            case STATUS_COMMITTED -> "COMMITTED";
-            case STATUS_ROLLED_BACK -> "ROLLED_BACK";
-            default -> "UNKNOWN";
-          },
+          "Session query transaction outcome={} totalReads={} remainingMicros={}",
+          receipt.outcome(),
           context.resources().reads(),
           (context.deadlineNanos() - System.nanoTime()) / 1000);
       try {
-        if (!connection.isClosed()) connection.setNetworkTimeout(Runnable::run, priorNetwork);
-      } catch (java.sql.SQLException failure) {
-        throw new org.springframework.dao.DataAccessResourceFailureException(
-            "Session connection reset unavailable (afterCompletion)", failure);
+        if (priorNetwork != null && !connection.isClosed())
+          connection.setNetworkTimeout(Runnable::run, priorNetwork);
+      } catch (java.sql.SQLException | RuntimeException cleanup) {
+        if (receipt.primary != null && receipt.primary != cleanup)
+          receipt.primary.addSuppressed(cleanup);
+        LOG.warn(
+            "Session connection cleanup failed outcome={} failure={}",
+            receipt.outcome(),
+            cleanup.getClass().getSimpleName());
       }
     }
   }

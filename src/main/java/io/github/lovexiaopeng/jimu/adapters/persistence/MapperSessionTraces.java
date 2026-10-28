@@ -46,9 +46,10 @@ final class MapperSessionTraces implements SessionTraces {
   public <T> T required(Supplier<T> work) {
     try {
       return ledger.sessionTransaction(work, System.nanoTime() + 2_000_000_000L);
-    } catch (org.springframework.dao.DataAccessException
-        | org.springframework.transaction.TransactionException failure) {
-      throw new SessionCommitUnconfirmed();
+    } catch (
+        io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionUnconfirmed
+            failure) {
+      throw new SessionCommitUnconfirmed(failure);
     }
   }
 

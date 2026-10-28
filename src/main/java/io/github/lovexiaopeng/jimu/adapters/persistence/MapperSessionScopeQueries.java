@@ -48,9 +48,10 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
   public <T> T required(long end, Supplier<T> work) {
     try {
       return ledger.sessionTransaction(work, end);
-    } catch (org.springframework.dao.DataAccessException
-        | org.springframework.transaction.TransactionException failure) {
-      throw new SessionCommitUnconfirmed();
+    } catch (
+        io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionUnconfirmed
+            failure) {
+      throw new SessionCommitUnconfirmed(failure);
     }
   }
 

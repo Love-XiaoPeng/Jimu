@@ -434,18 +434,7 @@ public final class JdbcLedger
   }
 
   <T> T sessionOwnerRead(java.util.function.Supplier<T> work) {
-    long started = System.nanoTime();
-    try {
-      return sessionTransaction(work);
-    } catch (org.springframework.dao.QueryTimeoutException
-        | org.springframework.dao.CannotAcquireLockException e) {
-      throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
-    } catch (org.springframework.dao.DataAccessException
-        | org.springframework.transaction.TransactionException e) {
-      if (System.nanoTime() - started >= 2_000_000_000L)
-        throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
-      throw new TaskFailure(503, "SESSION_QUERY_UNAVAILABLE");
-    }
+    return sessionSearchOwnerRead(work, System.nanoTime() + 2_000_000_000L);
   }
 
   @Override
@@ -557,16 +546,17 @@ public final class JdbcLedger
   <T> T sessionSearchOwnerRead(Supplier<T> work, long deadlineNanos) {
     try {
       return sessionTransaction(work, deadlineNanos);
-    } catch (org.springframework.dao.QueryTimeoutException
-        | org.springframework.dao.CannotAcquireLockException e) {
-      throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
     } catch (org.springframework.dao.DataAccessException
-        | org.springframework.transaction.TransactionException e) {
-      throw new TaskFailure(
-          System.nanoTime() >= deadlineNanos ? 504 : 503,
+        | org.springframework.transaction.TransactionException failure) {
+      boolean timeout =
           System.nanoTime() >= deadlineNanos
-              ? "SESSION_QUERY_TIMEOUT"
-              : "SESSION_QUERY_UNAVAILABLE");
+              || failure instanceof org.springframework.dao.QueryTimeoutException
+              || failure instanceof org.springframework.dao.CannotAcquireLockException;
+      var outward =
+          new TaskFailure(
+              timeout ? 504 : 503, timeout ? "SESSION_QUERY_TIMEOUT" : "SESSION_QUERY_UNAVAILABLE");
+      outward.initCause(failure);
+      throw outward;
     }
   }
 
