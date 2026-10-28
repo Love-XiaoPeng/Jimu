@@ -19,23 +19,25 @@ public final class SessionMetadataAccountingServiceImpl
     long total = 0;
     long cleanupHeadroom = SessionHistoryPolicyV1.CLEANUP_BASE_BYTES;
     for (var table : SessionMetadataAccounting.Table.values()) {
-      for (var row : records.rows(table)) {
-        cleanupHeadroom +=
-            switch (table) {
-              case TASK -> SessionHistoryPolicyV1.TASK_CLEANUP_BYTES;
-              case STEP,
-                      INVOCATION,
-                      INVOCATION_SESSION_SEARCH,
-                      INVOCATION_SESSION_LINEAGE_TRACE,
-                      TASK_SESSION_LINEAGE ->
-                  SessionHistoryPolicyV1.STEP_CLEANUP_BYTES;
-              case MODEL_DISPATCH, SESSION_PUBLIC_EVENT ->
-                  SessionHistoryPolicyV1.DISPATCH_CLEANUP_BYTES;
-              default -> 0;
-            };
-        total += SessionHistoryPolicyV1.ROW_HEADER_BYTES;
-        for (Object value : row.values())
-          total += SessionHistoryPolicyV1.FIELD_HEADER_BYTES + scalarBytes(value);
+      try (var batch = records.batch(table)) {
+        for (var row : batch) {
+          cleanupHeadroom +=
+              switch (table) {
+                case TASK -> SessionHistoryPolicyV1.TASK_CLEANUP_BYTES;
+                case STEP,
+                        INVOCATION,
+                        INVOCATION_SESSION_SEARCH,
+                        INVOCATION_SESSION_LINEAGE_TRACE,
+                        TASK_SESSION_LINEAGE ->
+                    SessionHistoryPolicyV1.STEP_CLEANUP_BYTES;
+                case MODEL_DISPATCH, SESSION_PUBLIC_EVENT ->
+                    SessionHistoryPolicyV1.DISPATCH_CLEANUP_BYTES;
+                default -> 0;
+              };
+          total += SessionHistoryPolicyV1.ROW_HEADER_BYTES;
+          for (Object value : row.values())
+            total += SessionHistoryPolicyV1.FIELD_HEADER_BYTES + batch.scalarBytes(value);
+        }
       }
     }
     if (total
@@ -79,45 +81,48 @@ public final class SessionMetadataAccountingServiceImpl
     String content = null;
     int histories = 0, reservations = 0;
     for (var table : SessionMetadataAccounting.Table.values()) {
-      for (var row : records.rows(table)) {
-        headroom =
-            Math.addExact(
-                headroom,
-                switch (table) {
-                  case TASK -> SessionHistoryPolicyV1.TASK_CLEANUP_BYTES;
-                  case STEP,
-                          INVOCATION,
-                          INVOCATION_SESSION_SEARCH,
-                          INVOCATION_SESSION_LINEAGE_TRACE,
-                          TASK_SESSION_LINEAGE ->
-                      SessionHistoryPolicyV1.STEP_CLEANUP_BYTES;
-                  case MODEL_DISPATCH, SESSION_PUBLIC_EVENT ->
-                      SessionHistoryPolicyV1.DISPATCH_CLEANUP_BYTES;
-                  default -> 0;
-                });
-        total = Math.addExact(total, SessionHistoryPolicyV1.ROW_HEADER_BYTES);
-        for (var value : row.values())
-          total =
+      try (var batch = records.batch(table)) {
+        for (var row : batch) {
+          headroom =
               Math.addExact(
-                  total,
-                  Math.addExact(SessionHistoryPolicyV1.FIELD_HEADER_BYTES, scalarBytes(value)));
-        if (table == SessionMetadataAccounting.Table.TASK_SESSION_HISTORY) {
-          histories++;
-          content = (String) row.value("content_state");
-          if (!java.util.List.of("PRESENT", "PURGED").contains(content)) throw corrupt();
-          old = number(row.value("metadata_bytes"));
-          body = number(row.value("body_bytes"));
-          reserved = number(row.value("reserved_bytes"));
-          held = number(row.value("held_bytes"));
-          if ("PRESENT".equals(content))
-            total = Math.subtractExact(total, scalarBytes(row.value("metadata_bytes")));
-        }
-        if (table == SessionMetadataAccounting.Table.RESERVATION
-            && "SESSION_HISTORY_STORAGE".equals(row.value("category"))) {
-          reservations++;
-          amount = number(row.value("amount"));
-          actual = row.value("actual") == null ? null : number(row.value("actual"));
-          reservationState = (String) row.value("state");
+                  headroom,
+                  switch (table) {
+                    case TASK -> SessionHistoryPolicyV1.TASK_CLEANUP_BYTES;
+                    case STEP,
+                            INVOCATION,
+                            INVOCATION_SESSION_SEARCH,
+                            INVOCATION_SESSION_LINEAGE_TRACE,
+                            TASK_SESSION_LINEAGE ->
+                        SessionHistoryPolicyV1.STEP_CLEANUP_BYTES;
+                    case MODEL_DISPATCH, SESSION_PUBLIC_EVENT ->
+                        SessionHistoryPolicyV1.DISPATCH_CLEANUP_BYTES;
+                    default -> 0;
+                  });
+          total = Math.addExact(total, SessionHistoryPolicyV1.ROW_HEADER_BYTES);
+          for (var value : row.values())
+            total =
+                Math.addExact(
+                    total,
+                    Math.addExact(
+                        SessionHistoryPolicyV1.FIELD_HEADER_BYTES, batch.scalarBytes(value)));
+          if (table == SessionMetadataAccounting.Table.TASK_SESSION_HISTORY) {
+            histories++;
+            content = (String) row.value("content_state");
+            if (!java.util.List.of("PRESENT", "PURGED").contains(content)) throw corrupt();
+            old = number(row.value("metadata_bytes"));
+            body = number(row.value("body_bytes"));
+            reserved = number(row.value("reserved_bytes"));
+            held = number(row.value("held_bytes"));
+            if ("PRESENT".equals(content))
+              total = Math.subtractExact(total, scalarBytes(row.value("metadata_bytes")));
+          }
+          if (table == SessionMetadataAccounting.Table.RESERVATION
+              && "SESSION_HISTORY_STORAGE".equals(row.value("category"))) {
+            reservations++;
+            amount = number(row.value("amount"));
+            actual = row.value("actual") == null ? null : number(row.value("actual"));
+            reservationState = (String) row.value("state");
+          }
         }
       }
     }

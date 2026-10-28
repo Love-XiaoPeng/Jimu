@@ -15,6 +15,11 @@ final class SessionDependencyWrites {
     PROGRESS,
     STEP,
     DISPATCH,
+    INVOCATION,
+    ATTEMPT,
+    RESERVATION,
+    TOOL_RESERVATION,
+    BINDING,
     INSTALLATION,
     UNKNOWN
   }
@@ -71,20 +76,28 @@ final class SessionDependencyWrites {
     add(
         r,
         "execution.mapper.TaskAttemptMapper",
+        Kind.ATTEMPT,
+        "markOwnedAttemptQuiescent expireActiveAttempt");
+    add(
+        r,
+        "execution.mapper.TaskAttemptMapper",
         Kind.PROGRESS,
-        "markOwnedAttemptQuiescent markWorkerTaskAttemptsQuiescent expireActiveAttempt insertActiveAttempt");
+        "markWorkerTaskAttemptsQuiescent insertActiveAttempt");
     add(r, "execution.mapper.StepMapper", Kind.PROGRESS, "insertPreparedStep");
     add(
         r,
         "execution.mapper.StepMapper",
         Kind.STEP,
         "markModelRunning rejectModelStep storeModelResponse bindDirectoryProjection");
+    add(r, "invocation.mapper.InvocationMapper", Kind.PROGRESS, "markRunningEffectsUnknown");
+    add(r, "invocation.mapper.InvocationMapper", Kind.STEP, "insert bindTodoRevision");
     add(
         r,
         "invocation.mapper.InvocationMapper",
-        Kind.PROGRESS,
-        "insert markRunningEffectsUnknown bindTodoRevision succeedRunning failRunning markInvocationUnknown preserveWebResult");
-    add(r, "model.mapper.ModelDispatchMapper", Kind.PROGRESS, "insert failOriginalDispatch");
+        Kind.INVOCATION,
+        "markAdmittedRunning succeedRunning failRunning markInvocationUnknown preserveWebResult");
+    add(r, "model.mapper.ModelDispatchMapper", Kind.STEP, "insert");
+    add(r, "model.mapper.ModelDispatchMapper", Kind.DISPATCH, "failOriginalDispatch");
     add(
         r,
         "model.mapper.ModelDispatchMapper",
@@ -94,8 +107,14 @@ final class SessionDependencyWrites {
     add(
         r,
         "budget.mapper.ReservationMapper",
+        Kind.RESERVATION,
+        "settleModelTokens holdModelUnknown holdReservedModelUnknown settleActualModelCost holdCostUnknown");
+    add(
+        r,
+        "budget.mapper.ReservationMapper",
         Kind.DISPATCH,
-        "settleModelTokens holdModelUnknown holdReservedModelUnknown holdFailedModelUnknown holdInvalidModelProof settleActualModelCost holdCostUnknown");
+        "holdFailedModelUnknown holdInvalidModelProof");
+    add(r, "budget.mapper.ReservationMapper", Kind.TOOL_RESERVATION, "settleToolUnit");
     add(
         r,
         "budget.mapper.TenantBudgetMapper",
@@ -124,6 +143,27 @@ final class SessionDependencyWrites {
         "settleHistory settleReservation releaseBudget");
     add(r, "session.mapper.SessionScopeQueryMapper", Kind.PROGRESS, "consumeTask");
     add(r, "session.mapper.SessionScopeQueryMapper", Kind.SCALAR, "consumeTenant");
+    add(r, "session.mapper.SessionScopeQueryMapper", Kind.TOOL_RESERVATION, "settle");
+    add(
+        r,
+        "session.mapper.SessionScopeQueryMapper",
+        Kind.INVOCATION,
+        "finishInvocation commitQuery");
+    add(r, "session.mapper.SessionLineageTraceMapper", Kind.INVOCATION, "commit");
+    add(r, "session.mapper.ScopeQueryStepReadMapper", Kind.STEP, "bindPrepared");
+    add(r, "session.mapper.SessionPreparedScopeMapper", Kind.STEP, "insert");
+    for (String mapper :
+        List.of(
+            "SessionReadBindingMapper",
+            "SessionSearchBindingMapper",
+            "SessionTraceBindingMapper",
+            "SessionScopeBindingMapper",
+            "SessionLineageTraceMapper"))
+      add(r, "session.mapper." + mapper, Kind.BINDING, "insert");
+    add(r, "event.mapper.EventMapper", Kind.PROGRESS, "insertFact");
+    add(r, "session.mapper.SessionPublicEventAppendMapper", Kind.PROGRESS, "insert");
+    add(r, "task.mapper.TaskOperationsMapper", Kind.RESERVATION, "releaseReservation");
+    add(r, "task.mapper.TaskOperationsMapper", Kind.ATTEMPT, "stopAttempt");
     add(r, "plugin.mapper.InstallationMapper", Kind.INSTALLATION, "insert update delete");
     return Map.copyOf(r);
   }
@@ -144,7 +184,20 @@ final class SessionDependencyWrites {
             io.github.lovexiaopeng.jimu.adapters.persistence.session.entity.SessionLineageEntity
         || value
             instanceof
-            io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity;
+            io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity
+        || List.of(
+                "SessionPreparedScopeEntity",
+                "SessionReadBindingEntity",
+                "SessionSearchBindingEntity",
+                "SessionTraceBindingEntity",
+                "SessionScopeBindingEntity",
+                "SessionLineageTraceEntity",
+                "SessionPublicEventAppendEntity")
+            .stream()
+            .anyMatch(
+                name ->
+                    value != null
+                        && value.getClass().getName().equals(ROOT + "session.entity." + name));
   }
 
   private static List<Map<?, ?>> fields(Object parameter) {
@@ -187,6 +240,14 @@ final class SessionDependencyWrites {
       String plugin = key(fields, "plugin", "pluginId", "plugin_id");
       return plugin == null ? null : Set.of(Dependency.installation(tenant, plugin));
     }
+    // SQL以step/dispatch等主键写时，附带task候选只能用于交叉检查，绝不能替代真实关系。
+    if (kind == Kind.STEP
+        || kind == Kind.DISPATCH
+        || kind == Kind.INVOCATION
+        || kind == Kind.ATTEMPT
+        || kind == Kind.RESERVATION
+        || kind == Kind.TOOL_RESERVATION
+        || kind == Kind.BINDING) return null;
     String task =
         key(fields, "caller", "taskId", "task", "id", "callerTaskId", "caller_task_id", "task_id");
     // 显式task候选冲突绝不可退到当前lease猜测。
@@ -220,9 +281,158 @@ final class SessionDependencyWrites {
       owner.mutation();
       return;
     }
-    var keys = kind == Kind.UNKNOWN ? null : keys(parameter, kind, owner);
-    if ((kind == Kind.PROGRESS || kind == Kind.STEP || kind == Kind.DISPATCH)
+    var keys = relationKeys(id, parameter, kind, owner);
+    if ((kind == Kind.PROGRESS
+            || kind == Kind.STEP
+            || kind == Kind.DISPATCH
+            || kind == Kind.INVOCATION
+            || kind == Kind.ATTEMPT
+            || kind == Kind.RESERVATION
+            || kind == Kind.TOOL_RESERVATION
+            || kind == Kind.BINDING)
         && owner.callerProgress(keys)) owner.mutation();
     else owner.dependencyMutation(keys);
+  }
+
+  private static Set<Dependency> relationKeys(
+      String id, Object parameter, Kind kind, SessionQueryWork owner) {
+    if (kind == Kind.UNKNOWN) return null;
+    if (parameter instanceof Map<?, ?> map && map.containsKey("ew")) return null;
+    var f = fields(parameter);
+    String tenant = key(f, "tenant", "tenantId", "tenant_id");
+    String task = key(f, "caller", "taskId", "task", "callerTaskId", "caller_task_id", "task_id");
+    boolean supplied =
+        f.stream()
+            .anyMatch(
+                m ->
+                    List.of("caller", "taskId", "task", "callerTaskId", "caller_task_id", "task_id")
+                        .stream()
+                        .anyMatch(k -> m.get(k) != null));
+    if (supplied && task == null) return null;
+    var type =
+        switch (kind) {
+          case STEP -> SessionQueryWork.Relation.STEP;
+          case DISPATCH -> SessionQueryWork.Relation.DISPATCH;
+          case INVOCATION, BINDING -> SessionQueryWork.Relation.INVOCATION;
+          case ATTEMPT -> SessionQueryWork.Relation.ATTEMPT;
+          case RESERVATION, TOOL_RESERVATION -> SessionQueryWork.Relation.RESERVATION;
+          default -> null;
+        };
+    if (type == null) return keys(parameter, kind, owner);
+    String row =
+        switch (type) {
+          case STEP -> key(f, "stepId", "step_id", "step");
+          case DISPATCH -> key(f, "dispatchId", "dispatch");
+          case ATTEMPT -> key(f, "attemptId", "attempt");
+          case RESERVATION ->
+              kind == Kind.TOOL_RESERVATION
+                  ? key(f, "invocation", "reservationId")
+                  : key(f, "reservationId", "reservation");
+          case INVOCATION ->
+              id.equals(ROOT + "session.mapper.SessionLineageTraceMapper.commit")
+                  ? key(f, "id")
+                  : key(f, "invocationId", "invocation_id", "invocation");
+        };
+    // INSERT binding具有完整三键；不能只凭一条task关系将错误step绑定到已存在invocation。
+    String parent = kind == Kind.BINDING ? key(f, "stepId", "step_id", "step") : null;
+    if (kind == Kind.BINDING && (task == null || parent == null)) return null;
+    String category = kind == Kind.TOOL_RESERVATION ? "TOOL" : null;
+    if (kind == Kind.RESERVATION && !id.endsWith("TaskOperationsMapper.releaseReservation"))
+      category =
+          id.endsWith("settleActualModelCost") || id.endsWith("holdCostUnknown")
+              ? "MODEL_COST"
+              : "MODEL";
+    return owner.related(type, tenant, row, task, parent, category);
+  }
+
+  /** 具名SELECT的完整行、成功INSERT的真实字段是关系证据；wrapper条件不被解析。 */
+  static void observed(String id, Object parameter, Object result, SessionQueryWork owner) {
+    if (result instanceof Number changed) {
+      if (changed.intValue() != 1) return;
+      var f = fields(parameter);
+      String tenant = key(f, "tenant", "tenantId");
+      String task = key(f, "taskId", "callerTaskId");
+      if (id.equals(ROOT + "execution.mapper.StepMapper.insertPreparedStep"))
+        owner.observed(SessionQueryWork.Relation.STEP, tenant, key(f, "stepId"), task, null, null);
+      else if (id.equals(ROOT + "invocation.mapper.InvocationMapper.insert"))
+        owner.observed(
+            SessionQueryWork.Relation.INVOCATION,
+            tenant,
+            key(f, "invocationId"),
+            task,
+            key(f, "stepId"),
+            null);
+      else if (id.equals(ROOT + "model.mapper.ModelDispatchMapper.insert"))
+        owner.observed(
+            SessionQueryWork.Relation.DISPATCH,
+            tenant,
+            key(f, "dispatchId"),
+            task,
+            key(f, "stepId"),
+            null);
+      else if (id.equals(ROOT + "execution.mapper.TaskAttemptMapper.insertActiveAttempt"))
+        owner.observed(
+            SessionQueryWork.Relation.ATTEMPT, tenant, key(f, "attemptId"), task, null, null);
+      else if (id.equals(ROOT + "budget.mapper.ReservationMapper.insertReservation"))
+        owner.observed(
+            SessionQueryWork.Relation.RESERVATION,
+            tenant,
+            key(f, "reservationId"),
+            task,
+            key(f, "dispatchId"),
+            key(f, "category"));
+      return;
+    }
+    SessionQueryWork.Relation type = READS.get(id);
+    if (type == null || !(result instanceof List<?> rows)) return;
+    for (Object value : rows)
+      if (value instanceof Map<?, ?> row) {
+        var f = List.<Map<?, ?>>of(row);
+        owner.observed(
+            type,
+            key(f, "tenant_id"),
+            key(f, "id"),
+            key(f, "task_id"),
+            type == SessionQueryWork.Relation.INVOCATION
+                    || type == SessionQueryWork.Relation.DISPATCH
+                ? key(f, "step_id")
+                : null,
+            type == SessionQueryWork.Relation.RESERVATION ? key(f, "category") : null);
+      }
+  }
+
+  private static final Map<String, SessionQueryWork.Relation> READS = reads();
+
+  private static Map<String, SessionQueryWork.Relation> reads() {
+    var r = new HashMap<String, SessionQueryWork.Relation>();
+    for (String name : List.of("selectLatestStep", "selectModelStep", "selectInvocationStep"))
+      r.put(ROOT + "execution.mapper.StepMapper." + name, SessionQueryWork.Relation.STEP);
+    r.put(
+        ROOT + "session.mapper.ScopeQueryStepReadMapper.selectMaps",
+        SessionQueryWork.Relation.STEP);
+    r.put(
+        ROOT + "session.mapper.HistoryInvocationReadMapper.selectMaps",
+        SessionQueryWork.Relation.INVOCATION);
+    for (String name : List.of("selectOriginalSlot", "selectTaskInvocation"))
+      r.put(
+          ROOT + "invocation.mapper.InvocationMapper." + name,
+          SessionQueryWork.Relation.INVOCATION);
+    r.put(
+        ROOT + "session.mapper.ScopeQueryInvocationReadMapper.selectMaps",
+        SessionQueryWork.Relation.INVOCATION);
+    r.put(
+        ROOT + "model.mapper.ModelDispatchMapper.selectSettlementProof",
+        SessionQueryWork.Relation.DISPATCH);
+    for (String name :
+        List.of("selectReservedSlot", "selectTokenAmount", "lockProgressReservation"))
+      r.put(
+          ROOT + "budget.mapper.ReservationMapper." + name, SessionQueryWork.Relation.RESERVATION);
+    r.put(
+        ROOT + "session.mapper.ScopeQueryReservationReadMapper.selectMaps",
+        SessionQueryWork.Relation.RESERVATION);
+    r.put(
+        ROOT + "execution.mapper.TaskAttemptMapper.lockProgressAttempt",
+        SessionQueryWork.Relation.ATTEMPT);
+    return Map.copyOf(r);
   }
 }

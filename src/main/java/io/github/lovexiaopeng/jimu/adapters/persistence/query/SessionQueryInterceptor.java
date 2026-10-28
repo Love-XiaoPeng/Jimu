@@ -18,6 +18,15 @@ import org.apache.ibatis.reflection.SystemMetaObject;
 @Intercepts({
   @Signature(
       type = org.apache.ibatis.executor.Executor.class,
+      method = "query",
+      args = {
+        org.apache.ibatis.mapping.MappedStatement.class,
+        Object.class,
+        org.apache.ibatis.session.RowBounds.class,
+        org.apache.ibatis.session.ResultHandler.class
+      }),
+  @Signature(
+      type = org.apache.ibatis.executor.Executor.class,
       method = "update",
       args = {org.apache.ibatis.mapping.MappedStatement.class, Object.class}),
   @Signature(
@@ -58,8 +67,11 @@ public final class SessionQueryInterceptor implements Interceptor {
       var command = (org.apache.ibatis.mapping.MappedStatement) invocation.getArgs()[0];
       if (owner == null) return invocation.proceed();
       try {
-        SessionDependencyWrites.before(command.getId(), parameter, owner);
-        return invocation.proceed();
+        if (command.getSqlCommandType() != org.apache.ibatis.mapping.SqlCommandType.SELECT)
+          SessionDependencyWrites.before(command.getId(), parameter, owner);
+        Object result = invocation.proceed();
+        SessionDependencyWrites.observed(command.getId(), parameter, result, owner);
+        return result;
       } catch (Throwable failure) {
         owner.poisonProof(
             failure instanceof RuntimeException runtime

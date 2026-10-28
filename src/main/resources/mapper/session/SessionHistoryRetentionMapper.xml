@@ -22,13 +22,17 @@
     FROM invocation_session_lineage_trace WHERE tenant_id=#{tenant} AND caller_task_id=#{taskId}
   </select>
   <select id="candidates" resultType="map"><![CDATA[SELECT p.tenant_id,p.task_id FROM task_session_history p JOIN task t ON t.tenant_id=p.tenant_id AND t.id=p.task_id
-        WHERE p.content_state='PRESENT' AND p.retain_until<=CURRENT_TIMESTAMP(6) AND t.state IN ('SUCCEEDED','FAILED','CANCELLED')
+        WHERE ]]><choose><when test="query != null and query.lineage()">p.history_version=5</when><otherwise>p.history_version&lt;&gt;5</otherwise></choose><![CDATA[ AND p.content_state='PRESENT' AND p.retain_until<=CURRENT_TIMESTAMP(6) AND t.state IN ('SUCCEEDED','FAILED','CANCELLED')
         AND NOT EXISTS(SELECT 1 FROM task_attempt a WHERE a.tenant_id=p.tenant_id AND a.task_id=p.task_id AND a.quiescent=FALSE)
-        AND NOT EXISTS(SELECT 1 FROM invocation i WHERE i.tenant_id=p.tenant_id AND i.task_id=p.task_id AND i.state IN ('RUNNING','OUTCOME_UNKNOWN'))
+        AND NOT EXISTS(SELECT 1 FROM invocation i WHERE i.tenant_id=p.tenant_id AND i.task_id=p.task_id AND i.state IN ('PENDING','RUNNING','OUTCOME_UNKNOWN','UNKNOWN'))
+        AND NOT EXISTS(SELECT 1 FROM invocation_session_lineage_trace x WHERE x.tenant_id=p.tenant_id AND x.caller_task_id=p.task_id AND x.outcome IN ('PENDING','UNKNOWN','OUTCOME_UNKNOWN'))
+        AND NOT EXISTS(SELECT 1 FROM invocation_session_scope_query x WHERE x.tenant_id=p.tenant_id AND x.caller_task_id=p.task_id AND x.outcome IN ('PENDING','UNKNOWN','OUTCOME_UNKNOWN'))
         AND NOT EXISTS(SELECT 1 FROM reservation r WHERE r.tenant_id=p.tenant_id AND r.task_id=p.task_id AND (r.state='HELD_UNKNOWN' OR r.usage_quality='UNKNOWN' OR (r.state='RESERVED' AND r.category<>'SESSION_HISTORY_STORAGE')))
         AND NOT EXISTS(SELECT 1 FROM model_dispatch d WHERE d.tenant_id=p.tenant_id AND d.task_id=p.task_id AND d.state IN ('DISPATCHED','USAGE_UNKNOWN','BOUND_EXCEEDED'))
         ORDER BY p.retain_until,p.tenant_id,p.task_id LIMIT 16]]></select>
-  <select id="activeInvocations" resultType="map"><![CDATA[SELECT id FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state IN ('RUNNING','OUTCOME_UNKNOWN') LIMIT 1]]></select>
+  <select id="activeInvocations" resultType="map"><![CDATA[SELECT id FROM invocation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state IN ('PENDING','RUNNING','OUTCOME_UNKNOWN','UNKNOWN')
+        UNION ALL SELECT invocation_id AS id FROM invocation_session_lineage_trace WHERE tenant_id=#{tenant} AND caller_task_id=#{taskId} AND outcome IN ('PENDING','UNKNOWN','OUTCOME_UNKNOWN')
+        UNION ALL SELECT invocation_id AS id FROM invocation_session_scope_query WHERE tenant_id=#{tenant} AND caller_task_id=#{taskId} AND outcome IN ('PENDING','UNKNOWN','OUTCOME_UNKNOWN') LIMIT 1]]></select>
   <select id="unsafeReservations" resultType="map"><![CDATA[SELECT id FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND (state='HELD_UNKNOWN' OR usage_quality='UNKNOWN' OR (state='RESERVED' AND category<>'SESSION_HISTORY_STORAGE')) LIMIT 1]]></select>
   <select id="dispatchedModels" resultType="map"><![CDATA[SELECT id FROM model_dispatch WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state IN ('DISPATCHED','USAGE_UNKNOWN','BOUND_EXCEEDED') LIMIT 1]]></select>
   <select id="history" resultType="map"><![CDATA[SELECT tenant_id,task_id,record_version,history_version,binding_snapshot,binding_digest,content_state,next_seq,body_bytes,metadata_bytes,reserved_bytes,held_bytes,retain_until,cleanup_receipt,retain_until>CURRENT_TIMESTAMP(6) AS retained FROM task_session_history WHERE tenant_id=#{tenant} AND task_id=#{taskId} FOR UPDATE]]></select>

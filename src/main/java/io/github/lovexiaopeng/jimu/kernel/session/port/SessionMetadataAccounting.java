@@ -31,6 +31,40 @@ public interface SessionMetadataAccounting {
     }
   }
 
+  /** 物化结果的引用寿命；消费完成或异常都必须关闭，游标关闭不代表batch释放。 */
+  interface Batch extends Iterable<Row>, AutoCloseable {
+    default long scalarBytes(Object value) {
+      return io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.scalarBytes(value);
+    }
+
+    @Override
+    void close();
+  }
+
+  default Batch batch(Table table) {
+    return new Batch() {
+      private Iterable<? extends Row> values = rows(table);
+
+      public java.util.Iterator<Row> iterator() {
+        if (values == null) throw new IllegalStateException("Closed metadata batch");
+        var iterator = values.iterator();
+        return new java.util.Iterator<>() {
+          public boolean hasNext() {
+            return iterator.hasNext();
+          }
+
+          public Row next() {
+            return iterator.next();
+          }
+        };
+      }
+
+      public void close() {
+        values = null;
+      }
+    };
+  }
+
   record Balance(
       long metadata,
       long body,

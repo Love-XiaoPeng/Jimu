@@ -41,23 +41,25 @@ public final class SessionHistoryRetentionServiceImpl implements SessionHistoryR
   }
 
   public void cleanup() {
-    for (var candidate : records.candidates())
-      work.required(
-          () -> {
-            records.lockBudget(candidate.tenant());
-            var task = records.lockTask(candidate);
-            var h = history(task);
-            if (!SessionContentState.PRESENT.equals(h.state())
-                || h.retained() && (!task.scoped() || !task.invalidated())
-                || !List.of(TaskState.SUCCEEDED, TaskState.FAILED, TaskState.CANCELLED)
-                    .contains(task.state())
-                || !task.writersQuiescent()
-                || task.activeInvocations()
-                || task.unsafeReservations()
-                || task.dispatchedModels()) return null;
-            purge(task);
-            return null;
-          });
+    try (var candidates = records.candidateBatch()) {
+      for (var candidate : candidates)
+        work.required(
+            () -> {
+              records.lockBudget(candidate.tenant());
+              var task = records.lockTask(candidate);
+              var h = history(task);
+              if (!SessionContentState.PRESENT.equals(h.state())
+                  || h.retained() && (!task.scoped() || !task.invalidated())
+                  || !List.of(TaskState.SUCCEEDED, TaskState.FAILED, TaskState.CANCELLED)
+                      .contains(task.state())
+                  || !task.writersQuiescent()
+                  || task.activeInvocations()
+                  || task.unsafeReservations()
+                  || task.dispatchedModels()) return null;
+              purge(task);
+              return null;
+            });
+    }
   }
 
   private static long bytes(String value) {
@@ -65,7 +67,7 @@ public final class SessionHistoryRetentionServiceImpl implements SessionHistoryR
   }
 
   private long metadata(LockedHistory task) {
-    long total = 0;
+    long total = task.lineageMetadataBytes();
     for (var row : task.metadata()) {
       total += 32;
       for (var value : row.scalars()) total += 8 + (value == null ? 1 : bytes(value));

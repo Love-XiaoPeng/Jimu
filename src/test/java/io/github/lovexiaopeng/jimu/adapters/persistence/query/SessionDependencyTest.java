@@ -153,4 +153,90 @@ class SessionDependencyTest {
         SessionDependencyWrites.keys(
             Map.of("et", installation), SessionDependencyWrites.Kind.INSTALLATION, null));
   }
+
+  private SessionQueryWork published() {
+    var owner = owner();
+    owner.leaseTask("tenant", "new");
+    owner.bind("lease", "step", "dispatch");
+    owner.locked("tenant", "new");
+    var fact = fact("new", null);
+    owner.scope(
+        caller,
+        new SessionScopeRecords.Validated(fact.scope(), fact.authority(), List.of()),
+        () -> {});
+    return owner;
+  }
+
+  @Test
+  void attachedCallerCannotReplaceRealStepDispatchInvocationOrAttemptKey() {
+    String root = "io.github.lovexiaopeng.jimu.adapters.persistence.";
+    for (var entry :
+        Map.of(
+                "execution.mapper.StepMapper.storeModelResponse", "stepId",
+                "model.mapper.ModelDispatchMapper.recordActualUsage", "dispatchId",
+                "session.mapper.SessionScopeQueryMapper.finishInvocation", "invocation",
+                "task.mapper.TaskOperationsMapper.stopAttempt", "attemptId")
+            .entrySet()) {
+      var owner = published();
+      var args = new java.util.HashMap<String, Object>();
+      args.put("tenant", "tenant");
+      args.put("taskId", "new");
+      args.put(entry.getValue(), "wrong");
+      assertThrows(
+          IllegalStateException.class,
+          () -> SessionDependencyWrites.before(root + entry.getKey(), args, owner));
+      assertThrows(IllegalStateException.class, owner::finish);
+      assertThrows(IllegalStateException.class, owner::beforeCommit);
+    }
+  }
+
+  @Test
+  void observedRowsAllowOnlyTheirOwnCallerStepAndReservationCategory() {
+    String root = "io.github.lovexiaopeng.jimu.adapters.persistence.";
+    var owner = published();
+    SessionDependencyWrites.observed(
+        root + "execution.mapper.StepMapper.selectModelStep",
+        null,
+        List.of(Map.of("tenant_id", "tenant", "id", "step", "task_id", "new")),
+        owner);
+    var invocation =
+        Map.of("tenantId", "tenant", "taskId", "new", "stepId", "step", "invocationId", "call");
+    SessionDependencyWrites.before(
+        root + "invocation.mapper.InvocationMapper.insert", invocation, owner);
+    SessionDependencyWrites.observed(
+        root + "invocation.mapper.InvocationMapper.insert", invocation, 1, owner);
+    SessionDependencyWrites.before(
+        root + "session.mapper.SessionLineageTraceMapper.insert", invocation, owner);
+    SessionDependencyWrites.before(
+        root + "session.mapper.SessionLineageTraceMapper.commit",
+        Map.of("tenant", "tenant", "id", "call"),
+        owner);
+    SessionDependencyWrites.observed(
+        root + "budget.mapper.ReservationMapper.insertReservation",
+        Map.of("tenant", "tenant", "taskId", "new", "reservationId", "call", "category", "TOOL"),
+        1,
+        owner);
+    SessionDependencyWrites.before(
+        root + "session.mapper.SessionScopeQueryMapper.settle",
+        Map.of("tenant", "tenant", "invocation", "call"),
+        owner);
+    owner.finish();
+    owner.beforeCommit();
+    owner.complete();
+
+    var mismatch = published();
+    SessionDependencyWrites.observed(
+        root + "invocation.mapper.InvocationMapper.selectTaskInvocation",
+        null,
+        List.of(
+            Map.of(
+                "tenant_id", "tenant", "id", "call", "task_id", "new", "step_id", "another-step")),
+        mismatch);
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            SessionDependencyWrites.before(
+                root + "session.mapper.SessionLineageTraceMapper.insert", invocation, mismatch));
+    assertThrows(IllegalStateException.class, mismatch::finish);
+  }
 }

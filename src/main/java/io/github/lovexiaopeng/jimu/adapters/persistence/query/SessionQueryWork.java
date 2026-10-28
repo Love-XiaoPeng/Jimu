@@ -270,6 +270,93 @@ public final class SessionQueryWork {
 
   private Dependency leaseTask;
 
+  enum Relation {
+    STEP,
+    INVOCATION,
+    DISPATCH,
+    ATTEMPT,
+    RESERVATION
+  }
+
+  private record RelationKey(Relation type, String tenant, String id) {}
+
+  private record Related(String task, String parent, String category) {}
+
+  private final Map<RelationKey, Related> relations = new LinkedHashMap<>();
+  private final Object relationScratch = new Object();
+  private long relationBytes;
+
+  /** 仅由具名Mapper真实读回或成功INSERT登记；不从ID、provider或lease推断归属。 */
+  void observed(
+      Relation type, String tenant, String id, String task, String parent, String category) {
+    active();
+    if (tenant == null || id == null || task == null) return;
+    context.operation(
+        1L
+            + tenant.length()
+            + id.length()
+            + task.length()
+            + (parent == null ? 0 : parent.length())
+            + (category == null ? 0 : category.length()));
+    var key = new RelationKey(type, tenant, id);
+    var value = new Related(task, parent, category);
+    var previous = relations.get(key);
+    if (previous != null) {
+      if (!previous.equals(value)) {
+        var failure = new IllegalStateException("Session row relationship changed");
+        poisonProof(failure);
+        throw failure;
+      }
+      return;
+    }
+    long bytes =
+        256L
+            + 2L
+                * (tenant.length()
+                    + id.length()
+                    + task.length()
+                    + (parent == null ? 0 : parent.length())
+                    + (category == null ? 0 : category.length()));
+    context.retainScratch(relationScratch, Math.addExact(relationBytes, bytes));
+    relations.put(key, value);
+    relationBytes += bytes;
+  }
+
+  java.util.Set<Dependency> related(
+      Relation type,
+      String tenant,
+      String id,
+      String expectedTask,
+      String expectedParent,
+      String category) {
+    active();
+    if (tenant == null || id == null) return null;
+    context.operation(1L + tenant.length() + id.length());
+    var value = relations.get(new RelationKey(type, tenant, id));
+    if (value == null
+        || expectedTask != null && !expectedTask.equals(value.task())
+        || expectedParent != null && !expectedParent.equals(value.parent())
+        || category != null && !category.equals(value.category())) return null;
+    if (type == Relation.STEP && stepKey != null && !stepKey.equals(id)
+        || type == Relation.DISPATCH && responseKey != null && !responseKey.equals(id)
+        || (type == Relation.INVOCATION || type == Relation.DISPATCH)
+            && stepKey != null
+            && !stepKey.equals(value.parent())) return null;
+    if (type == Relation.RESERVATION
+        && category != null
+        && category.startsWith("MODEL")
+        && responseKey != null
+        && !responseKey.equals(value.parent())) return null;
+    if (type == Relation.RESERVATION
+        && "TOOL".equals(category)
+        && related(Relation.INVOCATION, tenant, id, value.task(), null, null) == null) return null;
+    if (type == Relation.RESERVATION
+        && category == null
+        && !java.util.List.of("QUEUE", "RUNNING", "QUESTION_TASK").contains(value.category()))
+      return null;
+    return java.util.Set.of(new Dependency(tenant, value.task()));
+  }
+
   public void leaseTask(String tenant, String task) {
     var next = new Dependency(tenant, task);
     if (leaseTask != null && !leaseTask.equals(next))
@@ -286,10 +373,9 @@ public final class SessionQueryWork {
   }
 
   java.util.Set<Dependency> boundProgress(String tenant, String step, String response) {
-    if (leaseTask == null || !leaseTask.tenant().equals(tenant)) return null;
-    if (step != null && step.equals(stepKey) || response != null && response.equals(responseKey))
-      return java.util.Set.of(leaseTask);
-    return null;
+    return step != null
+        ? related(Relation.STEP, tenant, step, null, null, null)
+        : related(Relation.DISPATCH, tenant, response, null, null, null);
   }
 
   public Object token() {
@@ -497,6 +583,9 @@ public final class SessionQueryWork {
     stepKey = null;
     responseKey = null;
     leaseTask = null;
+    relations.clear();
+    relationBytes = 0;
+    context.releaseScratch(relationScratch);
     context.releaseScratch(stagingScratch);
     completed = true;
     context.releaseScratch(scopeScratch);

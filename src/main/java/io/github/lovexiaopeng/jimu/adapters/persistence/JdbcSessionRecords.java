@@ -387,15 +387,19 @@ final class JdbcSessionRecords {
         new MapperSessionCheckpointPreparation(this, task, step), request);
   }
 
-  void updatePreparedStep(Object wrapper) {
-    var args = new java.util.HashMap<String, Object>();
-    args.put("et", null);
-    args.put("ew", wrapper);
-    args.put("query", query);
-    mapperSession()
-        .update(
-            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryStepReadMapper.update",
-            args);
+  void updatePreparedStep(
+      String tenant,
+      String task,
+      String step,
+      long upper,
+      String contextDigest,
+      String bindingDigest) {
+    if (mapperSession()
+            .getMapper(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper
+                    .ScopeQueryStepReadMapper.class)
+            .bindPrepared(query, tenant, task, step, upper, contextDigest, bindingDigest)
+        != 1) throw corrupt();
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionCallBindingService

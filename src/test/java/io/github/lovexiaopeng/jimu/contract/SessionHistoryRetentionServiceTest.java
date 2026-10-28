@@ -74,6 +74,7 @@ class SessionHistoryRetentionServiceTest {
               new Class<?>[] {LockedHistory.class},
               (p, m, a) -> {
                 String name = m.getName();
+                if (name.equals("lineageMetadataBytes")) return 0L;
                 calls.add(name);
                 if (name.equals(failure)) throw new IllegalStateException("private failure");
                 return switch (name) {

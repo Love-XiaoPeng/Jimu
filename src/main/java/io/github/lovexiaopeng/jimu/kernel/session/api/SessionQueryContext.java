@@ -2,7 +2,6 @@ package io.github.lovexiaopeng.jimu.kernel.session.api;
 
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger.QueryResources;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
-import java.nio.charset.StandardCharsets;
 
 /** One explicitly owned synchronous query; only its cumulative counters cross async body input. */
 public final class SessionQueryContext {
@@ -199,6 +198,9 @@ public final class SessionQueryContext {
     public void column(String label, Object value) {
       if (metered) {
         operation(1);
+        operation(label.length());
+        if (value instanceof String text) operation(text.length());
+        else if (value instanceof Integer || value instanceof Long) operation(scalarBytes(value));
         long size = 8L + utf8(label) + scalarBytes(value);
         bytes = Math.addExact(bytes, size);
         groupCounters()[1] = Math.addExact(groupCounters()[1], size);
@@ -211,12 +213,36 @@ public final class SessionQueryContext {
   }
 
   private static int utf8(String value) {
-    return value.getBytes(StandardCharsets.UTF_8).length;
+    int bytes = 0;
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      if (c < 128) bytes++;
+      else if (c < 2048) bytes += 2;
+      else if (Character.isHighSurrogate(c)
+          && i + 1 < value.length()
+          && Character.isLowSurrogate(value.charAt(i + 1))) {
+        bytes += 4;
+        i++;
+      } else bytes += Character.isSurrogate(c) ? 1 : 3;
+    }
+    return bytes;
   }
 
   public static long scalarBytes(Object value) {
     if (value == null) return 1;
     if (value instanceof byte[] data) return data.length;
+    if (value instanceof String text) return utf8(text);
+    if (value instanceof Integer || value instanceof Long) {
+      long number = ((Number) value).longValue();
+      // 负数域避免Long.MIN_VALUE取正溢出；无toString/整串byte[]临时副本。
+      long bytes = number < 0 ? 1 : 0;
+      if (number > 0) number = -number;
+      do {
+        bytes++;
+        number /= 10;
+      } while (number != 0);
+      return bytes;
+    }
     if (value instanceof java.time.LocalDateTime time) return utf8(UTC.format(time));
     return utf8(value.toString());
   }

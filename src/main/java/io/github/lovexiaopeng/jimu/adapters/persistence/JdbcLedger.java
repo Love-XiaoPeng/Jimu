@@ -652,7 +652,13 @@ public final class JdbcLedger
       historyRetention;
   final MapperSessionHistoryRetentions historyRetentionRecords;
 
-  private void cleanupSessionHistory() {
+  void cleanupSessionHistory() {
+    if (query == null) {
+      // 根在core事务外创建；候选探测与全部候选沿同一绝对截止/累计资源，权限逐事务重建。
+      var maintenance = queryView(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
+      maintenance.query.restrictLineage();
+      maintenance.historyRetention.cleanup();
+    }
     historyRetention.cleanup();
   }
 
@@ -2133,6 +2139,7 @@ public final class JdbcLedger
       throw new TaskFailure(409, CommonErrorCode.FENCE_REJECTED);
     if (admission)
       executionAdmission.lease(new MapperLeaseAdmission(this, task, evaluation), lease);
+    progressAttempt(task);
     if (mappers
             .tasks()
             .commitLiveFence(
@@ -2147,6 +2154,21 @@ public final class JdbcLedger
         && Long.toString(n(task, "revision")).length()
             != Long.toString(n(task, "revision") + 1).length()) sessions.account(task, false);
     return task;
+  }
+
+  void progressAttempt(Map<String, Object> task) {
+    if (query == null || !query.lineage() || task.get("current_attempt_id") == null) return;
+    if (mappers
+            .attempts()
+            .lockProgressAttempt(
+                query,
+                s(task, "tenant_id"),
+                s(task, "id"),
+                s(task, "current_attempt_id"),
+                s(task, "worker_id"),
+                n(task, "fence"))
+            .size()
+        != 1) throw new TaskFailure(409, CommonErrorCode.FENCE_REJECTED);
   }
 
   EvaluationMaterials.Material material(Map<String, Object> task) {

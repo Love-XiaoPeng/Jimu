@@ -31,18 +31,17 @@ class SessionQueryResourcesTest {
     var query = query();
     query.restrictLineage();
     Object cache = new Object();
-    query.retainScratch(cache, 400000);
+    query.retainScratch(cache, 900000);
     try (var first = query.result();
         var second = query.result()) {
-      first.column("first", "x".repeat(100000));
+      first.column("first", "x".repeat(15000));
       assertEquals(
           "SESSION_HISTORY_LIMIT",
-          assertThrows(TaskFailure.class, () -> second.column("second", "y".repeat(100000)))
-              .code());
+          assertThrows(TaskFailure.class, () -> second.column("second", "y".repeat(15000))).code());
     }
     query.releaseScratch(cache);
     try (var next = query.result()) {
-      next.column("next", "z".repeat(250000));
+      next.column("next", "z".repeat(15000));
     }
     assertEquals(3, query.resources().reads());
   }

@@ -30,6 +30,14 @@ final class MapperSessionMetadataAccounting implements SessionMetadataAccounting
     return JdbcSessionRecords.task(task);
   }
 
+  public Batch batch(Table table) {
+    if (table != Table.TASK_SESSION_LINEAGE || !JdbcSessionScopes.lineage(task))
+      return SessionMetadataAccounting.super.batch(table);
+    return new SessionLineageMetadataBatch(
+        records.appendQuery(),
+        () -> records.mapperRows("SessionHistoryRetentionMapper.metadataTaskSessionLineage", task));
+  }
+
   public Iterable<? extends Row> rows(Table table) {
     if ((table == Table.TASK_SESSION_LINEAGE || table == Table.INVOCATION_SESSION_LINEAGE_TRACE)
         && !JdbcSessionScopes.lineage(task)) return java.util.List.of();

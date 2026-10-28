@@ -6,6 +6,26 @@ import java.util.List;
 public interface SessionHistoryRetentions {
   record Candidate(String tenant, String taskId) {}
 
+  interface CandidateBatch extends Iterable<Candidate>, AutoCloseable {
+    @Override
+    void close();
+  }
+
+  default CandidateBatch candidateBatch() {
+    return new CandidateBatch() {
+      private List<Candidate> values = candidates();
+
+      public java.util.Iterator<Candidate> iterator() {
+        if (values == null) throw new IllegalStateException("Closed retention candidates");
+        return values.iterator();
+      }
+
+      public void close() {
+        values = null;
+      }
+    };
+  }
+
   record History(
       long recordVersion,
       long version,
@@ -87,6 +107,11 @@ public interface SessionHistoryRetentions {
     void event();
 
     List<MetadataRow> metadata();
+
+    /** 已按原32/8/UTF8公式消费并释放的lineage固定投影；其余表仍由metadata提供。 */
+    default long lineageMetadataBytes() {
+      return 0;
+    }
 
     void settleHistory(long bytes);
 

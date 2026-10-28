@@ -58,6 +58,70 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
         .toList();
   }
 
+  public CandidateBatch candidateBatch() {
+    if (ledger.queryContext() == null) return SessionHistoryRetentions.super.candidateBatch();
+    return new CandidateBatch() {
+      // LIMIT16，tenant VARCHAR64/task CHAR36；原Map与转换Candidate交接重叠一并预留。
+      private static final long BYTES = 1024 + 16L * 2048;
+      private final io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query =
+          ledger.queryContext();
+      private List<Candidate> values;
+      private boolean closed;
+
+      {
+        query.retainScratch(this, BYTES);
+        List<Map<String, Object>> raw = null;
+        try {
+          raw = sql.candidates(query);
+          if (raw.size() > 16) throw JdbcSessionRecords.corrupt();
+          values = new ArrayList<>();
+          for (var r : raw) {
+            String tenant = s(r, "tenant_id"), task = s(r, "task_id");
+            query.operation(1L + tenant.length() + task.length());
+            if (tenant.length() > 64 || task.length() > 36) throw JdbcSessionRecords.corrupt();
+            values.add(new Candidate(tenant, task));
+          }
+        } catch (RuntimeException | Error failure) {
+          close();
+          throw failure;
+        } finally {
+          if (raw != null) {
+            for (var row : raw) row.clear();
+            raw.clear();
+          }
+        }
+      }
+
+      public java.util.Iterator<Candidate> iterator() {
+        if (closed) throw new IllegalStateException("Closed retention candidates");
+        return new java.util.Iterator<>() {
+          private int index;
+
+          public boolean hasNext() {
+            if (closed) throw new IllegalStateException("Closed retention candidates");
+            return index < values.size();
+          }
+
+          public Candidate next() {
+            if (!hasNext()) throw new java.util.NoSuchElementException();
+            query.operation(1);
+            return values.get(index++);
+          }
+        };
+      }
+
+      public void close() {
+        if (closed) return;
+        closed = true;
+        if (values != null) {
+          values.clear();
+          values = null;
+        }
+        query.releaseScratch(this);
+      }
+    };
+  }
+
   public void lockBudget(String tenant) {
     ledger.bucket(tenant);
   }
@@ -409,8 +473,6 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
       public List<MetadataRow> metadata() {
         var result = new ArrayList<MetadataRow>();
         if (JdbcSessionScopes.lineage(task)) {
-          sql.metadataTaskSessionLineage(ledger.queryContext(), tenant, taskId)
-              .forEach(r -> result.add(metadataRow(r)));
           sql.metadataInvocationSessionLineageTrace(ledger.queryContext(), tenant, taskId)
               .forEach(r -> result.add(metadataRow(r)));
         }
@@ -447,6 +509,22 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
         sql.metadataEvent(ledger.queryContext(), tenant, taskId)
             .forEach(r -> result.add(metadataRow(r)));
         return result;
+      }
+
+      public long lineageMetadataBytes() {
+        if (!JdbcSessionScopes.lineage(task)) return 0;
+        long bytes = 0;
+        try (var batch =
+            new SessionLineageMetadataBatch(
+                ledger.queryContext(),
+                () -> sql.metadataTaskSessionLineage(ledger.queryContext(), tenant, taskId))) {
+          for (var row : batch) {
+            bytes = Math.addExact(bytes, 32);
+            for (var value : row.values())
+              bytes = Math.addExact(bytes, 8 + batch.scalarBytes(value));
+          }
+        }
+        return bytes;
       }
     };
   }

@@ -186,16 +186,19 @@ final class MapperTaskOperations implements TaskOperationsRecords {
     }
 
     public void releaseQueue() {
+      reservation(id + ":queue", "QUEUE");
       int count = sql.releaseReservation(ledger.queryContext(), tenant, id + ":queue");
       sql.releaseQueue(ledger.queryContext(), count, tenant);
     }
 
     public void releaseRun() {
+      reservation(id + ":run", "RUNNING");
       if (sql.releaseReservation(ledger.queryContext(), tenant, id + ":run") == 1)
         sql.releaseRun(ledger.queryContext(), tenant);
     }
 
     public void releaseQuestionTask() {
+      if (ledger.questionTask(value)) reservation(id + ":question-task", "QUESTION_TASK");
       if (ledger.questionTask(value)
           && sql.releaseReservation(ledger.queryContext(), tenant, id + ":question-task") == 1)
         sql.releaseQuestionTask(ledger.queryContext(), tenant);
@@ -206,7 +209,16 @@ final class MapperTaskOperations implements TaskOperationsRecords {
     }
 
     public void stopAttempt(String state) {
+      ledger.progressAttempt(value);
       sql.stopAttempt(ledger.queryContext(), state, tenant, s(value, "current_attempt_id"));
+    }
+
+    private void reservation(String reservation, String category) {
+      if (ledger.queryContext() != null && ledger.queryContext().lineage())
+        ledger
+            .mappers
+            .reservations()
+            .lockProgressReservation(ledger.queryContext(), tenant, id, reservation, category);
     }
   }
 }
