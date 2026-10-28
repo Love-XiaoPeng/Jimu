@@ -76,6 +76,7 @@ public final class SessionMetadataAccountingServiceImpl
     long old = -1, body = -1, reserved = -1, held = -1, amount = -1;
     Long actual = null;
     String reservationState = null;
+    String content = null;
     int histories = 0, reservations = 0;
     for (var table : SessionMetadataAccounting.Table.values()) {
       for (var row : records.rows(table)) {
@@ -102,12 +103,14 @@ public final class SessionMetadataAccountingServiceImpl
                   Math.addExact(SessionHistoryPolicyV1.FIELD_HEADER_BYTES, scalarBytes(value)));
         if (table == SessionMetadataAccounting.Table.TASK_SESSION_HISTORY) {
           histories++;
-          if (!"PRESENT".equals(row.value("content_state"))) throw corrupt();
+          content = (String) row.value("content_state");
+          if (!java.util.List.of("PRESENT", "PURGED").contains(content)) throw corrupt();
           old = number(row.value("metadata_bytes"));
           body = number(row.value("body_bytes"));
           reserved = number(row.value("reserved_bytes"));
           held = number(row.value("held_bytes"));
-          total = Math.subtractExact(total, scalarBytes(row.value("metadata_bytes")));
+          if ("PRESENT".equals(content))
+            total = Math.subtractExact(total, scalarBytes(row.value("metadata_bytes")));
         }
         if (table == SessionMetadataAccounting.Table.RESERVATION
             && "SESSION_HISTORY_STORAGE".equals(row.value("category"))) {
@@ -117,6 +120,30 @@ public final class SessionMetadataAccountingServiceImpl
           reservationState = (String) row.value("state");
         }
       }
+    }
+    if ("PURGED".equals(content)) {
+      // purge自身已经收敛并释放预算；最终阶段只验证封闭余额，绝不再次释放或套PRESENT预留。
+      if (histories != 1
+          || reservations != 1
+          || body != 0
+          || old != total
+          || total > SessionHistoryPolicyV1.CLOSED_METADATA_BYTES
+          || held != total
+          || amount != total
+          || actual == null
+          || actual != total
+          || reserved != SessionHistoryPolicyV1.TASK_RESERVE_BYTES
+          || !"SETTLED".equals(reservationState)) throw corrupt();
+      var check = records.readBack();
+      if (check.metadata() != total
+          || check.body() != 0
+          || check.reserved() != reserved
+          || check.held() != total
+          || check.amount() != total
+          || !java.util.Objects.equals(check.actual(), actual)
+          || !"SETTLED".equals(check.reservationState())
+          || !"PURGED".equals(check.content())) throw corrupt();
+      return;
     }
     if (histories != 1
         || reservations != 1

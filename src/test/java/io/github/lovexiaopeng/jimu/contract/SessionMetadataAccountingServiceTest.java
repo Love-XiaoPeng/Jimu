@@ -186,4 +186,83 @@ class SessionMetadataAccountingServiceTest {
         failure, assertThrows(NoSuchElementException.class, () -> service.account(records, true)));
     assertTrue(records.writes.isEmpty());
   }
+
+  @Test
+  void purgedFinalizerChecksClosedBalanceWithoutChangingReservationOrRefundingAgain() {
+    class Purged implements SessionMetadataAccounting {
+      long stored;
+      boolean dirty;
+
+      public boolean session() {
+        return true;
+      }
+
+      public boolean finalPresent() {
+        return true;
+      }
+
+      public long metadataBytes() {
+        return stored;
+      }
+
+      public void account(long bytes) {
+        throw new AssertionError("purge already settled; no second write/refund");
+      }
+
+      public Balance readBack() {
+        return new Balance(
+            stored, 0, 8388608, stored, stored, dirty ? stored + 1 : stored, "SETTLED", "PURGED");
+      }
+
+      private Row row(java.util.Map<String, Object> fields) {
+        return new Row() {
+          public Iterable<?> values() {
+            return fields.values();
+          }
+
+          public Object value(String name) {
+            return fields.get(name);
+          }
+        };
+      }
+
+      public Iterable<? extends Row> rows(Table table) {
+        if (table == Table.TASK_SESSION_HISTORY)
+          return List.of(
+              row(
+                  java.util.Map.of(
+                      "content_state",
+                      "PURGED",
+                      "metadata_bytes",
+                      stored,
+                      "body_bytes",
+                      0L,
+                      "reserved_bytes",
+                      8388608L,
+                      "held_bytes",
+                      stored)));
+        if (table == Table.RESERVATION)
+          return List.of(
+              row(
+                  java.util.Map.of(
+                      "category",
+                      "SESSION_HISTORY_STORAGE",
+                      "amount",
+                      stored,
+                      "actual",
+                      stored,
+                      "state",
+                      "SETTLED")));
+        return List.of();
+      }
+    }
+    var records = new Purged();
+    for (int i = 0; i < 4; i++) records.stored = service.metadata(records, true, 0);
+    service.account(records, true);
+    service.account(records, true);
+    records.dirty = true;
+    assertEquals(
+        "SESSION_HISTORY_CORRUPT",
+        assertThrows(TaskFailure.class, () -> service.account(records, true)).code());
+  }
 }

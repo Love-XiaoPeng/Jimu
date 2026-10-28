@@ -107,10 +107,16 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
             records.bytes(graph),
             "PRESENT",
             1);
+    inputs.put(caller, stored);
+    var created = validate(tenant, caller, facts, inputs, new Created(stored, genesis));
     records.insert(tenant, caller, stored);
     records.body(tenant, caller, records.bytes(raw) + records.bytes(graph));
-    inputs.put(caller, records.load(tenant, caller));
-    records.created(tenant, caller, validate(tenant, caller, facts, inputs));
+    if (records.createdReadback(tenant, caller, stored, created))
+      records.created(tenant, caller, created);
+    else {
+      inputs.put(caller, records.load(tenant, caller));
+      records.created(tenant, caller, validate(tenant, caller, facts, inputs));
+    }
   }
 
   private void raw(Stored s) {
@@ -145,6 +151,17 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
 
   private VerifiedGraph validate(
       String tenant, String caller, HashMap<String, Fact> facts, HashMap<String, Stored> stored) {
+    return validate(tenant, caller, facts, stored, null);
+  }
+
+  private record Created(Stored stored, Genesis genesis) {}
+
+  private VerifiedGraph validate(
+      String tenant,
+      String caller,
+      HashMap<String, Fact> facts,
+      HashMap<String, Stored> stored,
+      Created created) {
     var fact = facts.get(caller);
     long scratch = 3L * records.bytes(fact.request());
     records.scratch(scratch);
@@ -167,7 +184,10 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
                       + records.bytes(s.genesis())
                       + (id.equals(caller) ? 0 : records.bytes(f.request()))));
       records.scratch(scratch);
-      var g = records.genesis(s.genesis());
+      var g =
+          created != null && id.equals(caller) && s == created.stored()
+              ? created.genesis()
+              : records.genesis(s.genesis());
       if (g.version() != 1
           || !id.equals(g.sessionId())
           || !id.equals(f.id())
@@ -188,28 +208,33 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
     for (var id : ids) {
       var f = facts.get(id);
       var s = stored.get(id);
-      var graph = records.graph(s.graph());
       dependencies += id.equals(caller) ? 0 : f.sources().size();
       if (dependencies > 64) throw corrupt();
       var expected = new ArrayList<>(f.sources());
       expected.add(id);
       expected.sort(String::compareTo);
-      if (graph.version() != 1
-          || !id.equals(graph.callerSessionId())
-          || !f.authorityDigest().equals(graph.authoritySha256())
-          || !graph.nodes().stream().map(Node::sessionId).toList().equals(expected))
+      if (!(created != null && id.equals(caller) && s == created.stored())
+          && !records.matchGraph(
+              s, new Graph(1, id, f.authorityDigest(), expected.stream().map(nodes::get).toList())))
         throw corrupt();
-      for (var n : graph.nodes()) {
-        records.checkpoint(1);
-        if (!n.equals(nodes.get(n.sessionId()))) throw corrupt();
-      }
     }
     SessionLineageGraph.validate(genesis, nodes, records::checkpoint);
+    var scan = new StringBuilder();
+    for (var id : nodes.keySet().stream().sorted().toList()) {
+      var g = genesis.get(id);
+      scan.append(id)
+          .append(':')
+          .append(nodes.get(id).genesisSha256())
+          .append(':')
+          .append(g.parentSessionId() == null ? "ROOT" : g.parentSessionId())
+          .append('\n');
+    }
     var proof =
         new VerifiedGraph(
             fact.authorityDigest(),
             stored.get(caller).graphDigest(),
             stored.get(caller).genesisDigest(),
+            records.hash(scan.toString()),
             genesis,
             nodes);
     records.verified(tenant, caller, proof);
@@ -239,20 +264,9 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
                 v.genesis(),
                 v.nodes(),
                 records::checkpoint));
-    var proof = new StringBuilder();
-    for (var id : v.nodes().keySet().stream().sorted().toList()) {
-      var g = v.genesis().get(id);
-      proof
-          .append(id)
-          .append(':')
-          .append(v.nodes().get(id).genesisSha256())
-          .append(':')
-          .append(g.parentSessionId() == null ? "ROOT" : g.parentSessionId())
-          .append('\n');
-    }
     return new Observation(
         output,
-        records.hash(proof.toString()),
+        v.scanDigest(),
         v.nodes().size(),
         (int) v.genesis().values().stream().filter(g -> g.parentSessionId() != null).count());
   }

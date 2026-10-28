@@ -349,6 +349,8 @@ class QueryViewAssemblyTest {
             () -> root.modelSnapshot(lease),
             () -> root.toolSnapshot(lease),
             () -> root.finish(lease, "done"),
+            () -> root.modelFailed(lease, "dispatch", "failed", null),
+            () -> root.stop(lease, "failed"),
             () -> root.readOrResult(lease, null, null, null, null),
             () -> root.searchOrResult(lease, null, null, null, null),
             () -> root.traceOrResult(lease, null, null, null, null));

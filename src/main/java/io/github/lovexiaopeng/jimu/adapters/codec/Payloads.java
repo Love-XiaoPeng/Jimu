@@ -68,6 +68,21 @@ public final class Payloads {
     }
   }
 
+  /** 沿同一Mapper/命名策略向有界计量Writer输出，调用方拥有buffer与截止。 */
+  public static void json(Object value, java.io.Writer writer) {
+    try {
+      MAPPER.writeValue(writer, value);
+    } catch (java.io.IOException failure) {
+      Throwable cause = failure;
+      while (cause != null) {
+        if (cause instanceof io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure refusal)
+          throw refusal;
+        cause = cause.getCause();
+      }
+      throw new IllegalArgumentException("Invalid payload", failure);
+    }
+  }
+
   public static <T> T read(String value, Class<T> type) {
     try {
       return MAPPER.readValue(value, type);

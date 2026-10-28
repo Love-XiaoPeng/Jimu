@@ -139,6 +139,36 @@ public final class SessionLineageContracts {
 
   public SessionLineage.Genesis genesis(String raw) {
     var g = stored(genesis, raw, 1024);
+    return genesisValue(g);
+  }
+
+  public SessionLineage.Genesis genesis(
+      LineageRawView raw,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    if (raw.bytes() > 1024) throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
+    Object tree = new Object();
+    query.retainScratch(tree, raw.bytes() * 6L + 4096);
+    try {
+      var value =
+          query.primitive("parse.genesis", raw.raw().length(), () -> history.json(raw, 1024));
+      query.primitive(
+          "schema.genesis",
+          raw.raw().length(),
+          () -> {
+            genesis.validate(value);
+            return null;
+          });
+      return genesisValue(value);
+    } catch (IllegalArgumentException | TaskFailure failure) {
+      if (failure instanceof TaskFailure refusal
+          && (refusal.status() == 429 || refusal.status() == 504)) throw refusal;
+      throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
+    } finally {
+      query.releaseScratch(tree);
+    }
+  }
+
+  private static SessionLineage.Genesis genesisValue(JsonNode g) {
     return new SessionLineage.Genesis(
         g.path("version").intValue(),
         g.path("session_id").textValue(),
@@ -151,7 +181,29 @@ public final class SessionLineageContracts {
         g.path("parent_genesis_sha256").textValue());
   }
 
+  public void matchGraph(
+      LineageRawView raw,
+      SessionLineage.Graph expected,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    if (raw.bytes() > 16384) throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
+    new LineageGraphMatcher(raw.raw(), query).match(expected);
+  }
+
   public String genesis(SessionLineage.Genesis g) {
+    String raw = Payloads.json(genesisWire(g));
+    stored(genesis, raw, 1024);
+    return raw;
+  }
+
+  public LineageRawView genesis(
+      SessionLineage.Genesis g,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    var raw = LineageJsonWriter.encode(genesisWire(g), 1024, query);
+    genesis(raw, query);
+    return raw;
+  }
+
+  private static Map<String, Object> genesisWire(SessionLineage.Genesis g) {
     var value = new LinkedHashMap<String, Object>();
     value.put("version", g.version());
     value.put("session_id", g.sessionId());
@@ -164,9 +216,7 @@ public final class SessionLineageContracts {
       value.put("parent_session_id", g.parentSessionId());
       value.put("parent_genesis_sha256", g.parentGenesisSha256());
     }
-    String raw = Payloads.json(value);
-    stored(genesis, raw, 1024);
-    return raw;
+    return value;
   }
 
   public SessionLineage.Graph graph(String raw) {
@@ -186,29 +236,39 @@ public final class SessionLineageContracts {
   }
 
   public String graph(SessionLineage.Graph g) {
-    String raw =
-        Payloads.json(
-            Map.of(
-                "version",
-                g.version(),
-                "caller_session_id",
-                g.callerSessionId(),
-                "authority_sha256",
-                g.authoritySha256(),
-                "nodes",
-                g.nodes().stream()
-                    .map(
-                        n ->
-                            Map.of(
-                                "session_id",
-                                n.sessionId(),
-                                "genesis_snapshot",
-                                n.genesisSnapshot(),
-                                "genesis_sha256",
-                                n.genesisSha256()))
-                    .toList()));
+    String raw = Payloads.json(graphWire(g));
     stored(graph, raw, 16384);
     return raw;
+  }
+
+  public LineageRawView graph(
+      SessionLineage.Graph g,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    var raw = LineageJsonWriter.encode(graphWire(g), 16384, query);
+    matchGraph(raw, g, query);
+    return raw;
+  }
+
+  private static Map<String, Object> graphWire(SessionLineage.Graph g) {
+    return Map.of(
+        "version",
+        g.version(),
+        "caller_session_id",
+        g.callerSessionId(),
+        "authority_sha256",
+        g.authoritySha256(),
+        "nodes",
+        g.nodes().stream()
+            .map(
+                n ->
+                    Map.of(
+                        "session_id",
+                        n.sessionId(),
+                        "genesis_snapshot",
+                        n.genesisSnapshot(),
+                        "genesis_sha256",
+                        n.genesisSha256()))
+            .toList());
   }
 
   private static Map<String, Object> node(SessionLineage.PublicNode n) {
@@ -222,6 +282,36 @@ public final class SessionLineageContracts {
   }
 
   public String output(SessionLineage.Result result) {
+    String raw = Payloads.json(outputWire(result));
+    output(raw);
+    return raw;
+  }
+
+  public LineageRawView output(
+      SessionLineage.Result result,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    var raw = LineageJsonWriter.encode(outputWire(result), 8192, query);
+    Object tree = new Object();
+    query.retainScratch(tree, raw.bytes() * 6L + 4096);
+    try {
+      var value =
+          query.primitive("parse.output", raw.raw().length(), () -> history.json(raw, 8192));
+      query.primitive(
+          "schema.output",
+          raw.raw().length(),
+          () -> {
+            output.validate(value);
+            return null;
+          });
+      return raw;
+    } catch (IllegalArgumentException failure) {
+      throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
+    } finally {
+      query.releaseScratch(tree);
+    }
+  }
+
+  private static Map<String, Object> outputWire(SessionLineage.Result result) {
     var value = new LinkedHashMap<String, Object>();
     value.put("version", 1);
     value.put("caller_session_id", result.caller());
@@ -238,8 +328,6 @@ public final class SessionLineageContracts {
         result.descendants().stream()
             .map(d -> Map.of("node", node(d.node()), "depth", d.depth()))
             .toList());
-    String raw = Payloads.json(value);
-    output(raw);
-    return raw;
+    return value;
   }
 }

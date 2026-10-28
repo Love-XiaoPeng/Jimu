@@ -19,6 +19,31 @@ public final class SessionQueryContext {
   private String group = "B";
   private final java.util.Map<String, long[]> groups = new java.util.TreeMap<>();
   private final java.util.Map<String, Long> statements = new java.util.TreeMap<>();
+  private final java.util.Map<String, Long> requestedWork = new java.util.TreeMap<>();
+  private final java.util.Map<String, Long> completedWork = new java.util.TreeMap<>();
+
+  /** 原单位累计；先申请后执行，拒绝处不能登记为已完成。 */
+  public <T> T primitive(String kind, long count, java.util.function.Supplier<T> work) {
+    requestedWork.merge(kind, count, Math::addExact);
+    operation(count);
+    T result = work.get();
+    completedWork.merge(kind, count, Math::addExact);
+    return result;
+  }
+
+  public java.util.Map<String, Long> requestedWork() {
+    return java.util.Map.copyOf(requestedWork);
+  }
+
+  public java.util.Map<String, Long> completedWork() {
+    return java.util.Map.copyOf(completedWork);
+  }
+
+  public long scratchLive() {
+    long live = scratchReserve;
+    for (long size : retainedScratch.values()) live = Math.addExact(live, size);
+    return live;
+  }
 
   public MeterScope group(String next) {
     String prior = group;

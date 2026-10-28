@@ -14,9 +14,80 @@ public final class SessionQueryWork {
   private record Dirty(boolean closing, java.util.function.Consumer<Boolean> action) {}
 
   private final Map<String, Dirty> accounts = new LinkedHashMap<>();
+  private final java.util.Map<Object, java.util.function.Consumer<java.util.Set<Dependency>>>
+      invalidators = new java.util.IdentityHashMap<>();
+
+  public void invalidator(
+      Object key, java.util.function.Consumer<java.util.Set<Dependency>> invalidate) {
+    active();
+    invalidators.put(key, invalidate);
+  }
+
+  public void removeInvalidator(Object key) {
+    active();
+    invalidators.remove(key);
+  }
+
   private final java.util.Set<String> locks = new java.util.HashSet<>();
   private final Object scopeScratch = new Object(), graphScratch = new Object();
   private String fenceKey, leaseKey, stepKey, responseKey;
+  private long dependencyGeneration;
+
+  private record CheckedCreated(
+      Object token,
+      String tenant,
+      String caller,
+      String lease,
+      String response,
+      String fence,
+      long generation,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineage.Stored stored,
+      VerifiedGraph graph) {}
+
+  private CheckedCreated created;
+  private final Object createdScratch = new Object();
+
+  public void checkedCreated(
+      String tenant,
+      String caller,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineage.Stored stored,
+      VerifiedGraph graph) {
+    active();
+    long bytes = 512 + 2L * (stored.genesis().length() + stored.graph().length());
+    context.retainScratch(createdScratch, bytes);
+    created =
+        new CheckedCreated(
+            token,
+            tenant,
+            caller,
+            leaseKey,
+            responseKey,
+            fenceKey,
+            dependencyGeneration,
+            stored,
+            graph);
+  }
+
+  public boolean checkedCreated(
+      String tenant,
+      String caller,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineage.Stored stored) {
+    active();
+    return created != null
+        && created.token() == token
+        && created.tenant().equals(tenant)
+        && created.caller().equals(caller)
+        && created.stored() == stored
+        && created.generation() == dependencyGeneration
+        && java.util.Objects.equals(created.lease(), leaseKey)
+        && java.util.Objects.equals(created.response(), responseKey)
+        && java.util.Objects.equals(created.fence(), fenceKey);
+  }
+
+  public void releaseCreated() {
+    created = null;
+    context.releaseScratch(createdScratch);
+  }
 
   public void bind(String lease, String step, String response) {
     active();
@@ -33,7 +104,7 @@ public final class SessionQueryWork {
   private SessionScopeRecords.Caller stagingCaller;
   private final Map<String, SessionScopeRecords.SourceFact> stagedSources = new LinkedHashMap<>();
   private VerifiedGraph stagedGraph;
-  private String stagedGraphKey;
+  private String stagedGraphKey, stagedGraphTenant;
   private final Object stagingScratch = new Object();
 
   public void admission() {
@@ -53,9 +124,9 @@ public final class SessionQueryWork {
       throw new IllegalStateException("Different admission caller");
     stagingCaller = caller;
     long bytes = 0;
-    for (var f : stagedSources.values()) bytes = Math.addExact(bytes, sourceBytes(f));
-    if (!stagedSources.containsKey(fact.caller().id()))
-      bytes = Math.addExact(bytes, sourceBytes(fact));
+    for (var f : stagedSources.values())
+      if (!f.caller().id().equals(fact.caller().id())) bytes = Math.addExact(bytes, sourceBytes(f));
+    bytes = Math.addExact(bytes, sourceBytes(fact));
     context.retainScratch(stagingScratch, bytes);
     stagedSources.put(fact.caller().id(), fact);
   }
@@ -69,6 +140,7 @@ public final class SessionQueryWork {
   public void stageGraph(String tenant, String id, VerifiedGraph proof) {
     active();
     stagedGraphKey = tenant + ":" + id;
+    stagedGraphTenant = tenant;
     holdGraph(proof);
     stagedGraph = proof;
   }
@@ -82,6 +154,22 @@ public final class SessionQueryWork {
       String raw, String digest, SessionScopeRecords.Authority authority) {}
 
   private final Map<String, CheckedAuthority> authorities = new LinkedHashMap<>();
+
+  /** 全tenant/task键；依赖含本行及authority中引用的全部来源，不以caller写豁免交叉依赖。 */
+  public record Dependency(String tenant, String task) {}
+
+  private static java.util.Set<Dependency> dependencies(
+      String tenant, String task, SessionScopeRecords.Authority value) {
+    var keys = new java.util.HashSet<Dependency>();
+    keys.add(new Dependency(tenant, task));
+    for (var target : value.targets()) keys.add(new Dependency(tenant, target.id()));
+    return keys;
+  }
+
+  private static boolean intersects(
+      java.util.Set<Dependency> dependencies, java.util.Set<Dependency> writes) {
+    return writes == null || dependencies.stream().anyMatch(writes::contains);
+  }
 
   public void validatedAuthority(
       SessionScopeRecords.Caller caller,
@@ -107,7 +195,7 @@ public final class SessionQueryWork {
 
   public void poisonProof(RuntimeException failure) {
     active();
-    proofFailure = failure;
+    if (proofFailure == null) proofFailure = failure;
   }
 
   public com.fasterxml.jackson.databind.JsonNode authority(
@@ -165,14 +253,51 @@ public final class SessionQueryWork {
   }
 
   public void dependencyMutation() {
+    dependencyMutation(null);
+  }
+
+  public void dependencyMutation(java.util.Set<Dependency> writes) {
     mutation();
-    if (scope != null) {
+    dependencyGeneration = Math.incrementExact(dependencyGeneration);
+    releaseCreated();
+    for (var invalidate : invalidators.values()) invalidate.accept(writes);
+    if (scope != null
+        && intersects(dependencies(caller.tenant(), caller.id(), scope.authority()), writes)) {
       var failure = new IllegalStateException("Session proof dependency changed after publication");
-      proofFailure = failure;
+      poisonProof(failure);
       throw failure;
     }
-    stagedGraph = null;
-    stagedGraphKey = null;
+    stagedSources
+        .values()
+        .removeIf(
+            fact ->
+                intersects(
+                    dependencies(fact.caller().tenant(), fact.caller().id(), fact.authority()),
+                    writes));
+    authorities
+        .entrySet()
+        .removeIf(
+            entry ->
+                intersects(
+                    dependencies(
+                        entry.getValue().authority().tenant(),
+                        entry.getValue().authority().caller(),
+                        entry.getValue().authority()),
+                    writes));
+    if (stagedGraph != null
+        && (writes == null
+            || stagedGraph.nodes().keySet().stream()
+                .anyMatch(id -> writes.contains(new Dependency(stagedGraphTenant, id))))) {
+      stagedGraph = null;
+      stagedGraphKey = null;
+      stagedGraphTenant = null;
+      context.releaseScratch(graphScratch);
+    }
+    long bytes = 0;
+    for (var fact : stagedSources.values()) bytes = Math.addExact(bytes, sourceBytes(fact));
+    context.retainScratch(stagingScratch, bytes);
+    // 该树没有逐键证明；任何相关依赖写后必须重新解析，不能从旧Map回填。
+    authority = null;
   }
 
   private boolean protectedWrite;
@@ -236,6 +361,12 @@ public final class SessionQueryWork {
     if (caller == null || !caller.tenant().equals(tenant) || !caller.id().equals(id)) return;
     holdGraph(proof);
     graph = proof;
+    stagedSources.clear();
+    stagedGraph = null;
+    stagedGraphKey = null;
+    stagedGraphTenant = null;
+    stagingCaller = null;
+    context.releaseScratch(stagingScratch);
   }
 
   private void holdGraph(VerifiedGraph proof) {
@@ -277,6 +408,7 @@ public final class SessionQueryWork {
 
   void beforeCommit() {
     active();
+    if (proofFailure != null) throw proofFailure;
     if (!sealed || generation != sealedGeneration)
       throw new IllegalStateException("Unsealed session transaction");
     if (expiry != null) expiry.run();
@@ -284,7 +416,9 @@ public final class SessionQueryWork {
   }
 
   void complete() {
+    releaseCreated();
     accounts.clear();
+    invalidators.clear();
     locks.clear();
     caller = null;
     scope = null;
@@ -297,7 +431,13 @@ public final class SessionQueryWork {
     authorities.clear();
     stagedSources.clear();
     stagedGraph = null;
+    stagedGraphKey = null;
+    stagedGraphTenant = null;
     stagingCaller = null;
+    fenceKey = null;
+    leaseKey = null;
+    stepKey = null;
+    responseKey = null;
     context.releaseScratch(stagingScratch);
     completed = true;
     context.releaseScratch(scopeScratch);

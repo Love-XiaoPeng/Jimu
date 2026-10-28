@@ -17,6 +17,10 @@ import org.apache.ibatis.reflection.SystemMetaObject;
 /** Mapper query context is an explicit @Param("query") value, never a business ThreadLocal. */
 @Intercepts({
   @Signature(
+      type = org.apache.ibatis.executor.Executor.class,
+      method = "update",
+      args = {org.apache.ibatis.mapping.MappedStatement.class, Object.class}),
+  @Signature(
       type = StatementHandler.class,
       method = "prepare",
       args = {Connection.class, Integer.class}),
@@ -29,34 +33,36 @@ public final class SessionQueryInterceptor implements Interceptor {
   @Override
   public Object intercept(Invocation invocation) throws Throwable {
     Object parameter =
-        invocation.getTarget() instanceof StatementHandler statement
-            ? statement.getBoundSql().getParameterObject()
-            : SystemMetaObject.forObject(invocation.getTarget())
-                .getValue("parameterHandler.parameterObject");
+        invocation.getTarget() instanceof org.apache.ibatis.executor.Executor
+            ? invocation.getArgs()[1]
+            : invocation.getTarget() instanceof StatementHandler statement
+                ? statement.getBoundSql().getParameterObject()
+                : SystemMetaObject.forObject(invocation.getTarget())
+                    .getValue("parameterHandler.parameterObject");
     Object value =
         parameter instanceof Map<?, ?> values
             ? (values.containsKey("query") ? values.get("query") : null)
             : parameter;
     if (!(value instanceof SessionQueryContext context)) return invocation.proceed();
     context.remainingMillis();
-    if (invocation.getTarget() instanceof StatementHandler handler) {
-      var command =
-          (org.apache.ibatis.mapping.MappedStatement)
-              SystemMetaObject.forObject(handler).getValue("delegate.mappedStatement");
-      if (command.getSqlCommandType() != org.apache.ibatis.mapping.SqlCommandType.SELECT) {
-        var owner = SessionQueryTransaction.current(context);
-        if (owner != null) {
-          String id = command.getId();
-          if ((id.contains(".SessionScopeMapper.") && !id.endsWith(".defer"))
-              || id.contains(".SessionLineageMapper.")
-              || id.endsWith(".TaskAdmissionMapper.bindSnapshots")
-              || (id.contains(".SessionHistoryRetentionMapper.")
-                  && (id.contains(".purge")
-                      || id.endsWith(".markPurged")
-                      || id.endsWith(".retainAuthorityHistory")))) owner.dependencyMutation();
-          else owner.mutation();
-        }
+    if (invocation.getTarget() instanceof org.apache.ibatis.executor.Executor) {
+      var command = (org.apache.ibatis.mapping.MappedStatement) invocation.getArgs()[0];
+      var owner = SessionQueryTransaction.current(context);
+      if (owner == null) return invocation.proceed();
+      String sql = command.getBoundSql(parameter).getSql().toLowerCase(java.util.Locale.ROOT);
+      if (dependencyWrite(sql)) owner.dependencyMutation(dependencyKeys(parameter));
+      else owner.mutation();
+      try {
+        return invocation.proceed();
+      } catch (Throwable failure) {
+        owner.poisonProof(
+            failure instanceof RuntimeException runtime
+                ? runtime
+                : new IllegalStateException("Session dependency write unconfirmed", failure));
+        throw failure;
       }
+    }
+    if (invocation.getTarget() instanceof StatementHandler handler) {
       var statement = (Statement) invocation.proceed();
       QueryStatements.apply(statement, context);
       return statement;
@@ -90,5 +96,35 @@ public final class SessionQueryInterceptor implements Interceptor {
               }
             });
     return invocation.proceed();
+  }
+
+  // 只检查真正写入的SET/列区域，WHERE中的当前fence/权限条件不是依赖变更。
+  static boolean dependencyWrite(String sql) {
+    String normalized = sql.replaceAll("\\s+", " ").trim();
+    if (normalized.matches(
+        "(?s)^(insert into|update|delete from) (actor_access|installation)( |\\().*")) return true;
+    if (!normalized.matches(
+        "(?s)^(insert into|update|delete from) `?(task|task_session_history|task_session_scope|task_session_scope_target|task_session_lineage)`?( |\\().*"))
+      return false;
+    int where = normalized.indexOf(" where ");
+    String write = where < 0 ? normalized : normalized.substring(0, where);
+    return write.matches(
+            "(?s).*\\b(owner_actor_id|capabilities|tools_digest|installation_epoch|request_digest|request_snapshot|binding_digest|binding_snapshot|retain_until|grant_state|content_state|authority_snapshot|genesis_snapshot|graph_snapshot|revoked_at|invalidated_at|target_snapshot|source_task_id)\\b.*")
+        || normalized.startsWith("delete ");
+  }
+
+  static java.util.Set<SessionQueryWork.Dependency> dependencyKeys(Object parameter) {
+    if (!(parameter instanceof Map<?, ?> values)) return null;
+    Object tenant = values.get("tenant");
+    if (tenant == null) tenant = values.get("tenantId");
+    Object task = null;
+    for (String key : java.util.List.of("caller", "taskId", "task", "id"))
+      if (values.get(key) instanceof String text) {
+        task = text;
+        break;
+      }
+    return tenant instanceof String t && task instanceof String id
+        ? java.util.Set.of(new SessionQueryWork.Dependency(t, id))
+        : null;
   }
 }

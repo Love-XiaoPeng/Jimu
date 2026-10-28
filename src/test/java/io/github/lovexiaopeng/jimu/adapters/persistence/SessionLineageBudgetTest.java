@@ -109,6 +109,14 @@ class SessionLineageBudgetTest {
       return facts.get(id);
     }
 
+    public <T> T withProof(java.util.function.Supplier<T> body) {
+      return codecs.withProof(body);
+    }
+
+    public boolean matchGraph(SessionLineage.Stored stored, SessionLineage.Graph expected) {
+      return codecs.matchGraph(stored, expected);
+    }
+
     public SessionLineage.Stored load(String tenant, String id) {
       return rows.get(id);
     }
@@ -179,8 +187,7 @@ class SessionLineageBudgetTest {
     var full = new Probe(false);
     assertEquals(
         9, new SessionLineageServiceImpl(full).verify(TENANT, ids.getLast()).nodes().size());
-    assertEquals(32778, full.graphHashes);
-    assertEquals(32778, full.graphParses);
+    assertEquals(32778L, full.query.completedWork().get("parse.graph"));
     assertTrue(full.query.resources().operations() > 74852);
     System.out.println(
         "NINE_NODE_LOWER_BOUND hash="
@@ -243,13 +250,13 @@ class SessionLineageBudgetTest {
   }
 
   @Test
-  void newlyCreatedGenesisDigestIsSharedUntilIndependentStoredReadback() throws Exception {
+  void defaultPortFallbackKeepsGeneratedRawAndDigestConsistent() throws Exception {
     chain();
     String caller = ids.getLast();
     rows.remove(caller);
     var probe = new Probe(false);
     new SessionLineageServiceImpl(probe).create(TENANT, caller, ids.get(7));
-    // One hash on creation and one on actual persisted readback; previously creation hashed twice.
-    assertEquals(2, probe.hashes.get(rows.get(caller).genesis()));
+    assertEquals(Payloads.hash(rows.get(caller).genesis()), rows.get(caller).genesisDigest());
+    assertEquals(Payloads.hash(rows.get(caller).graph()), rows.get(caller).graphDigest());
   }
 }

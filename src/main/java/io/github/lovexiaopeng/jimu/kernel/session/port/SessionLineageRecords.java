@@ -52,6 +52,16 @@ public interface SessionLineageRecords {
     verified(tenant, caller, proof);
   }
 
+  /** 仅create已验证生成值可登记；普通load不能建立创建witness。 */
+  default boolean createdReadback(
+      String tenant,
+      String caller,
+      Stored generated,
+      io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
+          proof) {
+    return false;
+  }
+
   Fact fact(String tenant, String id);
 
   Stored load(String tenant, String id);
@@ -71,6 +81,13 @@ public interface SessionLineageRecords {
   String graph(Graph value);
 
   Graph graph(String raw);
+
+  /** 每源原字节先独立核摘要；与本次共享且已核的有序Node逐字段匹配。 */
+  default boolean matchGraph(Stored stored, Graph expected) {
+    var actual = graph(stored.graph());
+    checkpoint(actual.nodes().size());
+    return actual.equals(expected);
+  }
 
   String output(Result value);
 

@@ -50,6 +50,7 @@ final class JdbcExecutionRecords implements ExecutionRecords {
 
       public void terminal(String state, String code) {
         ledger.terminal(row, state, code);
+        new MapperCommitFence(ledger, lease).stopSettlement(state);
       }
     };
   }

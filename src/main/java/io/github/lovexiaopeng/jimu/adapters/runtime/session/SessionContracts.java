@@ -157,8 +157,14 @@ public final class SessionContracts {
   }
 
   public static void unicode(String value) {
-    if (!StandardCharsets.UTF_8.newEncoder().canEncode(value))
-      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      if (Character.isHighSurrogate(c)) {
+        if (++i < value.length() && Character.isLowSurrogate(value.charAt(i))) continue;
+        throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
+      }
+      if (Character.isLowSurrogate(c)) throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
+    }
   }
 
   private static void unicode(JsonNode node) {
@@ -176,6 +182,19 @@ public final class SessionContracts {
       unicode(node);
       return node;
     } catch (IOException | IllegalArgumentException e) {
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
+    }
+  }
+
+  /** 仅消费已REPORT编码的本次原串，不重复getBytes或编码整份原文。 */
+  public JsonNode json(LineageRawView raw, int max) {
+    try {
+      if (raw.bytes() > max) throw new IllegalArgumentException("Bytes");
+      var node = JSON.readTree(raw.raw());
+      if (node == null) throw new IllegalArgumentException("Missing JSON");
+      unicode(node);
+      return node;
+    } catch (IOException | IllegalArgumentException failure) {
       throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }

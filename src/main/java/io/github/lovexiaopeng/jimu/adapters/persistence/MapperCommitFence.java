@@ -124,6 +124,36 @@ final class MapperCommitFence implements CommitFence {
                         dispatch)));
   }
 
+  void stopSettlement(String state) {
+    var owner = owner();
+    if (owner == null) return;
+    owner.settlement();
+    owner.fence(
+        lease.tenant()
+            + ":"
+            + lease.taskId()
+            + ":"
+            + lease.attemptId()
+            + ":"
+            + lease.worker()
+            + ":"
+            + lease.fence(),
+        () ->
+            accepted(
+                ledger
+                    .mappers
+                    .session()
+                    .getMapper(CommitFenceMapper.class)
+                    .stopSettlementFence(
+                        ledger.queryContext(),
+                        lease.tenant(),
+                        lease.taskId(),
+                        lease.attemptId(),
+                        lease.worker(),
+                        lease.fence(),
+                        state)));
+  }
+
   public int update() {
     String tenant = lease.tenant();
     String task = lease.taskId();

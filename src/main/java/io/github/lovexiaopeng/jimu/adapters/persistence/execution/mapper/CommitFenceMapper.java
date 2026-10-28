@@ -6,6 +6,15 @@ import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface CommitFenceMapper {
+  int stopSettlementFence(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task,
+      @Param("attempt") String attempt,
+      @Param("worker") String worker,
+      @Param("fence") long fence,
+      @Param("state") String state);
+
   int admissionFence(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,

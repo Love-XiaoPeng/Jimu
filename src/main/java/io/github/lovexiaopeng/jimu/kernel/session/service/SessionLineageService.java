@@ -21,6 +21,7 @@ public interface SessionLineageService {
       String authorityDigest,
       String graphDigest,
       String genesisDigest,
+      String scanDigest,
       java.util.Map<String, io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineage.Genesis>
           genesis,
       java.util.Map<String, io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineage.Node>

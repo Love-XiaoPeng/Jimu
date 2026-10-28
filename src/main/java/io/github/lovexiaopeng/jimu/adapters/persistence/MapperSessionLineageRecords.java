@@ -7,7 +7,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.entity.SessionLineageEntity;
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionLineageMapper;
-import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionLineageContracts;
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineage;
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5;
@@ -50,10 +49,47 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
   }
 
   private final Object scratchOwner = new Object();
+  private final Object rawOwner = new Object();
+  private java.util.IdentityHashMap<
+          String, io.github.lovexiaopeng.jimu.adapters.runtime.session.LineageRawView>
+      rawViews;
+
+  private io.github.lovexiaopeng.jimu.adapters.runtime.session.LineageRawView raw(String value) {
+    if (rawViews == null)
+      return new io.github.lovexiaopeng.jimu.adapters.runtime.session.LineageRawView(
+          value, ledger.queryContext());
+    var found = rawViews.get(value);
+    if (found != null) return found;
+    ledger.queryContext().retainScratch(rawOwner, (rawViews.size() + 1L) * 256);
+    found =
+        new io.github.lovexiaopeng.jimu.adapters.runtime.session.LineageRawView(
+            value, ledger.queryContext());
+    rawViews.put(value, found);
+    return found;
+  }
 
   public <T> T withProof(java.util.function.Supplier<T> work) {
-    return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
-        ledger.queryContext(), "lineage.graph", work);
+    if (rawViews != null) return work.get();
+    rawViews = new java.util.IdentityHashMap<>();
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            ledger.queryContext());
+    if (owner != null)
+      owner.invalidator(
+          rawOwner,
+          writes -> {
+            rawViews.clear();
+            ledger.queryContext().releaseScratch(rawOwner);
+          });
+    try {
+      return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+          ledger.queryContext(), "lineage.graph", work);
+    } finally {
+      if (owner != null) owner.removeInvalidator(rawOwner);
+      rawViews.clear();
+      rawViews = null;
+      ledger.queryContext().releaseScratch(rawOwner);
+    }
   }
 
   public void scratch(long bytes) {
@@ -78,8 +114,13 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
         || authority == null
         || !hash(request).equals(s(row, "request_digest"))
         || bytes(authority) != n(row, "authority_bytes")) throw JdbcSessionRecords.corrupt();
-    checkpoint(request.length());
-    var json = ledger.sessions.v5.json(request, 16384);
+    var json =
+        ledger
+            .queryContext()
+            .primitive(
+                "parse.request",
+                request.length(),
+                () -> ledger.sessions.v5.json(raw(request), 16384));
     var owner =
         io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
             ledger.queryContext());
@@ -157,6 +198,38 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
     if (owner != null) owner.stageGraph(tenant, caller, proof);
   }
 
+  public boolean createdReadback(
+      String tenant,
+      String caller,
+      SessionLineage.Stored generated,
+      io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
+          proof) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            ledger.queryContext());
+    if (owner == null) return false;
+    owner.checkedCreated(tenant, caller, generated, proof);
+    try {
+      var read = load(tenant, caller);
+      var genesis = raw(read.genesis());
+      var graph = raw(read.graph());
+      if (!owner.checkedCreated(tenant, caller, generated)
+          || read.version() != generated.version()
+          || !read.state().equals(generated.state())
+          || read.genesisBytes() != genesis.bytes()
+          || read.graphBytes() != graph.bytes()
+          || read.genesisBytes() != generated.genesisBytes()
+          || read.graphBytes() != generated.graphBytes()
+          || !genesis.digest().equals(read.genesisDigest())
+          || !graph.digest().equals(read.graphDigest())
+          || !genesis.digest().equals(generated.genesisDigest())
+          || !graph.digest().equals(generated.graphDigest())) throw JdbcSessionRecords.corrupt();
+      return true;
+    } finally {
+      owner.releaseCreated();
+    }
+  }
+
   public SessionLineage.Stored load(String tenant, String id) {
     var args = new HashMap<String, Object>();
     args.put("query", ledger.queryContext());
@@ -175,6 +248,11 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
     if (row.getRecordVersion() == null
         || row.getGenesisBytes() == null
         || row.getGraphBytes() == null) throw JdbcSessionRecords.corrupt();
+    // 新SELECT的原串从不按id/digest命中旧RawView；即使内容相同也独立编码和hash。
+    if (rawViews != null) {
+      rawViews.remove(row.getGenesisSnapshot());
+      rawViews.remove(row.getGraphSnapshot());
+    }
     return new SessionLineage.Stored(
         row.getGenesisSnapshot(),
         row.getGenesisDigest(),
@@ -215,29 +293,33 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
   }
 
   public String hash(String raw) {
-    // 摘要实际扫描的输入仍累计，不能靠变更计量单位绕过原包络。
-    checkpoint(raw.length());
-    return Payloads.hash(raw);
+    return raw(raw).digest();
   }
 
   public int bytes(String raw) {
-    return SessionContracts.bytes(raw);
+    return raw(raw).bytes();
   }
 
   public String genesis(SessionLineage.Genesis value) {
-    checkpoint(1);
-    return contracts.genesis(value);
+    var encoded = contracts.genesis(value, ledger.queryContext());
+    if (rawViews != null) rawViews.put(encoded.raw(), encoded);
+    return encoded.raw();
   }
 
   public SessionLineage.Genesis genesis(String raw) {
     if (raw == null) throw JdbcSessionRecords.corrupt();
-    checkpoint(raw.length());
-    return contracts.genesis(raw);
+    return contracts.genesis(raw(raw), ledger.queryContext());
+  }
+
+  public boolean matchGraph(SessionLineage.Stored stored, SessionLineage.Graph expected) {
+    contracts.matchGraph(raw(stored.graph()), expected, ledger.queryContext());
+    return true;
   }
 
   public String graph(SessionLineage.Graph value) {
-    checkpoint(1 + value.nodes().size());
-    return contracts.graph(value);
+    var encoded = contracts.graph(value, ledger.queryContext());
+    if (rawViews != null) rawViews.put(encoded.raw(), encoded);
+    return encoded.raw();
   }
 
   public SessionLineage.Graph graph(String raw) {
@@ -247,8 +329,7 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
   }
 
   public String output(SessionLineage.Result value) {
-    checkpoint(1 + value.ancestors().size() + value.descendants().size());
-    return contracts.output(value);
+    return contracts.output(value, ledger.queryContext()).raw();
   }
 
   public void checkpoint(long operations) {

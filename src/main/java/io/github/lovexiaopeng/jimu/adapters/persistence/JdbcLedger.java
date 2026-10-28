@@ -2329,6 +2329,10 @@ public final class JdbcLedger
 
   @Override
   public void modelFailed(Lease lease, String dispatch, String code, ModelUsage usage) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE)) {
+      queryView(lease, true).modelFailed(lease, dispatch, code, usage);
+      return;
+    }
     modelService.failed(lease, dispatch, code, usage);
   }
 
@@ -2508,6 +2512,10 @@ public final class JdbcLedger
 
   @Override
   public void stop(Lease lease, String code) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE)) {
+      queryView(lease, true).stop(lease, code);
+      return;
+    }
     executionService.stop(lease, code);
   }
 
