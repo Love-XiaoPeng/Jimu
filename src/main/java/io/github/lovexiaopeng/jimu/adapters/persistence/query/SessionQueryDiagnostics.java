@@ -16,7 +16,13 @@ public final class SessionQueryDiagnostics {
     long start = System.nanoTime();
     var before = query.resources();
     boolean success = false;
-    try {
+    String group =
+        stage.equals("scope.current")
+            ? "P"
+            : stage.contains("graph")
+                ? "G"
+                : stage.startsWith("metadata.") ? "A" : stage.equals("scope.live") ? "L" : "B";
+    try (var grouping = query.group(group)) {
       T result = work.get();
       success = true;
       return result;

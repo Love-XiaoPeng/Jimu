@@ -53,6 +53,7 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
 
   @Override
   public Admission lockAdmission(Lease lease, String stepId) {
+    ledger.bindSessionQuery(lease, stepId, null);
     var evaluation = ledger.evaluation(lease);
     var task = ledger.fenced(lease, true);
     var model = ledger.snapshot(task);
@@ -264,6 +265,7 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
 
   @Override
   public Response lockResponse(Lease lease, String stepId, String dispatch) {
+    ledger.bindSessionQuery(lease, stepId, dispatch);
     var evaluation = ledger.evaluation(lease, false);
     var task = ledger.measured("M2.lock", () -> ledger.fenced(lease, false));
     var step =
@@ -529,6 +531,7 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void responded() {
+        if (JdbcSessionScopes.lineage(task)) ledger.todoCommitFence(lease);
         ledger.measured(
             "M2.event",
             () -> {

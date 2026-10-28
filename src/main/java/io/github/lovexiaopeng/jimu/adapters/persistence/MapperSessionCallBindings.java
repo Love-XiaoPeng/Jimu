@@ -36,7 +36,8 @@ final class MapperSessionCallBindings implements SessionCallBindings {
   // 复用同一批次的逐节点核权和不可变图证明，不跨事务/响应/原槽执行缓存。
   private JdbcSessionScopes.Scope batchScope;
   private Map<String, Object> batchCut;
-  private io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineage.Stored batchGraph;
+  private io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
+      batchGraph;
 
   MapperSessionCallBindings(JdbcSessionRecords records, Map<String, Object> task, String stepId) {
     this.records = records;
@@ -182,14 +183,11 @@ final class MapperSessionCallBindings implements SessionCallBindings {
 
     public void insertLineage() {
       if (batchGraph == null) {
-        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
-            records.appendQuery(),
-            "M2.binding.graph",
-            () -> {
-              records.lineageService.verify(s(task, "tenant_id"), s(task, "id"));
-              return null;
-            });
-        batchGraph = records.lineageRecords.load(s(task, "tenant_id"), s(task, "id"));
+        batchGraph =
+            io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+                records.appendQuery(),
+                "M2.binding.graph",
+                () -> records.lineageService.verify(s(task, "tenant_id"), s(task, "id")));
       }
       var graph = batchGraph;
       var context = records.v5.json(s(cut, "context_snapshot"), 4096);

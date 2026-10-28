@@ -151,7 +151,70 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
       }
     }
     if (lineage(c)) closed(c, sources, authority, checked);
-    return new Validated(scope, authority, List.copyOf(sources));
+    var sourceScopes = new java.util.HashMap<String, Scope>();
+    for (var entry : checked.entrySet()) sourceScopes.put(entry.getKey(), entry.getValue().scope());
+    return new Validated(scope, authority, List.copyOf(sources), sourceScopes);
+  }
+
+  /** 数据库时间作基准，取样前nanoTime形成保守末端授权截止。 */
+  public long live(Caller caller, Validated proof) {
+    try {
+      var nodes = new ArrayList<Caller>(proof.sources());
+      nodes.add(caller);
+      long expires = Long.MAX_VALUE;
+      for (var expected : nodes) {
+        long started = System.nanoTime();
+        var row = records.currentState(expected);
+        var original =
+            expected.id().equals(caller.id())
+                ? proof.scope()
+                : proof.sourceScopes().get(expected.id());
+        var now = row.caller();
+        if (original == null
+            || !expected.tenant().equals(now.tenant())
+            || !expected.id().equals(now.id())
+            || !expected.owner().equals(now.owner())
+            || !expected.capabilities().equals(now.capabilities())
+            || !expected.tools().equals(now.tools())
+            || expected.epoch() != now.epoch()
+            || !expected.created().equals(now.created())
+            || !expected.requestDigest().equals(now.requestDigest())
+            || !original.digest().equals(row.scopeDigest())
+            || !original.binding().equals(row.binding())
+            || !original.tools().equals(row.tools())
+            || !original.owner().equals(row.owner())
+            || row.version() != 1
+            || row.authorityVersion() != 1
+            || row.count() != original.count()
+            || !original.retain().equals(row.retain())
+            || !row.retain().equals(row.scopeRetain())
+            || !original.binding().equals(row.historyBinding())
+            || !row.present()
+            || !row.active()
+            || !row.retain().isAfter(row.databaseTime())) throw unavailable();
+        if (!expected.id().equals(caller.id())) {
+          var target =
+              proof.authority().targets().stream()
+                  .filter(t -> t.id().equals(expected.id()))
+                  .findFirst()
+                  .orElseThrow();
+          if (!expected.state().equals(now.state())
+              || !row.quiet()
+              || row.upper() != target.upperSeq()) throw unavailable();
+        }
+        expires =
+            Math.min(
+                expires,
+                Math.addExact(
+                    started,
+                    java.time.Duration.between(row.databaseTime(), row.retain()).toNanos()));
+      }
+      return expires;
+    } catch (TaskFailure failure) {
+      if (failure.code().equals(SessionErrorCode.SESSION_SCOPE_UNAVAILABLE))
+        records.invalidateAfterTransaction(caller);
+      throw failure;
+    }
   }
 
   private static boolean lineage(Caller c) {
@@ -199,7 +262,7 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
   }
 
   private record CheckedSource(
-      Caller caller, SessionScopeRecords.History history, Authority authority) {}
+      Caller caller, SessionScopeRecords.History history, Scope scope, Authority authority) {}
 
   private CheckedSource checkedSource(Caller c, String id, boolean admission) {
     var st = records.source(c, id);
@@ -217,6 +280,6 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
         || h.nextSeq() > SessionHistoryPolicyV1.PUBLIC_EVENTS
         || !h.retain().equals(own.retain())) throw unavailable();
     if (admission && !records.admissionRetention(st)) throw unavailable();
-    return new CheckedSource(st, h, a);
+    return new CheckedSource(st, h, own, a);
   }
 }

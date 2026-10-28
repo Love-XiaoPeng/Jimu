@@ -107,6 +107,29 @@ final class MapperSessionScopeRecords implements SessionScopeRecords {
     return r;
   }
 
+  public Live currentState(Caller c) {
+    var rows = sql.currentState(ledger.queryContext(), c.tenant(), c.id());
+    if (rows.size() != 1) throw JdbcSessionScopes.unavailable();
+    var r = rows.getFirst();
+    return new Live(
+        caller(r),
+        s(r, "authority_digest"),
+        s(r, "caller_binding_digest"),
+        s(r, "caller_tools_digest"),
+        s(r, "scope_owner"),
+        n(r, "record_version"),
+        n(r, "authority_version"),
+        n(r, "candidate_count"),
+        n(r, "next_seq") - 1,
+        s(r, "binding_digest"),
+        (LocalDateTime) r.get("history_retain"),
+        (LocalDateTime) r.get("scope_retain"),
+        (LocalDateTime) r.get("database_time"),
+        n(r, "present") == 1,
+        n(r, "active") == 1,
+        n(r, "quiet") == 1);
+  }
+
   public List<String> callerCapabilities(String tenant, String caller) {
     return sql.callerCapabilities(ledger.queryContext(), tenant, caller).stream()
         .map(r -> s(r, "capabilities"))
@@ -120,7 +143,11 @@ final class MapperSessionScopeRecords implements SessionScopeRecords {
   }
 
   public void lockTask(String tenant, String id) {
-    sql.lockTask(ledger.queryContext(), tenant, id);
+    var rows = sql.lockTask(ledger.queryContext(), tenant, id);
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            ledger.queryContext());
+    if (owner != null && rows.size() == 1) owner.locked(tenant, id);
   }
 
   public Scope scope(Caller c) {

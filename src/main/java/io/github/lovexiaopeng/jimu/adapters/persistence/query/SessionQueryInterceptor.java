@@ -39,7 +39,14 @@ public final class SessionQueryInterceptor implements Interceptor {
             : parameter;
     if (!(value instanceof SessionQueryContext context)) return invocation.proceed();
     context.remainingMillis();
-    if (invocation.getTarget() instanceof StatementHandler) {
+    if (invocation.getTarget() instanceof StatementHandler handler) {
+      var command =
+          (org.apache.ibatis.mapping.MappedStatement)
+              SystemMetaObject.forObject(handler).getValue("delegate.mappedStatement");
+      if (command.getSqlCommandType() != org.apache.ibatis.mapping.SqlCommandType.SELECT) {
+        var owner = SessionQueryTransaction.current(context);
+        if (owner != null) owner.mutation();
+      }
       var statement = (Statement) invocation.proceed();
       QueryStatements.apply(statement, context);
       return statement;
@@ -56,7 +63,15 @@ public final class SessionQueryInterceptor implements Interceptor {
                 if (method.getName().equals("getResultSet")
                     && result instanceof java.sql.ResultSet rows) {
                   if (!results.containsKey(rows))
-                    results.put(rows, QueryResults.meter(rows, context));
+                    results.put(
+                        rows,
+                        QueryResults.meter(
+                            rows,
+                            context,
+                            ((org.apache.ibatis.mapping.MappedStatement)
+                                    SystemMetaObject.forObject(invocation.getTarget())
+                                        .getValue("mappedStatement"))
+                                .getId()));
                   return results.get(rows);
                 }
                 return result;

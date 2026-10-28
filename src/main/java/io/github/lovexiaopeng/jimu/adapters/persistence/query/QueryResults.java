@@ -12,7 +12,12 @@ public final class QueryResults {
 
   public static ResultSet meter(ResultSet delegate, SessionQueryContext context)
       throws SQLException {
-    var result = context.result();
+    return meter(delegate, context, "JDBC");
+  }
+
+  public static ResultSet meter(ResultSet delegate, SessionQueryContext context, String statement)
+      throws SQLException {
+    var result = context.result(statement);
     var metadata = delegate.getMetaData();
     return (ResultSet)
         Proxy.newProxyInstance(

@@ -17,8 +17,14 @@ import java.util.Map;
 final class MapperSessionEligibility implements SessionEligibility.Access {
   private final JdbcLedger ledger;
   private final Map<String, Object> task;
+  private final boolean terminal;
 
   MapperSessionEligibility(JdbcLedger ledger, Map<String, Object> task) {
+    this(ledger, task, false);
+  }
+
+  MapperSessionEligibility(JdbcLedger ledger, Map<String, Object> task, boolean terminal) {
+    this.terminal = terminal;
     this.ledger = ledger;
     this.task = task;
   }
@@ -28,7 +34,7 @@ final class MapperSessionEligibility implements SessionEligibility.Access {
   }
 
   public void history() {
-    ledger.sessions.history(task, false);
+    if (!terminal) ledger.sessions.history(task, false); // 末端history由逐节点currentState精确核验。
   }
 
   public List<String> capabilities() {

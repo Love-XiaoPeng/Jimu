@@ -25,6 +25,28 @@ public interface SessionMetadataAccounting {
 
   interface Row {
     Iterable<?> values();
+
+    default Object value(String name) {
+      throw new UnsupportedOperationException(name);
+    }
+  }
+
+  record Balance(
+      long metadata,
+      long body,
+      long reserved,
+      long held,
+      long amount,
+      Long actual,
+      String reservationState,
+      String content) {}
+
+  default boolean finalPresent() {
+    return false;
+  }
+
+  default Balance readBack() {
+    throw new UnsupportedOperationException("Final account readback");
   }
 
   boolean session();

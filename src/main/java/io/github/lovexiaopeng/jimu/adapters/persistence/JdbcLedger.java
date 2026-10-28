@@ -1285,6 +1285,19 @@ public final class JdbcLedger
             new MapperSessionTraces(this));
     sessions.scopes = sessionScopes;
     sessionScopes.invalidated = this::invalidateScopeAfterTransaction;
+    sessionScopes.terminalAccess =
+        task -> {
+          if (!sessionLineageEnabled || !sessionReadEnabled || !priorSessionSearchEnabled)
+            throw new TaskFailure(
+                403,
+                io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode.SESSION_LINEAGE_DISABLED);
+          if (epoch(new Identity(s(task, "tenant_id"), s(task, "owner_actor_id")), caps(task))
+              != n(task, "installation_epoch"))
+            throw new TaskFailure(
+                403,
+                io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode.CAPABILITY_REVOKED);
+          sessionEligibility.access(new MapperSessionEligibility(this, task, true));
+        };
     imageRecords = new MapperImageRecords(this);
     imageService =
         new io.github.lovexiaopeng.jimu.kernel.media.service.impl.ImagePersistenceServiceImpl(
@@ -2073,7 +2086,27 @@ public final class JdbcLedger
         });
   }
 
+  void bindSessionQuery(Lease lease, String step, String response) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            query);
+    if (owner != null && query.lineage())
+      owner.bind(
+          lease.tenant()
+              + ":"
+              + lease.taskId()
+              + ":"
+              + lease.attemptId()
+              + ":"
+              + lease.worker()
+              + ":"
+              + lease.fence(),
+          step,
+          response);
+  }
+
   Map<String, Object> fenced(Lease lease, boolean admission) {
+    bindSessionQuery(lease, null, null);
     // Hold through the committing transaction: STOPPED cannot race a cached admission,
     // publication or successful finish. Settlement of previously admitted effects stays allowed.
     var evaluation = evaluation(lease, admission);

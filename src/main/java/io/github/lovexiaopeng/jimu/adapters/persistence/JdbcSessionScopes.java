@@ -21,6 +21,7 @@ final class JdbcSessionScopes {
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeCreationService
       creation;
   java.util.function.Consumer<Map<String, Object>> invalidated;
+  java.util.function.Consumer<Map<String, Object>> terminalAccess;
   final PriorSessionContracts contracts = new PriorSessionContracts();
   final PriorSessionContracts v5 = new PriorSessionContracts(5);
 
@@ -76,10 +77,63 @@ final class JdbcSessionScopes {
 
   Scope require(Map<String, Object> task) {
     var c = MapperSessionScopeRecords.caller(task);
-    var found = ledgerMeasure(c);
+    var owner =
+        lineage(task) && sessions.appendQuery() != null && sessions.appendQuery().lineage()
+            ? io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                .current(sessions.appendQuery())
+            : null;
+    var found = owner == null ? null : owner.scope(c);
+    if (found == null) {
+      found = ledgerMeasure(c);
+      if (owner != null) {
+        var proof = found;
+        var work = owner;
+        owner.holdScope(proof);
+        io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
+            graph;
+        try {
+          graph = sessions.lineageService.verify(c.tenant(), c.id());
+        } catch (RuntimeException failure) {
+          owner.poisonProof(failure);
+          throw failure;
+        }
+        owner.scope(
+            c,
+            proof,
+            () -> {
+              long expires =
+                  io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics
+                      .measure(
+                          sessions.appendQuery(),
+                          "scope.live",
+                          () -> {
+                            long end = eligibility.live(c, proof);
+                            terminalAccess.accept(task);
+                            return end;
+                          });
+              work.expiry(
+                  () -> {
+                    if (System.nanoTime() >= expires) {
+                      records.invalidateAfterTransaction(c);
+                      throw unavailable();
+                    }
+                  });
+            });
+        owner.graph(c.tenant(), c.id(), graph);
+      }
+    }
+    var proof = found;
+    java.util.function.Supplier<JsonNode> parse =
+        () -> {
+          if (sessions.appendQuery() != null && lineage(task))
+            sessions.appendQuery().operation(proof.scope().raw().length());
+          return sessions.contracts.json(proof.scope().raw(), 4096);
+        };
+    if (sessions.appendQuery() != null && lineage(task))
+      sessions.appendQuery().operation(1L + proof.sources().size());
     return new Scope(
         MapperSessionScopeRecords.row(c, found.scope()),
-        sessions.contracts.json(found.scope().raw(), 4096),
+        owner == null ? parse.get() : owner.authority(parse),
         found.sources().stream().map(MapperSessionScopeRecords::row).toList());
   }
 

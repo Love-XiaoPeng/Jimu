@@ -13,8 +13,15 @@ import java.util.Map;
 final class MapperSessionMetadataAccounting implements SessionMetadataAccounting {
   private final JdbcSessionRecords records;
   private final Map<String, Object> task;
+  private final boolean finalPresent;
 
   MapperSessionMetadataAccounting(JdbcSessionRecords records, Map<String, Object> task) {
+    this(records, task, false);
+  }
+
+  MapperSessionMetadataAccounting(
+      JdbcSessionRecords records, Map<String, Object> task, boolean finalPresent) {
+    this.finalPresent = finalPresent;
     this.records = records;
     this.task = task;
   }
@@ -42,9 +49,40 @@ final class MapperSessionMetadataAccounting implements SessionMetadataAccounting
 
           public Row next() {
             var row = iterator.next();
-            return () -> row.values();
+            return new Row() {
+              public Iterable<?> values() {
+                return row.values();
+              }
+
+              public Object value(String name) {
+                return row.get(name);
+              }
+            };
           }
         };
+  }
+
+  public boolean finalPresent() {
+    return finalPresent;
+  }
+
+  public Balance readBack() {
+    var rows =
+        records
+            .mapperSession()
+            .getMapper(SessionContextMapper.class)
+            .balance(records.appendQuery(), s(task, "tenant_id"), s(task, "id"));
+    if (rows.size() != 1) throw JdbcSessionRecords.corrupt();
+    var row = rows.getFirst();
+    return new Balance(
+        n(row, "metadata_bytes"),
+        n(row, "body_bytes"),
+        n(row, "reserved_bytes"),
+        n(row, "held_bytes"),
+        n(row, "amount"),
+        row.get("actual") == null ? null : n(row, "actual"),
+        s(row, "reservation_state"),
+        s(row, "content_state"));
   }
 
   public long metadataBytes() {
@@ -54,9 +92,11 @@ final class MapperSessionMetadataAccounting implements SessionMetadataAccounting
   }
 
   public void account(long bytes) {
-    records
-        .mapperSession()
-        .getMapper(SessionContextMapper.class)
-        .account(records.appendQuery(), bytes, s(task, "tenant_id"), s(task, "id"));
+    int changed =
+        records
+            .mapperSession()
+            .getMapper(SessionContextMapper.class)
+            .account(records.appendQuery(), bytes, s(task, "tenant_id"), s(task, "id"));
+    if (finalPresent && changed != 1) throw JdbcSessionRecords.corrupt();
   }
 }

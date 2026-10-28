@@ -34,6 +34,20 @@ public final class SessionQueryTransaction {
     return execute(context, work, TransactionDefinition.PROPAGATION_REQUIRES_NEW);
   }
 
+  /** Spring挂起同步器即挂起证明；不以query身份冒充事务身份。 */
+  public static SessionQueryWork current(SessionQueryContext context) {
+    if (context == null || !TransactionSynchronizationManager.isSynchronizationActive())
+      return null;
+    for (var sync : TransactionSynchronizationManager.getSynchronizations()) {
+      if (sync instanceof ConnectionSettings settings) {
+        if (settings.context != context)
+          throw new IllegalStateException("Different query in session transaction");
+        return settings.work;
+      }
+    }
+    return null;
+  }
+
   private <T> T execute(SessionQueryContext context, Supplier<T> work, int propagation) {
     var transaction = new TransactionTemplate(manager);
     transaction.setPropagationBehavior(propagation);
@@ -56,9 +70,13 @@ public final class SessionQueryTransaction {
                           context.remainingMillis();
                           return result;
                         }
+                        if (!status.isNewTransaction())
+                          throw new IllegalStateException(
+                              "Session query requires an owned transaction");
+                        var owner = new SessionQueryWork(context);
                         int priorNetwork = connection.getNetworkTimeout();
                         TransactionSynchronizationManager.registerSynchronization(
-                            new ConnectionSettings(context, connection, priorNetwork));
+                            new ConnectionSettings(context, connection, priorNetwork, owner));
                         connection.setNetworkTimeout(Runnable::run, context.remainingMillis());
                         int priorWait, priorMax;
                         try (var statement = connection.createStatement();
@@ -78,6 +96,7 @@ public final class SessionQueryTransaction {
                                 "SET SESSION max_execution_time=" + context.remainingMillis());
                           }
                           T result = work.get();
+                          owner.finish();
                           context.remainingMillis();
                           return result;
                         } catch (java.sql.SQLException | RuntimeException | Error failure) {
@@ -124,16 +143,22 @@ public final class SessionQueryTransaction {
     private final SessionQueryContext context;
     private final java.sql.Connection connection;
     private final int priorNetwork;
+    private final SessionQueryWork work;
 
     ConnectionSettings(
-        SessionQueryContext context, java.sql.Connection connection, int priorNetwork) {
+        SessionQueryContext context,
+        java.sql.Connection connection,
+        int priorNetwork,
+        SessionQueryWork work) {
       this.context = context;
       this.connection = connection;
       this.priorNetwork = priorNetwork;
+      this.work = work;
     }
 
     @Override
     public void beforeCommit(boolean readOnly) {
+      work.beforeCommit();
       try {
         connection.setNetworkTimeout(Runnable::run, context.remainingMillis());
       } catch (java.sql.SQLException failure) {
@@ -144,6 +169,17 @@ public final class SessionQueryTransaction {
 
     @Override
     public void afterCompletion(int completion) {
+      work.complete();
+      LOG.info(
+          "Session query totals query={} deadlineNanos={} reads={} bytes={} operations={} scratchPeak={} groups={} statements={}",
+          System.identityHashCode(context),
+          context.deadlineNanos(),
+          context.resources().reads(),
+          context.resources().bytes(),
+          context.resources().operations(),
+          context.scratchPeak(),
+          context.groups(),
+          context.statements());
       LOG.info(
           "Session query transaction completion={} totalReads={} remainingMicros={}",
           switch (completion) {

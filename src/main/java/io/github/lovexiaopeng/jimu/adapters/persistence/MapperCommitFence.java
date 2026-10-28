@@ -20,6 +20,32 @@ final class MapperCommitFence implements CommitFence {
     String attempt = lease.attemptId();
     String worker = lease.worker();
     long fence = lease.fence();
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            ledger.queryContext());
+    if (owner != null && ledger.queryContext().lineage())
+      owner.fence(
+          tenant + ":" + task + ":" + attempt + ":" + worker + ":" + fence,
+          () -> {
+            var proof = owner.proof();
+            if (proof != null) {
+              var retain = proof.scope().retain();
+              for (var source : proof.sourceScopes().values())
+                if (source.retain().isBefore(retain)) retain = source.retain();
+              if (ledger
+                      .mappers
+                      .session()
+                      .getMapper(CommitFenceMapper.class)
+                      .commitRetainedFence(
+                          ledger.queryContext(), tenant, task, attempt, worker, fence, retain)
+                  != 1) {
+                owner.checkLiveDeadline();
+                throw new io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure(
+                    409,
+                    io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode.FENCE_REJECTED);
+              }
+            }
+          });
     return ledger
         .mappers
         .session()

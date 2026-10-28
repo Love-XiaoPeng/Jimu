@@ -213,6 +213,7 @@ final class JdbcExecutionRecords implements ExecutionRecords {
       }
 
       public void insertStep(String stepId, int ordinal, String request) {
+        ledger.bindSessionQuery(lease, stepId, null);
         ledger
             .mappers
             .steps()

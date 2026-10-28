@@ -23,6 +23,23 @@ public interface SessionLineageRecords {
     }
   }
 
+  default io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
+      verified(String tenant, String caller) {
+    return null;
+  }
+
+  default void verified(
+      String tenant,
+      String caller,
+      io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
+          proof) {}
+
+  default <T> T withProof(java.util.function.Supplier<T> work) {
+    return work.get();
+  }
+
+  default void scratch(long bytes) {}
+
   Fact fact(String tenant, String id);
 
   Stored load(String tenant, String id);

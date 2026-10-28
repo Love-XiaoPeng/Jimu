@@ -14,6 +14,56 @@ public final class SessionQueryContext {
   private long readLimit = 4096, byteLimit = 16777216, operationLimit = 2097152;
   private long scratchLimit = 16777216, scratchReserve = 1048576;
   private ResultMeter meter;
+  private final java.util.Map<Object, Long> retainedScratch = new java.util.HashMap<>();
+  private long scratchPeak;
+  private String group = "B";
+  private final java.util.Map<String, long[]> groups = new java.util.TreeMap<>();
+  private final java.util.Map<String, Long> statements = new java.util.TreeMap<>();
+
+  public MeterScope group(String next) {
+    String prior = group;
+    group = next;
+    return () -> group = prior;
+  }
+
+  public String groups() {
+    var values = new java.util.TreeMap<String, String>();
+    groups.forEach((key, v) -> values.put(key, v[0] + "/" + v[1] + "/" + v[2]));
+    return values.toString();
+  }
+
+  public java.util.Map<String, Long> statements() {
+    return java.util.Map.copyOf(statements);
+  }
+
+  private long[] groupCounters() {
+    return groups.computeIfAbsent(group, k -> new long[3]);
+  }
+
+  public boolean lineage() {
+    return readLimit == SessionLineagePolicyV5.PROOF_READS;
+  }
+
+  public void retainScratch(Object owner, long bytes) {
+    retainedScratch.put(owner, bytes);
+    scratch(0);
+  }
+
+  public void releaseScratch(Object owner) {
+    retainedScratch.remove(owner);
+  }
+
+  public long scratchPeak() {
+    return scratchPeak;
+  }
+
+  private void scratch(long transientBytes) {
+    long live = scratchReserve;
+    for (long bytes : retainedScratch.values()) live = Math.addExact(live, bytes);
+    live = Math.addExact(live, transientBytes);
+    scratchPeak = Math.max(scratchPeak, live);
+    if (metered && live > scratchLimit) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+  }
 
   public interface ResultMeter {
     ColumnMeter begin();
@@ -84,12 +134,21 @@ public final class SessionQueryContext {
     if (!metered) return;
     long previous = operations;
     operations = Math.addExact(operations, count);
+    groupCounters()[2] = Math.addExact(groupCounters()[2], count);
     if (operations > operationLimit) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
     if (previous / 1024 != operations / 1024) remainingMillis();
   }
 
   /** Called once per actual result, including an empty one. Cached reads cannot call this. */
   public Result result() {
+    return result("JDBC");
+  }
+
+  public Result result(String statement) {
+    if (metered) {
+      groupCounters()[0]++;
+      statements.merge(group + ":" + statement, 1L, Math::addExact);
+    }
     remainingMillis();
     if (metered && ++reads > readLimit) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
     return new Result();
@@ -110,9 +169,10 @@ public final class SessionQueryContext {
         operation(1);
         long size = 8L + utf8(label) + scalarBytes(value);
         bytes = Math.addExact(bytes, size);
+        groupCounters()[1] = Math.addExact(groupCounters()[1], size);
         batch = Math.addExact(batch, size);
-        if (bytes > byteLimit || batch * 3 + scratchReserve > scratchLimit)
-          throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+        scratch(Math.multiplyExact(batch, 3));
+        if (bytes > byteLimit) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
       }
       if (additional != null) additional.column(label, value);
     }

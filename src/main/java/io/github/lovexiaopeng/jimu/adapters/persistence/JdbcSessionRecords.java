@@ -289,11 +289,32 @@ final class JdbcSessionRecords {
   }
 
   void account(Map<String, Object> task, boolean closing) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            query);
+    if (owner != null && query.lineage() && JdbcSessionScopes.lineage(task)) {
+      owner.account(
+          s(task, "tenant_id") + ":" + s(task, "id"),
+          closing,
+          finalClosing -> finalAccount(task, finalClosing));
+      return;
+    }
     io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
         query,
         "metadata.account",
         () -> {
           metadataAccounting.account(new MapperSessionMetadataAccounting(this, task), closing);
+          return null;
+        });
+  }
+
+  private void finalAccount(Map<String, Object> task, boolean closing) {
+    io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+        query,
+        "metadata.final",
+        () -> {
+          metadataAccounting.account(
+              new MapperSessionMetadataAccounting(this, task, true), closing);
           return null;
         });
   }

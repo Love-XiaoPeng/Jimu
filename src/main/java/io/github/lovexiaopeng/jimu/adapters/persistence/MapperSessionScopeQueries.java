@@ -161,6 +161,7 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
     }
 
     public Step validatedStep(String stepId) {
+      ledger.bindSessionQuery(lease, stepId, null);
       step =
           MapperSessionScopeQueries.this.read(
               ScopeQueryStepReadMapper.class,
@@ -218,7 +219,7 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
     }
 
     public String graphDigest() {
-      var graph = ledger.sessions.lineageRecords.load(lease.tenant(), lease.taskId());
+      var graph = ledger.lineages.verify(lease.tenant(), lease.taskId());
       var context = ledger.sessions.v5.json(cutSnapshot, 4096);
       if (!java.util.Objects.equals(graph.graphDigest(), context.path("graph_sha256").asText())
           || !java.util.Objects.equals(
@@ -382,7 +383,7 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
     public void eventBeforeFinalAccount(String fact, String type, String code) {
       // No result can commit until the service's final account() succeeds in this same UoW.
       new io.github.lovexiaopeng.jimu.kernel.event.service.impl.EventRecordingServiceImpl()
-          .record(new MapperEventRecords(ledger, task, closing -> {}), fact, type, code);
+          .record(new MapperEventRecords(ledger, task), fact, type, code);
     }
 
     public long receiptSequence(String invocation) {

@@ -30,6 +30,37 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
     contracts = ledger.sessions.lineage;
   }
 
+  public io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
+      verified(String tenant, String caller) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            ledger.queryContext());
+    return owner == null ? null : owner.graph(tenant, caller);
+  }
+
+  public void verified(
+      String tenant,
+      String caller,
+      io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
+          proof) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            ledger.queryContext());
+    if (owner != null) owner.graph(tenant, caller, proof);
+  }
+
+  private final Object scratchOwner = new Object();
+
+  public <T> T withProof(java.util.function.Supplier<T> work) {
+    return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+        ledger.queryContext(), "lineage.graph", work);
+  }
+
+  public void scratch(long bytes) {
+    if (bytes == 0) ledger.queryContext().releaseScratch(scratchOwner);
+    else ledger.queryContext().retainScratch(scratchOwner, bytes);
+  }
+
   public Fact fact(String tenant, String id) {
     var rows =
         ledger

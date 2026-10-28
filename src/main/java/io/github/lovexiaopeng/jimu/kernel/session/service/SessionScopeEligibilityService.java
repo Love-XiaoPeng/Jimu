@@ -15,6 +15,8 @@ public interface SessionScopeEligibilityService {
 
   Validated require(Caller caller);
 
+  long live(Caller caller, Validated proof);
+
   Caller source(Caller caller, String id, boolean admission);
 
   boolean cleanupSafe(Caller caller);

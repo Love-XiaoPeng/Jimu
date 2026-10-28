@@ -57,6 +57,10 @@ public final class SessionMetadataAccountingServiceImpl
 
   public void account(SessionMetadataAccounting records, boolean closing) {
     if (!records.session()) return;
+    if (records.finalPresent()) {
+      finalPresent(records, closing);
+      return;
+    }
     for (int i = 0; i < SessionHistoryPolicyV1.ACCOUNTING_ROUNDS; i++) {
       long bytes = metadata(records, closing, 0);
       long old = records.metadataBytes();
@@ -64,6 +68,97 @@ public final class SessionMetadataAccountingServiceImpl
       records.account(bytes);
     }
     throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
+  }
+
+  /** 最终行快照只读一次；仅metadata_bytes的十进制内容参与影子自依赖。 */
+  private void finalPresent(SessionMetadataAccounting records, boolean closing) {
+    long total = 0, headroom = SessionHistoryPolicyV1.CLEANUP_BASE_BYTES;
+    long old = -1, body = -1, reserved = -1, held = -1, amount = -1;
+    Long actual = null;
+    String reservationState = null;
+    int histories = 0, reservations = 0;
+    for (var table : SessionMetadataAccounting.Table.values()) {
+      for (var row : records.rows(table)) {
+        headroom =
+            Math.addExact(
+                headroom,
+                switch (table) {
+                  case TASK -> SessionHistoryPolicyV1.TASK_CLEANUP_BYTES;
+                  case STEP,
+                          INVOCATION,
+                          INVOCATION_SESSION_SEARCH,
+                          INVOCATION_SESSION_LINEAGE_TRACE,
+                          TASK_SESSION_LINEAGE ->
+                      SessionHistoryPolicyV1.STEP_CLEANUP_BYTES;
+                  case MODEL_DISPATCH, SESSION_PUBLIC_EVENT ->
+                      SessionHistoryPolicyV1.DISPATCH_CLEANUP_BYTES;
+                  default -> 0;
+                });
+        total = Math.addExact(total, SessionHistoryPolicyV1.ROW_HEADER_BYTES);
+        for (var value : row.values())
+          total =
+              Math.addExact(
+                  total,
+                  Math.addExact(SessionHistoryPolicyV1.FIELD_HEADER_BYTES, scalarBytes(value)));
+        if (table == SessionMetadataAccounting.Table.TASK_SESSION_HISTORY) {
+          histories++;
+          if (!"PRESENT".equals(row.value("content_state"))) throw corrupt();
+          old = number(row.value("metadata_bytes"));
+          body = number(row.value("body_bytes"));
+          reserved = number(row.value("reserved_bytes"));
+          held = number(row.value("held_bytes"));
+          total = Math.subtractExact(total, scalarBytes(row.value("metadata_bytes")));
+        }
+        if (table == SessionMetadataAccounting.Table.RESERVATION
+            && "SESSION_HISTORY_STORAGE".equals(row.value("category"))) {
+          reservations++;
+          amount = number(row.value("amount"));
+          actual = row.value("actual") == null ? null : number(row.value("actual"));
+          reservationState = (String) row.value("state");
+        }
+      }
+    }
+    if (histories != 1
+        || reservations != 1
+        || body < 0
+        || body > 7L * 1024 * 1024
+        || held != SessionHistoryPolicyV1.TASK_RESERVE_BYTES
+        || reserved != held
+        || amount != held
+        || actual != null
+        || !"RESERVED".equals(reservationState)) throw corrupt();
+    long value = 0;
+    for (int i = 0; i < SessionHistoryPolicyV1.ACCOUNTING_ROUNDS; i++) {
+      long next = Math.addExact(total, scalarBytes(value));
+      long cap =
+          closing
+              ? SessionHistoryPolicyV1.CLOSED_METADATA_BYTES
+              : SessionHistoryPolicyV1.OPEN_METADATA_BYTES;
+      if (next > cap || (!closing && Math.addExact(next, headroom) > cap)) throw limit();
+      if (next == value) {
+        if (old != value) records.account(value);
+        var check = records.readBack();
+        if (check.metadata() != value
+            || check.body() != body
+            || check.reserved() != reserved
+            || check.held() != held
+            || check.amount() != amount
+            || !java.util.Objects.equals(check.actual(), actual)
+            || !reservationState.equals(check.reservationState())
+            || !"PRESENT".equals(check.content())) throw corrupt();
+        return;
+      }
+      value = next;
+    }
+    throw corrupt();
+  }
+
+  private static long number(Object value) {
+    return ((Number) value).longValue();
+  }
+
+  private static TaskFailure corrupt() {
+    return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
   }
 
   private static TaskFailure limit() {

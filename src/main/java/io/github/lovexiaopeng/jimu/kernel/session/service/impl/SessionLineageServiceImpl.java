@@ -12,7 +12,6 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 /** 仅加载显式节点的一层事实和genesis；来源graph只能与本次Map比较，绝不递归读库。 */
@@ -110,11 +109,20 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
         || !records.hash(s.graph()).equals(s.graphDigest())) throw corrupt();
   }
 
-  private record Verified(
-      Fact caller, Stored stored, Map<String, Genesis> genesis, Map<String, Node> nodes) {}
+  private VerifiedGraph load(String tenant, String caller) {
+    var cached = records.verified(tenant, caller);
+    if (cached != null) return cached;
+    try {
+      return records.withProof(() -> loadUncached(tenant, caller));
+    } finally {
+      records.scratch(0);
+    }
+  }
 
-  private Verified load(String tenant, String caller) {
+  private VerifiedGraph loadUncached(String tenant, String caller) {
     var fact = records.fact(tenant, caller);
+    long scratch = 3L * records.bytes(fact.request());
+    records.scratch(scratch);
     if (fact.sources().size() > 8 || fact.sources().contains(caller)) throw corrupt();
     var ids = new ArrayList<>(fact.sources());
     ids.add(caller);
@@ -128,6 +136,14 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
       if (!ids.containsAll(f.sources())) throw invalidScope();
       var s = records.load(tenant, id);
       raw(s);
+      scratch =
+          Math.addExact(
+              scratch,
+              3L
+                  * (records.bytes(s.graph())
+                      + records.bytes(s.genesis())
+                      + (id.equals(caller) ? 0 : records.bytes(f.request()))));
+      records.scratch(scratch);
       var g = records.genesis(s.genesis());
       if (g.version() != 1
           || !id.equals(g.sessionId())
@@ -166,11 +182,19 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
       }
     }
     SessionLineageGraph.validate(genesis, nodes, records::checkpoint);
-    return new Verified(fact, stored.get(caller), Map.copyOf(genesis), Map.copyOf(nodes));
+    var proof =
+        new VerifiedGraph(
+            fact.authorityDigest(),
+            stored.get(caller).graphDigest(),
+            stored.get(caller).genesisDigest(),
+            genesis,
+            nodes);
+    records.verified(tenant, caller, proof);
+    return proof;
   }
 
-  public void verify(String tenant, String caller) {
-    load(tenant, caller);
+  public VerifiedGraph verify(String tenant, String caller) {
+    return load(tenant, caller);
   }
 
   public String trace(String tenant, String caller, String target) {
@@ -187,8 +211,8 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
             SessionLineageGraph.trace(
                 caller,
                 target,
-                v.caller().authorityDigest(),
-                v.stored().graphDigest(),
+                v.authorityDigest(),
+                v.graphDigest(),
                 v.genesis(),
                 v.nodes(),
                 records::checkpoint));

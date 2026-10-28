@@ -17,5 +17,19 @@ public interface SessionLineageService {
 
   String trace(String tenant, String caller, String target);
 
-  void verify(String tenant, String caller);
+  record VerifiedGraph(
+      String authorityDigest,
+      String graphDigest,
+      String genesisDigest,
+      java.util.Map<String, io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineage.Genesis>
+          genesis,
+      java.util.Map<String, io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineage.Node>
+          nodes) {
+    public VerifiedGraph {
+      genesis = java.util.Map.copyOf(genesis);
+      nodes = java.util.Map.copyOf(nodes);
+    }
+  }
+
+  VerifiedGraph verify(String tenant, String caller);
 }
