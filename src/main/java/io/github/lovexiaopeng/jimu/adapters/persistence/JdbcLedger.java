@@ -438,8 +438,13 @@ public final class JdbcLedger
 
   @Override
   public String sessionContext(Lease lease) {
-    if (query == null)
-      return queryView(System.nanoTime() + 2_000_000_000L, null).sessionContext(lease);
+    if (query == null) {
+      var view =
+          lease.capabilities().contains(ToolCapability.SESSION_TRACE)
+              ? queryView(lease, true)
+              : queryView(System.nanoTime() + 2_000_000_000L, null);
+      return view.sessionContext(lease);
+    }
     return sessionContexts.context(lease);
   }
 
@@ -1496,7 +1501,9 @@ public final class JdbcLedger
             Math.min(
                 now + 2_000_000_000L,
                 now + java.time.Duration.between(Instant.now(), lease.deadline()).toNanos()),
-            metered ? new QueryResources(0, 0, 0) : null);
+            metered || lease.capabilities().contains(ToolCapability.SESSION_TRACE)
+                ? new QueryResources(0, 0, 0)
+                : null);
     if (lease.capabilities().contains(ToolCapability.SESSION_TRACE)) scoped.query.restrictLineage();
     return scoped;
   }
@@ -2190,6 +2197,8 @@ public final class JdbcLedger
 
   @Override
   public Optional<Step> checkpoint(Lease lease) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE))
+      return queryView(lease, true).checkpoint(lease);
     return executionService.checkpoint(lease);
   }
 
@@ -2210,6 +2219,8 @@ public final class JdbcLedger
 
   @Override
   public ModelSnapshot modelSnapshot(Lease lease) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE))
+      return queryView(lease, true).modelSnapshot(lease);
     return modelService.snapshot(lease);
   }
 
@@ -2229,6 +2240,8 @@ public final class JdbcLedger
 
   @Override
   public ToolSnapshot toolSnapshot(Lease lease) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE))
+      return queryView(lease, true).toolSnapshot(lease);
     return modelService.tools(lease);
   }
 
@@ -2485,6 +2498,10 @@ public final class JdbcLedger
 
   @Override
   public void finish(Lease lease, String summary) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE)) {
+      queryView(lease, true).finish(lease, summary);
+      return;
+    }
     if (executionService.finish(lease, summary))
       throw new io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionSuspended();
   }

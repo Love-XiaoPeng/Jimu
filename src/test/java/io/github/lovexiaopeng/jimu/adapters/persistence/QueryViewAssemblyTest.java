@@ -303,6 +303,59 @@ class QueryViewAssemblyTest {
     assertEquals(end, query.queryContext().deadlineNanos());
   }
 
+  @Test
+  void lineageCannotSelectTheLegacyUnmeteredLeaseView() throws Exception {
+    var root = new JdbcLedger(source, models);
+    var lease =
+        new Lease(
+            "t",
+            "a",
+            "task",
+            "attempt",
+            1,
+            "worker",
+            Instant.now().plusSeconds(60),
+            "goal",
+            List.of("session_trace"),
+            1);
+    var view =
+        (JdbcLedger)
+            invoke(root, "queryView", new Class<?>[] {Lease.class, boolean.class}, lease, false);
+    assertEquals(
+        "SESSION_HISTORY_LIMIT",
+        assertThrows(TaskFailure.class, () -> view.queryContext().operation(65537)).code());
+    assertEquals(65537, view.queryContext().resources().operations());
+  }
+
+  @Test
+  void lineageRootsRejectExpiredLeaseBeforeAcquiringAnyConnection() {
+    var root = new JdbcLedger(source, models);
+    var lease =
+        new Lease(
+            "t",
+            "a",
+            "task",
+            "attempt",
+            1,
+            "worker",
+            Instant.now().minusSeconds(1),
+            "goal",
+            List.of("session_trace"),
+            1);
+    var calls =
+        List.<Runnable>of(
+            () -> root.sessionContext(lease),
+            () -> root.checkpoint(lease),
+            () -> root.modelSnapshot(lease),
+            () -> root.toolSnapshot(lease),
+            () -> root.finish(lease, "done"),
+            () -> root.readOrResult(lease, null, null, null, null),
+            () -> root.searchOrResult(lease, null, null, null, null),
+            () -> root.traceOrResult(lease, null, null, null, null));
+    for (var call : calls)
+      assertEquals("SESSION_QUERY_TIMEOUT", assertThrows(TaskFailure.class, call::run).code());
+  }
+
   static JdbcLedger view(JdbcLedger root, long end, QueryResources prior) throws Exception {
     return (JdbcLedger)
         invoke(root, "queryView", new Class<?>[] {long.class, QueryResources.class}, end, prior);

@@ -62,6 +62,7 @@ public final class ExecutionServiceImpl implements ExecutionService {
         lease,
         () -> {
           var task = records.lockAdmission(lease);
+          task.checkpointFence();
           return task.latest()
               .map(
                   previous -> {

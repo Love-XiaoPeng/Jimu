@@ -58,6 +58,10 @@ final class JdbcExecutionRecords implements ExecutionRecords {
   public Admission lockAdmission(Lease lease) {
     var task = ledger.fenced(lease, true);
     return new Admission() {
+      public void checkpointFence() {
+        if (JdbcSessionScopes.lineage(task)) commitFence();
+      }
+
       public Optional<StoredStep> latest() {
         return ledger
             .mappers
