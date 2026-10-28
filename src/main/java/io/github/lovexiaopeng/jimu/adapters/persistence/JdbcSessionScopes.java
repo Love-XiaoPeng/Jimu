@@ -37,7 +37,13 @@ final class JdbcSessionScopes {
   JdbcSessionScopes(JdbcLedger ledger, JdbcTemplate db, JdbcSessionRecords sessions) {
     this.sessions = sessions;
     records = new MapperSessionScopeRecords(ledger);
-    eligibility = new SessionScopeEligibilityServiceImpl(records, Payloads::hash);
+    eligibility =
+        new SessionScopeEligibilityServiceImpl(
+            records,
+            raw -> {
+              if (sessions.appendQuery() != null) sessions.appendQuery().operation(1);
+              return Payloads.hash(raw);
+            });
     creation =
         new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionScopeCreationServiceImpl(
             new MapperSessionScopeCreationRecords(ledger, this, sessions));

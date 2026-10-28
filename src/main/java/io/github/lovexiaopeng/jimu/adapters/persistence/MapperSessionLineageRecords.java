@@ -207,10 +207,15 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
   }
 
   public void body(String tenant, String id, long bytes) {
-    ledger.sessions.body(ledger.locked(tenant, id), bytes);
+    // 完整键来自同一受理owner的既得锁/新建行；正文条件UPDATE仍核真实history。
+    ledger.sessions.body(
+        java.util.Map.of(
+            "tenant_id", tenant, "id", id, "capabilities", SessionLineagePolicyV5.CAPABILITIES),
+        bytes);
   }
 
   public String hash(String raw) {
+    // 摘要实际扫描的输入仍累计，不能靠变更计量单位绕过原包络。
     checkpoint(raw.length());
     return Payloads.hash(raw);
   }
@@ -220,6 +225,7 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
   }
 
   public String genesis(SessionLineage.Genesis value) {
+    checkpoint(1);
     return contracts.genesis(value);
   }
 
@@ -230,6 +236,7 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
   }
 
   public String graph(SessionLineage.Graph value) {
+    checkpoint(1 + value.nodes().size());
     return contracts.graph(value);
   }
 
@@ -240,6 +247,7 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
   }
 
   public String output(SessionLineage.Result value) {
+    checkpoint(1 + value.ancestors().size() + value.descendants().size());
     return contracts.output(value);
   }
 

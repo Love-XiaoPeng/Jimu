@@ -352,20 +352,22 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     public String insert(
         String caller, String key, Request request, String snapshot, String digest, long epoch) {
       String task = caller == null ? JdbcLedger.id() : caller;
-      sql.insertAccepted(
-          ledger.queryContext(),
-          identity.tenant(),
-          task,
-          identity.actor(),
-          key,
-          digest,
-          snapshot,
-          request.goal(),
-          String.join(",", request.capabilityIds()),
-          epoch,
-          request.budget().deadlineSeconds(),
-          request.budget().maxModelRequests(),
-          request.budget().maxToolInvocations());
+      int inserted =
+          sql.insertAccepted(
+              ledger.queryContext(),
+              identity.tenant(),
+              task,
+              identity.actor(),
+              key,
+              digest,
+              snapshot,
+              request.goal(),
+              String.join(",", request.capabilityIds()),
+              epoch,
+              request.budget().deadlineSeconds(),
+              request.budget().maxModelRequests(),
+              request.budget().maxToolInvocations());
+      if (inserted != 1) throw JdbcSessionRecords.corrupt();
       var owner =
           io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
               ledger.queryContext());

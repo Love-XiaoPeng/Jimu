@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
+import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords;
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger.QueryResources;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,49 @@ class SessionQueryResourcesTest {
                   owner.settlement();
                   return null;
                 }));
+    assertEquals(0, fixture.commits);
+    assertEquals(1, fixture.rollbacks);
+  }
+
+  @Test
+  void caughtProofFailureCannotBeClearedBySettlementOrFinalAccounting() {
+    var fixture = new SessionQueryTransactionTest.Fixture();
+    var failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                fixture.execute(
+                    () -> {
+                      var owner = SessionQueryTransaction.current(fixture.context);
+                      var caller =
+                          new SessionScopeRecords.Caller(
+                              "tenant", "task", "owner", "tools", "tools", 1, "RUNNING", null,
+                              "digest");
+                      var scope =
+                          new SessionScopeRecords.Scope(
+                              1, 1, "owner", "binding", "tools", "{}", "digest", 2, 0, "ACTIVE",
+                              null, null, null, null, null, "PRESENT", true);
+                      var authority =
+                          new SessionScopeRecords.Authority(
+                              "tenant",
+                              "task",
+                              "owner",
+                              "tools",
+                              "binding",
+                              "",
+                              "",
+                              java.util.List.of());
+                      owner.locked("tenant", "task");
+                      owner.scope(
+                          caller,
+                          new SessionScopeRecords.Validated(scope, authority, java.util.List.of()),
+                          () -> {});
+                      assertThrows(IllegalStateException.class, owner::dependencyMutation);
+                      assertThrows(IllegalStateException.class, owner::settlement);
+                      owner.account("task", true, closing -> {});
+                      return null;
+                    }));
+    assertEquals("Session proof dependency changed after publication", failure.getMessage());
     assertEquals(0, fixture.commits);
     assertEquals(1, fixture.rollbacks);
   }

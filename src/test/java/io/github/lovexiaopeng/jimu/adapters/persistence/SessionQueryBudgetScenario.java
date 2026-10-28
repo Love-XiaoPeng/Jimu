@@ -231,6 +231,29 @@ public final class SessionQueryBudgetScenario {
     ledger.sessionTraceEnabled(true);
     ledger.priorSessionSearchEnabled(true);
     ledger.sessionLineageEnabled(true);
+    if (args.length > 2 && args[2].equals("admission")) {
+      var ids = java.util.Arrays.asList(args[1].split(","));
+      String raw =
+          Payloads.json(
+              Map.of(
+                  "goal",
+                  "repair-admission-fault",
+                  "history_session_ids",
+                  ids,
+                  "parent_session_id",
+                  args[3]));
+      failures(
+          "admission",
+          () -> {},
+          () ->
+              ledger.submitSessionLineage(
+                  new io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Identity(
+                      "tenant-a", "alice"),
+                  "repair-admission-fault",
+                  end -> raw.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                  System.nanoTime() + 2_000_000_000L));
+      return;
+    }
     String worker = "query-budget-private";
     ledger.registerWorker(worker, worker, ProcessHandle.current().pid(), 1, "private", "private");
     var lease = ledger.claim(worker).orElseThrow();
