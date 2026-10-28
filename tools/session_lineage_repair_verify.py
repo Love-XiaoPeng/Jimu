@@ -12,8 +12,12 @@ from session_lineage_budget_verify import default_quota, quota_state, recovery
 
 def scenario(e, name, arguments, timeout=40):
     classes = e.root / 'test-classes'
-    if not classes.exists():
-        shutil.copytree(Path(__file__).resolve().parents[1] / 'target/test-classes', classes)
+    package = Path('io/github/lovexiaopeng/jimu/adapters/persistence')
+    destination = classes / package
+    destination.mkdir(parents=True, exist_ok=True)
+    source = Path(__file__).resolve().parents[1] / 'target/test-classes' / package
+    for file in source.glob(name + '*.class'):
+        shutil.copyfile(file, destination / file.name)
     command = [e.java, '-Xmx384m',
         '-Dloader.main=io.github.lovexiaopeng.jimu.adapters.persistence.' + name,
         '-Dloader.path=' + str(classes), '-cp', str(e.jar),
@@ -56,9 +60,13 @@ def admission(e):
     return end
 
 
-def verify(e):
+def verify(e, focused=False):
     e.prepare()
-    replay = default_quota(e)
+    if focused:
+        replay = e.task('repair-diagnostic-root', plan=[])
+        e.stop(e.worker)
+    else:
+        replay = default_quota(e)
     e.stop(e.control)
     scenario(e, 'SessionOwnerPhaseScenario', [replay], timeout=25)
     e.sql("UPDATE tenant_budget SET history_storage_limit=536870912 WHERE tenant_id='tenant-a';")
@@ -97,11 +105,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--jar', type=Path, required=True)
     parser.add_argument('--evidence', type=Path, required=True)
+    parser.add_argument('--focused', action='store_true',
+        help='Skip the separately completed default quota control; never retries a previous A03')
     args = parser.parse_args()
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt('bounded deadline')))
     e = LineageExperiment(args.jar, args.evidence)
     try:
-        verify(e)
+        verify(e, focused=args.focused)
     except BaseException:
         (e.evidence / 'failure.txt').write_text(traceback.format_exc())
         raise
