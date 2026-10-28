@@ -178,6 +178,8 @@ final class SessionDependencyWrites {
   }
 
   static Set<Dependency> keys(Object parameter, Kind kind, SessionQueryWork owner) {
+    // MP的实体是SET值，不是WHERE证明；尚未登记的wrapper条件一律保守失效。
+    if (parameter instanceof Map<?, ?> map && map.containsKey("ew")) return null;
     var fields = fields(parameter);
     String tenant = key(fields, "tenant", "tenantId", "tenant_id");
     if (tenant == null) return null;

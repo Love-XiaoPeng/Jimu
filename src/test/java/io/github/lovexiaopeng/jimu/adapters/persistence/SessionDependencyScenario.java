@@ -26,7 +26,7 @@ public final class SessionDependencyScenario {
     return "00000000-0000-0000-0000-%012d".formatted(index);
   }
 
-  private static SessionScopeRecords.Caller caller(String id) {
+  static SessionScopeRecords.Caller caller(String id) {
     return new SessionScopeRecords.Caller(
         "tenant-a",
         id,
@@ -39,7 +39,7 @@ public final class SessionDependencyScenario {
         "a".repeat(64));
   }
 
-  private static SessionScopeRecords.SourceFact source(int index) {
+  static SessionScopeRecords.SourceFact source(int index) {
     var scope =
         new SessionScopeRecords.Scope(
             1, 1, "alice", "binding", "tools", "{}", "digest", 2, 0, "ACTIVE", null, null, null,
@@ -68,7 +68,7 @@ public final class SessionDependencyScenario {
     return args;
   }
 
-  private static List<Object> snapshot(JdbcTemplate db) {
+  static List<Object> snapshot(JdbcTemplate db) {
     var result = new ArrayList<Object>();
     for (String table :
         List.of(
@@ -87,7 +87,13 @@ public final class SessionDependencyScenario {
             "reservation",
             "event",
             "session_public_event",
-            "tenant_budget"))
+            "invocation_session_read",
+            "invocation_session_search",
+            "invocation_session_trace",
+            "tenant_budget",
+            "actor_access",
+            "installation",
+            "worker_process"))
       result.add(db.queryForList("SELECT * FROM " + table + " ORDER BY 1,2"));
     return result;
   }

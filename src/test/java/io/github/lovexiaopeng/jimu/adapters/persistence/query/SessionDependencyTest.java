@@ -141,6 +141,9 @@ class SessionDependencyTest {
     assertNull(
         SessionDependencyWrites.keys(
             Map.of("et", entity, "taskId", "new"), SessionDependencyWrites.Kind.TASK, null));
+    assertNull(
+        SessionDependencyWrites.keys(
+            Map.of("et", entity, "ew", new Object()), SessionDependencyWrites.Kind.TASK, null));
     var installation =
         new io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity();
     installation.setTenantId("tenant");
