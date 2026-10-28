@@ -86,7 +86,8 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
             parent,
             parent == null ? null : nodes.get(parent).genesisSha256());
     String raw = records.genesis(genesis);
-    nodes.put(caller, new Node(caller, raw, records.hash(raw)));
+    String genesisDigest = records.hash(raw);
+    nodes.put(caller, new Node(caller, raw, genesisDigest));
     String graph =
         records.graph(
             new Graph(
@@ -99,7 +100,7 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
     var stored =
         new Stored(
             raw,
-            records.hash(raw),
+            genesisDigest,
             records.bytes(raw),
             graph,
             records.hash(graph),
