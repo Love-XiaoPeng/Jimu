@@ -129,7 +129,7 @@ public final class SessionMetadataAccountingServiceImpl
           || old != total
           || total > SessionHistoryPolicyV1.CLOSED_METADATA_BYTES
           || held != total
-          || amount != total
+          || amount != SessionHistoryPolicyV1.TASK_RESERVE_BYTES
           || actual == null
           || actual != total
           || reserved != SessionHistoryPolicyV1.TASK_RESERVE_BYTES
@@ -139,7 +139,7 @@ public final class SessionMetadataAccountingServiceImpl
           || check.body() != 0
           || check.reserved() != reserved
           || check.held() != total
-          || check.amount() != total
+          || check.amount() != amount
           || !java.util.Objects.equals(check.actual(), actual)
           || !"SETTLED".equals(check.reservationState())
           || !"PURGED".equals(check.content())) throw corrupt();

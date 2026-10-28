@@ -43,16 +43,22 @@ public final class SessionQueryInterceptor implements Interceptor {
         parameter instanceof Map<?, ?> values
             ? (values.containsKey("query") ? values.get("query") : null)
             : parameter;
+    var owner = SessionQueryTransaction.currentOwner();
+    if (invocation.getTarget() instanceof org.apache.ibatis.executor.Executor) {
+      if (owner != null
+          && (!(value instanceof SessionQueryContext context) || !owner.owns(context))) {
+        var failure = new IllegalStateException("Session write requires its owning query");
+        owner.poisonProof(failure);
+        throw failure;
+      }
+    }
     if (!(value instanceof SessionQueryContext context)) return invocation.proceed();
     context.remainingMillis();
     if (invocation.getTarget() instanceof org.apache.ibatis.executor.Executor) {
       var command = (org.apache.ibatis.mapping.MappedStatement) invocation.getArgs()[0];
-      var owner = SessionQueryTransaction.current(context);
       if (owner == null) return invocation.proceed();
-      String sql = command.getBoundSql(parameter).getSql().toLowerCase(java.util.Locale.ROOT);
-      if (dependencyWrite(sql)) owner.dependencyMutation(dependencyKeys(parameter));
-      else owner.mutation();
       try {
+        SessionDependencyWrites.before(command.getId(), parameter, owner);
         return invocation.proceed();
       } catch (Throwable failure) {
         owner.poisonProof(
@@ -96,35 +102,5 @@ public final class SessionQueryInterceptor implements Interceptor {
               }
             });
     return invocation.proceed();
-  }
-
-  // 只检查真正写入的SET/列区域，WHERE中的当前fence/权限条件不是依赖变更。
-  static boolean dependencyWrite(String sql) {
-    String normalized = sql.replaceAll("\\s+", " ").trim();
-    if (normalized.matches(
-        "(?s)^(insert into|update|delete from) (actor_access|installation)( |\\().*")) return true;
-    if (!normalized.matches(
-        "(?s)^(insert into|update|delete from) `?(task|task_session_history|task_session_scope|task_session_scope_target|task_session_lineage)`?( |\\().*"))
-      return false;
-    int where = normalized.indexOf(" where ");
-    String write = where < 0 ? normalized : normalized.substring(0, where);
-    return write.matches(
-            "(?s).*\\b(owner_actor_id|capabilities|tools_digest|installation_epoch|request_digest|request_snapshot|binding_digest|binding_snapshot|retain_until|grant_state|content_state|authority_snapshot|genesis_snapshot|graph_snapshot|revoked_at|invalidated_at|target_snapshot|source_task_id)\\b.*")
-        || normalized.startsWith("delete ");
-  }
-
-  static java.util.Set<SessionQueryWork.Dependency> dependencyKeys(Object parameter) {
-    if (!(parameter instanceof Map<?, ?> values)) return null;
-    Object tenant = values.get("tenant");
-    if (tenant == null) tenant = values.get("tenantId");
-    Object task = null;
-    for (String key : java.util.List.of("caller", "taskId", "task", "id"))
-      if (values.get(key) instanceof String text) {
-        task = text;
-        break;
-      }
-    return tenant instanceof String t && task instanceof String id
-        ? java.util.Set.of(new SessionQueryWork.Dependency(t, id))
-        : null;
   }
 }

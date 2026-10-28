@@ -211,7 +211,7 @@ class SessionMetadataAccountingServiceTest {
 
       public Balance readBack() {
         return new Balance(
-            stored, 0, 8388608, stored, stored, dirty ? stored + 1 : stored, "SETTLED", "PURGED");
+            stored, 0, 8388608, stored, 8388608, dirty ? stored + 1 : stored, "SETTLED", "PURGED");
       }
 
       private Row row(java.util.Map<String, Object> fields) {
@@ -248,7 +248,7 @@ class SessionMetadataAccountingServiceTest {
                       "category",
                       "SESSION_HISTORY_STORAGE",
                       "amount",
-                      stored,
+                      8388608L,
                       "actual",
                       stored,
                       "state",

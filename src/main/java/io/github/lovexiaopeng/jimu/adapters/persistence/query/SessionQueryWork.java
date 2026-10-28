@@ -156,19 +156,46 @@ public final class SessionQueryWork {
   private final Map<String, CheckedAuthority> authorities = new LinkedHashMap<>();
 
   /** 全tenant/task键；依赖含本行及authority中引用的全部来源，不以caller写豁免交叉依赖。 */
-  public record Dependency(String tenant, String task) {}
+  public record Dependency(String tenant, String task, String actor, String plugin) {
+    public Dependency(String tenant, String task) {
+      this(tenant, task, null, null);
+    }
+
+    static Dependency actor(String tenant, String actor) {
+      return new Dependency(tenant, null, actor, null);
+    }
+
+    static Dependency installation(String tenant, String plugin) {
+      return new Dependency(tenant, null, null, plugin);
+    }
+  }
 
   private static java.util.Set<Dependency> dependencies(
       String tenant, String task, SessionScopeRecords.Authority value) {
     var keys = new java.util.HashSet<Dependency>();
     keys.add(new Dependency(tenant, task));
+    keys.add(Dependency.actor(tenant, value.owner()));
+    // 每个来源的冻结pin可能不同；tenant下任一安装变化保守覆盖，不能伪装task id。
+    keys.add(Dependency.installation(tenant, "*"));
     for (var target : value.targets()) keys.add(new Dependency(tenant, target.id()));
     return keys;
   }
 
   private static boolean intersects(
       java.util.Set<Dependency> dependencies, java.util.Set<Dependency> writes) {
-    return writes == null || dependencies.stream().anyMatch(writes::contains);
+    return writes == null
+        || dependencies.stream()
+            .anyMatch(
+                d ->
+                    writes.stream()
+                        .anyMatch(
+                            w ->
+                                d.tenant().equals(w.tenant())
+                                    && (d.equals(w)
+                                        || d.plugin() != null
+                                            && w.plugin() != null
+                                            && (d.plugin().equals("*")
+                                                || w.plugin().equals("*")))));
   }
 
   public void validatedAuthority(
@@ -237,6 +264,34 @@ public final class SessionQueryWork {
     this.context = context;
   }
 
+  boolean owns(SessionQueryContext query) {
+    return context == query;
+  }
+
+  private Dependency leaseTask;
+
+  public void leaseTask(String tenant, String task) {
+    var next = new Dependency(tenant, task);
+    if (leaseTask != null && !leaseTask.equals(next))
+      throw new IllegalStateException("Different lease task");
+    leaseTask = next;
+  }
+
+  boolean callerProgress(java.util.Set<Dependency> keys) {
+    if (keys == null || keys.size() != 1) return false;
+    var key = keys.iterator().next();
+    return caller != null
+        ? key.equals(new Dependency(caller.tenant(), caller.id()))
+        : key.equals(leaseTask);
+  }
+
+  java.util.Set<Dependency> boundProgress(String tenant, String step, String response) {
+    if (leaseTask == null || !leaseTask.tenant().equals(tenant)) return null;
+    if (step != null && step.equals(stepKey) || response != null && response.equals(responseKey))
+      return java.util.Set.of(leaseTask);
+    return null;
+  }
+
   public Object token() {
     active();
     return token;
@@ -287,7 +342,10 @@ public final class SessionQueryWork {
     if (stagedGraph != null
         && (writes == null
             || stagedGraph.nodes().keySet().stream()
-                .anyMatch(id -> writes.contains(new Dependency(stagedGraphTenant, id))))) {
+                .anyMatch(id -> writes.contains(new Dependency(stagedGraphTenant, id)))
+            || writes != null
+                && writes.stream()
+                    .anyMatch(w -> w.tenant().equals(stagedGraphTenant) && w.task() == null))) {
       stagedGraph = null;
       stagedGraphKey = null;
       stagedGraphTenant = null;
@@ -438,6 +496,7 @@ public final class SessionQueryWork {
     leaseKey = null;
     stepKey = null;
     responseKey = null;
+    leaseTask = null;
     context.releaseScratch(stagingScratch);
     completed = true;
     context.releaseScratch(scopeScratch);

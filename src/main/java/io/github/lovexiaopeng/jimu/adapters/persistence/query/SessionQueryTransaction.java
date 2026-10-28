@@ -52,6 +52,14 @@ public final class SessionQueryTransaction {
     return null;
   }
 
+  /** 先认实际事务，再验显式query；缺参不能把已有owner变为旧版无query路径。 */
+  static SessionQueryWork currentOwner() {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) return null;
+    for (var sync : TransactionSynchronizationManager.getSynchronizations())
+      if (sync instanceof ConnectionSettings settings) return settings.work;
+    return null;
+  }
+
   private <T> T execute(SessionQueryContext context, Supplier<T> work, int propagation) {
     var transaction = new TransactionTemplate(manager);
     transaction.setPropagationBehavior(propagation);

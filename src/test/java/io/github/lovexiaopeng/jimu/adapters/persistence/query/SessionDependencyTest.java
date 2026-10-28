@@ -103,25 +103,51 @@ class SessionDependencyTest {
   }
 
   @Test
-  void dependencySqlClassifiesWrittenColumnsAndRequiresTheFullKey() {
-    assertTrue(
-        SessionQueryInterceptor.dependencyWrite(
-            "update task set tools_digest=? where tenant_id=? and id=?"));
-    assertTrue(
-        SessionQueryInterceptor.dependencyWrite(
-            "update task_session_scope set grant_state='REVOKED' where tenant_id=? and caller_task_id=?"));
-    assertFalse(
-        SessionQueryInterceptor.dependencyWrite(
-            "update task set updated_at=current_timestamp where tools_digest=?"));
-    assertFalse(
-        SessionQueryInterceptor.dependencyWrite(
-            "update task_session_history set metadata_bytes=? where tenant_id=? and task_id=?"));
-    assertFalse(
-        SessionQueryInterceptor.dependencyWrite(
-            "insert into step_session_scope(tenant_id,caller_task_id,authority_snapshot) values(?,?,?)"));
+  void namedDmlAndMpEntitiesRequireUnambiguousFullKeys() {
+    String root = "io.github.lovexiaopeng.jimu.adapters.persistence.";
+    assertEquals(
+        SessionDependencyWrites.Kind.TASK,
+        SessionDependencyWrites.kind(root + "task.mapper.TaskAdmissionMapper.bindSnapshots"));
+    assertEquals(
+        SessionDependencyWrites.Kind.TASK,
+        SessionDependencyWrites.kind(root + "session.mapper.SessionScopeRevocationMapper.revoke"));
+    assertEquals(
+        SessionDependencyWrites.Kind.SCALAR,
+        SessionDependencyWrites.kind(root + "session.mapper.SessionContextMapper.account"));
+    assertEquals(
+        SessionDependencyWrites.Kind.UNKNOWN, SessionDependencyWrites.kind("private.unknown"));
     assertEquals(
         Set.of(new SessionQueryWork.Dependency("tenant", "source")),
-        SessionQueryInterceptor.dependencyKeys(Map.of("tenant", "tenant", "taskId", "source")));
-    assertNull(SessionQueryInterceptor.dependencyKeys(Map.of("taskId", "source")));
+        SessionDependencyWrites.keys(
+            Map.of("tenant", "tenant", "taskId", "source"),
+            SessionDependencyWrites.Kind.TASK,
+            null));
+    assertNull(
+        SessionDependencyWrites.keys(
+            Map.of("taskId", "source"), SessionDependencyWrites.Kind.TASK, null));
+    assertNull(
+        SessionDependencyWrites.keys(
+            Map.of("tenant", "tenant", "caller", "new", "taskId", "source"),
+            SessionDependencyWrites.Kind.TASK,
+            null));
+    var entity =
+        new io.github.lovexiaopeng.jimu.adapters.persistence.session.entity.SessionLineageEntity();
+    entity.setTenantId("tenant");
+    entity.setTaskId("source");
+    assertEquals(
+        Set.of(new SessionQueryWork.Dependency("tenant", "source")),
+        SessionDependencyWrites.keys(
+            Map.of("et", entity), SessionDependencyWrites.Kind.TASK, null));
+    assertNull(
+        SessionDependencyWrites.keys(
+            Map.of("et", entity, "taskId", "new"), SessionDependencyWrites.Kind.TASK, null));
+    var installation =
+        new io.github.lovexiaopeng.jimu.adapters.persistence.plugin.entity.InstallationEntity();
+    installation.setTenantId("tenant");
+    installation.setPluginId("plugin");
+    assertEquals(
+        Set.of(SessionQueryWork.Dependency.installation("tenant", "plugin")),
+        SessionDependencyWrites.keys(
+            Map.of("et", installation), SessionDependencyWrites.Kind.INSTALLATION, null));
   }
 }

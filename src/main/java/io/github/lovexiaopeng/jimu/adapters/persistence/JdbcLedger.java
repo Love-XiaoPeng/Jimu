@@ -2101,7 +2101,8 @@ public final class JdbcLedger
     var owner =
         io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
             query);
-    if (owner != null && query.lineage())
+    if (owner != null && query.lineage()) {
+      owner.leaseTask(lease.tenant(), lease.taskId());
       owner.bind(
           lease.tenant()
               + ":"
@@ -2114,6 +2115,7 @@ public final class JdbcLedger
               + lease.fence(),
           step,
           response);
+    }
   }
 
   Map<String, Object> fenced(Lease lease, boolean admission) {

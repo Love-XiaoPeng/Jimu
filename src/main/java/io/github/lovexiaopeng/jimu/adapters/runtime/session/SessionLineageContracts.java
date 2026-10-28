@@ -19,7 +19,7 @@ import java.util.Map;
 /** v5权威资源、严格输入和可清理证明的显式wire映射；不采用全局JSON命名策略。 */
 public final class SessionLineageContracts {
   private final SessionContracts history = new SessionContracts(5);
-  private final SchemaContract input, output, admission, genesis, graph;
+  private final SchemaContract input, output, admission, genesis, graph, graphVersion;
   private final ToolDescriptor descriptor;
   private final String schema, description;
 
@@ -48,6 +48,21 @@ public final class SessionLineageContracts {
       admission = contract(catalog, "admission-input.schema.json");
       genesis = contract(catalog, "genesis.schema.json");
       graph = contract(catalog, "graph.schema.json");
+      var graphSchema =
+          history.json(
+              new String(
+                  SessionContracts.checked(
+                      "v5/graph.schema.json",
+                      catalog.path("schemas").path("graph.schema.json").asText()),
+                  StandardCharsets.UTF_8),
+              16384);
+      graphVersion =
+          new SchemaContract(
+              Payloads.json(
+                      Map.of(
+                          "$schema", graphSchema.path("$schema"),
+                          "const", graphSchema.path("properties").path("version").path("const")))
+                  .getBytes(StandardCharsets.UTF_8));
       descriptor =
           new ToolDescriptor(
               "jimu.session.trace",
@@ -186,7 +201,22 @@ public final class SessionLineageContracts {
       SessionLineage.Graph expected,
       io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
     if (raw.bytes() > 16384) throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
-    new LineageGraphMatcher(raw.raw(), query).match(expected);
+    new LineageGraphMatcher(
+            raw.raw(),
+            query,
+            number -> {
+              var value =
+                  query.primitive(
+                      "parse.graph.number", number.length(), () -> history.json(number, 16384));
+              query.primitive(
+                  "schema.graph.number",
+                  number.length(),
+                  () -> {
+                    graphVersion.validate(value);
+                    return null;
+                  });
+            })
+        .match(expected);
   }
 
   public String genesis(SessionLineage.Genesis g) {

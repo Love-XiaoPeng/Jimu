@@ -146,4 +146,62 @@ class LineageRawViewTest {
     assertEquals(graph, contracts.graph(encoded.raw()));
     assertEquals(Payloads.hash(encoded.raw()), encoded.digest());
   }
+
+  @Test
+  void numericTokensUseFrozenReaderAndConstAsDifferentialOracle() {
+    var contracts = new SessionLineageContracts();
+    String id = "00000000-0000-0000-0000-000000000001";
+    var graph =
+        new SessionLineage.Graph(
+            1, id, "b".repeat(64), List.of(new SessionLineage.Node(id, "{}", "a".repeat(64))));
+    String original = contracts.graph(graph);
+    var numbers =
+        new java.util.ArrayList<>(
+            List.of(
+                "1",
+                "1.0",
+                "1e0",
+                "1E+0",
+                "1.0000000000000001",
+                "0.99999999999999999",
+                "-0",
+                "-0.0",
+                "-0e0",
+                "0",
+                "01",
+                "+1",
+                "1.",
+                "1e",
+                "1e1",
+                "1e-1",
+                "1e1000000000",
+                "1e-1000000000",
+                "1." + "0".repeat(1100)));
+    for (int length : List.of(999, 1000, 1001)) {
+      numbers.add("1." + "0".repeat(length - 2));
+      numbers.add("1e" + "0".repeat(length - 2));
+      numbers.add("1".repeat(length));
+    }
+    for (String number : numbers) {
+      String raw = original.replace("\"version\":1", "\"version\":" + number);
+      boolean expected;
+      try {
+        contracts.graph(raw);
+        expected = true;
+      } catch (TaskFailure rejected) {
+        expected = false;
+      }
+      var query = query();
+      boolean actual;
+      try {
+        contracts.matchGraph(new LineageRawView(raw, query), graph, query);
+        actual = true;
+      } catch (TaskFailure rejected) {
+        assertEquals("SESSION_HISTORY_CORRUPT", rejected.code());
+        actual = false;
+      }
+      assertEquals(expected, actual, "version token: " + number);
+      assertEquals(1048576, query.scratchLive());
+    }
+  }
 }

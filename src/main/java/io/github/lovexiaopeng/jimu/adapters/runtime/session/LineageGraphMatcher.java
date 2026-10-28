@@ -4,17 +4,19 @@ import io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineage;
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
-import java.math.BigDecimal;
 
 /** 冻结graph-v1的窄比较器：字段任意顺序，节点按已核有序Node比较；不物化嵌入genesis。 */
 final class LineageGraphMatcher {
   private final String raw;
   private final SessionQueryContext query;
+  private final java.util.function.Consumer<String> versionValidator;
   private int offset;
 
-  LineageGraphMatcher(String raw, SessionQueryContext query) {
+  LineageGraphMatcher(
+      String raw, SessionQueryContext query, java.util.function.Consumer<String> versionValidator) {
     this.raw = raw;
     this.query = query;
+    this.versionValidator = versionValidator;
   }
 
   private static TaskFailure corrupt() {
@@ -115,13 +117,18 @@ final class LineageGraphMatcher {
     whitespace();
     int start = offset;
     while (offset < raw.length() && "0123456789+-.eE".indexOf(raw.charAt(offset)) >= 0) take();
-    String number = raw.substring(start, offset);
-    query.primitive("copy.graph.number", number.length(), () -> null);
-    if (!number.matches("-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?")) throw corrupt();
+    Object numberWorkspace = new Object();
+    query.retainScratch(numberWorkspace, 4096L + 16L * (offset - start));
     try {
-      if (new BigDecimal(number).compareTo(BigDecimal.ONE) != 0) throw corrupt();
-    } catch (NumberFormatException failure) {
+      String number =
+          query.primitive("copy.graph.number", offset - start, () -> raw.substring(start, offset));
+      versionValidator.accept(number);
+    } catch (IllegalArgumentException | TaskFailure failure) {
+      if (failure instanceof TaskFailure refusal
+          && (refusal.status() == 429 || refusal.status() == 504)) throw refusal;
       throw corrupt();
+    } finally {
+      query.releaseScratch(numberWorkspace);
     }
   }
 

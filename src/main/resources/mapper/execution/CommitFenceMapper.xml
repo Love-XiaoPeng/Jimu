@@ -21,8 +21,9 @@
   ]]></update>
   <update id="settlementFence"><![CDATA[
     UPDATE task t JOIN task_attempt a ON a.tenant_id=t.tenant_id AND a.task_id=t.id AND a.id=t.current_attempt_id
-    JOIN model_dispatch d ON d.tenant_id=t.tenant_id AND d.task_id=t.id
-      AND d.attempt_id=t.current_attempt_id AND d.id=#{dispatch}
+    JOIN model_dispatch d ON d.tenant_id=t.tenant_id AND d.task_id=t.id AND d.id=#{dispatch}
+    JOIN step s ON s.tenant_id=d.tenant_id AND s.id=d.step_id AND s.task_id=t.id
+      AND s.dispatch_id=d.id AND s.response_snapshot IS NULL
     SET t.updated_at=CURRENT_TIMESTAMP(6)
     WHERE t.tenant_id=#{tenant} AND t.id=#{task} AND t.current_attempt_id=#{attempt}
       AND t.worker_id=#{worker} AND t.fence=#{fence} AND t.lease_until>CURRENT_TIMESTAMP(6)
