@@ -10,6 +10,7 @@ import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.function.LongConsumer;
 
@@ -63,6 +64,45 @@ public final class SessionLineageGraph {
       Map<String, Genesis> graph,
       Map<String, Node> nodes,
       LongConsumer operations) {
+    return trace(
+        caller, target, authority, digest, graph, nodes, children(graph, operations), operations);
+  }
+
+  /** 同VerifiedGraph只建一次稳定children索引；实际predicate、排序比较、列表复制均记操作。 */
+  public static Map<String, List<Genesis>> children(
+      Map<String, Genesis> graph, LongConsumer operations) {
+    var children = new java.util.HashMap<String, List<Genesis>>();
+    for (var g : graph.values()) {
+      operations.accept(1);
+      if (g.parentSessionId() != null) {
+        operations.accept(1);
+        children.computeIfAbsent(g.parentSessionId(), k -> new ArrayList<>()).add(g);
+      }
+    }
+    var comparator = Comparator.comparing(Genesis::createdAt).thenComparing(Genesis::sessionId);
+    children.replaceAll(
+        (parent, values) -> {
+          values.sort(
+              (a, b) -> {
+                operations.accept(1);
+                return comparator.compare(a, b);
+              });
+          operations.accept(values.size());
+          return List.copyOf(values);
+        });
+    if (!children.isEmpty()) operations.accept(children.size());
+    return Map.copyOf(children);
+  }
+
+  public static Result trace(
+      String caller,
+      String target,
+      String authority,
+      String digest,
+      Map<String, Genesis> graph,
+      Map<String, Node> nodes,
+      Map<String, List<Genesis>> children,
+      LongConsumer operations) {
     var ancestors = new ArrayList<PublicNode>();
     var root = graph.get(target);
     while (root.parentSessionId() != null) {
@@ -71,7 +111,7 @@ public final class SessionLineageGraph {
       ancestors.add(node(root, nodes));
     }
     var descendants = new ArrayList<Descendant>();
-    descendants(target, 1, graph, nodes, descendants, operations);
+    descendants(target, 1, children, nodes, descendants, operations);
     return new Result(
         caller,
         authority,
@@ -85,19 +125,16 @@ public final class SessionLineageGraph {
   private static void descendants(
       String parent,
       int depth,
-      Map<String, Genesis> graph,
+      Map<String, List<Genesis>> children,
       Map<String, Node> nodes,
       ArrayList<Descendant> out,
       LongConsumer operations) {
-    for (var g :
-        graph.values().stream()
-            .filter(g -> parent.equals(g.parentSessionId()))
-            .sorted(Comparator.comparing(Genesis::createdAt).thenComparing(Genesis::sessionId))
-            .toList()) {
-      operations.accept(graph.size());
+    operations.accept(1);
+    for (var g : children.getOrDefault(parent, List.of())) {
+      operations.accept(1);
       if (depth > 8 || out.size() >= 8) throw corrupt();
       out.add(new Descendant(node(g, nodes), depth));
-      descendants(g.sessionId(), depth + 1, graph, nodes, out, operations);
+      descendants(g.sessionId(), depth + 1, children, nodes, out, operations);
     }
   }
 }

@@ -30,7 +30,9 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTa
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTaskSessionScopeReadMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTaskSessionScopeTargetReadMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionHistoryRetentions;
+import io.github.lovexiaopeng.jimu.kernel.session.port.SessionMetadataAccounting;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.time.LocalDateTime;
@@ -468,6 +470,52 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
 
       public void event() {
         ledger.event(task, "session-history-purged", "session_history.content_deleted", null);
+      }
+
+      public void operation(long count) {
+        if (ledger.queryContext() != null) ledger.queryContext().operation(count);
+      }
+
+      public PurgeMetadata purgeMetadata() {
+        if (!JdbcSessionScopes.lineage(task)) return null;
+        var accounting = new MapperSessionMetadataAccounting(ledger.sessions, task, true);
+        long fixed = 0;
+        int histories = 0, reservations = 0;
+        for (var table : SessionMetadataAccounting.Table.values()) {
+          try (var batch = accounting.batch(table)) {
+            for (var row : batch) {
+              fixed = Math.addExact(fixed, SessionHistoryPolicyV1.ROW_HEADER_BYTES);
+              for (var value : row.values())
+                fixed =
+                    Math.addExact(
+                        fixed,
+                        SessionHistoryPolicyV1.FIELD_HEADER_BYTES + batch.scalarBytes(value));
+              if (table == SessionMetadataAccounting.Table.TASK_SESSION_HISTORY) {
+                histories++;
+                if (!"PURGED".equals(row.value("content_state"))
+                    || ((Number) row.value("body_bytes")).longValue() != 0
+                    || ((Number) row.value("reserved_bytes")).longValue()
+                        != SessionHistoryPolicyV1.TASK_RESERVE_BYTES)
+                  throw JdbcSessionRecords.corrupt();
+                fixed = Math.subtractExact(fixed, batch.scalarBytes(row.value("metadata_bytes")));
+                fixed = Math.subtractExact(fixed, batch.scalarBytes(row.value("held_bytes")));
+              }
+              if (table == SessionMetadataAccounting.Table.RESERVATION
+                  && "SESSION_HISTORY_STORAGE".equals(row.value("category"))) {
+                reservations++;
+                if (((Number) row.value("amount")).longValue()
+                        != SessionHistoryPolicyV1.TASK_RESERVE_BYTES
+                    || !"RESERVED".equals(row.value("state"))
+                    || row.value("actual") != null) throw JdbcSessionRecords.corrupt();
+                fixed = Math.subtractExact(fixed, batch.scalarBytes(row.value("actual")));
+                fixed = Math.subtractExact(fixed, batch.scalarBytes(row.value("state")));
+                fixed = Math.addExact(fixed, batch.scalarBytes("SETTLED"));
+              }
+            }
+          }
+        }
+        if (histories != 1 || reservations != 1) throw JdbcSessionRecords.corrupt();
+        return new PurgeMetadata(fixed);
       }
 
       public List<MetadataRow> metadata() {

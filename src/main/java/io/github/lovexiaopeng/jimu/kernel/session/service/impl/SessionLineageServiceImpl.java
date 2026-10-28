@@ -229,6 +229,7 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
           .append(g.parentSessionId() == null ? "ROOT" : g.parentSessionId())
           .append('\n');
     }
+    records.scratch(Math.addExact(scratch, 2048 + 128L * genesis.size()));
     var proof =
         new VerifiedGraph(
             fact.authorityDigest(),
@@ -236,7 +237,8 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
             stored.get(caller).genesisDigest(),
             records.hash(scan.toString()),
             genesis,
-            nodes);
+            nodes,
+            SessionLineageGraph.children(genesis, records::checkpoint));
     records.verified(tenant, caller, proof);
     return proof;
   }
@@ -263,7 +265,9 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
                 v.graphDigest(),
                 v.genesis(),
                 v.nodes(),
+                v.children(),
                 records::checkpoint));
+    records.checkpoint(v.genesis().size());
     return new Observation(
         output,
         v.scanDigest(),

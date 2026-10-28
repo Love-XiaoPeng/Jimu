@@ -307,7 +307,7 @@ final class SessionDependencyWrites {
                 m ->
                     List.of("caller", "taskId", "task", "callerTaskId", "caller_task_id", "task_id")
                         .stream()
-                        .anyMatch(k -> m.get(k) != null));
+                        .anyMatch(k -> m.containsKey(k) && m.get(k) != null));
     if (supplied && task == null) return null;
     var type =
         switch (kind) {
@@ -396,7 +396,7 @@ final class SessionDependencyWrites {
             type == SessionQueryWork.Relation.INVOCATION
                     || type == SessionQueryWork.Relation.DISPATCH
                 ? key(f, "step_id")
-                : null,
+                : type == SessionQueryWork.Relation.RESERVATION ? key(f, "dispatch_id") : null,
             type == SessionQueryWork.Relation.RESERVATION ? key(f, "category") : null);
       }
   }

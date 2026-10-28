@@ -514,7 +514,7 @@ public final class SessionQueryWork {
   }
 
   private void holdGraph(VerifiedGraph proof) {
-    long bytes = 1024;
+    long bytes = 3072 + 128L * proof.genesis().size();
     for (var node : proof.nodes().values())
       bytes = Math.addExact(bytes, node.genesisSnapshot().length() * 3L + 2048);
     context.retainScratch(graphScratch, bytes);

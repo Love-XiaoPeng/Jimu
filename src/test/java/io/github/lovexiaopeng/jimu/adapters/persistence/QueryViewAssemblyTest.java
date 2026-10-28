@@ -207,7 +207,9 @@ class QueryViewAssemblyTest {
     var result = first.queryContext().result();
     result.row();
     result.column("x", "🙂");
-    assertEquals(new QueryResources(3, 25, 6), first.queryContext().resources());
+    // 原4 + row1 + column1 + label1 + UTF16字符2；补计label/value扫描不能沿旧漏计断言。
+    assertEquals(new QueryResources(3, 25, 9), first.queryContext().resources());
+    result.close();
     assertEquals(new QueryResources(2, 12, 4), second.queryContext().resources());
     unmetered.queryContext().result().column("x", "🙂");
     assertEquals(new QueryResources(0, 0, 0), unmetered.queryContext().resources());

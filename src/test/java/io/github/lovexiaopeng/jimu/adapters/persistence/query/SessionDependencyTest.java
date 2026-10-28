@@ -87,7 +87,7 @@ class SessionDependencyTest {
   void createdWitnessIsBoundToOwnerResponseFenceAndDependencyGeneration() {
     var owner = owner();
     var row = new SessionLineage.Stored("{}", "g", 2, "{}", "h", 2, "PRESENT", 1);
-    var graph = new VerifiedGraph("a", "b", "c", "scan", Map.of(), Map.of());
+    var graph = new VerifiedGraph("a", "b", "c", "scan", Map.of(), Map.of(), Map.of());
     owner.bind("lease", "step", "response");
     owner.checkedCreated("tenant", "new", row, graph);
     assertTrue(owner.checkedCreated("tenant", "new", row));
@@ -188,6 +188,26 @@ class SessionDependencyTest {
       assertThrows(IllegalStateException.class, owner::finish);
       assertThrows(IllegalStateException.class, owner::beforeCommit);
     }
+  }
+
+  @Test
+  void actualMyBatisParamMapCanOmitUnrelatedAliases() {
+    var owner = published();
+    var parameters = new org.apache.ibatis.binding.MapperMethod.ParamMap<Object>();
+    parameters.put("tenant", "tenant");
+    parameters.put("taskId", "new");
+    parameters.put("stepId", "step");
+    SessionDependencyWrites.observed(
+        "io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper.insertPreparedStep",
+        parameters,
+        1,
+        owner);
+    SessionDependencyWrites.before(
+        "io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper.storeModelResponse",
+        parameters,
+        owner);
+    owner.finish();
+    owner.complete();
   }
 
   @Test

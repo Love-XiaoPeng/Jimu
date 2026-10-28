@@ -25,10 +25,15 @@ public interface SessionLineageService {
       java.util.Map<String, io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineage.Genesis>
           genesis,
       java.util.Map<String, io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineage.Node>
-          nodes) {
+          nodes,
+      java.util.Map<
+              String,
+              java.util.List<io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineage.Genesis>>
+          children) {
     public VerifiedGraph {
       genesis = java.util.Map.copyOf(genesis);
       nodes = java.util.Map.copyOf(nodes);
+      children = java.util.Map.copyOf(children);
     }
   }
 

@@ -27,6 +27,8 @@ class SessionHistoryRetentionServiceTest {
     long version = 1, recordVersion = 1, metadata = 9;
     int histories, passes;
     long released;
+    Long fixedMetadata;
+    long settledHistory, settledReservation;
     List<RetainedTable> receipt;
 
     SessionHistoryRetentionServiceImpl service() {
@@ -117,6 +119,16 @@ class SessionHistoryRetentionServiceTest {
                                 null,
                                 stable ? "100" : "x".repeat(passes))));
                   }
+                  case "purgeMetadata" ->
+                      fixedMetadata == null ? null : new PurgeMetadata(fixedMetadata);
+                  case "settleHistory" -> {
+                    settledHistory = (long) a[0];
+                    yield null;
+                  }
+                  case "settleReservation" -> {
+                    settledReservation = (long) a[0];
+                    yield null;
+                  }
                   case "releaseBudget" -> {
                     released = (long) a[0];
                     yield null;
@@ -125,6 +137,35 @@ class SessionHistoryRetentionServiceTest {
                 };
               });
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(longs = {0, 1, 88, 89, 90, 988, 9988, 65521})
+  void lockedSnapshotDecimalFixedPointMatchesIndependentWireWidths(long fixed) {
+    var f = new Fixture();
+    f.fixedMetadata = fixed;
+    f.service().cleanup();
+    long settled = f.settledHistory;
+    assertEquals(
+        fixed
+            + 3L * Long.toString(settled).getBytes(java.nio.charset.StandardCharsets.UTF_8).length,
+        settled);
+    assertEquals(settled, f.settledReservation);
+    assertEquals(8388608 - settled, f.released);
+    assertEquals(0, f.passes);
+    assertTrue(f.calls.indexOf("purgeMetadata") > f.calls.indexOf("event"));
+  }
+
+  @Test
+  void lockedSnapshotOverCapDoesNotSettleOrRefund() {
+    var f = new Fixture();
+    f.fixedMetadata = 65522L;
+    assertEquals(
+        "SESSION_HISTORY_LIMIT",
+        assertThrows(TaskFailure.class, () -> f.service().cleanup()).code());
+    assertFalse(f.calls.contains("settleHistory"));
+    assertFalse(f.calls.contains("settleReservation"));
+    assertFalse(f.calls.contains("releaseBudget"));
   }
 
   @Test

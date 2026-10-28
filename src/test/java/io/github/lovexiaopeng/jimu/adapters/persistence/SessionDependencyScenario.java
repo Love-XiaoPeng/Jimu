@@ -93,8 +93,22 @@ public final class SessionDependencyScenario {
             "tenant_budget",
             "actor_access",
             "installation",
-            "worker_process"))
-      result.add(db.queryForList("SELECT * FROM " + table + " ORDER BY 1,2"));
+            "worker_process")) {
+      var primary =
+          db.queryForList(
+              "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND INDEX_NAME='PRIMARY' ORDER BY SEQ_IN_INDEX",
+              String.class,
+              table);
+      if (primary.isEmpty()) throw new AssertionError("Missing primary key " + table);
+      result.add(
+          db.queryForList(
+              "SELECT * FROM `"
+                  + table
+                  + "` ORDER BY "
+                  + primary.stream()
+                      .map(name -> "`" + name + "`")
+                      .collect(java.util.stream.Collectors.joining(","))));
+    }
     return result;
   }
 

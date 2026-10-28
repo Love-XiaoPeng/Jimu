@@ -49,6 +49,9 @@ public interface SessionHistoryRetentions {
 
   record MetadataRow(List<String> scalars) {}
 
+  /** 已purge同一锁内快照，扣除metadata/held/actual三个十进制值，state已影子置SETTLED。 */
+  record PurgeMetadata(long fixedBytes) {}
+
   interface LockedHistory {
     History history();
 
@@ -107,6 +110,12 @@ public interface SessionHistoryRetentions {
     void event();
 
     List<MetadataRow> metadata();
+
+    default PurgeMetadata purgeMetadata() {
+      return null;
+    }
+
+    default void operation(long count) {}
 
     /** 已按原32/8/UTF8公式消费并释放的lineage固定投影；其余表仍由metadata提供。 */
     default long lineageMetadataBytes() {

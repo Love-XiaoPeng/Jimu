@@ -53,6 +53,56 @@ final class SessionRepairSqlOracle {
 
   record Totals(long metadata, long body) {}
 
+  /** 独立完整主键顺序的夹具导出，标量转成可离线复算的原UTF8文本。 */
+  static void dump(JdbcTemplate db, String task, String label) {
+    for (String table : TABLES) {
+      var primary =
+          db.queryForList(
+              "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND INDEX_NAME='PRIMARY' ORDER BY SEQ_IN_INDEX",
+              String.class,
+              table);
+      String key =
+          table.equals("task")
+              ? "id"
+              : table.contains("scope") || table.equals("invocation_session_lineage_trace")
+                  ? "caller_task_id"
+                  : "task_id";
+      var exported = new java.util.ArrayList<java.util.Map<String, String>>();
+      for (var row :
+          db.queryForList(
+              "SELECT * FROM `"
+                  + table
+                  + "` WHERE tenant_id='tenant-a' AND `"
+                  + key
+                  + "`=? ORDER BY "
+                  + primary.stream()
+                      .map(name -> "`" + name + "`")
+                      .collect(java.util.stream.Collectors.joining(",")),
+              task)) {
+        var values = new java.util.LinkedHashMap<String, String>();
+        row.forEach(
+            (name, value) ->
+                values.put(
+                    name,
+                    value == null
+                        ? null
+                        : value instanceof java.sql.Timestamp stamp
+                            ? UTC.format(stamp.toLocalDateTime())
+                            : value instanceof java.time.LocalDateTime time
+                                ? UTC.format(time)
+                                : value.toString()));
+        exported.add(values);
+      }
+      System.out.println(
+          "ORACLE "
+              + label
+              + " "
+              + table
+              + " "
+              + io.github.lovexiaopeng.jimu.adapters.codec.Payloads.json(exported));
+    }
+  }
+
   static Totals inspect(JdbcTemplate db, String task) {
     long metadata = 0, body = 0;
     for (String table : TABLES) {
