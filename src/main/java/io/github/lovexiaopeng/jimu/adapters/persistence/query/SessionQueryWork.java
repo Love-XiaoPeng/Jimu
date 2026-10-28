@@ -262,6 +262,8 @@ public final class SessionQueryWork {
 
   SessionQueryWork(SessionQueryContext context) {
     this.context = context;
+    context.retainScratch(relationScratch, RELATION_ROOT_BYTES);
+    relations = new LinkedHashMap<>();
   }
 
   boolean owns(SessionQueryContext query) {
@@ -282,9 +284,24 @@ public final class SessionQueryWork {
 
   private record Related(String task, String parent, String category) {}
 
-  private final Map<RelationKey, Related> relations = new LinkedHashMap<>();
+  private Map<RelationKey, Related> relations;
   private final Object relationScratch = new Object();
-  private long relationBytes;
+  // Root/map table and lease dependency; entry includes key/value/node and amortized table growth.
+  static final long RELATION_ROOT_BYTES = 256, RELATION_ENTRY_BYTES = 256;
+  private long relationBytes = RELATION_ROOT_BYTES;
+  private long relationTableBytes;
+  private final Object lookupScratch = new Object(),
+      extractionScratch = new Object(),
+      dependencyScratch = new Object();
+
+  void extraction(boolean begin) {
+    if (begin) context.retainScratch(extractionScratch, 4096);
+    else context.releaseScratch(extractionScratch);
+  }
+
+  void inspect(long operations) {
+    context.operation(operations);
+  }
 
   /** 仅由具名Mapper真实读回或成功INSERT登记；不从ID、provider或lease推断归属。 */
   void observed(
@@ -298,31 +315,55 @@ public final class SessionQueryWork {
             + task.length()
             + (parent == null ? 0 : parent.length())
             + (category == null ? 0 : category.length()));
+    context.retainScratch(lookupScratch, 256);
+    try {
+      observeReserved(type, tenant, id, task, parent, category);
+    } finally {
+      // The helper's temporary key/value are gone; successful entries retain continuous ownership.
+      context.releaseScratch(lookupScratch);
+      context.retainScratch(relationScratch, relationBytes);
+    }
+  }
+
+  private void observeReserved(
+      Relation type, String tenant, String id, String task, String parent, String category) {
     var key = new RelationKey(type, tenant, id);
-    var value = new Related(task, parent, category);
     var previous = relations.get(key);
     if (previous != null) {
-      if (!previous.equals(value)) {
+      if (!java.util.Objects.equals(previous.task(), task)
+          || !java.util.Objects.equals(previous.parent(), parent)
+          || !java.util.Objects.equals(previous.category(), category)) {
         var failure = new IllegalStateException("Session row relationship changed");
         poisonProof(failure);
         throw failure;
       }
       return;
     }
-    long bytes =
-        256L
-            + 2L
-                * (tenant.length()
-                    + id.length()
-                    + task.length()
-                    + (parent == null ? 0 : parent.length())
-                    + (category == null ? 0 : category.length()));
-    context.retainScratch(relationScratch, Math.addExact(relationBytes, bytes));
-    relations.put(key, value);
-    relationBytes += bytes;
+    long next =
+        Math.addExact(relationBytes, relationEntryBytes(tenant, id, task, parent, category) + 32);
+    context.retainScratch(relationScratch, next);
+    // Move the already allocated lookup key into the entry's ownership without charging it twice.
+    context.releaseScratch(lookupScratch);
+    relations.put(key, new Related(task, parent, category));
+    relationTableBytes += 32;
+    relationBytes = next;
   }
 
-  java.util.Set<Dependency> related(
+  private static long relationEntryBytes(
+      String tenant, String id, String task, String parent, String category) {
+    // Retain borrowed row strings after ResultSet closes; temporary keys reuse those scalars.
+    return RELATION_ENTRY_BYTES
+        + 5L * 64
+        + 2L
+            * (tenant.length()
+                + id.length()
+                + task.length()
+                + (parent == null ? 0 : parent.length())
+                + (category == null ? 0 : category.length()));
+  }
+
+  // Returns a borrowed scalar, never an unowned Dependency/Set escaping the lookup workspace.
+  String related(
       Relation type,
       String tenant,
       String id,
@@ -331,6 +372,21 @@ public final class SessionQueryWork {
       String category) {
     active();
     if (tenant == null || id == null) return null;
+    context.retainScratch(lookupScratch, 256);
+    try {
+      return relatedReserved(type, tenant, id, expectedTask, expectedParent, category);
+    } finally {
+      context.releaseScratch(lookupScratch);
+    }
+  }
+
+  private String relatedReserved(
+      Relation type,
+      String tenant,
+      String id,
+      String expectedTask,
+      String expectedParent,
+      String category) {
     context.operation(1L + tenant.length() + id.length());
     var value = relations.get(new RelationKey(type, tenant, id));
     if (value == null
@@ -349,12 +405,13 @@ public final class SessionQueryWork {
         && !responseKey.equals(value.parent())) return null;
     if (type == Relation.RESERVATION
         && "TOOL".equals(category)
-        && related(Relation.INVOCATION, tenant, id, value.task(), null, null) == null) return null;
+        && relatedReserved(Relation.INVOCATION, tenant, id, value.task(), null, null) == null)
+      return null;
     if (type == Relation.RESERVATION
         && category == null
         && !java.util.List.of("QUEUE", "RUNNING", "QUESTION_TASK").contains(value.category()))
       return null;
-    return java.util.Set.of(new Dependency(tenant, value.task()));
+    return value.task();
   }
 
   public void leaseTask(String tenant, String task) {
@@ -368,14 +425,11 @@ public final class SessionQueryWork {
     if (keys == null || keys.size() != 1) return false;
     var key = keys.iterator().next();
     return caller != null
-        ? key.equals(new Dependency(caller.tenant(), caller.id()))
+        ? java.util.Objects.equals(key.tenant(), caller.tenant())
+            && java.util.Objects.equals(key.task(), caller.id())
+            && key.actor() == null
+            && key.plugin() == null
         : key.equals(leaseTask);
-  }
-
-  java.util.Set<Dependency> boundProgress(String tenant, String step, String response) {
-    return step != null
-        ? related(Relation.STEP, tenant, step, null, null, null)
-        : related(Relation.DISPATCH, tenant, response, null, null, null);
   }
 
   public Object token() {
@@ -398,10 +452,52 @@ public final class SessionQueryWork {
   }
 
   public void dependencyMutation(java.util.Set<Dependency> writes) {
+    context.retainScratch(dependencyScratch, 4096);
+    try {
+      mutateDependencies(writes);
+    } finally {
+      context.releaseScratch(dependencyScratch);
+    }
+  }
+
+  private void mutateDependencies(java.util.Set<Dependency> writes) {
     mutation();
+    // Invalidate before SQL, including staging/unknown writes; fresh SELECT/INSERT must reprove.
+    invalidateRelations(writes);
+    context.retainScratch(relationScratch, relationBytes);
     dependencyGeneration = Math.incrementExact(dependencyGeneration);
     releaseCreated();
     for (var invalidate : invalidators.values()) invalidate.accept(writes);
+    invalidateProof(writes);
+  }
+
+  private void invalidateRelations(java.util.Set<Dependency> writes) {
+    var entries = relations.entrySet().iterator();
+    while (entries.hasNext()) {
+      var entry = entries.next();
+      context.operation(1);
+      boolean remove = writes == null;
+      if (writes != null)
+        for (var write : writes) {
+          context.operation(1);
+          if (entry.getKey().tenant().equals(write.tenant())
+              && (write.task() == null || entry.getValue().task().equals(write.task())))
+            remove = true;
+        }
+      if (remove) entries.remove();
+    }
+    relationBytes = RELATION_ROOT_BYTES + relationTableBytes;
+    for (var e : relations.entrySet())
+      relationBytes +=
+          relationEntryBytes(
+              e.getKey().tenant(),
+              e.getKey().id(),
+              e.getValue().task(),
+              e.getValue().parent(),
+              e.getValue().category());
+  }
+
+  private void invalidateProof(java.util.Set<Dependency> writes) {
     if (scope != null
         && intersects(dependencies(caller.tenant(), caller.id(), scope.authority()), writes)) {
       var failure = new IllegalStateException("Session proof dependency changed after publication");
@@ -514,7 +610,10 @@ public final class SessionQueryWork {
   }
 
   private void holdGraph(VerifiedGraph proof) {
-    long bytes = 3072 + 128L * proof.genesis().size();
+    long bytes =
+        3072
+            + io.github.lovexiaopeng.jimu.kernel.session.domain.SessionLineageGraph
+                .indexWorkspaceBytes(proof.genesis().size());
     for (var node : proof.nodes().values())
       bytes = Math.addExact(bytes, node.genesisSnapshot().length() * 3L + 2048);
     context.retainScratch(graphScratch, bytes);
@@ -584,6 +683,7 @@ public final class SessionQueryWork {
     responseKey = null;
     leaseTask = null;
     relations.clear();
+    relations = null;
     relationBytes = 0;
     context.releaseScratch(relationScratch);
     context.releaseScratch(stagingScratch);

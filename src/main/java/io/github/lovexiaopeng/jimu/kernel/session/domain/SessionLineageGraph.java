@@ -18,6 +18,18 @@ import java.util.function.LongConsumer;
 public final class SessionLineageGraph {
   private SessionLineageGraph() {}
 
+  /**
+   * Container peak only; Genesis/Node/String scalars are shared with the existing proof owner. For
+   * n<=9: mutable children HashMap (64+128n), n ArrayLists with ten-slot capacity (128n), sorting
+   * workspace (256+16n), copied lists (64n+16n), frozen children Map (64+64n), and the three
+   * VerifiedGraph Map copies (192+192n). Keep source maps and immutable destinations simultaneously
+   * until handoff completes.
+   */
+  public static long indexWorkspaceBytes(int n) {
+    if (n < 0 || n > 9) throw corrupt();
+    return 64L + 128L * n + 128L * n + 256L + 16L * n + 80L * n + 64L + 64L * n + 192L + 192L * n;
+  }
+
   private static TaskFailure corrupt() {
     return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
   }

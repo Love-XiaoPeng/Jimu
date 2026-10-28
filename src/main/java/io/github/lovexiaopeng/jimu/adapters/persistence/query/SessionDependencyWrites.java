@@ -200,31 +200,50 @@ final class SessionDependencyWrites {
                         && value.getClass().getName().equals(ROOT + "session.entity." + name));
   }
 
-  private static List<Map<?, ?>> fields(Object parameter) {
-    var fields = new java.util.ArrayList<Map<?, ?>>();
-    if (parameter instanceof Map<?, ?> map) {
-      fields.add(map);
-      for (String key : List.of("et", "param1"))
-        if (map.containsKey(key) && entity(map.get(key))) fields.add(properties(map.get(key)));
-    } else if (entity(parameter)) fields.add(properties(parameter));
-    return fields;
+  /** Borrow original parameter/scalars; no reflection property Map or getter-name array. */
+  private static final class Fields {
+    private final SessionQueryWork owner;
+    private final Map<?, ?> map;
+    private final org.apache.ibatis.reflection.MetaObject first, second;
+
+    Fields(Object parameter, SessionQueryWork owner) {
+      this.owner = owner;
+      map = parameter instanceof Map<?, ?> m ? m : Map.of();
+      Object a = map.containsKey("et") ? map.get("et") : parameter;
+      Object b = map.containsKey("param1") ? map.get("param1") : null;
+      first = entity(a) ? SystemMetaObject.forObject(a) : null;
+      second = b != a && entity(b) ? SystemMetaObject.forObject(b) : null;
+    }
+
+    Object value(int index, String name) {
+      if (owner != null) owner.inspect(1);
+      if (index == 0) return map.containsKey(name) ? map.get(name) : null;
+      var meta = index == 1 ? first : second;
+      return meta != null && meta.hasGetter(name) ? meta.getValue(name) : null;
+    }
+
+    boolean supplied(String... names) {
+      for (int i = 0; i < 3; i++) for (String name : names) if (value(i, name) != null) return true;
+      return false;
+    }
   }
 
-  private static Map<String, Object> properties(Object value) {
-    var meta = SystemMetaObject.forObject(value);
-    var fields = new HashMap<String, Object>();
-    for (String key : meta.getGetterNames()) fields.put(key, meta.getValue(key));
-    return fields;
+  private static Fields fields(Object parameter, SessionQueryWork owner) {
+    return new Fields(parameter, owner);
   }
 
   /** 所有显式别名必须一致，缺全键/相互冲突都按未知处理。 */
-  private static String key(List<Map<?, ?>> fields, String... aliases) {
+  private static String key(Fields fields, String... aliases) {
     String found = null;
-    for (var map : fields)
+    for (int i = 0; i < 3; i++)
       for (String name : aliases) {
-        if (!map.containsKey(name) || map.get(name) == null) continue;
-        if (!(map.get(name) instanceof String text) || text.isEmpty()) return null;
-        if (found != null && !found.equals(text)) return null;
+        Object value = fields.value(i, name);
+        if (value == null) continue;
+        if (!(value instanceof String text) || text.isEmpty()) return null;
+        if (found != null) {
+          if (fields.owner != null) fields.owner.inspect(Math.max(found.length(), text.length()));
+          if (!found.equals(text)) return null;
+        }
         found = text;
       }
     return found;
@@ -233,7 +252,7 @@ final class SessionDependencyWrites {
   static Set<Dependency> keys(Object parameter, Kind kind, SessionQueryWork owner) {
     // MP的实体是SET值，不是WHERE证明；尚未登记的wrapper条件一律保守失效。
     if (parameter instanceof Map<?, ?> map && map.containsKey("ew")) return null;
-    var fields = fields(parameter);
+    var fields = fields(parameter, owner);
     String tenant = key(fields, "tenant", "tenantId", "tenant_id");
     if (tenant == null) return null;
     if (kind == Kind.INSTALLATION) {
@@ -252,30 +271,23 @@ final class SessionDependencyWrites {
         key(fields, "caller", "taskId", "task", "id", "callerTaskId", "caller_task_id", "task_id");
     // 显式task候选冲突绝不可退到当前lease猜测。
     boolean explicit =
-        fields.stream()
-            .anyMatch(
-                m ->
-                    List.of(
-                            "caller",
-                            "taskId",
-                            "task",
-                            "id",
-                            "callerTaskId",
-                            "caller_task_id",
-                            "task_id")
-                        .stream()
-                        .anyMatch(m::containsKey));
+        fields.supplied(
+            "caller", "taskId", "task", "id", "callerTaskId", "caller_task_id", "task_id");
     if (task != null) return Set.of(new Dependency(tenant, task));
     if (explicit || owner == null) return null;
-    if (kind == Kind.STEP)
-      return owner.boundProgress(tenant, key(fields, "step", "stepId", "step_id"), null);
-    if (kind == Kind.DISPATCH)
-      return owner.boundProgress(
-          tenant, null, key(fields, "dispatch", "dispatchId", "reservationId", "reservation"));
     return null;
   }
 
   static void before(String id, Object parameter, SessionQueryWork owner) {
+    owner.extraction(true);
+    try {
+      beforeReserved(id, parameter, owner);
+    } finally {
+      owner.extraction(false);
+    }
+  }
+
+  private static void beforeReserved(String id, Object parameter, SessionQueryWork owner) {
     Kind kind = kind(id);
     if (kind == Kind.SCALAR) {
       owner.mutation();
@@ -298,16 +310,11 @@ final class SessionDependencyWrites {
       String id, Object parameter, Kind kind, SessionQueryWork owner) {
     if (kind == Kind.UNKNOWN) return null;
     if (parameter instanceof Map<?, ?> map && map.containsKey("ew")) return null;
-    var f = fields(parameter);
+    var f = fields(parameter, owner);
     String tenant = key(f, "tenant", "tenantId", "tenant_id");
     String task = key(f, "caller", "taskId", "task", "callerTaskId", "caller_task_id", "task_id");
     boolean supplied =
-        f.stream()
-            .anyMatch(
-                m ->
-                    List.of("caller", "taskId", "task", "callerTaskId", "caller_task_id", "task_id")
-                        .stream()
-                        .anyMatch(k -> m.containsKey(k) && m.get(k) != null));
+        f.supplied("caller", "taskId", "task", "callerTaskId", "caller_task_id", "task_id");
     if (supplied && task == null) return null;
     var type =
         switch (kind) {
@@ -342,14 +349,26 @@ final class SessionDependencyWrites {
           id.endsWith("settleActualModelCost") || id.endsWith("holdCostUnknown")
               ? "MODEL_COST"
               : "MODEL";
-    return owner.related(type, tenant, row, task, parent, category);
+    String related = owner.related(type, tenant, row, task, parent, category);
+    return related == null ? null : Set.of(new Dependency(tenant, related));
   }
 
   /** 具名SELECT的完整行、成功INSERT的真实字段是关系证据；wrapper条件不被解析。 */
   static void observed(String id, Object parameter, Object result, SessionQueryWork owner) {
+    if (!(result instanceof Number) && !READS.containsKey(id)) return;
+    owner.extraction(true);
+    try {
+      observeReserved(id, parameter, result, owner);
+    } finally {
+      owner.extraction(false);
+    }
+  }
+
+  private static void observeReserved(
+      String id, Object parameter, Object result, SessionQueryWork owner) {
     if (result instanceof Number changed) {
       if (changed.intValue() != 1) return;
-      var f = fields(parameter);
+      var f = fields(parameter, owner);
       String tenant = key(f, "tenant", "tenantId");
       String task = key(f, "taskId", "callerTaskId");
       if (id.equals(ROOT + "execution.mapper.StepMapper.insertPreparedStep"))
@@ -387,7 +406,7 @@ final class SessionDependencyWrites {
     if (type == null || !(result instanceof List<?> rows)) return;
     for (Object value : rows)
       if (value instanceof Map<?, ?> row) {
-        var f = List.<Map<?, ?>>of(row);
+        var f = fields(row, owner);
         owner.observed(
             type,
             key(f, "tenant_id"),

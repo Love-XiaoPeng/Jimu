@@ -456,6 +456,108 @@ public final class SessionTailResidencyScenario {
     }
   }
 
+  private static void relationInvalidation() {
+    db.update(
+        "INSERT INTO task(tenant_id,id,owner_actor_id,idempotency_key,request_digest,request_snapshot,goal,capabilities,installation_epoch,state,deadline,max_models,max_tools) VALUES('tenant-a',?,'alice','relation-source',?,'{}','source',?,1,'SUCCEEDED',CURRENT_TIMESTAMP(6),1,1)",
+        id(201),
+        DIGEST,
+        SessionLineagePolicyV5.CAPABILITIES);
+    var config = sql.getConfiguration();
+    config.addMappedStatement(
+        new org.apache.ibatis.mapping.MappedStatement.Builder(
+                config,
+                "private.reassignStep",
+                new org.apache.ibatis.scripting.defaults.RawSqlSource(
+                    config,
+                    "UPDATE step SET task_id=#{destination} WHERE tenant_id=#{tenant} AND id=#{stepId}",
+                    Map.class),
+                org.apache.ibatis.mapping.SqlCommandType.UPDATE)
+            .build());
+    for (boolean refresh : List.of(false, true))
+      for (boolean changed : List.of(false, true))
+        for (boolean atCommit : List.of(false, true)) {
+          var before = SessionDependencyScenario.snapshot(db);
+          var q = query();
+          boolean rejected = false;
+          try {
+            transactions.required(
+                q,
+                () -> {
+                  var owner = SessionQueryTransaction.current(q);
+                  owner.admission();
+                  sql.selectList(
+                      ROOT + "execution.mapper.StepMapper.selectModelStep",
+                      args(q, "taskId", id(1), "stepId", id(3)));
+                  // Unknown/wrapper write actually changes ownership, or preserves it for refresh
+                  // positive.
+                  var mutation = args(q, "stepId", id(3), "destination", id(changed ? 201 : 1));
+                  mutation.put("ew", new Object());
+                  check(
+                      sql.update("private.reassignStep", mutation) == 1,
+                      "staging wrapper actual step write");
+                  if (refresh)
+                    sql.selectList(
+                        ROOT + "execution.mapper.StepMapper.selectModelStep",
+                        args(q, "taskId", id(changed ? 201 : 1), "stepId", id(3)));
+                  publish(q);
+                  Runnable attempt =
+                      () -> {
+                        boolean refused = false;
+                        try {
+                          write(
+                              "execution.mapper.StepMapper.storeModelResponse",
+                              args(
+                                  q,
+                                  "taskId",
+                                  id(1),
+                                  "stepId",
+                                  id(3),
+                                  "response",
+                                  "{}",
+                                  "digest",
+                                  DIGEST));
+                        } catch (RuntimeException expected) {
+                          refused = true;
+                        }
+                        check(
+                            refused == (!refresh || changed),
+                            "stale/source relationship refusal after rebuilding scope");
+                      };
+                  if (atCommit)
+                    org.springframework.transaction.support.TransactionSynchronizationManager
+                        .registerSynchronization(
+                            new org.springframework.transaction.support
+                                .TransactionSynchronization() {
+                              public int getOrder() {
+                                return -100;
+                              }
+
+                              public void beforeCommit(boolean readOnly) {
+                                attempt.run();
+                              }
+                            });
+                  else attempt.run();
+                  return null;
+                });
+          } catch (RuntimeException failure) {
+            rejected = true;
+          }
+          boolean expectedReject = !refresh || changed || atCommit;
+          check(
+              rejected == expectedReject,
+              "relation finish outcome refresh="
+                  + refresh
+                  + " changed="
+                  + changed
+                  + " beforeCommit="
+                  + atCommit);
+          if (expectedReject)
+            check(
+                before.equals(SessionDependencyScenario.snapshot(db)),
+                "relation invalidation full 22-table rollback");
+        }
+  }
+
   private static void batch() {
     for (boolean empty : List.of(false, true)) {
       var q = query();
@@ -485,6 +587,18 @@ public final class SessionTailResidencyScenario {
               check(count == (empty ? 0 : 1), "actual Mapper bounded rows " + count);
             }
             check(q.scratchLive() == base, "actual Mapper batch finally released " + empty);
+            try (var batch = port.batch(SessionMetadataAccounting.Table.TASK_SESSION_HISTORY)) {
+              check(
+                  q.scratchLive() == base + SessionHistoryMetadataBatch.RETAINED_BYTES,
+                  "actual history cursor closed; history batch still held " + empty);
+              int count = 0;
+              for (var row : batch) {
+                for (var value : row.values()) batch.scalarBytes(value);
+                count++;
+              }
+              check(count == (empty ? 0 : 1), "actual history bounded rows " + count);
+            }
+            check(q.scratchLive() == base, "actual history batch finally released " + empty);
             return null;
           });
     }
@@ -523,6 +637,43 @@ public final class SessionTailResidencyScenario {
     check(
         rejected && before.equals(SessionDependencyScenario.snapshot(db)),
         "batch preallocation refusal rolls back prior DML across 22 tables");
+    var historyQuery = query();
+    boolean historyRejected = false;
+    try {
+      transactions.required(
+          historyQuery,
+          () -> {
+            publish(historyQuery);
+            CoreMappers.from(sql)
+                .tasks()
+                .finishSummary(historyQuery, "history must rollback", TENANT, id(1));
+            historyQuery.retainScratch(
+                new Object(),
+                1048576
+                    - historyQuery.scratchLive()
+                    - SessionHistoryMetadataBatch.RETAINED_BYTES
+                    + 1);
+            var port =
+                new MapperSessionMetadataAccounting(
+                    new JdbcSessionRecords(new JdbcTemplate(db.getDataSource()), historyQuery, sql),
+                    Map.of(
+                        "tenant_id",
+                        TENANT,
+                        "id",
+                        id(1),
+                        "capabilities",
+                        SessionLineagePolicyV5.CAPABILITIES),
+                    true);
+            try (var ignored = port.batch(SessionMetadataAccounting.Table.TASK_SESSION_HISTORY)) {
+              throw new AssertionError("history preallocation");
+            }
+          });
+    } catch (io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure expected) {
+      historyRejected = expected.code().equals("SESSION_HISTORY_LIMIT");
+    }
+    check(
+        historyRejected && before.equals(SessionDependencyScenario.snapshot(db)),
+        "history preallocation refuses before SQL and rolls back 22 tables");
   }
 
   private static void retention() {
@@ -663,9 +814,11 @@ public final class SessionTailResidencyScenario {
     root = new JdbcLedger(source, new ModelProfiles(env), null, null, null);
     seed();
     tail();
+    relationInvalidation();
     negative();
     batch();
     retention();
+    SessionMaintenanceRootScenario.run(db, root);
     System.out.println("TAIL_RESIDENCY_COMPLETE synthetic proof; local Mapper scope only; no A03");
   }
 }

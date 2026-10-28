@@ -2,7 +2,6 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger.QueryResources;
@@ -64,7 +63,7 @@ class SessionLineageMetadataBatchTest {
     var scalars = row.values().iterator();
     assertEquals(10, batch.scalarBytes("租户😀"));
     batch.close();
-    assertTrue(rows.isEmpty());
+    assertEquals(1, rows.size()); // borrowed test alias; production Supplier transfers ownership
     assertEquals(base, q.scratchLive());
     assertThrows(IllegalStateException.class, iterator::hasNext);
     assertThrows(IllegalStateException.class, row::values);
@@ -118,7 +117,7 @@ class SessionLineageMetadataBatchTest {
       var invalid = rows();
       invalid.getFirst().put("record_version", "1");
       assertThrows(TaskFailure.class, () -> new SessionLineageMetadataBatch(q, () -> invalid));
-      assertTrue(invalid.isEmpty());
+      assertEquals(1, invalid.size());
       assertEquals(held, q.scratchLive());
       assertThrows(
           TaskFailure.class,

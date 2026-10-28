@@ -145,11 +145,7 @@ final class SessionLineageMetadataBatch implements SessionMetadataAccounting.Bat
   public void close() {
     if (closed) return;
     closed = true;
-    if (rows != null) {
-      for (var row : rows) row.clear();
-      rows.clear();
-      rows = null;
-    }
+    rows = null;
     if (query != null) query.releaseScratch(this);
   }
 }

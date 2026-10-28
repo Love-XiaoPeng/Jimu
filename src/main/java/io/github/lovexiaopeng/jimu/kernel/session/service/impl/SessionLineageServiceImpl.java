@@ -229,7 +229,8 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
           .append(g.parentSessionId() == null ? "ROOT" : g.parentSessionId())
           .append('\n');
     }
-    records.scratch(Math.addExact(scratch, 2048 + 128L * genesis.size()));
+    records.scratch(
+        Math.addExact(scratch, SessionLineageGraph.indexWorkspaceBytes(genesis.size())));
     var proof =
         new VerifiedGraph(
             fact.authorityDigest(),
