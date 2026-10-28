@@ -79,6 +79,10 @@ final class MapperSessionCallBindings implements SessionCallBindings {
     return JdbcSessionScopes.task(task);
   }
 
+  public boolean lineageTask() {
+    return JdbcSessionScopes.lineage(task);
+  }
+
   public boolean traceTask() {
     return JdbcSessionRecords.traceTask(task);
   }
@@ -156,6 +160,41 @@ final class MapperSessionCallBindings implements SessionCallBindings {
 
     public String tool() {
       return s(invocation, "tool");
+    }
+
+    public void normalizeLineage() {
+      String requested = records.lineage.input(s(invocation, "input_snapshot"));
+      String target = requested == null ? s(task, "id") : requested;
+      if (!target.equals(s(task, "id"))
+          && scope.sources().stream().noneMatch(t -> target.equals(s(t, "id"))))
+        throw JdbcSessionScopes.unavailable();
+      normalized = Payloads.json(Map.of("version", 1, "target_session_id", target));
+    }
+
+    public void insertLineage() {
+      records.lineageService.verify(s(task, "tenant_id"), s(task, "id"));
+      var graph = records.lineageRecords.load(s(task, "tenant_id"), s(task, "id"));
+      var context = records.v5.json(s(cut, "context_snapshot"), 4096);
+      if (!graph.graphDigest().equals(context.path("graph_sha256").asText())
+          || !graph.genesisDigest().equals(context.path("genesis_sha256").asText()))
+        throw JdbcSessionRecords.corrupt();
+      records.insertBinding(
+          io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionLineageTraceMapper
+              .class,
+          new io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+              .SessionLineageTraceEntity(
+              s(task, "tenant_id"),
+              s(invocation, "id"),
+              s(task, "id"),
+              stepId,
+              s(history, "binding_digest"),
+              s(invocation, "input_digest"),
+              s(scope.row(), "authority_digest"),
+              graph.graphDigest(),
+              s(cut, "context_digest"),
+              normalized,
+              Payloads.hash(normalized),
+              (long) SessionContracts.bytes(normalized)));
     }
 
     public void parseTrace() {

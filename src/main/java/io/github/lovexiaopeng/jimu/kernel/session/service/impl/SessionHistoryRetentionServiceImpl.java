@@ -100,6 +100,7 @@ public final class SessionHistoryRetentionServiceImpl implements SessionHistoryR
                             .toList()))
             .toList();
     if (task.scoped()) {
+      if (task.expectedVersion() == 5) task.purgeLineage();
       task.purgeScopeQuery();
       task.purgeScopeStep();
       task.purgeScopeTargets();

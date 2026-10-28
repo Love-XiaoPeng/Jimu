@@ -7,6 +7,25 @@ import java.util.List;
 
 /** 保留 try 外短路、List.of 预求值、首行与严格行数之别及原重复选择。 */
 public final class SessionAvailabilityServiceImpl implements SessionAvailabilityService {
+  public boolean lineage(SessionAvailability records) {
+    if (!records.lineageEnabled() || !records.readEnabled() || !records.priorEnabled())
+      return false;
+    try {
+      records.requireRead(records.selected());
+      var descriptors = records.lineageDescriptors();
+      if (descriptors.size() != 3) return false;
+      for (var descriptor : descriptors) {
+        var installed = records.installed(descriptor.capability());
+        if (installed.size() != 1
+            || !descriptor.version().equals(installed.getFirst().version())
+            || !descriptor.outputSha256().equals(installed.getFirst().digest())) return false;
+      }
+      return true;
+    } catch (TaskFailure rejected) {
+      return false;
+    }
+  }
+
   public boolean trace(SessionAvailability records) {
     if (!records.readEnabled() || !records.searchEnabled() || !records.traceEnabled()) return false;
     try {
@@ -40,6 +59,7 @@ public final class SessionAvailabilityServiceImpl implements SessionAvailability
   }
 
   public boolean session(SessionAvailability records, boolean search) {
+    if (!search && lineage(records)) return true;
     if (!search && prior(records)) return true;
     if (!records.readEnabled() || search && !records.searchEnabled()) return false;
     try {

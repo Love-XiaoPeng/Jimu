@@ -181,6 +181,21 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
 
       public List<ContentTable> contents() {
         var result = new ArrayList<ContentTable>();
+        if (JdbcSessionScopes.lineage(task)) {
+          result.add(
+              content(
+                  "task_session_lineage",
+                  "task_id",
+                  sql.lineageContents(ledger.queryContext(), tenant, taskId),
+                  "genesis_snapshot",
+                  "graph_snapshot"));
+          result.add(
+              content(
+                  "invocation_session_lineage_trace",
+                  "invocation_id",
+                  sql.lineageTraceContents(ledger.queryContext(), tenant, taskId),
+                  "normalized_snapshot"));
+        }
         var task =
             new LambdaQueryWrapper<HistoryTaskReadEntity>()
                 .eq(HistoryTaskReadEntity::getTenantId, tenant)
@@ -315,6 +330,18 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
         sql.purgeScopeQuery(ledger.queryContext(), tenant, taskId);
       }
 
+      public void purgeLineage() {
+        if (ledger
+                .mappers
+                .session()
+                .getMapper(
+                    io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper
+                        .SessionLineageMapper.class)
+                .purge(ledger.queryContext(), tenant, taskId)
+            != 1) throw JdbcSessionRecords.corrupt();
+        sql.purgeLineageTrace(ledger.queryContext(), tenant, taskId);
+      }
+
       public void purgeScopeStep() {
         sql.purgeScopeStep(ledger.queryContext(), tenant, taskId);
       }
@@ -381,6 +408,12 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
 
       public List<MetadataRow> metadata() {
         var result = new ArrayList<MetadataRow>();
+        if (JdbcSessionScopes.lineage(task)) {
+          sql.metadataTaskSessionLineage(ledger.queryContext(), tenant, taskId)
+              .forEach(r -> result.add(metadataRow(r)));
+          sql.metadataInvocationSessionLineageTrace(ledger.queryContext(), tenant, taskId)
+              .forEach(r -> result.add(metadataRow(r)));
+        }
         sql.metadataTask(ledger.queryContext(), tenant, taskId)
             .forEach(r -> result.add(metadataRow(r)));
         sql.metadataTaskSessionHistory(ledger.queryContext(), tenant, taskId)

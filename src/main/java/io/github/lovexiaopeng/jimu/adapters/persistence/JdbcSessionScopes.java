@@ -22,6 +22,16 @@ final class JdbcSessionScopes {
       creation;
   java.util.function.Consumer<Map<String, Object>> invalidated;
   final PriorSessionContracts contracts = new PriorSessionContracts();
+  final PriorSessionContracts v5 = new PriorSessionContracts(5);
+
+  PriorSessionContracts contracts(Map<String, Object> task) {
+    return lineage(task) ? v5 : contracts;
+  }
+
+  static boolean lineage(Map<String, Object> task) {
+    return io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+        .equals(s(task, "capabilities"));
+  }
 
   JdbcSessionScopes(JdbcLedger ledger, JdbcTemplate db, JdbcSessionRecords sessions) {
     this.sessions = sessions;
@@ -33,7 +43,10 @@ final class JdbcSessionScopes {
   }
 
   static boolean task(Map<String, Object> task) {
-    return "session_event_read,session_search".equals(s(task, "capabilities"));
+    String capabilities = s(task, "capabilities");
+    return io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+            .equals(capabilities)
+        || "session_event_read,session_search".equals(capabilities);
   }
 
   static TaskFailure unavailable() {

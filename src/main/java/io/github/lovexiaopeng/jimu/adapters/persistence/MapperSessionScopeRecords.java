@@ -196,6 +196,14 @@ final class MapperSessionScopeRecords implements SessionScopeRecords {
         n(r, "next_seq"), s(r, "binding_digest"), (LocalDateTime) r.get("retain_until"));
   }
 
+  public String expectedBinding(Caller c) {
+    return ledger.sessions.contract(row(c)).binding();
+  }
+
+  public void validateAuthority(Caller c, String raw) {
+    ledger.sessionScopes.contracts(row(c)).authority(raw);
+  }
+
   public String expectedBinding() {
     return ledger.sessions.v4.binding();
   }

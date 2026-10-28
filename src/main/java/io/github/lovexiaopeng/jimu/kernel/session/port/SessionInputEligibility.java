@@ -4,6 +4,14 @@ import java.util.List;
 
 /** 输入codec和当前资格的惰性边界；只在Service选定的分支解析、加载。 */
 public interface SessionInputEligibility {
+  default boolean lineageTask() {
+    return false;
+  }
+
+  default String lineageTarget() {
+    throw new UnsupportedOperationException("v5 input required");
+  }
+
   boolean scopeTask();
 
   boolean searchTask();

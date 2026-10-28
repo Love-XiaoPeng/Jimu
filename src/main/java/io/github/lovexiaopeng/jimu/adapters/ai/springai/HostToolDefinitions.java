@@ -76,9 +76,26 @@ final class HostToolDefinitions {
                 .build());
         continue;
       }
+      if (name.equals(ToolCapability.SESSION_TRACE)) {
+        var contracts =
+            new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionLineageContracts();
+        var pin = pins.get(name);
+        if (pin == null
+            || !pin.version().equals(contracts.descriptor().version())
+            || !pin.digest().equals(contracts.descriptor().outputSha256()))
+          throw new TaskFailure(409, TaskErrorCode.PLUGIN_PIN_MISMATCH);
+        result.add(
+            ToolDefinition.builder()
+                .name(name)
+                .description(contracts.description())
+                .inputSchema(contracts.inputSchema())
+                .build());
+        continue;
+      }
       if (name.equals(ToolCapability.SESSION_SEARCH)) {
         var contracts =
-            new io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionContracts();
+            new io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionContracts(
+                lease.capabilities().contains(ToolCapability.SESSION_TRACE) ? 5 : 4);
         var pin = pins.get(name);
         if (!pin.version().equals(contracts.descriptor().version())
             || !pin.digest().equals(contracts.descriptor().outputSha256()))
@@ -125,13 +142,15 @@ final class HostToolDefinitions {
       if (name.equals(ToolCapability.SESSION_EVENT_READ)) {
         var contracts =
             new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts(
-                lease.capabilities().contains(ToolCapability.SESSION_SEARCH)
-                    ? 4
-                    : lease.capabilities().contains(ToolCapability.SESSION_EVENT_TRACE)
-                        ? 3
-                        : lease.capabilities().contains(ToolCapability.SESSION_EVENT_SEARCH)
-                            ? 2
-                            : 1);
+                lease.capabilities().contains(ToolCapability.SESSION_TRACE)
+                    ? 5
+                    : lease.capabilities().contains(ToolCapability.SESSION_SEARCH)
+                        ? 4
+                        : lease.capabilities().contains(ToolCapability.SESSION_EVENT_TRACE)
+                            ? 3
+                            : lease.capabilities().contains(ToolCapability.SESSION_EVENT_SEARCH)
+                                ? 2
+                                : 1);
         var pin = pins.get(name);
         if (!pin.version().equals(contracts.descriptor().version())
             || !pin.digest().equals(contracts.descriptor().outputSha256()))

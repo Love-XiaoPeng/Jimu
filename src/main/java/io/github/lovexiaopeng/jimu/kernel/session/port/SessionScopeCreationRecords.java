@@ -28,6 +28,18 @@ public interface SessionScopeCreationRecords {
 
   String binding();
 
+  default int version(Row caller) {
+    return 4;
+  }
+
+  default String binding(Row caller) {
+    return binding();
+  }
+
+  default void validateAuthority(Row caller, String raw) {
+    validateAuthority(raw);
+  }
+
   String hash(String value);
 
   String json(Object value);

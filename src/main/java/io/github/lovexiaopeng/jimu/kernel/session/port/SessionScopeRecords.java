@@ -95,7 +95,15 @@ public interface SessionScopeRecords {
 
   String expectedBinding();
 
+  default String expectedBinding(Caller caller) {
+    return expectedBinding();
+  }
+
   void validateAuthority(String raw);
+
+  default void validateAuthority(Caller caller, String raw) {
+    validateAuthority(raw);
+  }
 
   Authority decodeAuthority(String raw);
 

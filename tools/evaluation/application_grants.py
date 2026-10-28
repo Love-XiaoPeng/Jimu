@@ -31,6 +31,8 @@ def grants(database, user, host, partial_revokes=False):
         'GRANT INSERT,UPDATE ON `' + database + '`.`task_session_scope_target` TO ' + account + ';',
         'GRANT INSERT,UPDATE ON `' + database + '`.`step_session_scope` TO ' + account + ';',
         'GRANT INSERT,UPDATE ON `' + database + '`.`invocation_session_scope_query` TO ' + account + ';',
+        'GRANT INSERT,UPDATE ON `' + database + '`.`task_session_lineage` TO ' + account + ';',
+        'GRANT INSERT,UPDATE ON `' + database + '`.`invocation_session_lineage_trace` TO ' + account + ';',
 
         'GRANT INSERT,UPDATE ON `' + database + '`.`invocation_path_binding` TO ' + account + ';',
         'GRANT INSERT,UPDATE ON `' + database + '`.`mcp_io` TO ' + account + ';',

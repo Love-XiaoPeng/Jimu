@@ -147,9 +147,9 @@ class SessionMetadataAccountingServiceTest {
   void allTableHeadroomWeightsRemainPerRow() {
     var records = new Records();
     for (Table table : Table.values()) records.rows.put(table, List.of(() -> List.of()));
-    // 16*32 actual; 1024+768+3*512+2*256 headroom.
-    assertEquals(512, service.metadata(records, false, 57088));
-    assertThrows(TaskFailure.class, () -> service.metadata(records, false, 57089));
+    // 18*32 actual; the two v5 tables each require 512 cleanup bytes.
+    assertEquals(576, service.metadata(records, false, 56000));
+    assertThrows(TaskFailure.class, () -> service.metadata(records, false, 56001));
   }
 
   @Test

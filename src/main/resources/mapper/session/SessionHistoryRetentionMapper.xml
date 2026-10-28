@@ -1,6 +1,26 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper">
+  <select id="lineageContents" resultType="map">
+    SELECT task_id,genesis_snapshot,graph_snapshot FROM task_session_lineage WHERE tenant_id=#{tenant} AND task_id=#{taskId}
+  </select>
+  <select id="lineageTraceContents" resultType="map">
+    SELECT invocation_id,normalized_snapshot FROM invocation_session_lineage_trace WHERE tenant_id=#{tenant} AND caller_task_id=#{taskId}
+  </select>
+  <update id="purgeLineageTrace">
+    UPDATE invocation_session_lineage_trace SET normalized_snapshot=NULL,content_state='PURGED'
+    WHERE tenant_id=#{tenant} AND caller_task_id=#{taskId} AND content_state='PRESENT'
+  </update>
+  <select id="metadataTaskSessionLineage" resultType="map">
+    SELECT tenant_id,task_id,record_version,genesis_digest,genesis_bytes,graph_digest,graph_bytes,content_state
+    FROM task_session_lineage WHERE tenant_id=#{tenant} AND task_id=#{taskId}
+  </select>
+  <select id="metadataInvocationSessionLineageTrace" resultType="map">
+    SELECT tenant_id,invocation_id,caller_task_id,step_id,record_version,binding_digest,input_digest,authority_digest,
+      graph_digest,context_digest,normalized_digest,normalized_bytes,outcome,failure_code,scan_digest,node_count,edge_count,
+      proof_reads,proof_bytes,output_digest,output_bytes,receipt_event_seq,committed_attempt_id,committed_fence,committed_at,content_state
+    FROM invocation_session_lineage_trace WHERE tenant_id=#{tenant} AND caller_task_id=#{taskId}
+  </select>
   <select id="candidates" resultType="map"><![CDATA[SELECT p.tenant_id,p.task_id FROM task_session_history p JOIN task t ON t.tenant_id=p.tenant_id AND t.id=p.task_id
         WHERE p.content_state='PRESENT' AND p.retain_until<=CURRENT_TIMESTAMP(6) AND t.state IN ('SUCCEEDED','FAILED','CANCELLED')
         AND NOT EXISTS(SELECT 1 FROM task_attempt a WHERE a.tenant_id=p.tenant_id AND a.task_id=p.task_id AND a.quiescent=FALSE)

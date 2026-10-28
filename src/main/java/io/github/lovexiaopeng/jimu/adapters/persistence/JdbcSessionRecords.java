@@ -24,7 +24,12 @@ final class JdbcSessionRecords {
   final SessionContracts v2 = new SessionContracts(2);
   final SessionContracts v3 = new SessionContracts(3);
   final SessionContracts v4 = new SessionContracts(4);
+  final SessionContracts v5 = new SessionContracts(5);
+  final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionLineageContracts lineage =
+      new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionLineageContracts();
   JdbcSessionScopes scopes;
+  io.github.lovexiaopeng.jimu.kernel.session.port.SessionLineageRecords lineageRecords;
+  io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService lineageService;
   final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts searchV3 =
       new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts(3);
   final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTraceContracts trace =
@@ -45,10 +50,12 @@ final class JdbcSessionRecords {
     return name.equals(ToolCapability.SESSION_EVENT_READ)
         ? contract(task).descriptor()
         : name.equals(ToolCapability.SESSION_SEARCH)
-            ? scopes.contracts.descriptor()
+            ? scopes.contracts(task).descriptor()
             : name.equals(ToolCapability.SESSION_EVENT_SEARCH)
                 ? searchContract(task).descriptor()
-                : trace.descriptor();
+                : name.equals(ToolCapability.SESSION_TRACE)
+                    ? lineage.descriptor()
+                    : trace.descriptor();
   }
 
   final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts search =
@@ -136,13 +143,17 @@ final class JdbcSessionRecords {
   }
 
   int version(Map<String, Object> task) {
-    return JdbcSessionScopes.task(task) ? 4 : traceTask(task) ? 3 : searchTask(task) ? 2 : 1;
+    return JdbcSessionScopes.lineage(task)
+        ? 5
+        : JdbcSessionScopes.task(task) ? 4 : traceTask(task) ? 3 : searchTask(task) ? 2 : 1;
   }
 
   SessionContracts contract(Map<String, Object> task) {
-    return JdbcSessionScopes.task(task)
-        ? v4
-        : traceTask(task) ? v3 : searchTask(task) ? v2 : contracts;
+    return JdbcSessionScopes.lineage(task)
+        ? v5
+        : JdbcSessionScopes.task(task)
+            ? v4
+            : traceTask(task) ? v3 : searchTask(task) ? v2 : contracts;
   }
 
   private List<String> sensitive;
@@ -483,7 +494,7 @@ final class JdbcSessionRecords {
     var meta = org.apache.ibatis.reflection.SystemMetaObject.forObject(entity);
     for (String field : meta.getGetterNames()) args.put(field, meta.getValue(field));
     args.put("query", query);
-    mapperSession().insert(mapper.getName() + ".insert", args);
+    if (mapperSession().insert(mapper.getName() + ".insert", args) != 1) throw corrupt();
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionReadRelationProofService

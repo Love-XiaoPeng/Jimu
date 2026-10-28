@@ -28,6 +28,7 @@ import io.github.lovexiaopeng.jimu.plugin.api.ImageErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.QuestionErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.TodoErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import java.time.Instant;
 import java.util.Arrays;
@@ -54,6 +55,7 @@ public final class JdbcLedger
         io.github.lovexiaopeng.jimu.kernel.task.api.WorkingDirectoryLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger,
+        io.github.lovexiaopeng.jimu.kernel.task.api.SessionLineageLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger {
@@ -145,6 +147,13 @@ public final class JdbcLedger
           new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionOwnerServiceImpl();
   final JdbcSessionRecords sessions;
   final JdbcSessionScopes sessionScopes;
+  final io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService lineages;
+  boolean sessionLineageEnabled;
+
+  public void sessionLineageEnabled(boolean enabled) {
+    sessionLineageEnabled = enabled;
+  }
+
   boolean priorSessionSearchEnabled;
 
   public void priorSessionSearchEnabled(boolean enabled) {
@@ -194,6 +203,88 @@ public final class JdbcLedger
     if (query == null) throw new IllegalStateException("Explicit session query context required");
     query.restrictDeadline(end);
     return queryTransactions.required(query, work);
+  }
+
+  @Override
+  public View submitSessionLineage(
+      Identity identity,
+      String key,
+      io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger.SearchBody body,
+      long end) {
+    if (query == null)
+      return queryView(end, new QueryResources(0, 0, 0))
+          .submitSessionLineage(identity, key, body, end);
+    var input = sessions.lineage.admission(body.read(end));
+    query.remainingMillis();
+    return sessionSearchOwnerRead(
+        () ->
+            taskAdmissionService.submitLineage(
+                identity,
+                key,
+                new io.github.lovexiaopeng.jimu.kernel.task.api.TaskLineageSubmission(
+                    input.goal(), input.historySessionIds(), input.parentSessionId())),
+        end);
+  }
+
+  private Map<String, Object> lineageOwner(Identity identity, String caller) {
+    Map<String, Object> task;
+    try {
+      task = sessionOwner(identity, caller);
+    } catch (TaskFailure failure) {
+      if (failure.status() == 403 || failure.status() == 404) throw JdbcSessionScopes.unavailable();
+      throw failure;
+    }
+    if (!JdbcSessionScopes.lineage(task))
+      throw new TaskFailure(404, SessionErrorCode.SESSION_LINEAGE_UNAVAILABLE);
+    return task;
+  }
+
+  @Override
+  public QueryResources authorizeSessionLineage(Identity identity, String caller, long end) {
+    if (query == null)
+      return queryView(end, new QueryResources(0, 0, 0))
+          .authorizeSessionLineage(identity, caller, end);
+    query.restrictLineage();
+    sessionSearchOwnerRead(
+        () -> {
+          lineageOwner(identity, caller);
+          return null;
+        },
+        end);
+    return query.resources();
+  }
+
+  @Override
+  public String sessionLineage(
+      Identity identity,
+      String caller,
+      io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger.SearchBody body,
+      long end,
+      QueryResources resources) {
+    if (query == null)
+      return queryView(end, resources).sessionLineage(identity, caller, body, end, resources);
+    query.restrictLineage();
+    return sessionSearchOwnerRead(
+        () -> {
+          var task = lineageOwner(identity, caller);
+          String target = sessions.lineage.input(body.read(end));
+          String output = lineages.trace(identity.tenant(), caller, target);
+          sessionScopes.require(task);
+          query.remainingMillis();
+          return output;
+        },
+        end);
+  }
+
+  @Override
+  public void revokeSessionLineage(Identity identity, String caller, boolean valid, long end) {
+    if (query == null) {
+      queryView(end, null).revokeSessionLineage(identity, caller, valid, end);
+      return;
+    }
+    new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionScopeRevocationServiceImpl(
+            new MapperSessionScopeRevocations(this, true))
+        .revoke(identity, caller, valid, end);
   }
 
   @Override
@@ -289,7 +380,7 @@ public final class JdbcLedger
     return sessionSearchOwnerRead(
         () -> {
           var task = priorSearchOwner(identity, caller);
-          var input = sessionScopes.contracts.input(body.read(deadlineNanos));
+          var input = sessionScopes.contracts(task).input(body.read(deadlineNanos));
           sessionRemainingMillis();
           var found = sessions.priorSearch(task, input, this::sessionRemainingMillis);
           sessionScopes.require(task);
@@ -316,6 +407,15 @@ public final class JdbcLedger
     if (query == null)
       return queryView(lease, true).scopedOrResult(lease, stepId, call, version, digest);
     return scopeQueries.scopedOrResult(lease, stepId, call, version, digest);
+  }
+
+  @Override
+  public String lineageOrResult(
+      Lease lease, String stepId, Call call, String version, String digest) {
+    if (query == null)
+      return queryView(lease, true).lineageOrResult(lease, stepId, call, version, digest);
+    query.restrictLineage();
+    return lineages.traceSlot(lease, stepId, call, version, digest);
   }
 
   private int sessionRemainingMillis() {
@@ -1166,6 +1266,11 @@ public final class JdbcLedger
     scopeQueries =
         new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionScopeQueryServiceImpl(
             new MapperSessionScopeQueries(this));
+    sessions.lineageRecords = new MapperSessionLineageRecords(this);
+    lineages =
+        new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionLineageServiceImpl(
+            sessions.lineageRecords, scopeQueries);
+    sessions.lineageService = lineages;
     scopeRevocations =
         new io.github.lovexiaopeng.jimu.kernel.session.service.impl
             .SessionScopeRevocationServiceImpl(new MapperSessionScopeRevocations(this));
@@ -1330,6 +1435,7 @@ public final class JdbcLedger
       boolean sessionSearchEnabled,
       boolean sessionTraceEnabled,
       boolean priorSessionSearchEnabled,
+      boolean sessionLineageEnabled,
       JdbcSessionRecords.Configuration session,
       io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings mcp) {
     static QueryViewConfiguration capture(JdbcLedger ledger) {
@@ -1344,6 +1450,7 @@ public final class JdbcLedger
           ledger.sessionSearchEnabled,
           ledger.sessionTraceEnabled,
           ledger.priorSessionSearchEnabled,
+          ledger.sessionLineageEnabled,
           ledger.sessions.configuration(),
           ledger.mcpRecords.configuration());
     }
@@ -1359,6 +1466,7 @@ public final class JdbcLedger
       ledger.sessionSearchEnabled = sessionSearchEnabled;
       ledger.sessionTraceEnabled = sessionTraceEnabled;
       ledger.priorSessionSearchEnabled = priorSessionSearchEnabled;
+      ledger.sessionLineageEnabled = sessionLineageEnabled;
       ledger.sessions.configure(session);
       ledger.mcpRecords.configure(mcp);
     }
@@ -1459,6 +1567,8 @@ public final class JdbcLedger
   // Material checks precede quota/IO admission. Commit STOPPED with the rejection fact,
   // then throw outside the transaction; a process exit before task failure cannot undo it.
   <T> T leaseTx(Lease lease, Supplier<T> work) {
+    if (query != null && lease.capabilities().contains(ToolCapability.SESSION_TRACE))
+      return sessionTransaction(work, query.deadlineNanos());
     AdmissionResult<T> result =
         tx(
             () -> {
@@ -2125,11 +2235,15 @@ public final class JdbcLedger
 
   @Override
   public Step prepare(Lease lease, String request) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE))
+      return queryView(lease, true).prepare(lease, request);
     return executionService.prepare(lease, request);
   }
 
   @Override
   public String dispatchModel(Lease lease, String stepId) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE))
+      return queryView(lease, true).dispatchModel(lease, stepId);
     return modelService.dispatch(lease, stepId);
   }
 
@@ -2142,6 +2256,11 @@ public final class JdbcLedger
       List<Call> calls,
       Integer tokens,
       ModelUsage usage) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE)) {
+      queryView(lease, true)
+          .modelResponded(lease, stepId, dispatch, response, calls, tokens, usage);
+      return;
+    }
     modelService.responded(lease, stepId, dispatch, response, calls, tokens, usage);
   }
 
@@ -2407,13 +2526,13 @@ public final class JdbcLedger
       return;
     }
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23') AND success=TRUE",
             Integer.class)
-        != 22) throw new IllegalStateException("Required migration unavailable");
+        != 23) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 22) throw new IllegalStateException("Unsupported schema version");
+        != 23) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override

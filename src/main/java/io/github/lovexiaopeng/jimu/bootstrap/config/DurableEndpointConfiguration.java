@@ -26,7 +26,8 @@ public class DurableEndpointConfiguration {
         new org.springframework.boot.web.servlet.FilterRegistrationBean<>(
             new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchBodyFilter());
     registration.setAsyncSupported(true);
-    registration.addUrlPatterns("/api/tasks/*", "/api/session-search/tasks");
+    registration.addUrlPatterns(
+        "/api/tasks/*", "/api/session-search/tasks", "/api/session-trace/tasks");
     return registration;
   }
 

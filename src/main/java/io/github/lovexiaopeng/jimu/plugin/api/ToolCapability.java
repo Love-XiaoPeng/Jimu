@@ -7,6 +7,7 @@ public final class ToolCapability {
   public static final String SESSION_EVENT_READ = "session_event_read";
   public static final String SESSION_EVENT_SEARCH = "session_event_search";
   public static final String SESSION_EVENT_TRACE = "session_event_trace";
+  public static final String SESSION_TRACE = "session_trace";
   public static final String SESSION_SEARCH = "session_search";
   public static final String WORKING_DIRECTORY = "working_directory";
   public static final String TODO_WRITE = "todo_write";

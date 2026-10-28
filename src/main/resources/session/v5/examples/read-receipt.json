@@ -1,0 +1,32 @@
+{
+  "version": 5,
+  "session_id": "00000000-0000-4000-8000-000000000055",
+  "seq": 4,
+  "type": "session.read",
+  "time": "2026-10-23T06:00:00Z",
+  "source": {
+    "kind": "invocation",
+    "step_id": "00000000-0000-4000-8000-000000000101",
+    "invocation_id": "00000000-0000-4000-8000-000000000102"
+  },
+  "content_policy": "public-v1",
+  "redacted": false,
+  "data": {
+    "seq": 0,
+    "before": 0,
+    "after": 0,
+    "upper_seq": 4,
+    "outcome": "SUCCEEDED",
+    "code": null,
+    "output_sha256": "e0782a09ba9c8781f39f64186f4470dc55d90707e1d1e58bd1b70b1ba8871630",
+    "output_bytes": 576,
+    "target_session_id": "00000000-0000-4000-8000-000000000051"
+  },
+  "source_event_refs": [
+    {
+      "session_id": "00000000-0000-4000-8000-000000000051",
+      "seq": 0,
+      "event_sha256": "e8e3844ab4810256e88c94ecd6386759f3a3f4b535f6009d8ebff3776a50ccc7"
+    }
+  ]
+}

@@ -70,6 +70,18 @@ final class MapperSessionScopeCreationRecords implements SessionScopeCreationRec
     return wrap(sessions.history(unwrap(source), true));
   }
 
+  public int version(Row c) {
+    return sessions.version(unwrap(c));
+  }
+
+  public String binding(Row c) {
+    return sessions.contract(unwrap(c)).binding();
+  }
+
+  public void validateAuthority(Row c, String raw) {
+    scopes.contracts(unwrap(c)).authority(raw);
+  }
+
   public String binding() {
     return sessions.v4.binding();
   }

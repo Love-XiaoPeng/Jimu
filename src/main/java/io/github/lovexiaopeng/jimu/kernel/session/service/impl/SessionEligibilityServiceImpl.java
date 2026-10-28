@@ -26,6 +26,9 @@ public final class SessionEligibilityServiceImpl implements SessionEligibilitySe
   }
 
   public void admission(SessionEligibility.Admission records) {
+    if (records.lineage()
+        && (!records.lineageEnabled() || !records.readEnabled() || !records.scopeEnabled()))
+      throw new TaskFailure(403, SessionErrorCode.SESSION_LINEAGE_DISABLED);
     if (!records.readEnabled()) throw new TaskFailure(403, SessionErrorCode.SESSION_READ_DISABLED);
     if (records.scope() && !records.scopeEnabled())
       throw new TaskFailure(403, SessionErrorCode.SESSION_SEARCH_DISABLED);
@@ -34,7 +37,8 @@ public final class SessionEligibilityServiceImpl implements SessionEligibilitySe
     if (records.trace() && !records.traceEnabled())
       throw new TaskFailure(403, SessionErrorCode.SESSION_TRACE_DISABLED);
     records.history();
-    if (records.trace()) records.requireTrace(records.snapshot());
+    if (records.lineage()) records.requireLineage(records.snapshot());
+    else if (records.trace()) records.requireTrace(records.snapshot());
     else if (records.search()) records.requireSearch(records.snapshot());
     else records.requireRead(records.snapshot());
   }

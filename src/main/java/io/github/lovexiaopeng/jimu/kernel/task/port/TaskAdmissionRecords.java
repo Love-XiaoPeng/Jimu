@@ -33,6 +33,10 @@ public interface TaskAdmissionRecords {
 
   String hash(String value);
 
+  default boolean sameJson(String left, String right) {
+    return left.equals(right);
+  }
+
   Tasks.Request readRequest(String snapshot);
 
   boolean questionsEnabled();
@@ -78,6 +82,10 @@ public interface TaskAdmissionRecords {
 
     boolean priorSearchEnabled();
 
+    default boolean lineageEnabled() {
+      return false;
+    }
+
     boolean sessionTraceEnabled();
 
     boolean sessionSearchEnabled();
@@ -93,6 +101,10 @@ public interface TaskAdmissionRecords {
     void requireTodoModel(ModelSnapshot model);
 
     PluginPin contract(String capability, boolean prior, boolean trace, boolean search);
+
+    default PluginPin lineageContract(String capability) {
+      throw new UnsupportedOperationException("v5 contract required");
+    }
 
     String questionBinding(String version);
 
@@ -117,6 +129,10 @@ public interface TaskAdmissionRecords {
     void bindSnapshots(String task, ModelSnapshot model, long cost, String tools, String scope);
 
     void createSession(String task, List<String> historySources);
+
+    default void createLineage(String task, String parent) {
+      throw new UnsupportedOperationException("v5 lineage required");
+    }
 
     void createDirectory(String task);
 

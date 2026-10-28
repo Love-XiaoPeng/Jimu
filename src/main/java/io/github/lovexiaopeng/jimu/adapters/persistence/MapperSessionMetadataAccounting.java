@@ -24,6 +24,8 @@ final class MapperSessionMetadataAccounting implements SessionMetadataAccounting
   }
 
   public Iterable<? extends Row> rows(Table table) {
+    if ((table == Table.TASK_SESSION_LINEAGE || table == Table.INVOCATION_SESSION_LINEAGE_TRACE)
+        && !JdbcSessionScopes.lineage(task)) return java.util.List.of();
     String operation =
         "SessionHistoryRetentionMapper.metadata"
             + java.util.Arrays.stream(table.name().toLowerCase(Locale.ROOT).split("_"))

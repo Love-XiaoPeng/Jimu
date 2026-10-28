@@ -10,9 +10,15 @@ import java.util.function.Supplier;
 final class MapperSessionScopeRevocations implements SessionScopeRevocations {
   private final JdbcLedger ledger;
   private final SessionScopeRevocationMapper sql;
+  private final boolean lineageOnly;
 
   MapperSessionScopeRevocations(JdbcLedger ledger) {
+    this(ledger, false);
+  }
+
+  MapperSessionScopeRevocations(JdbcLedger ledger, boolean lineageOnly) {
     this.ledger = ledger;
+    this.lineageOnly = lineageOnly;
     sql = ledger.mappers.session().getMapper(SessionScopeRevocationMapper.class);
   }
 
@@ -40,7 +46,9 @@ final class MapperSessionScopeRevocations implements SessionScopeRevocations {
             row ->
                 new Owner() {
                   public boolean scopeTask() {
-                    return JdbcSessionScopes.task(row);
+                    return lineageOnly
+                        ? JdbcSessionScopes.lineage(row)
+                        : JdbcSessionScopes.task(row);
                   }
 
                   public String state() {

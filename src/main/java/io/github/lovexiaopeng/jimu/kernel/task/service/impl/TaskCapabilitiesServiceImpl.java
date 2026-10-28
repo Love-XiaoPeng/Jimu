@@ -34,7 +34,12 @@ public final class TaskCapabilitiesServiceImpl implements TaskCapabilitiesServic
                   name ->
                       !name.equals(ToolCapability.SESSION_EVENT_TRACE) || records.traceAvailable())
               .filter(
-                  name -> !name.equals(ToolCapability.SESSION_SEARCH) || records.priorAvailable())
+                  name ->
+                      !name.equals(ToolCapability.SESSION_SEARCH)
+                          || records.priorAvailable()
+                          || records.lineageAvailable())
+              .filter(
+                  name -> !name.equals(ToolCapability.SESSION_TRACE) || records.lineageAvailable())
               .filter(
                   name ->
                       records.searchAvailable()

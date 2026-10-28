@@ -11,6 +11,7 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
@@ -103,7 +104,12 @@ class SessionScopeNormalizationServiceTest {
   void actualAdapterSearchKeepsNodeTypesAndSortsFieldsAfterQueryNormalization() {
     var records = new JdbcLedger(new DriverManagerDataSource(), null).sessions;
     String raw = "{\"query\":\"  Public   words  \",\"event_seq_from\":1}";
-    String normalized = records.normalizedScope(null, null, "session_search", raw);
+    String normalized =
+        records.normalizedScope(
+            Map.of("capabilities", "session_event_read,session_search"),
+            null,
+            "session_search",
+            raw);
     assertEquals("{\"event_seq_from\":1,\"query\":\"Public words\"}", normalized);
   }
 

@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "caller_session_id": "00000000-0000-4000-8000-000000000055",
+  "scope_sha256": "973b622f5028573ef6c213f8760690763738e33708730787c63b570fe24ee1a9",
+  "boundary": "scoped-admission",
+  "content_policy": "public-v1",
+  "match_policy": "public-content-literal-v1",
+  "ordering": "occurrences-desc,length-asc,time-desc,session-id-asc,seq-desc",
+  "returned_count": 2,
+  "capped": false,
+  "items": [
+    {
+      "session_id": "00000000-0000-4000-8000-000000000051",
+      "created_at": "2026-10-23T05:00:00Z",
+      "history_version": 5,
+      "upper_seq": 4,
+      "best_match": {
+        "seq": 0,
+        "type": "user.message",
+        "time": "2026-10-23T05:00:00Z",
+        "source": {
+          "kind": "request",
+          "step_id": null,
+          "invocation_id": null
+        },
+        "redacted": false,
+        "event_sha256": "e8e3844ab4810256e88c94ecd6386759f3a3f4b535f6009d8ebff3776a50ccc7",
+        "snippet": "积木检索历史事实 🧱",
+        "left_truncated": false,
+        "right_truncated": false
+      }
+    },
+    {
+      "session_id": "00000000-0000-4000-8000-000000000052",
+      "created_at": "2026-10-23T05:00:00Z",
+      "history_version": 5,
+      "upper_seq": 4,
+      "best_match": {
+        "seq": 0,
+        "type": "user.message",
+        "time": "2026-10-23T05:00:00Z",
+        "source": {
+          "kind": "request",
+          "step_id": null,
+          "invocation_id": null
+        },
+        "redacted": false,
+        "event_sha256": "d71e4e29046fa483b5cbba6d2795f6212e361fe732cb89348a9829c275c046e6",
+        "snippet": "积木检索历史事实 🧱",
+        "left_truncated": false,
+        "right_truncated": false
+      }
+    }
+  ]
+}

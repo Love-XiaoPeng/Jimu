@@ -69,6 +69,18 @@ final class MapperSessionEligibility implements SessionEligibility.Access {
 
   SessionEligibility.Admission admission() {
     return new SessionEligibility.Admission() {
+      public boolean lineage() {
+        return JdbcSessionScopes.lineage(task);
+      }
+
+      public boolean lineageEnabled() {
+        return ledger.sessionLineageEnabled;
+      }
+
+      public void requireLineage(ModelSnapshot snapshot) {
+        ledger.models.requireSessionLineage(snapshot);
+      }
+
       public boolean readEnabled() {
         return ledger.sessionReadEnabled;
       }

@@ -43,7 +43,53 @@ public interface SessionScopeQueries extends SessionScopeNormalization.Proof {
       Long receipt,
       Long nativeSeq,
       String attempt,
-      Long fence) {}
+      Long fence,
+      String graph) {
+    public Binding(
+        long version,
+        String caller,
+        String step,
+        String operation,
+        String binding,
+        String input,
+        String authority,
+        String context,
+        String normalized,
+        String normalizedDigest,
+        long normalizedBytes,
+        String content,
+        String outcome,
+        String failure,
+        String outputDigest,
+        Long outputBytes,
+        Long receipt,
+        Long nativeSeq,
+        String attempt,
+        Long fence) {
+      this(
+          version,
+          caller,
+          step,
+          operation,
+          binding,
+          input,
+          authority,
+          context,
+          normalized,
+          normalizedDigest,
+          normalizedBytes,
+          content,
+          outcome,
+          failure,
+          outputDigest,
+          outputBytes,
+          receipt,
+          nativeSeq,
+          attempt,
+          fence,
+          null);
+    }
+  }
 
   record Receipt(String fact, String type, String code) {}
 
@@ -51,7 +97,19 @@ public interface SessionScopeQueries extends SessionScopeNormalization.Proof {
 
   record Budget(long used, long limit) {}
 
-  record Result(String output, String refs, String scanDigest, int rows, int eventBytes) {}
+  record LineageProof(int nodes, int edges, long reads, long bytes) {}
+
+  record Result(
+      String output,
+      String refs,
+      String scanDigest,
+      int rows,
+      int eventBytes,
+      LineageProof lineage) {
+    public Result(String output, String refs, String scanDigest, int rows, int eventBytes) {
+      this(output, refs, scanDigest, rows, eventBytes, null);
+    }
+  }
 
   record Commit(
       String outcome,
@@ -65,10 +123,60 @@ public interface SessionScopeQueries extends SessionScopeNormalization.Proof {
       String outputDigest,
       int outputBytes,
       long receipt,
-      Long nativeSeq) {}
+      Long nativeSeq,
+      LineageProof lineage) {
+    public Commit(
+        String outcome,
+        String code,
+        String scan,
+        Integer rows,
+        Integer eventBytes,
+        String refs,
+        String refsDigest,
+        Integer refsBytes,
+        String outputDigest,
+        int outputBytes,
+        long receipt,
+        Long nativeSeq) {
+      this(
+          outcome,
+          code,
+          scan,
+          rows,
+          eventBytes,
+          refs,
+          refsDigest,
+          refsBytes,
+          outputDigest,
+          outputBytes,
+          receipt,
+          nativeSeq,
+          null);
+    }
+  }
 
   interface Task {
     boolean scopeTask();
+
+    default boolean lineageTask() {
+      return false;
+    }
+
+    default String graphDigest() {
+      throw new UnsupportedOperationException("v5 graph required");
+    }
+
+    default void validateLineageOutput(String output) {
+      throw new UnsupportedOperationException("v5 output required");
+    }
+
+    default Result trace() {
+      throw new UnsupportedOperationException("v5 trace required");
+    }
+
+    default void verifyLineageCommit() {
+      throw new UnsupportedOperationException("v5 commit required");
+    }
 
     long toolsUsed();
 
@@ -121,6 +229,11 @@ public interface SessionScopeQueries extends SessionScopeNormalization.Proof {
     void finishInvocation(String invocation, String outcome, String output, String digest);
 
     void event(String fact, String type, String code);
+
+    /** Same transaction; the slot service must account metadata after all event/slot writes. */
+    default void eventBeforeFinalAccount(String fact, String type, String code) {
+      event(fact, type, code);
+    }
 
     long receiptSequence(String invocation);
 

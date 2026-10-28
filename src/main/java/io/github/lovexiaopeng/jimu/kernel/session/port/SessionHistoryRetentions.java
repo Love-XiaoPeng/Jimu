@@ -62,6 +62,10 @@ public interface SessionHistoryRetentions {
 
     void purgeScope();
 
+    default void purgeLineage() {
+      throw new UnsupportedOperationException("v5 retention required");
+    }
+
     void purgePublicEvents();
 
     void purgeSearch();

@@ -113,6 +113,14 @@ public final class SessionQueryTransaction {
         if (application != null && application != failure.getCause())
           failure.addSuppressed(application);
       }
+      // MyBatis/Spring may wrap deterministic meter refusals in a persistence exception.
+      // A confirmed rollback is not an unknown commit and must not trigger slot retries.
+      if (!(failure instanceof TransactionSystemException)) {
+        Throwable cause = failure;
+        for (int depth = 0; cause != null && depth < 32; depth++, cause = cause.getCause()) {
+          if (cause instanceof TaskFailure refusal) throw refusal;
+        }
+      }
       if (System.nanoTime() >= context.deadlineNanos()
           && (failure instanceof org.springframework.dao.DataAccessException
               || failure instanceof org.springframework.transaction.TransactionException)) {

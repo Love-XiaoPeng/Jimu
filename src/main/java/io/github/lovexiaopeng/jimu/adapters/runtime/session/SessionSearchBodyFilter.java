@@ -47,6 +47,8 @@ public final class SessionSearchBodyFilter implements Filter {
         && (http.getRequestURI().endsWith("/session-history/search")
             || http.getRequestURI().endsWith("/session-history/trace")
             || http.getRequestURI().endsWith("/session-history/session-search")
+            || http.getRequestURI().endsWith("/session-history/session-trace")
+            || http.getRequestURI().equals("/api/session-trace/tasks")
             || http.getRequestURI().equals("/api/session-search/tasks")))
       ((jakarta.servlet.http.HttpServletResponse) response).setHeader("Cache-Control", "no-store");
     chain.doFilter(request, response);
@@ -63,13 +65,17 @@ public final class SessionSearchBodyFilter implements Filter {
                 ? SessionTracePolicyV3.INPUT_BYTES
                 : ((jakarta.servlet.http.HttpServletRequest) request)
                         .getRequestURI()
-                        .equals("/api/session-search/tasks")
+                        .matches("/api/session-(search|trace)/tasks")
                     ? PriorSessionPolicyV4.ADMISSION_BYTES
                     : ((jakarta.servlet.http.HttpServletRequest) request)
                             .getRequestURI()
                             .endsWith("/session-search")
                         ? PriorSessionPolicyV4.INPUT_BYTES
-                        : SessionEventSearchPolicyV1.INPUT_BYTES);
+                        : ((jakarta.servlet.http.HttpServletRequest) request)
+                                .getRequestURI()
+                                .endsWith("/session-trace")
+                            ? 1024
+                            : SessionEventSearchPolicyV1.INPUT_BYTES);
     request.getAsyncContext().addListener(reader);
     reader.timeout(
         deadlines.schedule(

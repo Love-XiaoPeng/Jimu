@@ -199,7 +199,7 @@ final class MapperSessionScopeReadProofs implements SessionScopeReadProofs.Proof
   }
 
   public void validateOutput(String raw) {
-    records.v4.output(raw);
+    records.contract(task).output(raw);
   }
 
   public SessionScopeReadProofs.Output output(String raw) {
@@ -240,7 +240,7 @@ final class MapperSessionScopeReadProofs implements SessionScopeReadProofs.Proof
   }
 
   public void validateEvent(String raw) {
-    records.v4.event(raw);
+    records.contract(task).event(raw);
   }
 
   public SessionScopeReadProofs.Source source(String raw) {

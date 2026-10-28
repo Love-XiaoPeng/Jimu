@@ -43,6 +43,52 @@ public final class TaskAdmissionServiceImpl implements TaskAdmissionService {
   }
 
   @Override
+  public View submitLineage(
+      Identity identity,
+      String key,
+      io.github.lovexiaopeng.jimu.kernel.task.api.TaskLineageSubmission submission) {
+    String goal = submission.goal();
+    var ids = submission.historySessionIds();
+    String parent = submission.parentSessionId();
+    if (key == null
+        || !key.matches("[!-~]{1,128}")
+        || goal == null
+        || goal.isBlank()
+        || goal.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 8192
+        || !java.nio.charset.StandardCharsets.UTF_8.newEncoder().canEncode(goal)
+        || ids.size() > 8
+        || ids.stream().distinct().count() != ids.size()
+        || ids.stream()
+            .anyMatch(
+                id ->
+                    id == null
+                        || !id.matches(
+                            "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")))
+      throw new TaskFailure(
+          400, io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode.TOOL_INPUT_INVALID);
+    if (parent != null && !ids.contains(parent))
+      throw new TaskFailure(400, SessionErrorCode.SESSION_LINEAGE_SCOPE_INVALID);
+    var request =
+        new Request(
+            goal,
+            List.of(
+                ToolCapability.SESSION_EVENT_READ,
+                ToolCapability.SESSION_SEARCH,
+                ToolCapability.SESSION_TRACE),
+            List.of(),
+            new io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Budget(180, 8, 20, null));
+    return submit(
+        identity,
+        key,
+        request,
+        List.of(),
+        ids.stream().sorted().toList(),
+        java.util.UUID.randomUUID().toString(),
+        true,
+        parent);
+  }
+
+  @Override
   public View submit(
       Identity identity,
       String key,
@@ -50,8 +96,22 @@ public final class TaskAdmissionServiceImpl implements TaskAdmissionService {
       List<TaskImages.Input> input,
       List<String> historySources,
       String callerId) {
+    return submit(identity, key, original, input, historySources, callerId, false, null);
+  }
+
+  private View submit(
+      Identity identity,
+      String key,
+      Request original,
+      List<TaskImages.Input> input,
+      List<String> historySources,
+      String callerId,
+      boolean lineageTask,
+      String parent) {
     var descriptors = input.isEmpty() ? null : records.describe(input);
     boolean prior = historySources != null;
+    if (!lineageTask && original.capabilityIds().contains(ToolCapability.SESSION_TRACE))
+      throw new TaskFailure(400, TaskErrorCode.INVALID_CAPABILITIES);
     var request =
         new Request(
             original.goal(),
@@ -72,7 +132,13 @@ public final class TaskAdmissionServiceImpl implements TaskAdmissionService {
                 ? request
                     .capabilityIds()
                     .equals(
-                        List.of(ToolCapability.SESSION_EVENT_READ, ToolCapability.SESSION_SEARCH))
+                        lineageTask
+                            ? List.of(
+                                ToolCapability.SESSION_EVENT_READ,
+                                ToolCapability.SESSION_SEARCH,
+                                ToolCapability.SESSION_TRACE)
+                            : List.of(
+                                ToolCapability.SESSION_EVENT_READ, ToolCapability.SESSION_SEARCH))
                 : sessionTrace
                     ? request
                         .capabilityIds()
@@ -137,20 +203,30 @@ public final class TaskAdmissionServiceImpl implements TaskAdmissionService {
         () -> {
           var admission = records.lock(identity, key, historySources, callerId);
           var budget = admission.room();
+          var lineageSnapshot = new java.util.TreeMap<String, Object>();
+          if (lineageTask) {
+            lineageSnapshot.put("request", request);
+            lineageSnapshot.put("history_session_ids", historySources);
+            if (parent != null) lineageSnapshot.put("parent_session_id", parent);
+          }
           String
               snapshot =
-                  prior
-                      ? records.json(
-                          Map.of("request", request, "history_session_ids", historySources))
-                      : records.json(request),
+                  lineageTask
+                      ? records.json(lineageSnapshot)
+                      : prior
+                          ? records.json(
+                              Map.of("request", request, "history_session_ids", historySources))
+                          : records.json(request),
               digest = records.hash(snapshot);
           var old = admission.existing(ask);
           if (old != null) {
             if (!records.hash(old.snapshot()).equals(old.digest()))
               throw new TaskFailure(409, TaskErrorCode.SNAPSHOT_CORRUPT);
-            if (prior
-                ? !snapshot.equals(old.snapshot())
-                : !records.readRequest(old.snapshot()).equals(request))
+            if (lineageTask
+                ? !records.sameJson(snapshot, old.snapshot())
+                : prior
+                    ? !snapshot.equals(old.snapshot())
+                    : !records.readRequest(old.snapshot()).equals(request))
               throw new TaskFailure(409, CommonErrorCode.IDEMPOTENCY_CONFLICT);
             return admission.replay(mcpTask || ask);
           }
@@ -193,9 +269,18 @@ public final class TaskAdmissionServiceImpl implements TaskAdmissionService {
                   || !(admission.localModel(model))))
             throw new TaskFailure(403, QuestionErrorCode.QUESTION_NOT_AUTHORIZED);
           if (sessionRead) {
+            if (lineageTask
+                && (!admission.lineageEnabled()
+                    || !admission.sessionReadEnabled()
+                    || !admission.priorSearchEnabled()))
+              throw new TaskFailure(403, SessionErrorCode.SESSION_LINEAGE_DISABLED);
             if (!admission.sessionReadEnabled())
               throw new TaskFailure(403, SessionErrorCode.SESSION_READ_DISABLED);
-            if (prior) {
+            if (lineageTask) {
+              if (!admission.lineageEnabled() || !admission.priorSearchEnabled())
+                throw new TaskFailure(403, SessionErrorCode.SESSION_LINEAGE_DISABLED);
+              admission.requireSessionModel(model, "lineage");
+            } else if (prior) {
               if (!admission.priorSearchEnabled())
                 throw new TaskFailure(403, SessionErrorCode.SESSION_SEARCH_DISABLED);
               admission.requireSessionModel(model, "search");
@@ -213,7 +298,10 @@ public final class TaskAdmissionServiceImpl implements TaskAdmissionService {
                 || admission.hasScopeRequirement())
               throw new TaskFailure(403, SessionErrorCode.SESSION_READ_DISABLED);
             for (String name : request.capabilityIds()) {
-              var descriptor = admission.contract(name, prior, sessionTrace, sessionSearch);
+              var descriptor =
+                  lineageTask
+                      ? admission.lineageContract(name)
+                      : admission.contract(name, prior, sessionTrace, sessionSearch);
               var pin = pins.get(name);
               if (!pin.version().equals(descriptor.version())
                   || !pin.digest().equals(descriptor.digest()))
@@ -386,6 +474,7 @@ public final class TaskAdmissionServiceImpl implements TaskAdmissionService {
           admission.bindSnapshots(task, model, taskCost, toolSnapshot, scopeDigest);
           if (sessionRead) {
             admission.createSession(task, historySources);
+            if (lineageTask) admission.createLineage(task, parent);
             admission.reserve(
                 task,
                 ":session-history",

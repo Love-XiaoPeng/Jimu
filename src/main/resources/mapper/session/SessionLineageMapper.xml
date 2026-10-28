@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionLineageMapper">
+  <select id="fact" resultType="map">
+    SELECT t.tenant_id,t.id,t.created_at,t.request_snapshot,t.request_digest,t.capabilities,
+      s.authority_snapshot,s.authority_digest,s.authority_bytes,s.content_state AS scope_content,
+      h.binding_digest,h.history_version
+    FROM task t
+    JOIN task_session_scope s ON s.tenant_id=t.tenant_id AND s.caller_task_id=t.id
+    JOIN task_session_history h ON h.tenant_id=t.tenant_id AND h.task_id=t.id
+    WHERE t.tenant_id=#{tenant} AND t.id=#{id}
+  </select>
+  <update id="purge">
+    UPDATE task_session_lineage SET genesis_snapshot=NULL,graph_snapshot=NULL,content_state='PURGED'
+    WHERE tenant_id=#{tenant} AND task_id=#{id} AND content_state='PRESENT'
+  </update>
+</mapper>

@@ -5,6 +5,7 @@ import io.github.lovexiaopeng.jimu.kernel.session.api.SessionGrantState;
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Authority;
+import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.AuthorityTarget;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Caller;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Scope;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Validated;
@@ -49,7 +50,10 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
 
   public void lock(String tenant, String caller) {
     var found = records.callerCapabilities(tenant, caller);
-    if (found.size() != 1 || !"session_event_read,session_search".equals(found.getFirst())) return;
+    if (found.size() != 1
+        || !("session_event_read,session_search".equals(found.getFirst())
+            || io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+                .equals(found.getFirst()))) return;
     var ids = new ArrayList<String>();
     ids.add(caller);
     var targets = records.lockTargets(tenant, caller);
@@ -75,12 +79,12 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
         || s.authorityVersion() != 1
         || !c.owner().equals(s.owner())
         || !c.tools().equals(s.tools())
-        || !digest.hash(records.expectedBinding()).equals(s.binding())) throw corrupt();
+        || !digest.hash(records.expectedBinding(c)).equals(s.binding())) throw corrupt();
     if (!SessionGrantState.ACTIVE.equals(s.grant())
         || s.invalidated() != null
         || !SessionContentState.PRESENT.equals(s.content())
         || !s.retained()) throw unavailable();
-    records.validateAuthority(s.raw());
+    records.validateAuthority(c, s.raw());
     if (bytes(s.raw()) != s.bytes() || !digest.hash(s.raw()).equals(s.digest())) throw corrupt();
     var a = records.decodeAuthority(s.raw());
     if (!c.tenant().equals(a.tenant())
@@ -112,6 +116,7 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
     var targets = records.targets(c);
     if (targets.size() != scope.count() || targets.size() > 8) throw corrupt();
     var sources = new ArrayList<Caller>();
+    var checked = new java.util.HashMap<String, CheckedSource>();
     String previous = "";
     for (int index = 0; index < targets.size(); index++) {
       var target = targets.get(index);
@@ -129,26 +134,76 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
           || bytes(raw) != target.bytes()) throw corrupt();
       previous = source;
       try {
-        var st = source(c, source, false);
-        var sh = records.history(st);
+        var check = lineage(c) ? checkedSource(c, source, false) : null;
+        var st = check == null ? source(c, source, false) : check.caller();
+        var sh = check == null ? records.history(st) : check.history();
         if (!st.tools().equals(expected.pins())
             || !sh.binding().equals(expected.binding())
             || sh.nextSeq() - 1 != expected.upperSeq()
             || !utc(sh.retain()).equals(expected.retain())
             || !utc(st.created()).equals(expected.created())) throw unavailable();
         sources.add(st);
+        if (check != null) checked.put(source, check);
       } catch (TaskFailure failure) {
         if (failure.status() == 403 || failure.status() == 404 || failure.status() == 410)
           throw unavailable();
         throw failure;
       }
     }
+    if (lineage(c)) closed(c, sources, authority, checked);
     return new Validated(scope, authority, List.copyOf(sources));
   }
 
+  private static boolean lineage(Caller c) {
+    return io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+        .equals(c.capabilities());
+  }
+
+  /** 每来源只展开一层；全部依赖必须已在原显式集合，绝不自动查找缺失ID。 */
+  private void closed(
+      Caller caller,
+      List<Caller> sources,
+      Authority authority,
+      java.util.Map<String, CheckedSource> checked) {
+    var allowed = new java.util.HashMap<String, AuthorityTarget>();
+    for (var t : authority.targets()) allowed.put(t.id(), t);
+    int count = 0;
+    for (var source : sources) {
+      var a = checked.get(source.id()).authority();
+      var rows = records.targets(source);
+      if (rows.size() != a.targets().size()) throw corrupt();
+      String previous = "";
+      for (int i = 0; i < rows.size(); i++) {
+        if (++count > 64) throw corrupt();
+        var expected = a.targets().get(i);
+        var r = rows.get(i);
+        var known = allowed.get(expected.id());
+        if (known == null)
+          throw new TaskFailure(400, SessionErrorCode.SESSION_LINEAGE_SCOPE_INVALID);
+        if (!known.equals(expected)
+            || expected.id().compareTo(previous) <= 0
+            || r.version() != 1
+            || r.ordinal() != i
+            || !expected.id().equals(r.source())
+            || !expected.canonical().equals(r.raw())
+            || !digest.hash(r.raw()).equals(r.digest())
+            || bytes(r.raw()) != r.bytes()
+            || !SessionContentState.PRESENT.equals(r.content())) throw corrupt();
+        previous = expected.id();
+      }
+    }
+  }
+
   public Caller source(Caller c, String id, boolean admission) {
+    return checkedSource(c, id, admission).caller();
+  }
+
+  private record CheckedSource(
+      Caller caller, SessionScopeRecords.History history, Authority authority) {}
+
+  private CheckedSource checkedSource(Caller c, String id, boolean admission) {
     var st = records.source(c, id);
-    if (!"session_event_read,session_search".equals(st.capabilities())
+    if (!c.capabilities().equals(st.capabilities())
         || id.equals(c.id())
         || !c.owner().equals(st.owner())
         || !c.tools().equals(st.tools())
@@ -157,13 +212,11 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
     var h = records.history(st);
     var own = records.scope(st);
     var a = snapshot(st, own);
-    if (own.count() != 0
-        || !a.targets().isEmpty()
-        || records.hasTargets(st)
+    if ((!lineage(c) && (own.count() != 0 || !a.targets().isEmpty() || records.hasTargets(st)))
         || h.nextSeq() < 1
         || h.nextSeq() > SessionHistoryPolicyV1.PUBLIC_EVENTS
         || !h.retain().equals(own.retain())) throw unavailable();
     if (admission && !records.admissionRetention(st)) throw unavailable();
-    return st;
+    return new CheckedSource(st, h, a);
   }
 }

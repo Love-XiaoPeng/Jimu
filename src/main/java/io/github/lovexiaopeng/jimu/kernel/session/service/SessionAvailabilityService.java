@@ -4,6 +4,8 @@ import io.github.lovexiaopeng.jimu.kernel.session.port.SessionAvailability;
 
 /** 原会话发现资格、递归回退与拒绝边界。 */
 public interface SessionAvailabilityService {
+  boolean lineage(io.github.lovexiaopeng.jimu.kernel.session.port.SessionAvailability records);
+
   boolean trace(SessionAvailability records);
 
   boolean prior(SessionAvailability records);

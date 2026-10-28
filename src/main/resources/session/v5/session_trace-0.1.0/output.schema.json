@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session:v5:session-trace-output:0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "caller_session_id", "lineage_policy", "coverage", "complete_within_scope", "authority_sha256", "graph_sha256", "target", "root", "ancestors", "descendants"],
+  "properties": {
+    "version": {"const": 1},
+    "caller_session_id": {"$ref": "#/$defs/uuid"},
+    "lineage_policy": {"const": "owner-declared-continuation-v1"},
+    "coverage": {"const": "admission-scope"},
+    "complete_within_scope": {"const": true},
+    "authority_sha256": {"$ref": "#/$defs/hash"},
+    "graph_sha256": {"$ref": "#/$defs/hash"},
+    "target": {"$ref": "#/$defs/node"},
+    "root": {
+      "allOf": [
+        {"$ref": "#/$defs/node"},
+        {"properties": {"kind": {"const": "ROOT"}}}
+      ]
+    },
+    "ancestors": {"type": "array", "maxItems": 8, "items": {"$ref": "#/$defs/node"}},
+    "descendants": {
+      "type": "array", "maxItems": 8,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["node", "depth"],
+        "properties": {
+          "node": {"allOf": [{"$ref": "#/$defs/node"}, {"properties": {"kind": {"const": "CONTINUATION"}}}]},
+          "depth": {"type": "integer", "minimum": 1, "maximum": 8}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "uuid": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"},
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["session_id", "kind", "created_at", "genesis_sha256"],
+      "properties": {
+        "session_id": {"$ref": "#/$defs/uuid"},
+        "kind": {"enum": ["ROOT", "CONTINUATION"]},
+        "parent_session_id": {"$ref": "#/$defs/uuid"},
+        "created_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$"},
+        "genesis_sha256": {"$ref": "#/$defs/hash"}
+      },
+      "allOf": [{
+        "if": {"properties": {"kind": {"const": "CONTINUATION"}}},
+        "then": {"required": ["parent_session_id"]},
+        "else": {"not": {"required": ["parent_session_id"]}}
+      }]
+    }
+  },
+  "$comment": "Host enforces output<=8192 UTF8 bytes; at most 9 distinct authorized nodes in the frozen graph; target/root/ancestors/descendants agree with genesis proofs, nearest-first ancestors and deterministic DFS descendants. No partial or truncated success."
+}

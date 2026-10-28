@@ -14,6 +14,14 @@ public interface SessionAvailability {
 
   boolean priorEnabled();
 
+  default boolean lineageEnabled() {
+    return false;
+  }
+
+  default List<ToolDescriptor> lineageDescriptors() {
+    return List.of();
+  }
+
   ModelSnapshot selected();
 
   void requireTrace(ModelSnapshot model);

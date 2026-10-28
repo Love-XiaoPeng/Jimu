@@ -11,6 +11,8 @@ public final class SessionQueryContext {
   private long deadlineNanos;
   private final boolean metered;
   private long reads, bytes, operations;
+  private long readLimit = 4096, byteLimit = 16777216, operationLimit = 2097152;
+  private long scratchLimit = 16777216, scratchReserve = 1048576;
   private ResultMeter meter;
 
   public interface ResultMeter {
@@ -62,18 +64,34 @@ public final class SessionQueryContext {
     return new QueryResources(reads, bytes, operations);
   }
 
+  /** 只缩小已有累计包络，认证前后的计数和绝对截止均不重置。 */
+  public void restrictLineage() {
+    readLimit = Math.min(readLimit, SessionLineagePolicyV5.PROOF_READS);
+    byteLimit = Math.min(byteLimit, SessionLineagePolicyV5.PROOF_BYTES);
+    operationLimit = Math.min(operationLimit, SessionLineagePolicyV5.OPERATIONS);
+    scratchLimit = Math.min(scratchLimit, SessionLineagePolicyV5.PROOF_BYTES);
+    scratchReserve = Math.min(scratchReserve, 65536);
+    checkLimits();
+  }
+
+  private void checkLimits() {
+    remainingMillis();
+    if (reads > readLimit || bytes > byteLimit || operations > operationLimit)
+      throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+  }
+
   public void operation(long count) {
     if (!metered) return;
     long previous = operations;
     operations = Math.addExact(operations, count);
-    if (operations > 2097152) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (operations > operationLimit) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
     if (previous / 1024 != operations / 1024) remainingMillis();
   }
 
   /** Called once per actual result, including an empty one. Cached reads cannot call this. */
   public Result result() {
     remainingMillis();
-    if (metered && ++reads > 4096) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (metered && ++reads > readLimit) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
     return new Result();
   }
 
@@ -93,7 +111,7 @@ public final class SessionQueryContext {
         long size = 8L + utf8(label) + scalarBytes(value);
         bytes = Math.addExact(bytes, size);
         batch = Math.addExact(batch, size);
-        if (bytes > 16777216 || batch * 3 + 1048576 > 16777216)
+        if (bytes > byteLimit || batch * 3 + scratchReserve > scratchLimit)
           throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
       }
       if (additional != null) additional.column(label, value);

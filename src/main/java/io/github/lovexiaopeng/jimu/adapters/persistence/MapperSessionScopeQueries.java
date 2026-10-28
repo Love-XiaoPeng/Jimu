@@ -29,6 +29,7 @@ import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeQueries;
 import io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Call;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -112,13 +113,20 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
         nullable(r, "receipt_event_seq"),
         nullable(r, "native_read_seq"),
         s(r, "committed_attempt_id"),
-        nullable(r, "committed_fence"));
+        nullable(r, "committed_fence"),
+        s(r, "graph_digest"));
   }
 
   private final class Record implements Task {
     private final Lease lease;
     private final Map<String, Object> task;
     private Map<String, Object> step;
+    private Map<String, Object> storedBinding;
+    private boolean lineageSlot;
+    private String target;
+    private String replayOutput;
+    private String cutSnapshot;
+    private JdbcSessionScopes.Scope currentScope;
 
     Record(Lease lease, Map<String, Object> task) {
       this.lease = lease;
@@ -127,6 +135,10 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
 
     public boolean scopeTask() {
       return JdbcSessionScopes.task(task);
+    }
+
+    public boolean lineageTask() {
+      return JdbcSessionScopes.lineage(task);
     }
 
     public long toolsUsed() {
@@ -138,6 +150,7 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
     }
 
     public Invocation originalSlot(String stepId, Call call, String version, String digest) {
+      lineageSlot = ToolCapability.SESSION_TRACE.equals(call.tool());
       var i = ledger.originalDirectorySlot(lease, stepId, call, version, digest);
       return new Invocation(
           s(i, "id"),
@@ -160,7 +173,8 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
     }
 
     public String requireScope() {
-      return s(ledger.sessionScopes.require(task).row(), "authority_digest");
+      currentScope = ledger.sessionScopes.require(task);
+      return s(currentScope.row(), "authority_digest");
     }
 
     public Cut cut(String stepId) {
@@ -171,16 +185,80 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
                   .eq(ScopeQueryCutEntity::getTenantId, lease.tenant())
                   .eq(ScopeQueryCutEntity::getStepId, stepId)
                   .eq(ScopeQueryCutEntity::getCallerTaskId, lease.taskId()));
-      return new Cut(s(r, "authority_digest"), s(r, "context_digest"), s(r, "context_snapshot"));
+      cutSnapshot = s(r, "context_snapshot");
+      return new Cut(s(r, "authority_digest"), s(r, "context_digest"), cutSnapshot);
     }
 
     public Binding lockBinding(String invocation) {
-      return binding(
-          firstRecord(sql.lockBinding(ledger.queryContext(), lease.tenant(), invocation)));
+      storedBinding =
+          firstRecord(
+              lineageSlot
+                  ? ledger
+                      .mappers
+                      .session()
+                      .getMapper(
+                          io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper
+                              .SessionLineageTraceMapper.class)
+                      .lockBinding(ledger.queryContext(), lease.tenant(), invocation)
+                  : sql.lockBinding(ledger.queryContext(), lease.tenant(), invocation));
+      return binding(storedBinding);
     }
 
     public String normalized(Call call) {
+      if (lineageSlot) {
+        String requested = ledger.sessions.lineage.input(call.input());
+        target = requested == null ? lease.taskId() : requested;
+        var scope = currentScope;
+        if (!target.equals(lease.taskId())
+            && scope.sources().stream().noneMatch(t -> target.equals(s(t, "id"))))
+          throw JdbcSessionScopes.unavailable();
+        return Payloads.json(Map.of("version", 1, "target_session_id", target));
+      }
       return ledger.sessions.normalizedScope(task, step, call.tool(), call.input());
+    }
+
+    public String graphDigest() {
+      var graph = ledger.sessions.lineageRecords.load(lease.tenant(), lease.taskId());
+      var context = ledger.sessions.v5.json(cutSnapshot, 4096);
+      if (!java.util.Objects.equals(graph.graphDigest(), context.path("graph_sha256").asText())
+          || !java.util.Objects.equals(
+              graph.genesisDigest(), context.path("genesis_sha256").asText()))
+        throw JdbcSessionRecords.corrupt();
+      return graph.graphDigest();
+    }
+
+    public void validateLineageOutput(String output) {
+      ledger.sessions.lineage.output(output);
+      replayOutput = output;
+    }
+
+    public void verifyLineageCommit() {
+      var observed = ledger.lineages.observe(lease.tenant(), lease.taskId(), target);
+      if (!observed.scanDigest().equals(s(storedBinding, "scan_digest"))
+          || observed.nodes() != n(storedBinding, "node_count")
+          || observed.edges() != n(storedBinding, "edge_count")
+          || n(storedBinding, "proof_reads") < 1
+          || n(storedBinding, "proof_reads") > 256
+          || n(storedBinding, "proof_bytes") < 1
+          || n(storedBinding, "proof_bytes") > 1048576
+          || !ledger
+              .sessions
+              .v5
+              .json(observed.output(), 8192)
+              .equals(ledger.sessions.v5.json(replayOutput, 8192)))
+        throw JdbcSessionRecords.corrupt();
+    }
+
+    public Result trace() {
+      var result = ledger.lineages.observe(lease.tenant(), lease.taskId(), target);
+      var resources = ledger.queryContext().resources();
+      return new Result(
+          result.output(),
+          null,
+          result.scanDigest(),
+          result.nodes(),
+          0,
+          new LineageProof(result.nodes(), result.edges(), resources.reads(), resources.bytes()));
     }
 
     public Receipt receipt(long seq) {
@@ -217,11 +295,11 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
     }
 
     public void validateReadOutput(String output) {
-      ledger.sessions.v4.output(output);
+      ledger.sessions.contract(task).output(output);
     }
 
     public void validateSearchOutput(String output) {
-      ledger.sessionScopes.contracts.output(output);
+      ledger.sessionScopes.contracts(task).output(output);
     }
 
     public void verifyNative(long seq) {
@@ -251,7 +329,7 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
       var r =
           ledger.sessions.priorSearch(
               task,
-              ledger.sessionScopes.contracts.input(raw),
+              ledger.sessionScopes.contracts(task).input(raw),
               () -> ledger.queryContext().remainingMillis());
       return new Result(r.output(), null, r.scanDigest(), r.rows(), r.eventBytes());
     }
@@ -261,7 +339,7 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
     }
 
     public void validateRefs(String refs) {
-      ledger.sessionScopes.contracts.refs(refs);
+      ledger.sessionScopes.contracts(task).refs(refs);
     }
 
     public int refCount(String refs) {
@@ -301,6 +379,12 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
       ledger.event(task, fact, type, code);
     }
 
+    public void eventBeforeFinalAccount(String fact, String type, String code) {
+      // No result can commit until the service's final account() succeeds in this same UoW.
+      new io.github.lovexiaopeng.jimu.kernel.event.service.impl.EventRecordingServiceImpl()
+          .record(new MapperEventRecords(ledger, task, closing -> {}), fact, type, code);
+    }
+
     public long receiptSequence(String invocation) {
       return n(
           ledger
@@ -317,13 +401,29 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
     }
 
     public void commitQuery(String invocation, Commit commit) {
-      sql.commitQuery(
-          ledger.queryContext(),
-          commit,
-          lease.attemptId(),
-          lease.fence(),
-          lease.tenant(),
-          invocation);
+      int changed =
+          lineageSlot
+              ? ledger
+                  .mappers
+                  .session()
+                  .getMapper(
+                      io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper
+                          .SessionLineageTraceMapper.class)
+                  .commit(
+                      ledger.queryContext(),
+                      lease.tenant(),
+                      invocation,
+                      commit,
+                      lease.attemptId(),
+                      lease.fence())
+              : sql.commitQuery(
+                  ledger.queryContext(),
+                  commit,
+                  lease.attemptId(),
+                  lease.fence(),
+                  lease.tenant(),
+                  invocation);
+      if (changed != 1) throw JdbcSessionRecords.corrupt();
     }
 
     public void appendRead(String stepId, Invocation invocation) {

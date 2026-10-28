@@ -71,6 +71,7 @@ class SessionScopeCreationServiceTest {
             new Class<?>[] {SessionScopeCreationRecords.class},
             (p, m, a) -> {
               String name = m.getName();
+              if (name.equals("version")) return 4;
               calls.add(name);
               if (name.equals(fail)) throw failure;
               return switch (name) {

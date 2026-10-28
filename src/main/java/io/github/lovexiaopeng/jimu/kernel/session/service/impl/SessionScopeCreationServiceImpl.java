@@ -39,7 +39,7 @@ public final class SessionScopeCreationServiceImpl implements SessionScopeCreati
         if (expiry.isBefore(retain)) retain = expiry;
         var target = new LinkedHashMap<String, Object>();
         target.put("session_id", source);
-        target.put("history_version", 4);
+        target.put("history_version", records.version(caller));
         target.put("binding_sha256", h.binding());
         target.put("pins_sha256", st.tools());
         target.put("upper_seq", h.nextSeq() - 1);
@@ -57,19 +57,23 @@ public final class SessionScopeCreationServiceImpl implements SessionScopeCreati
     authority.put("caller_session_id", id);
     authority.put("tenant_id", tenant);
     authority.put("owner_actor_id", caller.owner());
-    authority.put("caller_binding_sha256", records.hash(records.binding()));
+    authority.put("caller_binding_sha256", records.hash(records.binding(caller)));
     authority.put("caller_tools_sha256", caller.tools());
-    authority.put("authority_policy", "explicit-terminal-independent-v4");
+    authority.put(
+        "authority_policy",
+        records.version(caller) == 5
+            ? "explicit-terminal-closed-v5"
+            : "explicit-terminal-independent-v4");
     authority.put("created_at", UTC.format(created));
     authority.put("retain_until", UTC.format(retain));
     authority.put("targets", targets);
     String raw = records.json(authority);
-    records.validateAuthority(raw);
+    records.validateAuthority(caller, raw);
     records.insertAuthority(
         tenant,
         id,
         caller.owner(),
-        records.hash(records.binding()),
+        records.hash(records.binding(caller)),
         caller.tools(),
         raw,
         records.hash(raw),

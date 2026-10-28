@@ -120,6 +120,16 @@ class SessionQueryTransactionTest {
   }
 
   @Test
+  void wrappedMeterRefusalAfterConfirmedRollbackKeepsOriginalCode() {
+    var fixture = new Fixture();
+    var refusal = new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    var wrapped = new DataAccessResourceFailureException("mapper wrapper", refusal);
+    assertSame(refusal, assertThrows(TaskFailure.class, () -> fixture.fail(wrapped)));
+    assertEquals(1, fixture.rollbacks);
+    assertEquals(0, fixture.commits);
+  }
+
+  @Test
   void successfulWorkCommitsOnceAndReturnsOriginalResult() {
     var fixture = new Fixture();
     Object result = new Object();

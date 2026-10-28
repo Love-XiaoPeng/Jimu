@@ -10,6 +10,31 @@ import org.apache.ibatis.annotations.Param;
 /** 清理锁、CAS及账目；列按冻结V22显式声明。 */
 @Mapper
 public interface SessionHistoryRetentionMapper {
+  List<Map<String, Object>> lineageContents(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  List<Map<String, Object>> lineageTraceContents(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  List<Map<String, Object>> metadataTaskSessionLineage(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  List<Map<String, Object>> metadataInvocationSessionLineageTrace(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  int purgeLineageTrace(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
   List<Map<String, Object>> candidates(@Param("query") SessionQueryContext query);
 
   List<Map<String, Object>> activeInvocations(

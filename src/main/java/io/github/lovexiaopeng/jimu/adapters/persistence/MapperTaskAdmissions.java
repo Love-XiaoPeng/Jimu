@@ -50,6 +50,10 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     return Payloads.hash(value);
   }
 
+  public boolean sameJson(String left, String right) {
+    return ledger.sessions.v5.json(left, 16384).equals(ledger.sessions.v5.json(right, 16384));
+  }
+
   public Request readRequest(String value) {
     return Payloads.read(value, Request.class);
   }
@@ -242,6 +246,21 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
       return ledger.priorSessionSearchEnabled;
     }
 
+    public boolean lineageEnabled() {
+      return ledger.sessionLineageEnabled;
+    }
+
+    public PluginPin lineageContract(String name) {
+      var descriptor =
+          switch (name) {
+            case ToolCapability.SESSION_EVENT_READ -> ledger.sessions.v5.descriptor();
+            case ToolCapability.SESSION_SEARCH -> ledger.sessionScopes.v5.descriptor();
+            case ToolCapability.SESSION_TRACE -> ledger.sessions.lineage.descriptor();
+            default -> throw new IllegalArgumentException(name);
+          };
+      return new PluginPin(descriptor.version(), descriptor.outputSha256(), 0);
+    }
+
     public boolean sessionTraceEnabled() {
       return ledger.sessionTraceEnabled;
     }
@@ -263,6 +282,7 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
         case ToolCapability.READ -> ledger.models.requireSessionRead(model);
         case "search" -> ledger.models.requireSessionSearch(model);
         case "trace" -> ledger.models.requireSessionTrace(model);
+        case "lineage" -> ledger.models.requireSessionLineage(model);
         default -> throw new IllegalArgumentException(kind);
       }
     }
@@ -367,7 +387,12 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
       var accepted = ledger.locked(identity.tenant(), task);
       ledger.sessions.create(accepted);
       if (historySources != null) ledger.sessionScopes.create(accepted, historySources);
+      if (JdbcSessionScopes.lineage(accepted)) ledger.sessionScopes.require(accepted);
       sql.holdHistory(ledger.queryContext(), identity.tenant());
+    }
+
+    public void createLineage(String task, String parent) {
+      ledger.lineages.create(identity.tenant(), task, parent);
     }
 
     public void createDirectory(String task) {

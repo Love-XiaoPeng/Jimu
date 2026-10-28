@@ -23,7 +23,11 @@ public final class SessionMetadataAccountingServiceImpl
         cleanupHeadroom +=
             switch (table) {
               case TASK -> SessionHistoryPolicyV1.TASK_CLEANUP_BYTES;
-              case STEP, INVOCATION, INVOCATION_SESSION_SEARCH ->
+              case STEP,
+                      INVOCATION,
+                      INVOCATION_SESSION_SEARCH,
+                      INVOCATION_SESSION_LINEAGE_TRACE,
+                      TASK_SESSION_LINEAGE ->
                   SessionHistoryPolicyV1.STEP_CLEANUP_BYTES;
               case MODEL_DISPATCH, SESSION_PUBLIC_EVENT ->
                   SessionHistoryPolicyV1.DISPATCH_CLEANUP_BYTES;
