@@ -78,6 +78,8 @@ def verify(e, focused=False):
         e.core(a03_only=True)
         end = admission(e)
     except BaseException as error:
+        if isinstance(error, (KeyboardInterrupt, SystemExit)):
+            raise
         first = error
         (e.evidence / 'first-functional-failure.txt').write_text(traceback.format_exc())
     e.stop(e.worker)
@@ -90,6 +92,8 @@ def verify(e, focused=False):
         try:
             scenario(e, name, arguments)
         except BaseException as error:
+            if isinstance(error, (KeyboardInterrupt, SystemExit)):
+                raise
             (e.evidence / (name + '-failure.txt')).write_text(traceback.format_exc())
             if first is None:
                 first = error
