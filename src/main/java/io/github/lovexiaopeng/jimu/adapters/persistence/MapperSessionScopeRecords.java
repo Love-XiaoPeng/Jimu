@@ -240,7 +240,10 @@ final class MapperSessionScopeRecords implements SessionScopeRecords {
   }
 
   public Authority decodeAuthority(String raw) {
-    var a = ledger.sessions.contracts.json(raw, 4096);
+    return decoded(ledger.sessions.contracts.json(raw, 4096));
+  }
+
+  private Authority decoded(com.fasterxml.jackson.databind.JsonNode a) {
     var targets = new ArrayList<AuthorityTarget>();
     for (var t : a.path("targets"))
       targets.add(
@@ -261,6 +264,35 @@ final class MapperSessionScopeRecords implements SessionScopeRecords {
         a.path("created_at").asText(),
         a.path("retain_until").asText(),
         List.copyOf(targets));
+  }
+
+  public SourceFact stagedSource(Caller caller, String id) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            ledger.queryContext());
+    return owner == null ? null : owner.stagedSource(caller, id);
+  }
+
+  public void stageSource(Caller caller, SourceFact fact) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            ledger.queryContext());
+    if (owner != null) owner.stageSource(caller, fact);
+  }
+
+  public Authority authority(Caller caller, String raw) {
+    var query = ledger.queryContext();
+    if (query != null) query.operation(raw.length());
+    var value = ledger.sessionScopes.contracts(row(caller)).authorityValue(raw);
+    if (query != null) query.operation(value.size() + value.path("targets").size());
+    return decoded(value);
+  }
+
+  public void validatedAuthority(Caller caller, Scope scope, Authority authority) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            ledger.queryContext());
+    if (owner != null) owner.validatedAuthority(caller, scope, authority);
   }
 
   public void invalidateAfterTransaction(Caller c) {

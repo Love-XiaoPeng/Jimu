@@ -214,16 +214,30 @@ public final class JdbcLedger
     if (query == null)
       return queryView(end, new QueryResources(0, 0, 0))
           .submitSessionLineage(identity, key, body, end);
-    var input = sessions.lineage.admission(body.read(end));
-    query.remainingMillis();
-    return sessionSearchOwnerRead(
-        () ->
-            taskAdmissionService.submitLineage(
+    query.restrictDeadline(end);
+    query.restrictLineage();
+    var inputScratch = new Object();
+    query.retainScratch(inputScratch, 4L * 16384);
+    try {
+      var raw = body.read(query.deadlineNanos());
+      query.operation(raw.length);
+      var input = sessions.lineage.admission(raw);
+      query.remainingMillis();
+      return sessionSearchOwnerRead(
+          () -> {
+            io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+                    query)
+                .admission();
+            return taskAdmissionService.submitLineage(
                 identity,
                 key,
                 new io.github.lovexiaopeng.jimu.kernel.task.api.TaskLineageSubmission(
-                    input.goal(), input.historySessionIds(), input.parentSessionId())),
-        end);
+                    input.goal(), input.historySessionIds(), input.parentSessionId()));
+          },
+          end);
+    } finally {
+      query.releaseScratch(inputScratch);
+    }
   }
 
   private Map<String, Object> lineageOwner(Identity identity, String caller) {

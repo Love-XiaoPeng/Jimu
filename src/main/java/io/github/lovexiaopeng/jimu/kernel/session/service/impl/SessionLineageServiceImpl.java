@@ -49,13 +49,29 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
   }
 
   public void create(String tenant, String caller, String parent) {
+    try {
+      records.withProof(
+          () -> {
+            createGraph(tenant, caller, parent);
+            return null;
+          });
+    } finally {
+      records.scratch(0);
+    }
+  }
+
+  private void createGraph(String tenant, String caller, String parent) {
     var fact = records.fact(tenant, caller);
+    var facts = new HashMap<String, Fact>();
+    facts.put(caller, fact);
+    var inputs = new HashMap<String, Stored>();
     if (!Objects.equals(parent, fact.declaredParent())
         || (parent != null && !fact.sources().contains(parent))) throw invalidScope();
     var nodes = new HashMap<String, Node>();
     for (var id : fact.sources()) {
       var stored = records.load(tenant, id);
-      raw(stored);
+      facts.put(id, records.fact(tenant, id));
+      inputs.put(id, stored);
       nodes.put(id, new Node(id, stored.genesis(), stored.genesisDigest()));
     }
     var genesis =
@@ -92,7 +108,8 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
             1);
     records.insert(tenant, caller, stored);
     records.body(tenant, caller, records.bytes(raw) + records.bytes(graph));
-    verify(tenant, caller);
+    inputs.put(caller, records.load(tenant, caller));
+    records.created(tenant, caller, validate(tenant, caller, facts, inputs));
   }
 
   private void raw(Stored s) {
@@ -120,21 +137,26 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
   }
 
   private VerifiedGraph loadUncached(String tenant, String caller) {
-    var fact = records.fact(tenant, caller);
+    var facts = new HashMap<String, Fact>();
+    facts.put(caller, records.fact(tenant, caller));
+    return validate(tenant, caller, facts, new HashMap<>());
+  }
+
+  private VerifiedGraph validate(
+      String tenant, String caller, HashMap<String, Fact> facts, HashMap<String, Stored> stored) {
+    var fact = facts.get(caller);
     long scratch = 3L * records.bytes(fact.request());
     records.scratch(scratch);
     if (fact.sources().size() > 8 || fact.sources().contains(caller)) throw corrupt();
     var ids = new ArrayList<>(fact.sources());
     ids.add(caller);
     if (ids.stream().distinct().count() != ids.size()) throw corrupt();
-    var facts = new HashMap<String, Fact>();
-    var stored = new HashMap<String, Stored>();
     var nodes = new HashMap<String, Node>();
     var genesis = new HashMap<String, Genesis>();
     for (var id : ids) {
-      var f = id.equals(caller) ? fact : records.fact(tenant, id);
+      var f = facts.computeIfAbsent(id, key -> records.fact(tenant, key));
       if (!ids.containsAll(f.sources())) throw invalidScope();
-      var s = records.load(tenant, id);
+      var s = stored.computeIfAbsent(id, key -> records.load(tenant, key));
       raw(s);
       scratch =
           Math.addExact(
@@ -148,7 +170,7 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
       if (g.version() != 1
           || !id.equals(g.sessionId())
           || !id.equals(f.id())
-          || !records.hash(f.request()).equals(f.requestDigest())
+          || !records.requestVerified(f) && !records.hash(f.request()).equals(f.requestDigest())
           || !g.requestSha256().equals(f.requestDigest())
           || !g.authoritySha256().equals(f.authorityDigest())
           || !g.bindingSha256().equals(f.bindingDigest())

@@ -73,13 +73,13 @@ class ModelDispatchServiceTest {
   }
 
   @Test
-  void scopeRejectionAfterResponseAlsoCommitsUsageBeforeThrowing() {
+  void scopeRejectionCommitsUsageWithoutResponseBody() {
     var f = new Fixture();
     f.rejectAt = "requireScope";
     assertEquals("TOOL_INPUT_INVALID", assertThrows(TaskFailure.class, f::respond).code());
     assertEquals(1, f.jdbc.commits);
     assertEquals(0, f.jdbc.rollbacks);
-    assertTrue(f.events.contains("storeResponse"));
+    assertFalse(f.events.contains("storeResponse"));
     assertTrue(f.events.contains("rejected"));
     assertEquals(0, f.calls);
   }
@@ -100,9 +100,22 @@ class ModelDispatchServiceTest {
     var f = new Fixture();
     f.jdbc.commit = new java.sql.SQLException("commit ACK lost", "08006");
     var failure = assertThrows(TransactionSystemException.class, f::respond);
-    assertSame(f.jdbc.commit, failure.getCause());
+    assertSame(f.jdbc.commit, failure.getCause().getCause());
     assertEquals(1, f.jdbc.commits);
     assertEquals(0, f.jdbc.rollbacks);
+    assertFalse(f.events.contains("outcome"));
+  }
+
+  @Test
+  void corruptProofRollsBackUsageAndCannotBecomeOrdinaryRejection() {
+    var f = new Fixture();
+    f.rejectAt = "requireScope";
+    f.integrityFailure = true;
+    assertEquals("SESSION_HISTORY_CORRUPT", assertThrows(TaskFailure.class, f::respond).code());
+    assertEquals(0, f.jdbc.commits);
+    assertEquals(1, f.jdbc.rollbacks);
+    assertFalse(f.events.contains("storeResponse"));
+    assertFalse(f.events.contains("rejected"));
     assertFalse(f.events.contains("outcome"));
   }
 
@@ -110,7 +123,7 @@ class ModelDispatchServiceTest {
     final SessionQueryTransactionTest.Fixture jdbc = new SessionQueryTransactionTest.Fixture();
     final List<String> events = new ArrayList<>();
     String rejectAt, code;
-    boolean timeoutBinding;
+    boolean timeoutBinding, integrityFailure;
     int calls;
     final ModelCostRecords costs =
         proxy(
@@ -163,10 +176,14 @@ class ModelDispatchServiceTest {
             (object, method, args) -> {
               assertTrue(TransactionSynchronizationManager.isActualTransactionActive());
               String name = method.getName();
-              if (name.equals(rejectAt)) throw new TaskFailure(400, "TOOL_INPUT_INVALID");
+              if (name.equals(rejectAt))
+                throw new TaskFailure(
+                    400, integrityFailure ? "SESSION_HISTORY_CORRUPT" : "TOOL_INPUT_INVALID");
               return switch (name) {
                 case "originalDispatch", "constrained" -> true;
                 case "question" -> false;
+                case "ordinaryRejection" -> !integrityFailure;
+                case "settlementOnly" -> null;
                 case "costs" -> costs;
                 case "reservedTokens", "rejectedPayloadUpper" -> 1000L;
                 case "invocationCount" -> 0;

@@ -164,6 +164,8 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
 
     public View replay(boolean recheckAccess) {
       if (recheckAccess) ledger.access(retry);
+      if (JdbcSessionScopes.lineage(retry))
+        new MapperCommitFence(ledger, null).admission(retry, false);
       return ledger.view(retry);
     }
 
@@ -364,6 +366,10 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
           request.budget().deadlineSeconds(),
           request.budget().maxModelRequests(),
           request.budget().maxToolInvocations());
+      var owner =
+          io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+              ledger.queryContext());
+      if (owner != null) owner.locked(identity.tenant(), task);
       return task;
     }
 
@@ -387,12 +393,12 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
       var accepted = ledger.locked(identity.tenant(), task);
       ledger.sessions.create(accepted);
       if (historySources != null) ledger.sessionScopes.create(accepted, historySources);
-      if (JdbcSessionScopes.lineage(accepted)) ledger.sessionScopes.require(accepted);
       sql.holdHistory(ledger.queryContext(), identity.tenant());
     }
 
     public void createLineage(String task, String parent) {
       ledger.lineages.create(identity.tenant(), task, parent);
+      ledger.sessionScopes.require(ledger.locked(identity.tenant(), task));
     }
 
     public void createDirectory(String task) {
@@ -524,7 +530,10 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     public View accepted(String task) {
       var row = ledger.locked(identity.tenant(), task);
       ledger.event(row, "accepted", "task.accepted", null);
-      return ledger.view(ledger.locked(identity.tenant(), task));
+      var finalRow = ledger.locked(identity.tenant(), task);
+      if (JdbcSessionScopes.lineage(finalRow))
+        new MapperCommitFence(ledger, null).admission(finalRow, true);
+      return ledger.view(finalRow);
     }
   }
 }

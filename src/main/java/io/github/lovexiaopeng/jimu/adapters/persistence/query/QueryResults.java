@@ -38,8 +38,8 @@ public final class QueryResults {
                         scalar = time.toLocalDateTime();
                       result.column(metadata.getColumnLabel(column), scalar);
                     }
-                  }
-                }
+                  } else result.close();
+                } else if (method.getName().equals("close")) result.close();
                 return value;
               } catch (InvocationTargetException failure) {
                 throw failure.getCause();

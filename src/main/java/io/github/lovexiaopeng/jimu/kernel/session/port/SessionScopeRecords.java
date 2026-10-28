@@ -80,6 +80,27 @@ public interface SessionScopeRecords {
     }
   }
 
+  /** 已持锁且完成逐项资格验证的受理暂存事实，不是可发布证明。 */
+  record SourceFact(
+      Caller caller, History history, Scope scope, Authority authority, List<Target> targets) {
+    public SourceFact {
+      targets = List.copyOf(targets);
+    }
+  }
+
+  default SourceFact stagedSource(Caller caller, String id) {
+    return null;
+  }
+
+  default void stageSource(Caller caller, SourceFact fact) {}
+
+  default Authority authority(Caller caller, String raw) {
+    validateAuthority(caller, raw);
+    return decodeAuthority(raw);
+  }
+
+  default void validatedAuthority(Caller caller, Scope scope, Authority authority) {}
+
   record Live(
       Caller caller,
       String scopeDigest,

@@ -29,6 +29,79 @@ public final class SessionQueryWork {
     if (response != null) responseKey = response;
   }
 
+  private boolean admission;
+  private SessionScopeRecords.Caller stagingCaller;
+  private final Map<String, SessionScopeRecords.SourceFact> stagedSources = new LinkedHashMap<>();
+  private VerifiedGraph stagedGraph;
+  private String stagedGraphKey;
+  private final Object stagingScratch = new Object();
+
+  public void admission() {
+    active();
+    admission = true;
+  }
+
+  public SessionScopeRecords.SourceFact stagedSource(SessionScopeRecords.Caller caller, String id) {
+    active();
+    return admission && caller.equals(stagingCaller) ? stagedSources.get(id) : null;
+  }
+
+  public void stageSource(SessionScopeRecords.Caller caller, SessionScopeRecords.SourceFact fact) {
+    active();
+    if (!admission) return;
+    if (stagingCaller != null && !stagingCaller.equals(caller))
+      throw new IllegalStateException("Different admission caller");
+    stagingCaller = caller;
+    long bytes = 0;
+    for (var f : stagedSources.values()) bytes = Math.addExact(bytes, sourceBytes(f));
+    if (!stagedSources.containsKey(fact.caller().id()))
+      bytes = Math.addExact(bytes, sourceBytes(fact));
+    context.retainScratch(stagingScratch, bytes);
+    stagedSources.put(fact.caller().id(), fact);
+  }
+
+  private static long sourceBytes(SessionScopeRecords.SourceFact fact) {
+    long bytes = fact.scope().bytes();
+    for (var t : fact.targets()) bytes = Math.addExact(bytes, t.bytes());
+    return Math.addExact(Math.multiplyExact(3L, bytes), 2048);
+  }
+
+  public void stageGraph(String tenant, String id, VerifiedGraph proof) {
+    active();
+    stagedGraphKey = tenant + ":" + id;
+    holdGraph(proof);
+    stagedGraph = proof;
+  }
+
+  public VerifiedGraph stagedGraph(String tenant, String id) {
+    active();
+    return (tenant + ":" + id).equals(stagedGraphKey) ? stagedGraph : null;
+  }
+
+  private record CheckedAuthority(
+      String raw, String digest, SessionScopeRecords.Authority authority) {}
+
+  private final Map<String, CheckedAuthority> authorities = new LinkedHashMap<>();
+
+  public void validatedAuthority(
+      SessionScopeRecords.Caller caller,
+      SessionScopeRecords.Scope scope,
+      SessionScopeRecords.Authority authority) {
+    active();
+    authorities.put(
+        caller.tenant() + ":" + caller.id(),
+        new CheckedAuthority(scope.raw(), scope.digest(), authority));
+  }
+
+  public SessionScopeRecords.Authority validatedAuthority(
+      String tenant, String id, String raw, String digest) {
+    active();
+    var found = authorities.get(tenant + ":" + id);
+    return found != null && found.raw().equals(raw) && found.digest().equals(digest)
+        ? found.authority()
+        : null;
+  }
+
   private RuntimeException proofFailure;
   private com.fasterxml.jackson.databind.JsonNode authority;
 
@@ -91,6 +164,34 @@ public final class SessionQueryWork {
     generation = Math.incrementExact(generation);
   }
 
+  public void dependencyMutation() {
+    mutation();
+    if (scope != null) {
+      var failure = new IllegalStateException("Session proof dependency changed after publication");
+      proofFailure = failure;
+      throw failure;
+    }
+    stagedGraph = null;
+    stagedGraphKey = null;
+  }
+
+  private boolean protectedWrite;
+
+  public void protectedWrite() {
+    active();
+    protectedWrite = true;
+  }
+
+  public void settlement() {
+    active();
+    if (proofFailure != null) throw proofFailure;
+    if (protectedWrite)
+      throw new IllegalStateException("Cannot settle a partially written response");
+    // 仅供写响应/新槽之前的白名单拒绝；不可挪用于finalizer或正文写后失败。
+    live = null;
+    expiry = null;
+  }
+
   public void account(String key, boolean closing, java.util.function.Consumer<Boolean> action) {
     mutation();
     var prior = accounts.get(key);
@@ -133,7 +234,11 @@ public final class SessionQueryWork {
   public void graph(String tenant, String id, VerifiedGraph proof) {
     active();
     if (caller == null || !caller.tenant().equals(tenant) || !caller.id().equals(id)) return;
+    holdGraph(proof);
     graph = proof;
+  }
+
+  private void holdGraph(VerifiedGraph proof) {
     long bytes = 1024;
     for (var node : proof.nodes().values())
       bytes = Math.addExact(bytes, node.genesisSnapshot().length() * 3L + 2048);
@@ -189,6 +294,11 @@ public final class SessionQueryWork {
     live = null;
     fence = null;
     expiry = null;
+    authorities.clear();
+    stagedSources.clear();
+    stagedGraph = null;
+    stagingCaller = null;
+    context.releaseScratch(stagingScratch);
     completed = true;
     context.releaseScratch(scopeScratch);
     context.releaseScratch(graphScratch);

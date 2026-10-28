@@ -40,6 +40,18 @@ public interface SessionLineageRecords {
 
   default void scratch(long bytes) {}
 
+  default boolean requestVerified(Fact fact) {
+    return false;
+  }
+
+  default void created(
+      String tenant,
+      String caller,
+      io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
+          proof) {
+    verified(tenant, caller, proof);
+  }
+
   Fact fact(String tenant, String id);
 
   Stored load(String tenant, String id);

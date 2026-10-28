@@ -77,22 +77,59 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
     if (request == null
         || authority == null
         || !hash(request).equals(s(row, "request_digest"))
-        || !hash(authority).equals(s(row, "authority_digest"))
         || bytes(authority) != n(row, "authority_bytes")) throw JdbcSessionRecords.corrupt();
-    checkpoint(request.length() + authority.length());
+    checkpoint(request.length());
     var json = ledger.sessions.v5.json(request, 16384);
-    var scope = ledger.sessions.v5.json(authority, 4096);
-    ledger.sessionScopes.v5.authority(authority);
-    var sources = new ArrayList<String>();
-    for (var item : scope.path("targets")) sources.add(item.path("session_id").textValue());
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            ledger.queryContext());
+    var scope =
+        owner == null
+            ? null
+            : owner.validatedAuthority(tenant, id, authority, s(row, "authority_digest"));
+    if (scope == null) {
+      if (!hash(authority).equals(s(row, "authority_digest"))) throw JdbcSessionRecords.corrupt();
+      checkpoint(authority.length());
+      var value = ledger.sessionScopes.v5.authorityValue(authority);
+      var targets =
+          new ArrayList<
+              io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords
+                  .AuthorityTarget>();
+      for (var item : value.path("targets"))
+        targets.add(
+            new io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.AuthorityTarget(
+                item.path("session_id").asText(),
+                item.path("pins_sha256").asText(),
+                item.path("binding_sha256").asText(),
+                item.path("upper_seq").asLong(),
+                item.path("created_at").asText(),
+                item.path("retain_until").asText(),
+                Payloads.json(item)));
+      scope =
+          new io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Authority(
+              value.path("tenant_id").asText(),
+              value.path("caller_session_id").asText(),
+              value.path("owner_actor_id").asText(),
+              value.path("caller_tools_sha256").asText(),
+              value.path("caller_binding_sha256").asText(),
+              value.path("created_at").asText(),
+              value.path("retain_until").asText(),
+              targets);
+    }
+    var sources =
+        scope.targets().stream()
+            .map(
+                io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.AuthorityTarget
+                    ::id)
+            .toList();
     var declared = new ArrayList<String>();
     for (var item : json.path("history_session_ids")) declared.add(item.textValue());
     var caps = new ArrayList<String>();
     for (var item : json.path("request").path("capabilityIds")) caps.add(item.textValue());
     if (!declared.equals(sources)
         || !String.join(",", caps).equals(SessionLineagePolicyV5.CAPABILITIES)
-        || !scope.path("caller_session_id").asText().equals(id)
-        || !scope.path("tenant_id").asText().equals(tenant)) throw JdbcSessionRecords.corrupt();
+        || !scope.caller().equals(id)
+        || !scope.tenant().equals(tenant)) throw JdbcSessionRecords.corrupt();
     return new Fact(
         tenant,
         id,
@@ -103,6 +140,21 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
         s(row, "binding_digest"),
         sources,
         json.has("parent_session_id") ? json.path("parent_session_id").textValue() : null);
+  }
+
+  public boolean requestVerified(Fact fact) {
+    return true;
+  }
+
+  public void created(
+      String tenant,
+      String caller,
+      io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
+          proof) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            ledger.queryContext());
+    if (owner != null) owner.stageGraph(tenant, caller, proof);
   }
 
   public SessionLineage.Stored load(String tenant, String id) {
@@ -159,6 +211,7 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
   }
 
   public String hash(String raw) {
+    checkpoint(raw.length());
     return Payloads.hash(raw);
   }
 

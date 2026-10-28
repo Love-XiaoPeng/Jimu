@@ -45,8 +45,10 @@ public final class SessionQueryContext {
   }
 
   public void retainScratch(Object owner, long bytes) {
+    if (bytes < 0) throw new IllegalArgumentException("Negative session scratch");
+    long prior = retainedScratch.getOrDefault(owner, 0L);
+    scratch(Math.subtractExact(bytes, prior));
     retainedScratch.put(owner, bytes);
-    scratch(0);
   }
 
   public void releaseScratch(Object owner) {
@@ -155,11 +157,15 @@ public final class SessionQueryContext {
     return new Result();
   }
 
-  public final class Result {
+  public final class Result implements AutoCloseable {
     private long batch;
     private final ColumnMeter additional = meter == null ? null : meter.begin();
 
     private Result() {}
+
+    public void close() {
+      releaseScratch(this);
+    }
 
     public void row() {
       operation(1);
@@ -172,7 +178,7 @@ public final class SessionQueryContext {
         bytes = Math.addExact(bytes, size);
         groupCounters()[1] = Math.addExact(groupCounters()[1], size);
         batch = Math.addExact(batch, size);
-        scratch(Math.multiplyExact(batch, 3));
+        retainScratch(this, Math.multiplyExact(batch, 3));
         if (bytes > byteLimit) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
       }
       if (additional != null) additional.column(label, value);

@@ -212,7 +212,20 @@ public final class PriorSessionContracts {
   }
 
   public void authority(String raw) {
-    validate(authority, raw, PriorSessionPolicyV4.AUTHORITY_BYTES);
+    authorityValue(raw);
+  }
+
+  /** schema验证和typed转换共享同一个解析树。 */
+  public JsonNode authorityValue(String raw) {
+    if (SessionContracts.bytes(raw) > PriorSessionPolicyV4.AUTHORITY_BYTES)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
+    try {
+      var value = history.json(raw, PriorSessionPolicyV4.AUTHORITY_BYTES);
+      authority.validate(value);
+      return value;
+    } catch (IllegalArgumentException | TaskFailure failure) {
+      throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
+    }
   }
 
   public void refs(String raw) {

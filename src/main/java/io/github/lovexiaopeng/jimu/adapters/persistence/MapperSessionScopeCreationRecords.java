@@ -21,14 +21,14 @@ final class MapperSessionScopeCreationRecords implements SessionScopeCreationRec
   }
 
   static Row wrap(Map<String, Object> row) {
-    return new View(row);
+    return new View(row, null);
   }
 
   private static Map<String, Object> unwrap(Row row) {
     return ((View) row).row;
   }
 
-  private record View(Map<String, Object> row) implements Row {
+  private record View(Map<String, Object> row, Map<String, Object> history) implements Row {
     public String tenant() {
       return (String) row.get("tenant_id");
     }
@@ -63,11 +63,24 @@ final class MapperSessionScopeCreationRecords implements SessionScopeCreationRec
   }
 
   public Row source(Row caller, String id) {
-    return wrap(scopes.source(unwrap(caller), id, true));
+    var c = MapperSessionScopeRecords.caller(unwrap(caller));
+    var fact =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+            ledger.queryContext(),
+            "scope.current",
+            () -> scopes.eligibility.sourceFacts(c, id, true));
+    var history = new java.util.HashMap<String, Object>();
+    history.put("retain_until", fact.history().retain());
+    history.put("binding_digest", fact.history().binding());
+    history.put("next_seq", fact.history().nextSeq());
+    return new View(MapperSessionScopeRecords.row(fact.caller()), history);
   }
 
   public Row history(Row source) {
-    return wrap(sessions.history(unwrap(source), true));
+    return wrap(
+        ((View) source).history() != null
+            ? ((View) source).history()
+            : sessions.history(unwrap(source), true));
   }
 
   public int version(Row c) {

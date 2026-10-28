@@ -8,6 +8,7 @@ import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Autho
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.AuthorityTarget;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Caller;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Scope;
+import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.SourceFact;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Validated;
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeEligibilityService;
 import io.github.lovexiaopeng.jimu.kernel.snapshot.api.SnapshotDigest;
@@ -84,9 +85,9 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
         || s.invalidated() != null
         || !SessionContentState.PRESENT.equals(s.content())
         || !s.retained()) throw unavailable();
-    records.validateAuthority(c, s.raw());
+    var a = records.authority(c, s.raw());
     if (bytes(s.raw()) != s.bytes() || !digest.hash(s.raw()).equals(s.digest())) throw corrupt();
-    var a = records.decodeAuthority(s.raw());
+
     if (!c.tenant().equals(a.tenant())
         || !c.id().equals(a.caller())
         || !c.owner().equals(a.owner())
@@ -95,6 +96,7 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
         || !utc(s.created()).equals(a.created())
         || !utc(s.retain()).equals(a.retain())
         || a.targets().size() != s.count()) throw corrupt();
+    records.validatedAuthority(c, s, a);
     return a;
   }
 
@@ -116,7 +118,7 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
     var targets = records.targets(c);
     if (targets.size() != scope.count() || targets.size() > 8) throw corrupt();
     var sources = new ArrayList<Caller>();
-    var checked = new java.util.HashMap<String, CheckedSource>();
+    var checked = new java.util.HashMap<String, SourceFact>();
     String previous = "";
     for (int index = 0; index < targets.size(); index++) {
       var target = targets.get(index);
@@ -134,7 +136,7 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
           || bytes(raw) != target.bytes()) throw corrupt();
       previous = source;
       try {
-        var check = lineage(c) ? checkedSource(c, source, false) : null;
+        var check = lineage(c) ? sourceFacts(c, source, false) : null;
         var st = check == null ? source(c, source, false) : check.caller();
         var sh = check == null ? records.history(st) : check.history();
         if (!st.tools().equals(expected.pins())
@@ -227,13 +229,13 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
       Caller caller,
       List<Caller> sources,
       Authority authority,
-      java.util.Map<String, CheckedSource> checked) {
+      java.util.Map<String, SourceFact> checked) {
     var allowed = new java.util.HashMap<String, AuthorityTarget>();
     for (var t : authority.targets()) allowed.put(t.id(), t);
     int count = 0;
     for (var source : sources) {
       var a = checked.get(source.id()).authority();
-      var rows = records.targets(source);
+      var rows = checked.get(source.id()).targets();
       if (rows.size() != a.targets().size()) throw corrupt();
       String previous = "";
       for (int i = 0; i < rows.size(); i++) {
@@ -258,13 +260,12 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
   }
 
   public Caller source(Caller c, String id, boolean admission) {
-    return checkedSource(c, id, admission).caller();
+    return sourceFacts(c, id, admission).caller();
   }
 
-  private record CheckedSource(
-      Caller caller, SessionScopeRecords.History history, Scope scope, Authority authority) {}
-
-  private CheckedSource checkedSource(Caller c, String id, boolean admission) {
+  public SourceFact sourceFacts(Caller c, String id, boolean admission) {
+    var staged = records.stagedSource(c, id);
+    if (staged != null) return staged;
     var st = records.source(c, id);
     if (!c.capabilities().equals(st.capabilities())
         || id.equals(c.id())
@@ -280,6 +281,8 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
         || h.nextSeq() > SessionHistoryPolicyV1.PUBLIC_EVENTS
         || !h.retain().equals(own.retain())) throw unavailable();
     if (admission && !records.admissionRetention(st)) throw unavailable();
-    return new CheckedSource(st, h, own, a);
+    var fact = new SourceFact(st, h, own, a, lineage(c) ? records.targets(st) : List.of());
+    if (admission) records.stageSource(c, fact);
+    return fact;
   }
 }

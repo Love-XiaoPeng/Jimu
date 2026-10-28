@@ -313,6 +313,7 @@ final class JdbcExecutionRecords implements ExecutionRecords {
 
       public void terminal(String state, String code) {
         ledger.terminal(task, state, code);
+        if (JdbcSessionScopes.lineage(task)) new MapperCommitFence(ledger, lease).terminal(state);
       }
     };
   }

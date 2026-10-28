@@ -258,7 +258,8 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void commitFence() {
-        if (ledger.directoryTask(task)) ledger.todoCommitFence(lease);
+        if (ledger.directoryTask(task) || JdbcSessionScopes.lineage(task))
+          ledger.todoCommitFence(lease);
       }
     };
   }
@@ -278,6 +279,33 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
       public boolean originalDispatch() {
         return dispatch.equals(ledger.s(step, "dispatch_id"))
             && step.get("response_snapshot") == null;
+      }
+
+      public boolean ordinaryRejection(TaskFailure failure) {
+        if (!JdbcSessionScopes.lineage(task)) return true;
+        var query = ledger.queryContext();
+        query.remainingMillis();
+        var resources = query.resources();
+        if (resources.reads() > 256
+            || resources.bytes() > 1048576
+            || resources.operations() > 65536
+            || query.scratchPeak() > 1048576) return false;
+        return java.util.Set.of(
+                "TOOL_INPUT_INVALID",
+                "TOOL_NOT_AUTHORIZED",
+                "MODEL_RESPONSE_TOO_LARGE",
+                "TOOL_BUDGET_EXCEEDED",
+                "SESSION_HISTORY_LIMIT",
+                "CAPABILITY_REVOKED",
+                "ACTOR_REVOKED",
+                "SESSION_SCOPE_UNAVAILABLE",
+                "SESSION_HISTORY_EXPIRED")
+            .contains(failure.code());
+      }
+
+      public void settlementOnly() {
+        if (JdbcSessionScopes.lineage(task))
+          new MapperCommitFence(ledger, lease).settlement(dispatch);
       }
 
       public io.github.lovexiaopeng.jimu.kernel.model.port.ModelCostRecords costs() {
@@ -460,6 +488,10 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void storeResponse(String response) {
+        var owner =
+            io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+                ledger.queryContext());
+        if (owner != null) owner.protectedWrite();
         ledger
             .mappers
             .steps()

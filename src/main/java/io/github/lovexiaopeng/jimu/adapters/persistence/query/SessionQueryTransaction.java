@@ -139,6 +139,7 @@ public final class SessionQueryTransaction {
                         }
                       }));
     } catch (RuntimeException failure) {
+      if (receipt.completion == Completion.NOT_STARTED) throw failure;
       // Spring 的 rollback 首错另存在 applicationException，不一定在标准 cause 链中。
       if (failure instanceof TransactionSystemException transactionFailure) {
         Throwable application = transactionFailure.getApplicationException();

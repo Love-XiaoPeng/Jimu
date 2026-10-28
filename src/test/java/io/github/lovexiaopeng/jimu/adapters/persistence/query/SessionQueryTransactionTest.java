@@ -251,6 +251,36 @@ class SessionQueryTransactionTest {
     assertEquals(7000, fixture.network);
   }
 
+  @Test
+  void executeWithoutBeginReceiptIsUnconfirmedRatherThanNotStarted() {
+    var source =
+        new AbstractDataSource() {
+          public Connection getConnection() throws SQLException {
+            throw new SQLException("begin unavailable");
+          }
+
+          public Connection getConnection(String user, String password) throws SQLException {
+            return getConnection();
+          }
+        };
+    var transaction = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
+    var failure =
+        assertThrows(
+            io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionUnconfirmed
+                .class,
+            () ->
+                transaction.required(
+                    new SessionQueryContext(System.nanoTime() + 2_000_000_000L, null),
+                    () -> "unreachable"));
+    assertEquals(
+        io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionOutcome.Completion
+            .BEGIN_UNCONFIRMED,
+        failure.outcome().completion());
+    assertEquals(
+        io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionOutcome.Phase.BEGIN,
+        failure.outcome().phase());
+  }
+
   static final class Fixture {
     final AtomicBoolean active = new AtomicBoolean();
     final SessionQueryContext context =

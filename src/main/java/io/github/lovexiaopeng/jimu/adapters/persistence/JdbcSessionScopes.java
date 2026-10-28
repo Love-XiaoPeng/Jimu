@@ -92,7 +92,8 @@ final class JdbcSessionScopes {
         io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
             graph;
         try {
-          graph = sessions.lineageService.verify(c.tenant(), c.id());
+          graph = owner.stagedGraph(c.tenant(), c.id());
+          if (graph == null) graph = sessions.lineageService.verify(c.tenant(), c.id());
         } catch (RuntimeException failure) {
           owner.poisonProof(failure);
           throw failure;

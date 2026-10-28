@@ -91,6 +91,7 @@ public final class ExecutionServiceImpl implements ExecutionService {
           var previous = task.latest();
           if (previous.isPresent() && request.equals(previous.get().request())) {
             task.validateMaterial(request, previous.get().ordinal());
+            task.commitFence();
             return checked(previous.get());
           }
           int ordinal = previous.isEmpty() ? 1 : previous.get().ordinal() + 1;

@@ -45,7 +45,17 @@ public final class SessionQueryInterceptor implements Interceptor {
               SystemMetaObject.forObject(handler).getValue("delegate.mappedStatement");
       if (command.getSqlCommandType() != org.apache.ibatis.mapping.SqlCommandType.SELECT) {
         var owner = SessionQueryTransaction.current(context);
-        if (owner != null) owner.mutation();
+        if (owner != null) {
+          String id = command.getId();
+          if ((id.contains(".SessionScopeMapper.") && !id.endsWith(".defer"))
+              || id.contains(".SessionLineageMapper.")
+              || id.endsWith(".TaskAdmissionMapper.bindSnapshots")
+              || (id.contains(".SessionHistoryRetentionMapper.")
+                  && (id.contains(".purge")
+                      || id.endsWith(".markPurged")
+                      || id.endsWith(".retainAuthorityHistory")))) owner.dependencyMutation();
+          else owner.mutation();
+        }
       }
       var statement = (Statement) invocation.proceed();
       QueryStatements.apply(statement, context);
