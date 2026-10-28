@@ -1474,32 +1474,40 @@ public final class JdbcLedger
 
   private JdbcLedger queryView(Lease lease, boolean metered) {
     long now = System.nanoTime();
-    return queryView(
-        Math.min(
-            now + 2_000_000_000L,
-            now + java.time.Duration.between(Instant.now(), lease.deadline()).toNanos()),
-        metered ? new QueryResources(0, 0, 0) : null);
+    var scoped =
+        queryView(
+            Math.min(
+                now + 2_000_000_000L,
+                now + java.time.Duration.between(Instant.now(), lease.deadline()).toNanos()),
+            metered ? new QueryResources(0, 0, 0) : null);
+    if (lease.capabilities().contains(ToolCapability.SESSION_TRACE)) scoped.query.restrictLineage();
+    return scoped;
   }
 
   <T> T tx(Supplier<T> work) {
+    Supplier<AdmissionResult<T>> body =
+        () -> {
+          try {
+            return new AdmissionResult<T>(work.get(), null);
+          } catch (TaskFailure failure) {
+            // 已发生的结算拒绝须先提交；查询超时和基础设施失败仍整笔回滚。
+            if (!List.of(
+                    "EVALUATION_SCOPE_MISMATCH",
+                    "MODEL_SETTLEMENT_PROOF_INVALID",
+                    "BUSINESS_POLICY_CONFLICT")
+                .contains(failure.code())) throw failure;
+            return new AdmissionResult<T>(null, failure);
+          }
+        };
     AdmissionResult<T> result =
-        unitOfWork.required(
-            () -> {
-              try {
-                return new AdmissionResult<T>(work.get(), null);
-              } catch (TaskFailure failure) {
-                // Scope checks run before admission writes. Only the deliberate persistent
-                // integrity rejection (or already admitted settlement) commits here.
-                if (!List.of(
-                        "EVALUATION_SCOPE_MISMATCH",
-                        "MODEL_SETTLEMENT_PROOF_INVALID",
-                        "BUSINESS_POLICY_CONFLICT")
-                    .contains(failure.code())) throw failure;
-                return new AdmissionResult<T>(null, failure);
-              }
-            });
+        query == null ? unitOfWork.required(body) : queryTransactions.required(query, body);
     if (result.rejection() != null) throw result.rejection();
     return result.value();
+  }
+
+  <T> T measured(String stage, Supplier<T> work) {
+    return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+        query, stage, work);
   }
 
   @Override
@@ -2261,7 +2269,12 @@ public final class JdbcLedger
           .modelResponded(lease, stepId, dispatch, response, calls, tokens, usage);
       return;
     }
-    modelService.responded(lease, stepId, dispatch, response, calls, tokens, usage);
+    measured(
+        "M2.total",
+        () -> {
+          modelService.responded(lease, stepId, dispatch, response, calls, tokens, usage);
+          return null;
+        });
   }
 
   @Override

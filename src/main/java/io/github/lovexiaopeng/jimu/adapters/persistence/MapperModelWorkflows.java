@@ -265,7 +265,7 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
   @Override
   public Response lockResponse(Lease lease, String stepId, String dispatch) {
     var evaluation = ledger.evaluation(lease, false);
-    var task = ledger.fenced(lease, false);
+    var task = ledger.measured("M2.lock", () -> ledger.fenced(lease, false));
     var step =
         JdbcLedger.first(
             ledger
@@ -529,19 +529,34 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void responded() {
-        ledger.event(task, "response:" + stepId, "model.responded", null);
+        ledger.measured(
+            "M2.event",
+            () -> {
+              ledger.event(task, "response:" + stepId, "model.responded", null);
+              return null;
+            });
       }
     };
   }
 
   @Override
   public Outcome outcome(Lease lease, String dispatch) {
-    var row =
-        JdbcLedger.first(
-            ledger
-                .mappers
-                .dispatches()
-                .selectOutcome(ledger.queryContext(), lease.tenant(), dispatch));
-    return new Outcome(ledger.s(row, "state"), ledger.s(row, "code"));
+    java.util.function.Supplier<Outcome> read =
+        () -> {
+          var row =
+              JdbcLedger.first(
+                  ledger
+                      .mappers
+                      .dispatches()
+                      .selectOutcome(ledger.queryContext(), lease.tenant(), dispatch));
+          return new Outcome(ledger.s(row, "state"), ledger.s(row, "code"));
+        };
+    // 必须在结算提交之后读取拒绝；仍沿原query截止，不包住整个responded。
+    return ledger.measured(
+        "M2.outcome",
+        () ->
+            ledger.queryContext() == null
+                ? read.get()
+                : ledger.sessionTransaction(read, ledger.queryContext().deadlineNanos()));
   }
 }

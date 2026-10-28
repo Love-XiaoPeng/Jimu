@@ -280,12 +280,22 @@ final class JdbcSessionRecords {
               .SessionMetadataAccountingServiceImpl();
 
   long metadata(Map<String, Object> task, boolean closing, long planned) {
-    return metadataAccounting.metadata(
-        new MapperSessionMetadataAccounting(this, task), closing, planned);
+    return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+        query,
+        "metadata.preflight",
+        () ->
+            metadataAccounting.metadata(
+                new MapperSessionMetadataAccounting(this, task), closing, planned));
   }
 
   void account(Map<String, Object> task, boolean closing) {
-    metadataAccounting.account(new MapperSessionMetadataAccounting(this, task), closing);
+    io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+        query,
+        "metadata.account",
+        () -> {
+          metadataAccounting.account(new MapperSessionMetadataAccounting(this, task), closing);
+          return null;
+        });
   }
 
   Map<String, Object> source(String kind, String step, String invocation) {
@@ -373,7 +383,13 @@ final class JdbcSessionRecords {
               .SessionCallBindingServiceImpl();
 
   void bindCalls(Map<String, Object> task, String step) {
-    callBindings.bind(new MapperSessionCallBindings(this, task, step));
+    io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+        query,
+        "M2.bindCalls",
+        () -> {
+          callBindings.bind(new MapperSessionCallBindings(this, task, step));
+          return null;
+        });
   }
 
   void validateStep(Map<String, Object> task, Map<String, Object> st) {

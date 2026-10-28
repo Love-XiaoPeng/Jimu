@@ -60,7 +60,7 @@ class LineageExperiment(Experiment):
         try:
             (self.evidence / 'model-wire.json').write_text(json.dumps(self.fixture.requests, ensure_ascii=False, indent=2))
             if self.schema_ready:
-                for table in ('task_session_lineage', 'invocation_session_lineage_trace', 'task_session_scope', 'step_session_scope'):
+                for table in ('task_session_lineage', 'invocation_session_lineage_trace', 'task_session_scope', 'step_session_scope', 'model_dispatch'):
                     (self.evidence / (table + '.tsv')).write_text(self.sql('SELECT * FROM ' + table + ';'))
         finally:
             super().cleanup()
@@ -134,7 +134,7 @@ class LineageExperiment(Experiment):
         self.assert_that(status == expected, 'owner trace', status=status, value=value)
         return value
 
-    def core(self):
+    def core(self, a03_only=False):
         a = self.task('constellation-a')
         b = self.task('constellation-b', [a], a)
         c = self.task('constellation-c', [a, b], b)
@@ -155,6 +155,19 @@ class LineageExperiment(Experiment):
         for task, parent in ((a, None), (b, a), (c, b), (d, a), (e, None)):
             row = json.loads(self.sql("SELECT genesis_snapshot FROM task_session_lineage WHERE task_id='" + task + "';"))
             self.assert_that(row.get('parent_session_id') == parent, 'original admission parent', task=task)
+        self.assert_that(self.sql("SELECT COUNT(*) FROM invocation_session_lineage_trace WHERE caller_task_id='" + e + "' AND outcome='SUCCEEDED';") == '3'
+            and self.sql("SELECT tools_used FROM task WHERE id='" + e + "';") == '5', 'three trace commits and five exact tool charges')
+        self.assert_that(self.sql("SELECT COUNT(DISTINCT step_id),COUNT(DISTINCT context_digest) FROM invocation_session_lineage_trace WHERE caller_task_id='" + e + "';") == '1\t1', 'three trace slots share one frozen response context')
+        status, terminal = self.http('GET', '/api/tasks/' + e)
+        self.assert_that(status == 200 and terminal['state'] == 'SUCCEEDED'
+            and terminal['summary'] == 'Verified retained constellation evidence.',
+            'A03 task succeeds with final model product', task=terminal)
+        slots = self.sql("SELECT i.tool,i.slot,i.state,i.output_digest=SHA2(i.output_snapshot,256) AS digest_valid FROM invocation i JOIN step s ON s.tenant_id=i.tenant_id AND s.id=i.step_id WHERE i.task_id='" + e + "' ORDER BY s.ordinal,i.slot;")
+        self.assert_that(len(slots.splitlines()) == 5 and all(row.endswith('\tSUCCEEDED\t1') for row in slots.splitlines()),
+            'all five original slots retain successful exact output digests', slots=slots)
+        (self.evidence / 'a03-result.json').write_text(json.dumps({'task': terminal, 'outputs': outputs, 'slots': slots}, ensure_ascii=False, indent=2))
+        if a03_only:
+            return
         original = self.trace(e, a)
         f = self.task('constellation-f', [a], a)
         self.assert_that(self.trace(e, a) == original and f not in json.dumps(original), 'frozen admission graph excludes later child')
@@ -167,9 +180,6 @@ class LineageExperiment(Experiment):
         self.trace(e, a, expected=404, subject='b')
         self.trace(e, a, expected=404, subject='c')
         self.inputs(e)
-        self.assert_that(self.sql("SELECT COUNT(*) FROM invocation_session_lineage_trace WHERE caller_task_id='" + e + "' AND outcome='SUCCEEDED';") == '3'
-            and self.sql("SELECT tools_used FROM task WHERE id='" + e + "';") == '5', 'three trace commits and five exact tool charges')
-        self.assert_that(self.sql("SELECT COUNT(DISTINCT step_id),COUNT(DISTINCT context_digest) FROM invocation_session_lineage_trace WHERE caller_task_id='" + e + "';") == '1\t1', 'three trace slots share one frozen response context')
         counts = self.sql("SELECT id,state,models_used,tools_used FROM task WHERE id IN ('" + "','".join(sources) + "') ORDER BY id;")
         self.trace(e, a)
         self.assert_that(self.sql("SELECT id,state,models_used,tools_used FROM task WHERE id IN ('" + "','".join(sources) + "') ORDER BY id;") == counts, 'read does not wake or consume sources')
@@ -205,6 +215,7 @@ def main():
     parser.add_argument('--jar', type=Path, required=True)
     parser.add_argument('--evidence', type=Path, required=True)
     parser.add_argument('--v22-jar',type=Path)
+    parser.add_argument('--a03-only', action='store_true', help='Stop after A03 final success, products and exact original-slot assertions')
     args = parser.parse_args()
     e = LineageExperiment(args.jar, args.evidence)
     e.v22=args.v22_jar
@@ -213,7 +224,7 @@ def main():
     signal.signal(signal.SIGTERM, stop)
     try:
         e.prepare()
-        e.core()
+        e.core(a03_only=args.a03_only)
     except BaseException:
         (e.evidence / 'failure.txt').write_text(traceback.format_exc())
         raise

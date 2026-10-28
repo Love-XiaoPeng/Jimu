@@ -240,6 +240,69 @@ class QueryViewAssemblyTest {
     }
   }
 
+  @Test
+  void queryCoreWorkUsesOriginalDeadlineWhileOrdinaryCoreWorkKeepsSuppliedBoundary()
+      throws Exception {
+    var calls = new java.util.concurrent.atomic.AtomicInteger();
+    LedgerUnitOfWork work =
+        new LedgerUnitOfWork() {
+          public <T> T required(Supplier<T> body) {
+            calls.incrementAndGet();
+            return body.get();
+          }
+        };
+    var root =
+        new JdbcLedger(
+            source,
+            models,
+            new DataSourceTransactionManager(source),
+            work,
+            () -> {},
+            LedgerMapperSessions.create(source));
+    assertEquals("ordinary", root.tx(() -> "ordinary"));
+    assertEquals(1, calls.get());
+    var query = view(root, System.nanoTime() - 1, new QueryResources(3, 12, 4));
+    assertEquals(
+        "SESSION_QUERY_TIMEOUT",
+        assertThrows(
+                TaskFailure.class,
+                () ->
+                    query.tx(
+                        () -> {
+                          throw new AssertionError("expired work");
+                        }))
+            .code());
+    assertEquals(1, calls.get());
+    assertEquals(new QueryResources(3, 12, 4), query.queryContext().resources());
+  }
+
+  @Test
+  void modelLineageViewEnforcesOneCumulative256ReadEnvelope() throws Exception {
+    var root = new JdbcLedger(source, models);
+    var lease =
+        new Lease(
+            "t",
+            "a",
+            "task",
+            "attempt",
+            1,
+            "worker",
+            Instant.now().plusSeconds(60),
+            "goal",
+            List.of("session_trace"),
+            1);
+    var query =
+        (JdbcLedger)
+            invoke(root, "queryView", new Class<?>[] {Lease.class, boolean.class}, lease, true);
+    long end = query.queryContext().deadlineNanos();
+    for (int i = 0; i < 256; i++) query.queryContext().result();
+    assertEquals(
+        "SESSION_HISTORY_LIMIT",
+        assertThrows(TaskFailure.class, query.queryContext()::result).code());
+    assertEquals(257, query.queryContext().resources().reads());
+    assertEquals(end, query.queryContext().deadlineNanos());
+  }
+
   static JdbcLedger view(JdbcLedger root, long end, QueryResources prior) throws Exception {
     return (JdbcLedger)
         invoke(root, "queryView", new Class<?>[] {long.class, QueryResources.class}, end, prior);

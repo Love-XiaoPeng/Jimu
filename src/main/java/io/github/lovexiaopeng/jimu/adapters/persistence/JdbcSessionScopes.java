@@ -76,11 +76,18 @@ final class JdbcSessionScopes {
 
   Scope require(Map<String, Object> task) {
     var c = MapperSessionScopeRecords.caller(task);
-    var found = eligibility.require(c);
+    var found = ledgerMeasure(c);
     return new Scope(
         MapperSessionScopeRecords.row(c, found.scope()),
         sessions.contracts.json(found.scope().raw(), 4096),
         found.sources().stream().map(MapperSessionScopeRecords::row).toList());
+  }
+
+  private io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Validated
+      ledgerMeasure(
+          io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Caller caller) {
+    return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+        sessions.appendQuery(), "scope.current", () -> eligibility.require(caller));
   }
 
   Map<String, Object> source(Map<String, Object> caller, String id, boolean admission) {

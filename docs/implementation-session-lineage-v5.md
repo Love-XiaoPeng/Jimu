@@ -27,3 +27,9 @@ python3 -B -u tools/session_lineage_verify.py --jar target/jimu-0.1.0-SNAPSHOT.j
 ```
 
 真实夹具要求 Linux `/proc`、现有 Java21（`JIMU_IT_JAVA`）和私有 Docker MySQL8.0.46；不会安装运行时或接共享数据库。夹具前台收集 HTTP、模型 wire、SQL 证明及 cleanup 收据，结束前回收本轮子进程和唯一 label 容器。Windows 的 `/proc` 与 Unix 文件存储测试失败必须如实记录；不把跳过/缺资源算作通过。GitHub CI 不运行、不重试、不等待。
+
+M2 的核心 UoW 在显式 query view 下使用同一 `SessionQueryTransaction`；普通无 query 路径仍使用原 UoW。实际 usage 与载荷/核权拒绝审计先提交，再在事务外读取 outcome 并抛错；该 outcome 查询沿原截止另开短事务，不把整个 `responded` 包进一笔事务。v5 模型入口也显式收紧至累计 256 次 proof 读取，不按来源或槽重置。
+
+同响应的绑定对象只存活于 M2 持锁事务：一次逐节点当前核权、一次不可变图证明和同一 cut 可供该批槽复用；每槽目标、输入摘要、context/graph 摘要、原槽插入和正文计账仍分别执行。新事务、新响应和工具执行均重新证明。查询事务在部分 SET 失败时恢复已有修改，同 query 嵌套 REQUIRED 只由原持有者恢复连接设置。已确认回滚解包原 TaskFailure；提交或回滚确认丢失仍保留 TransactionSystemException/cause，超时映射不表示数据库结果已确定。
+
+内部 `Session query` 日志记录阶段耗时、累计读取差值和事务 COMMITTED/ROLLED_BACK/UNKNOWN，不记录正文或 SQL。嵌套阶段为包含关系，读取数不能相加充作总量。`--a03-only` 可让真实夹具在完整任务 SUCCEEDED、最终 summary、search→同响应三个 trace→read 的原槽输出摘要和精确计费成立后结束；不运行后续撤权等用例，不代表 A01–A16 总验收通过。

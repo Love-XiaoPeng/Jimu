@@ -3,6 +3,7 @@ package io.github.lovexiaopeng.jimu.adapters.persistence.query;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
@@ -136,15 +137,117 @@ class SessionQueryTransactionTest {
     assertSame(result, fixture.execute(() -> result));
     assertEquals(1, fixture.commits);
     assertEquals(0, fixture.rollbacks);
+    assertEquals(7000, fixture.network);
+    assertEquals(50, fixture.lockWait);
+    assertEquals(50, fixture.maxExecution);
   }
 
-  private static final class Fixture {
+  @Test
+  void partialSetupFailureRestoresEarlierSettingAndRollsBackWithoutWork() {
+    var fixture = new Fixture();
+    fixture.setup = new SQLException("second SET failed", "42000", 9004);
+    assertThrows(
+        org.springframework.dao.DataAccessException.class,
+        () ->
+            fixture.execute(
+                () -> {
+                  throw new AssertionError("work after setup failure");
+                }));
+    assertEquals(50, fixture.lockWait);
+    assertEquals(50, fixture.maxExecution);
+    assertEquals(7000, fixture.network);
+    assertEquals(0, fixture.commits);
+    assertEquals(1, fixture.rollbacks);
+  }
+
+  @Test
+  void deadlineAfterWorkRollsBackAndCannotCommitStagedChanges() {
+    var fixture = new Fixture();
+    var failure =
+        assertThrows(
+            TaskFailure.class,
+            () ->
+                fixture.execute(
+                    () -> {
+                      fixture.context.restrictDeadline(System.nanoTime() - 1);
+                      return "staged";
+                    }));
+    assertEquals("SESSION_QUERY_TIMEOUT", failure.code());
+    assertEquals(0, fixture.commits);
+    assertEquals(1, fixture.rollbacks);
+    assertEquals(7000, fixture.network);
+  }
+
+  @Test
+  void commitAcknowledgementLossIsNotReportedAsConfirmedRollback() {
+    var fixture = new Fixture();
+    fixture.commit = new SQLException("commit ACK", "08006", 9005);
+    var failure =
+        assertThrows(TransactionSystemException.class, () -> fixture.execute(() -> "staged"));
+    assertSame(fixture.commit, failure.getCause());
+    assertEquals(1, fixture.commits);
+    assertEquals(0, fixture.rollbacks);
+    assertEquals(7000, fixture.network);
+  }
+
+  @Test
+  void nestedRequiredUsesOneSettingsOwnerAndOneCommit() {
+    var fixture = new Fixture();
+    assertEquals(
+        "nested",
+        fixture.execute(
+            () ->
+                fixture.execute(
+                    () -> {
+                      assertTrue(fixture.network <= 2000);
+                      assertEquals(1, fixture.lockWait);
+                      return "nested";
+                    })));
+    assertEquals(1, fixture.commits);
+    assertEquals(0, fixture.rollbacks);
+    assertEquals(50, fixture.lockWait);
+    assertEquals(50, fixture.maxExecution);
+    assertEquals(7000, fixture.network);
+  }
+
+  @Test
+  void deadlineBeforeCommitRollsBackInsteadOfCommittingEarlierSuccessfulWork() {
+    var fixture = new Fixture();
+    assertEquals(
+        "SESSION_QUERY_TIMEOUT",
+        assertThrows(
+                TaskFailure.class,
+                () ->
+                    fixture.execute(
+                        () -> {
+                          org.springframework.transaction.support.TransactionSynchronizationManager
+                              .registerSynchronization(
+                                  new org.springframework.transaction.support
+                                      .TransactionSynchronization() {
+                                    public int getOrder() {
+                                      return Integer.MIN_VALUE;
+                                    }
+
+                                    public void beforeCommit(boolean readOnly) {
+                                      fixture.context.restrictDeadline(System.nanoTime() - 1);
+                                    }
+                                  });
+                          return "staged";
+                        }))
+            .code());
+    assertEquals(0, fixture.commits);
+    assertEquals(1, fixture.rollbacks);
+    assertEquals(7000, fixture.network);
+  }
+
+  static final class Fixture {
     final AtomicBoolean active = new AtomicBoolean();
     final SessionQueryContext context =
         new SessionQueryContext(System.nanoTime() + 2_000_000_000L, null);
     Throwable reset;
-    SQLException rollback, afterCompletion;
+    SQLException rollback, afterCompletion, setup, commit;
     int commits, rollbacks, afterHits;
+    int network = 7000, lockWait = 50, maxExecution = 50;
     final Connection connection =
         proxy(
             Connection.class,
@@ -152,7 +255,7 @@ class SessionQueryTransactionTest {
               return switch (method.getName()) {
                 case "getAutoCommit" -> true;
                 case "getTransactionIsolation" -> Connection.TRANSACTION_READ_COMMITTED;
-                case "getNetworkTimeout" -> 0;
+                case "getNetworkTimeout" -> network;
                 case "isClosed", "isReadOnly", "isWrapperFor" -> false;
                 case "createStatement" -> {
                   if (active.get() && reset != null) throw reset;
@@ -169,12 +272,23 @@ class SessionQueryTransactionTest {
                                           case "getInt" -> 50;
                                           default -> null;
                                         });
-                            case "execute" -> false;
+                            case "execute" -> {
+                              String sql = (String) parameters[0];
+                              if (sql.startsWith("SET SESSION innodb_lock_wait_timeout="))
+                                lockWait = Integer.parseInt(sql.substring(sql.indexOf('=') + 1));
+                              if (sql.startsWith("SET SESSION max_execution_time=")) {
+                                int value = Integer.parseInt(sql.substring(sql.indexOf('=') + 1));
+                                if (setup != null && value != 50) throw setup;
+                                maxExecution = value;
+                              }
+                              yield false;
+                            }
                             default -> null;
                           });
                 }
                 case "commit" -> {
                   commits++;
+                  if (commit != null) throw commit;
                   yield null;
                 }
                 case "rollback" -> {
@@ -187,27 +301,30 @@ class SessionQueryTransactionTest {
                     afterHits++;
                     throw afterCompletion;
                   }
+                  network = (int) args[1];
                   yield null;
                 }
                 default -> null;
               };
             });
 
-    <T> T execute(Supplier<T> work) {
-      var source =
-          new AbstractDataSource() {
-            @Override
-            public Connection getConnection() {
-              return connection;
-            }
+    final AbstractDataSource source =
+        new AbstractDataSource() {
+          @Override
+          public Connection getConnection() {
+            return connection;
+          }
 
-            @Override
-            public Connection getConnection(String user, String password) {
-              return connection;
-            }
-          };
-      return new SessionQueryTransaction(source, new DataSourceTransactionManager(source))
-          .required(context, work);
+          @Override
+          public Connection getConnection(String user, String password) {
+            return connection;
+          }
+        };
+    final SessionQueryTransaction transaction =
+        new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
+
+    <T> T execute(Supplier<T> work) {
+      return transaction.required(context, work);
     }
 
     void fail(Throwable primary) {

@@ -16,6 +16,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Same DS/manager as MyBatis; the absolute deadline includes acquisition, work and commit. */
 public final class SessionQueryTransaction {
+  private static final org.slf4j.Logger LOG =
+      org.slf4j.LoggerFactory.getLogger(SessionQueryTransaction.class);
   private final DataSourceTransactionManager manager;
   private final JdbcTemplate db;
 
@@ -44,34 +46,19 @@ public final class SessionQueryTransaction {
               db.execute(
                   (ConnectionCallback<T>)
                       connection -> {
+                        if (TransactionSynchronizationManager.getSynchronizations().stream()
+                            .anyMatch(
+                                s ->
+                                    s instanceof ConnectionSettings settings
+                                        && settings.context == context)) {
+                          // 同一query加入已有事务：原持有者负责设置、恢复与提交截止。
+                          T result = work.get();
+                          context.remainingMillis();
+                          return result;
+                        }
                         int priorNetwork = connection.getNetworkTimeout();
                         TransactionSynchronizationManager.registerSynchronization(
-                            new TransactionSynchronization() {
-                              @Override
-                              public void beforeCommit(boolean readOnly) {
-                                try {
-                                  connection.setNetworkTimeout(
-                                      Runnable::run, context.remainingMillis());
-                                } catch (java.sql.SQLException failure) {
-                                  throw new org.springframework.dao
-                                      .DataAccessResourceFailureException(
-                                      "Session query unavailable", failure);
-                                }
-                              }
-
-                              @Override
-                              public void afterCompletion(int completion) {
-                                try {
-                                  if (!connection.isClosed())
-                                    connection.setNetworkTimeout(Runnable::run, priorNetwork);
-                                } catch (java.sql.SQLException failure) {
-                                  throw new org.springframework.dao
-                                      .DataAccessResourceFailureException(
-                                      "Session connection reset unavailable (afterCompletion)",
-                                      failure);
-                                }
-                              }
-                            });
+                            new ConnectionSettings(context, connection, priorNetwork));
                         connection.setNetworkTimeout(Runnable::run, context.remainingMillis());
                         int priorWait, priorMax;
                         try (var statement = connection.createStatement();
@@ -82,17 +69,18 @@ public final class SessionQueryTransaction {
                           priorWait = result.getInt(1);
                           priorMax = result.getInt(2);
                         }
-                        try (var statement = connection.createStatement()) {
-                          statement.execute("SET SESSION innodb_lock_wait_timeout=1");
-                          statement.execute(
-                              "SET SESSION max_execution_time=" + context.remainingMillis());
-                        }
                         Throwable primary = null;
                         try {
+                          // 即使第二条SET或截止检查失败，已修改的第一项也必须恢复。
+                          try (var statement = connection.createStatement()) {
+                            statement.execute("SET SESSION innodb_lock_wait_timeout=1");
+                            statement.execute(
+                                "SET SESSION max_execution_time=" + context.remainingMillis());
+                          }
                           T result = work.get();
                           context.remainingMillis();
                           return result;
-                        } catch (RuntimeException | Error failure) {
+                        } catch (java.sql.SQLException | RuntimeException | Error failure) {
                           primary = failure;
                           throw failure;
                         } finally {
@@ -129,6 +117,48 @@ public final class SessionQueryTransaction {
         throw timeout;
       }
       throw failure;
+    }
+  }
+
+  private static final class ConnectionSettings implements TransactionSynchronization {
+    private final SessionQueryContext context;
+    private final java.sql.Connection connection;
+    private final int priorNetwork;
+
+    ConnectionSettings(
+        SessionQueryContext context, java.sql.Connection connection, int priorNetwork) {
+      this.context = context;
+      this.connection = connection;
+      this.priorNetwork = priorNetwork;
+    }
+
+    @Override
+    public void beforeCommit(boolean readOnly) {
+      try {
+        connection.setNetworkTimeout(Runnable::run, context.remainingMillis());
+      } catch (java.sql.SQLException failure) {
+        throw new org.springframework.dao.DataAccessResourceFailureException(
+            "Session query unavailable", failure);
+      }
+    }
+
+    @Override
+    public void afterCompletion(int completion) {
+      LOG.info(
+          "Session query transaction completion={} totalReads={} remainingMicros={}",
+          switch (completion) {
+            case STATUS_COMMITTED -> "COMMITTED";
+            case STATUS_ROLLED_BACK -> "ROLLED_BACK";
+            default -> "UNKNOWN";
+          },
+          context.resources().reads(),
+          (context.deadlineNanos() - System.nanoTime()) / 1000);
+      try {
+        if (!connection.isClosed()) connection.setNetworkTimeout(Runnable::run, priorNetwork);
+      } catch (java.sql.SQLException failure) {
+        throw new org.springframework.dao.DataAccessResourceFailureException(
+            "Session connection reset unavailable (afterCompletion)", failure);
+      }
     }
   }
 }
