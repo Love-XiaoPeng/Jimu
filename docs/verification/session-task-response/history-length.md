@@ -1,5 +1,7 @@
 ## 运行时签发与独立history owner
 
+具名 history 调用由 `MapperSessionHistoryProofs.load` 的 acceptedEvent=false 分支直接进入包内 `JdbcSessionRecords.historyRows`。每个非空 query 在所有分支先申请12普通操作，覆盖分派、guard、字段引用、mapper及两个key查询和交接；不新增容器、闭包或owner。通用 mapperRows 删除 history 专属的 suffix 判断12及完整比较43，保原 eventHistory、args/meter/selectList。真实调用图另列于 routing CSV；metadata 表投影数不是 mapperRows 次数。原型同输入局部 history1941→1898、metadata2480→2468；searchBudget/nonlineage2468→2480的新增成本保留，不从旧失败差值推业务通过。
+
 长度factory最先保留原首错，以StackWalker直接caller名和同ClassLoader核验真实QueryResults，再进入原具名statement/flags/meter/read逻辑。普通Java、反射公开factory和同名异loader均在read增加前poison；没有测试豁免或kernel→adapter依赖。512字节是新增caller临时引用/帧的内部保守模型，不是所有JVM/native分配上界。
 
 十五列history与八列eventHistory并列。新`historyBindingSize`仅在原tenant/task、同DS/query/connection和FOR UPDATE锁下对PRESENT且cleanup=NULL的binding计长；0行仍读原完整raw。raw反查十五个label、实际Statement/ResultSet、完整key/Work/token/query/connection和原锁，再核PRESENT/cleanup=NULL。cap绑定准确raw入口；写前失效，不能跨入口、query或事务重用。原Service的record/history版本、binding比较、独立reader/digest/schema、retained及末端scope.live/fence没有删除。

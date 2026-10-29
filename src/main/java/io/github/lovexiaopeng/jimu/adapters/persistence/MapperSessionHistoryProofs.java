@@ -40,11 +40,9 @@ final class MapperSessionHistoryProofs
 
   public SessionHistoryProofs.HistoryRow load() {
     var rows =
-        records.mapperRows(
-            acceptedEvent
-                ? "SessionHistoryRetentionMapper.eventHistory"
-                : "SessionHistoryRetentionMapper.history",
-            task);
+        acceptedEvent
+            ? records.mapperRows("SessionHistoryRetentionMapper.eventHistory", task)
+            : records.historyRows(task);
     if (rows.isEmpty()) return null;
     history = rows.getFirst();
     checkedRow =

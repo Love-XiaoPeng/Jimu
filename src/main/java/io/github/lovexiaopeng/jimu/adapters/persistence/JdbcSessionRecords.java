@@ -436,6 +436,15 @@ final class JdbcSessionRecords {
     return mapperSession;
   }
 
+  List<Map<String, Object>> historyRows(Map<String, Object> task) {
+    // Prepay dispatch, guards, mapper/key lookups and handoff, including the fallback path.
+    if (query != null) query.operation(12);
+    if (query != null && query.lineage() && searchBudget == null)
+      return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistoryRows.load(
+          mapperSession(), query, s(task, "tenant_id"), s(task, "id"));
+    return mapperRows("SessionHistoryRetentionMapper.history", task);
+  }
+
   List<Map<String, Object>> mapperRows(String operation, Map<String, Object> task) {
     if (operation.equals("SessionHistoryRetentionMapper.eventHistory")
         && query != null
@@ -443,15 +452,6 @@ final class JdbcSessionRecords {
         && searchBudget == null)
       return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionEventHistoryRows.load(
           mapperSession(), query, s(task, "tenant_id"), s(task, "id"));
-    if (query != null && query.lineage() && searchBudget == null) {
-      query.operation(12); // eligibility and bounded suffix comparison
-      if (operation.endsWith(".history")) {
-        query.operation(43); // exact named mapper equality, before lookup/materialization
-        if (operation.equals("SessionHistoryRetentionMapper.history"))
-          return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistoryRows.load(
-              mapperSession(), query, s(task, "tenant_id"), s(task, "id"));
-      }
-    }
     var args = new java.util.HashMap<String, Object>();
     args.put("query", query);
     args.put("tenant", s(task, "tenant_id"));
