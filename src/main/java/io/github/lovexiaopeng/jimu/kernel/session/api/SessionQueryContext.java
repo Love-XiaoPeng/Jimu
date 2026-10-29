@@ -15,6 +15,24 @@ public final class SessionQueryContext {
   private ResultMeter meter;
   private final java.util.Map<Object, Long> retainedScratch = new java.util.HashMap<>();
   private long scratchPeak;
+  private TaskFailure firstFailure;
+
+  private TaskFailure refuse(int status, String code) {
+    if (firstFailure == null) firstFailure = new TaskFailure(status, code);
+    return firstFailure;
+  }
+
+  private void checkFailure() {
+    if (firstFailure != null) throw firstFailure;
+  }
+
+  /** 首次拒绝不可因catch或释放scratch恢复；清理仍可通过releaseScratch执行。 */
+  public void checkHealthy() {
+    checkFailure();
+    checkLimits();
+    scratch(0);
+  }
+
   private String group = "B";
   private final java.util.Map<String, long[]> groups = new java.util.TreeMap<>();
   private final java.util.Map<String, Long> statements = new java.util.TreeMap<>();
@@ -84,11 +102,12 @@ public final class SessionQueryContext {
   }
 
   private void scratch(long transientBytes) {
+    checkFailure();
     long live = scratchReserve;
     for (long bytes : retainedScratch.values()) live = Math.addExact(live, bytes);
     live = Math.addExact(live, transientBytes);
     scratchPeak = Math.max(scratchPeak, live);
-    if (metered && live > scratchLimit) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (metered && live > scratchLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
   }
 
   public interface ResultMeter {
@@ -131,8 +150,9 @@ public final class SessionQueryContext {
   }
 
   public int remainingMillis() {
+    checkFailure();
     long remaining = deadlineNanos - System.nanoTime();
-    if (remaining <= 0) throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
+    if (remaining <= 0) throw refuse(504, "SESSION_QUERY_TIMEOUT");
     return (int) Math.max(1, (remaining + 999999L) / 1000000L);
   }
 
@@ -153,16 +173,17 @@ public final class SessionQueryContext {
 
   private void checkLimits() {
     remainingMillis();
-    if (reads > readLimit || bytes > byteLimit || operations > operationLimit)
-      throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (metered && (reads > readLimit || bytes > byteLimit || operations > operationLimit))
+      throw refuse(429, "SESSION_HISTORY_LIMIT");
   }
 
   public void operation(long count) {
+    checkFailure();
     if (!metered) return;
     long previous = operations;
     operations = Math.addExact(operations, count);
     groupCounters()[2] = Math.addExact(groupCounters()[2], count);
-    if (operations > operationLimit) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (operations > operationLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
     if (previous / 1024 != operations / 1024) remainingMillis();
   }
 
@@ -177,7 +198,7 @@ public final class SessionQueryContext {
       statements.merge(group + ":" + statement, 1L, Math::addExact);
     }
     remainingMillis();
-    if (metered && ++reads > readLimit) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+    if (metered && ++reads > readLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
     return new Result();
   }
 
@@ -206,7 +227,7 @@ public final class SessionQueryContext {
         groupCounters()[1] = Math.addExact(groupCounters()[1], size);
         batch = Math.addExact(batch, size);
         retainScratch(this, Math.multiplyExact(batch, 3));
-        if (bytes > byteLimit) throw new TaskFailure(429, "SESSION_HISTORY_LIMIT");
+        if (bytes > byteLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
       }
       if (additional != null) additional.column(label, value);
     }

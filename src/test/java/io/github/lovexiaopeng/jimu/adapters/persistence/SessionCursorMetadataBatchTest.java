@@ -150,18 +150,52 @@ class SessionCursorMetadataBatchTest {
     var values = first.values().iterator();
     assertTrue(iterator.hasNext());
     assertEquals(2, rows.fetched);
-    assertThrows(IllegalStateException.class, first::values);
-    assertThrows(IllegalStateException.class, values::hasNext);
     var second = iterator.next();
     assertEquals(r.get("tenant_id"), second.value("tenant_id"));
     iterator.next();
     assertFalse(iterator.hasNext());
     assertThrows(NoSuchElementException.class, iterator::next);
+    assertThrows(IllegalStateException.class, first::values);
+    assertThrows(IllegalStateException.class, values::hasNext);
     batch.close();
     batch.close();
     assertThrows(IllegalStateException.class, second::values);
     assertTrue(rows.closed);
     assertEquals(65536, q.scratchLive());
+  }
+
+  @Test
+  void everyBorrowedGetterClosesOnCaughtBudgetFailureAndPreservesFirstFailure() {
+    for (String entry : List.of("value", "hasNext", "next", "scalar", "lazy")) {
+      var q = query();
+      var p = SessionMetadataProjection.forTable(Table.TASK_ATTEMPT);
+      var rows = new Rows(List.of(row(p)));
+      rows.throwClose = true;
+      var batch = new SessionCursorMetadataBatch(q, p, () -> rows);
+      var iterator = batch.iterator();
+      var current = entry.equals("lazy") ? null : iterator.next();
+      var values = current == null ? null : current.values().iterator();
+      q.operation(65536 - q.resources().operations());
+      var failure =
+          assertThrows(
+              TaskFailure.class,
+              () -> {
+                switch (entry) {
+                  case "value" -> current.value("tenant_id");
+                  case "hasNext" -> values.hasNext();
+                  case "next" -> values.next();
+                  case "scalar" -> batch.scalarBytes("x");
+                  case "lazy" -> iterator.hasNext();
+                  default -> throw new AssertionError();
+                }
+              });
+      assertTrue(rows.closed, entry);
+      assertEquals(1, failure.getSuppressed().length, entry);
+      org.junit.jupiter.api.Assertions.assertSame(
+          failure, assertThrows(TaskFailure.class, q::checkHealthy));
+      assertEquals(65536, q.scratchLive());
+      batch.close();
+    }
   }
 
   @Test

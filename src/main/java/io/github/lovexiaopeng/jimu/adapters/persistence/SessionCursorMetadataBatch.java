@@ -141,15 +141,25 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     }
 
     private void valid() {
-      open();
-      if (version != generation || current == null)
-        throw new IllegalStateException("Expired metadata row");
+      try {
+        open();
+        if (version != generation || current == null)
+          throw new IllegalStateException("Expired metadata row");
+      } catch (RuntimeException | Error failure) {
+        fail(failure);
+        throw failure;
+      }
     }
 
     public Object value(String name) {
-      valid();
-      SessionMetadataScalars.operation(query, 1L + name.length());
-      return current.get(name);
+      try {
+        valid();
+        SessionMetadataScalars.operation(query, 1L + name.length());
+        return current.get(name);
+      } catch (RuntimeException | Error failure) {
+        fail(failure);
+        throw failure;
+      }
     }
 
     public Iterable<?> values() {
@@ -159,28 +169,38 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
             private int index;
 
             public boolean hasNext() {
-              valid();
-              while (index < projection.columns.size()) {
-                var name = projection.columns.get(index).name();
-                SessionMetadataScalars.operation(query, 2L + name.length());
-                if (current.containsKey(name)) return true;
-                index++;
+              try {
+                valid();
+                while (index < projection.columns.size()) {
+                  var name = projection.columns.get(index).name();
+                  SessionMetadataScalars.operation(query, 2L + name.length());
+                  if (current.containsKey(name)) return true;
+                  index++;
+                }
+                SessionMetadataScalars.operation(query, 1);
+                return false;
+              } catch (RuntimeException | Error failure) {
+                fail(failure);
+                throw failure;
               }
-              SessionMetadataScalars.operation(query, 1);
-              return false;
             }
 
             public Object next() {
-              if (!hasNext()) throw new NoSuchElementException();
-              return value(projection.columns.get(index++).name());
+              try {
+                if (!hasNext()) throw new NoSuchElementException();
+                return value(projection.columns.get(index++).name());
+              } catch (RuntimeException | Error failure) {
+                fail(failure);
+                throw failure;
+              }
             }
           };
     }
   }
 
   public long scalarBytes(Object value) {
-    open();
     try {
+      open();
       return SessionMetadataScalars.bytes(value, query);
     } catch (RuntimeException | Error failure) {
       fail(failure);

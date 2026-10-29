@@ -711,6 +711,7 @@ public final class SessionQueryWork {
 
   void finish() {
     active();
+    context.checkHealthy();
     if (proofFailure != null) throw proofFailure;
     for (var account : accounts.values()) account.action().accept(account.closing());
     if (live != null) live.run();
@@ -723,11 +724,12 @@ public final class SessionQueryWork {
 
   void beforeCommit() {
     active();
+    context.checkHealthy();
     if (proofFailure != null) throw proofFailure;
     if (!sealed || generation != sealedGeneration)
       throw new IllegalStateException("Unsealed session transaction");
     if (expiry != null) expiry.run();
-    context.remainingMillis();
+    context.checkHealthy();
   }
 
   void complete() {

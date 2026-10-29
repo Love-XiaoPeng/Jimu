@@ -23,7 +23,8 @@ class SessionQueryResourcesTest {
     assertEquals(
         "SESSION_HISTORY_LIMIT", assertThrows(TaskFailure.class, query::restrictLineage).code());
     query.releaseScratch(held);
-    query.restrictLineage();
+    assertThrows(TaskFailure.class, query::restrictLineage);
+    assertThrows(TaskFailure.class, query::checkHealthy);
   }
 
   @Test
@@ -40,10 +41,91 @@ class SessionQueryResourcesTest {
           assertThrows(TaskFailure.class, () -> second.column("second", "y".repeat(15000))).code());
     }
     query.releaseScratch(cache);
-    try (var next = query.result()) {
+    assertThrows(TaskFailure.class, query::result);
+    var independent = query();
+    independent.restrictLineage();
+    try (var next = independent.result()) {
       next.column("next", "z".repeat(15000));
     }
-    assertEquals(3, query.resources().reads());
+    assertEquals(2, query.resources().reads());
+    assertEquals(1, independent.resources().reads());
+  }
+
+  @Test
+  void caughtBudgetAndDeadlineFailuresCannotCommitOrBeClearedByCleanup() {
+    for (String phase : java.util.List.of("business", "account", "live", "fence", "beforeCommit")) {
+      for (String resource :
+          java.util.List.of("operations", "scratch", "deadline", "reads", "bytes")) {
+        var fixture = new SessionQueryTransactionTest.Fixture();
+        var q = query();
+        q.restrictLineage();
+        TaskFailure[] first = {null};
+        Runnable refusal =
+            () -> {
+              Object pressure = new Object();
+              try {
+                switch (resource) {
+                  case "operations" -> q.operation(65537);
+                  case "scratch" -> q.retainScratch(pressure, 1048576);
+                  case "deadline" -> {
+                    q.restrictDeadline(System.nanoTime() - 1);
+                    q.remainingMillis();
+                  }
+                  case "reads" -> {
+                    for (int i = 0; i < 257; i++) q.result().close();
+                  }
+                  case "bytes" -> {
+                    try (var result = q.result()) {
+                      for (int i = 0; i < 1000; i++) result.column("bytes", new byte[4096]);
+                    }
+                  }
+                  default -> throw new AssertionError();
+                }
+                throw new AssertionError("Expected refusal");
+              } catch (TaskFailure failure) {
+                first[0] = failure;
+              } finally {
+                q.releaseScratch(pressure);
+              }
+            };
+        var failure =
+            assertThrows(
+                TaskFailure.class,
+                () ->
+                    fixture.transaction.required(
+                        q,
+                        () -> {
+                          var owner = SessionQueryTransaction.current(q);
+                          switch (phase) {
+                            case "business" -> refusal.run();
+                            case "account" -> owner.account("task", true, closing -> refusal.run());
+                            case "live" -> owner.expiry(refusal);
+                            case "fence" -> owner.fence("fence", refusal);
+                            case "beforeCommit" ->
+                                org.springframework.transaction.support
+                                    .TransactionSynchronizationManager.registerSynchronization(
+                                    new org.springframework.transaction.support
+                                        .TransactionSynchronization() {
+                                      public int getOrder() {
+                                        return -1;
+                                      }
+
+                                      public void beforeCommit(boolean readOnly) {
+                                        refusal.run();
+                                      }
+                                    });
+                            default -> throw new AssertionError();
+                          }
+                          return "caught";
+                        }));
+        org.junit.jupiter.api.Assertions.assertSame(first[0], failure, phase + "/" + resource);
+        assertEquals(0, fixture.commits, phase + "/" + resource);
+        assertEquals(1, fixture.rollbacks, phase + "/" + resource);
+        assertEquals(65536, q.scratchLive());
+        org.junit.jupiter.api.Assertions.assertSame(
+            failure, assertThrows(TaskFailure.class, q::checkHealthy));
+      }
+    }
   }
 
   @Test
