@@ -239,9 +239,9 @@ public final class SessionHistoryWitnessSqlScenario {
                   + " table="
                   + table
                   + " before="
-                  + io.github.lovexiaopeng.jimu.adapters.codec.Payloads.json(old)
+                  + old
                   + " after="
-                  + io.github.lovexiaopeng.jimu.adapters.codec.Payloads.json(current));
+                  + current);
           // 实际REQUIRES_NEW invalidation还会重算metadata；其余原字段必须逐字回滚。
           String[] changed =
               table == 5
