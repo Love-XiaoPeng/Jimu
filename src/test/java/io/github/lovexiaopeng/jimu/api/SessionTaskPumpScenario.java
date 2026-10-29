@@ -17,10 +17,23 @@ public final class SessionTaskPumpScenario {
     try {
       var field = SessionTaskResponse.class.getDeclaredField("view");
       field.setAccessible(true);
-      var oracle = new org.springframework.mock.http.MockHttpOutputMessage();
+      var oracleBytes = new java.io.ByteArrayOutputStream();
+      var oracle =
+          new org.springframework.http.HttpOutputMessage() {
+            private final org.springframework.http.HttpHeaders headers =
+                new org.springframework.http.HttpHeaders();
+
+            public org.springframework.http.HttpHeaders getHeaders() {
+              return headers;
+            }
+
+            public java.io.OutputStream getBody() {
+              return oracleBytes;
+            }
+          };
       new org.springframework.http.converter.json.JacksonJsonHttpMessageConverter()
           .write(field.get(response), org.springframework.http.MediaType.APPLICATION_JSON, oracle);
-      expected = oracle.getBodyAsBytes();
+      expected = oracleBytes.toByteArray();
     } catch (ReflectiveOperationException | java.io.IOException failure) {
       throw new AssertionError(failure);
     }
