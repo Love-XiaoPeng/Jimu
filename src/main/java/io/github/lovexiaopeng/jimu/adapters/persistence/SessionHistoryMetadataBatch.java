@@ -34,7 +34,7 @@ final class SessionHistoryMetadataBatch implements SessionMetadataAccounting.Bat
   // Four fixed strings; 2 INT + 5 BIGINT + DATETIME; 14 entries incl labels; facades/table/list.
   // Cursor retention is separately additive in SessionQueryContext.Result, never included here.
   static final long RETAINED_BYTES =
-      2L * (65535L * 2 + 64) + 2L * (64 + 36 + 64 + 16) + 4L * 64 + 8L * 64 + 14L * 128 + 2048;
+      2L * (65535L * 2 + 64) + 4L * (64 + 36 + 64 + 16) + 4L * 64 + 8L * 64 + 14L * 128 + 2048;
   private final SessionQueryContext query;
   private List<Map<String, Object>> rows;
   private boolean closed;
@@ -53,12 +53,12 @@ final class SessionHistoryMetadataBatch implements SessionMetadataAccounting.Bat
           if (query != null) query.operation(1);
           boolean valid =
               switch (i) {
-                case 0 -> value instanceof String text && text.length() <= 64;
-                case 1 -> value instanceof String text && text.length() <= 36;
+                case 0 -> bounded(value, 64);
+                case 1 -> bounded(value, 36);
                 case 2, 3 -> value instanceof Integer;
                 case 4 -> value instanceof String text && text.length() <= 65535;
-                case 5 -> value instanceof String text && text.length() <= 64;
-                case 6 -> value instanceof String text && text.length() <= 16;
+                case 5 -> bounded(value, 64);
+                case 6 -> bounded(value, 16);
                 case 7, 8, 9, 10, 11 -> value instanceof Long;
                 case 12 -> value instanceof java.time.LocalDateTime;
                 case 13 -> value == null || value instanceof String text && text.length() <= 65535;
@@ -75,6 +75,12 @@ final class SessionHistoryMetadataBatch implements SessionMetadataAccounting.Bat
 
   private void open() {
     if (closed) throw new IllegalStateException("Closed metadata batch");
+  }
+
+  private boolean bounded(Object value, int codePoints) {
+    if (!(value instanceof String text) || text.length() > 2 * codePoints) return false;
+    if (query != null) query.operation(text.length());
+    return text.codePointCount(0, text.length()) <= codePoints;
   }
 
   public Iterator<SessionMetadataAccounting.Row> iterator() {

@@ -133,4 +133,22 @@ class SessionHistoryMetadataBatchTest {
     }
     assertEquals(base, q.scratchLive());
   }
+
+  @Test
+  void supplementaryCharactersUseColumnCodePointBoundsAndOmittedNullStaysOmitted() {
+    var q = query();
+    var r = row();
+    r.put("tenant_id", "😀".repeat(64));
+    r.remove("cleanup_receipt");
+    try (var batch = new SessionHistoryMetadataBatch(q, () -> List.of(r))) {
+      long actual = 0;
+      int columns = 0;
+      for (var value : batch.iterator().next().values()) {
+        actual += batch.scalarBytes(value);
+        columns++;
+      }
+      assertEquals(13, columns);
+      assertEquals(r.values().stream().mapToLong(SessionQueryContext::scalarBytes).sum(), actual);
+    }
+  }
 }

@@ -520,7 +520,7 @@ public final class SessionTailResidencyScenario {
                           refused = true;
                         }
                         check(
-                            refused == (!refresh || changed),
+                            refused == (!refresh || changed || atCommit),
                             "stale/source relationship refusal after rebuilding scope");
                       };
                   if (atCommit)

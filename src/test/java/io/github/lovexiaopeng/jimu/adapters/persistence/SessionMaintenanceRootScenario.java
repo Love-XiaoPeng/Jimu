@@ -40,6 +40,7 @@ public final class SessionMaintenanceRootScenario {
     Object firstOwner, secondOwner;
     long deadline, firstOperations;
     boolean fired;
+    int firstTask = 1, secondTask = 2;
 
     public Object intercept(org.apache.ibatis.plugin.Invocation invocation) throws Throwable {
       var statement = (org.apache.ibatis.mapping.MappedStatement) invocation.getArgs()[0];
@@ -48,12 +49,12 @@ public final class SessionMaintenanceRootScenario {
           && statement.getId().endsWith("TaskMapper.selectTaskForUpdate")
           && p.get("query") instanceof SessionQueryContext q) {
         Object task = p.get("taskId");
-        if (id(1).equals(task)) {
+        if (id(firstTask).equals(task)) {
           query = q;
           deadline = q.deadlineNanos();
           firstOwner = SessionQueryTransaction.current(q).token();
         }
-        if (id(2).equals(task)) {
+        if (id(secondTask).equals(task)) {
           check(
               query == q && deadline == q.deadlineNanos(),
               "two root candidates share exact query/deadline");
@@ -192,6 +193,33 @@ public final class SessionMaintenanceRootScenario {
     check(
         after.equals(SessionDependencyScenario.snapshot(db)),
         "zero-candidate repeated root unchanged");
+    seed(db, 4, 5);
+    seed(db, 5, 5);
+    var fifth = taskSnapshot(db, 5);
+    boundary.firstTask = 4;
+    boundary.secondTask = 5;
+    boundary.mode = "error";
+    boundary.fired = false;
+    boolean failed = false;
+    try {
+      root.cleanupSessionHistory();
+    } catch (RuntimeException expected) {
+      failed = true;
+    }
+    check(
+        failed && boundary.fired && fifth.equals(taskSnapshot(db, 5)),
+        "second candidate exception rolls back its projections and propagates");
+    check(
+        "PURGED"
+            .equals(
+                db.queryForObject(
+                    "SELECT content_state FROM task_session_history WHERE task_id=?",
+                    String.class,
+                    id(4))),
+        "first candidate remains independently committed after second exception");
+    check(boundary.query.scratchLive() == 65536, "exception root releases all candidate owners");
+    boundary.mode = null;
+    root.cleanupSessionHistory();
     // Invoke the same production view with an already expired root. No SQL counter can advance.
     var method =
         JdbcLedger.class.getDeclaredMethod(

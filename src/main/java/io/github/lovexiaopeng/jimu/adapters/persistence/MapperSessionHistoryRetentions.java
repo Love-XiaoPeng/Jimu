@@ -84,13 +84,12 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
             values.add(new Candidate(tenant, task));
           }
         } catch (RuntimeException | Error failure) {
+          raw = null;
           close();
           throw failure;
         } finally {
-          if (raw != null) {
-            for (var row : raw) row.clear();
-            raw.clear();
-          }
+          // Mapper list is exclusively borrowed here; Candidates retain only their two strings.
+          raw = null;
         }
       }
 
@@ -115,10 +114,8 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
       public void close() {
         if (closed) return;
         closed = true;
-        if (values != null) {
-          values.clear();
-          values = null;
-        }
+        // Iterators refer to this batch, never to backing collections; no user clear() callback.
+        values = null;
         query.releaseScratch(this);
       }
     };

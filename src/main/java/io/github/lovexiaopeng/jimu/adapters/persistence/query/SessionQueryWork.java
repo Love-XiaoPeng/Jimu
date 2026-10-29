@@ -339,13 +339,16 @@ public final class SessionQueryWork {
       }
       return;
     }
+    long table = Math.max(relationTableBytes, 32L * (relations.size() + 1));
     long next =
-        Math.addExact(relationBytes, relationEntryBytes(tenant, id, task, parent, category) + 32);
+        Math.addExact(
+            relationBytes,
+            relationEntryBytes(tenant, id, task, parent, category) + table - relationTableBytes);
     context.retainScratch(relationScratch, next);
     // Move the already allocated lookup key into the entry's ownership without charging it twice.
     context.releaseScratch(lookupScratch);
     relations.put(key, new Related(task, parent, category));
-    relationTableBytes += 32;
+    relationTableBytes = table;
     relationBytes = next;
   }
 

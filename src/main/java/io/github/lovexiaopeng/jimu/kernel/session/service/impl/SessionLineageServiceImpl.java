@@ -231,6 +231,8 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
     }
     records.scratch(
         Math.addExact(scratch, SessionLineageGraph.indexWorkspaceBytes(genesis.size())));
+    // Mutable genesis/nodes each copy their entries; frozen children Map is reused by Map.copyOf.
+    records.checkpoint(2L * genesis.size());
     var proof =
         new VerifiedGraph(
             fact.authorityDigest(),

@@ -20,9 +20,9 @@ final class SessionLineageMetadataBatch implements SessionMetadataAccounting.Bat
           "graph_digest",
           "graph_bytes",
           "content_state");
-  // V23: 64+36+64+64+16 UTF16 chars, 3 INT objects; list/map/8 entries/labels/facades。
-  // 字符串列单独对象上界(244*2+5*64)，数字3*32，8个map entry各128，容器/迭代器1024。
-  static final long RETAINED_BYTES = 244L * 2 + 5L * 64 + 3L * 32 + 8L * 128 + 1024;
+  // V23: 64+36+64+64+16 code points (up to two UTF16 units each), 3 INT objects.
+  // Strings (244*4+5*64), numbers 3*32, eight entries incl labels 8*128, facades/table/list 1024.
+  static final long RETAINED_BYTES = 244L * 4 + 5L * 64 + 3L * 32 + 8L * 128 + 1024;
   private final SessionQueryContext query;
   private List<Map<String, Object>> rows;
   private boolean closed;
@@ -47,8 +47,10 @@ final class SessionLineageMetadataBatch implements SessionMetadataAccounting.Bat
           if (query != null) query.operation(1);
           if (max == 0
               ? !(value instanceof Integer)
-              : !(value instanceof String s) || s.length() > max)
-            throw JdbcSessionRecords.corrupt();
+              : !(value instanceof String s)
+                  || s.length() > 2 * max
+                  || s.codePointCount(0, s.length()) > max) throw JdbcSessionRecords.corrupt();
+          if (query != null && value instanceof String text) query.operation(text.length());
         }
       }
     } catch (RuntimeException | Error failure) {
