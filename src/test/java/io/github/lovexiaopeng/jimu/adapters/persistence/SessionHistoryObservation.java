@@ -1,6 +1,9 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
-import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -31,6 +34,19 @@ import org.apache.ibatis.plugin.Signature;
       args = {MappedStatement.class, Object.class})
 })
 final class SessionHistoryObservation implements Interceptor {
+  private static final ObjectMapper JSON =
+      new ObjectMapper()
+          .registerModule(new JavaTimeModule())
+          .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+  private static String json(Object value) {
+    try {
+      return JSON.writeValueAsString(value);
+    } catch (JsonProcessingException failure) {
+      throw new IllegalStateException("Test observation serialization failed", failure);
+    }
+  }
+
   private static final class Counts {
     int history, writes;
   }
@@ -90,7 +106,7 @@ final class SessionHistoryObservation implements Interceptor {
       event.put("afterGroups", query.groups());
       event.put("afterLive", query.scratchLive());
       event.put("peak", query.scratchPeak());
-      System.out.println("HISTORY_OBSERVATION " + Payloads.json(event));
+      System.out.println("HISTORY_OBSERVATION " + json(event));
       System.out.flush();
       event.clear();
     }
@@ -124,8 +140,7 @@ final class SessionHistoryObservation implements Interceptor {
     var tables = SessionDependencyScenario.snapshot(db);
     if (tables.size() != names.size()) throw new AssertionError("22 exact tables");
     for (int i = 0; i < names.size(); i++) {
-      System.out.println(
-          "SNAPSHOT22 " + label + " " + names.get(i) + " " + Payloads.json(tables.get(i)));
+      System.out.println("SNAPSHOT22 " + label + " " + names.get(i) + " " + json(tables.get(i)));
       System.out.flush();
     }
   }
