@@ -265,8 +265,31 @@ public final class SessionQueryContext {
     sqlUtf8Lengths = false;
   }
 
-  /** 内部provider工厂，无长度参数；架构门禁只允许具名结果包装器调用。 */
+  private static final StackWalker SQL_ISSUER =
+      StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+  private static final String SQL_ISSUER_CLASS =
+      "io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryResults";
+
+  /** 运行时仅真实包装器可签发；反射调用与同名异loader均不能增加read或制造能力。 */
   public Result sqlUtf8LengthResult(String statement) {
+    checkFailure();
+    // 预留caller/Class/name/loader临时引用与walker帧；本局部退出后先断引用再退款。
+    operation(8);
+    retainScratch(SQL_ISSUER, 512);
+    Class<?> issuer = null;
+    String issuerName = null;
+    try {
+      issuer = SQL_ISSUER.getCallerClass();
+      issuerName = issuer.getName();
+      operation(1L + SQL_ISSUER_CLASS.length());
+      if (issuer.getClassLoader() != SessionQueryContext.class.getClassLoader()
+          || !SQL_ISSUER_CLASS.equals(issuerName))
+        throw recordFailure(new IllegalStateException("Untrusted SQL length issuer"));
+    } finally {
+      issuer = null;
+      issuerName = null;
+      releaseScratch(SQL_ISSUER);
+    }
     operation(3L + statement.length());
     if (!sqlUtf8Lengths
         || meter != null

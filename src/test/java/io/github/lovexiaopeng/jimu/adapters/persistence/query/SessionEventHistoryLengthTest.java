@@ -238,24 +238,148 @@ class SessionEventHistoryLengthTest {
   @Test
   void capabilityHasNoPublicNumericConstructorAndCannotBeReusedOrCrossQuery() {
     assertEquals(0, SessionQueryContext.SqlUtf8Length.class.getConstructors().length);
-    var q = query();
-    SessionQueryContext.SqlUtf8Length cap;
-    try (var r = q.sqlUtf8LengthResult(SessionEventHistoryRows.SIZE)) {
+    for (boolean crossQuery : new boolean[] {false, true}) {
+      var q = query();
+      var f = new SessionQueryTransactionTest.Fixture();
+      f.transaction.required(
+          q,
+          () -> {
+            try {
+              var slot = start(q);
+              size(q, slot, 3L);
+              // 仅测试取出真实provider已经签发的能力；不开放测试专用生产入口。
+              var field = slot.getClass().getDeclaredField("capability");
+              field.setAccessible(true);
+              var cap = (SessionQueryContext.SqlUtf8Length) field.get(slot);
+              if (!crossQuery) raw(q, slot, "abc");
+              var other = query();
+              try (var r = other.result(SessionEventHistoryRows.RAW)) {
+                assertThrows(
+                    IllegalStateException.class,
+                    () -> r.columnSqlUtf8("binding_snapshot", "abc", cap));
+              }
+              assertTrue(other.recordedFailure() != null);
+              return null;
+            } catch (RuntimeException e) {
+              throw e;
+            } catch (Exception e) {
+              throw new IllegalStateException(e);
+            }
+          });
+      assertEquals(65536, q.scratchLive());
+    }
+  }
 
-      r.row();
-      r.column("binding_snapshot_utf8_bytes", 3L);
-      cap = r.takeSqlUtf8Length();
+  @Test
+  void ordinaryAndReflectiveFactoryCallsPoisonBeforeAnyReadAndCannotCommit() {
+    for (boolean reflected : new boolean[] {false, true}) {
+      var q = query();
+      var f = new SessionQueryTransactionTest.Fixture();
+      var thrown =
+          assertThrows(
+              RuntimeException.class,
+              () ->
+                  f.transaction.required(
+                      q,
+                      () -> {
+                        RuntimeException first;
+                        if (reflected) {
+                          var invocation =
+                              assertThrows(
+                                  java.lang.reflect.InvocationTargetException.class,
+                                  () ->
+                                      SessionQueryContext.class
+                                          .getMethod("sqlUtf8LengthResult", String.class)
+                                          .invoke(q, SessionEventHistoryRows.SIZE));
+                          first = (RuntimeException) invocation.getCause();
+                        } else
+                          first =
+                              assertThrows(
+                                  IllegalStateException.class,
+                                  () -> q.sqlUtf8LengthResult(SessionEventHistoryRows.SIZE));
+                        assertEquals(0, q.resources().reads());
+                        assertSame(first, q.recordedFailure());
+                        assertSame(
+                            first,
+                            assertThrows(
+                                RuntimeException.class,
+                                () -> q.sqlUtf8LengthResult(SessionEventHistoryRows.SIZE)));
+                        return null; // catch后仍由finish/beforeCommit原首错回滚
+                      }));
+      assertSame(q.recordedFailure(), thrown);
+      assertEquals(1, f.rollbacks);
+      assertEquals(65536, q.scratchLive());
     }
-    try (var r = q.result(SessionEventHistoryRows.RAW)) {
-      r.columnSqlUtf8("binding_snapshot", "abc", cap);
-      assertThrows(
-          IllegalStateException.class, () -> r.columnSqlUtf8("binding_snapshot", "abc", cap));
+  }
+
+  @Test
+  void sameNamedProviderFromAnotherClassLoaderCannotIssue(
+      @org.junit.jupiter.api.io.TempDir java.nio.file.Path temporary) throws Exception {
+    String name = "io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryResults";
+    var source = temporary.resolve("QueryResults.java");
+    java.nio.file.Files.writeString(
+        source,
+        """
+        package io.github.lovexiaopeng.jimu.adapters.persistence.query;
+        import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
+        public class QueryResults {
+          public static Object issue(SessionQueryContext q, String statement) {
+            return q.sqlUtf8LengthResult(statement);
+          }
+        }
+        """);
+    assertEquals(
+        0,
+        javax.tools.ToolProvider.getSystemJavaCompiler()
+            .run(
+                null,
+                null,
+                null,
+                "-classpath",
+                System.getProperty("java.class.path"),
+                "-d",
+                temporary.toString(),
+                source.toString()));
+    try (var loader =
+        new java.net.URLClassLoader(
+            new java.net.URL[] {temporary.toUri().toURL()}, getClass().getClassLoader()) {
+          @Override
+          protected Class<?> loadClass(String requested, boolean resolve)
+              throws ClassNotFoundException {
+            if (!requested.equals(name)) return super.loadClass(requested, resolve);
+            var type = findLoadedClass(requested);
+            if (type == null) type = findClass(requested);
+            if (resolve) resolveClass(type);
+            return type;
+          }
+        }) {
+      var q = query();
+      var provider = loader.loadClass(name);
+      assertTrue(provider != QueryResults.class);
+      var failure =
+          assertThrows(
+              java.lang.reflect.InvocationTargetException.class,
+              () ->
+                  provider
+                      .getMethod("issue", SessionQueryContext.class, String.class)
+                      .invoke(null, q, SessionEventHistoryRows.SIZE));
+      assertSame(failure.getCause(), q.recordedFailure());
+      assertEquals(0, q.resources().reads());
+      assertEquals(65536, q.scratchLive());
     }
-    var other = query();
-    try (var r = other.result(SessionEventHistoryRows.RAW)) {
-      assertThrows(
-          IllegalStateException.class, () -> r.columnSqlUtf8("binding_snapshot", "abc", cap));
-    }
+  }
+
+  @Test
+  void issuerChecksCannotReplaceAnEarlierFailureOrSpendAfterIt() {
+    var q = query();
+    var first = new IllegalStateException("original failure");
+    q.recordFailure(first);
+    var before = q.resources();
+    assertSame(
+        first,
+        assertThrows(
+            RuntimeException.class, () -> q.sqlUtf8LengthResult(SessionEventHistoryRows.SIZE)));
+    assertEquals(before, q.resources());
   }
 
   @Test
