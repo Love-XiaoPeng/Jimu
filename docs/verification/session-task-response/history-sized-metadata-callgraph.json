@@ -1,0 +1,14 @@
+{
+  "entry": "MapperSessionMetadataAccounting.batch(TASK_SESSION_HISTORY) -> JdbcSessionRecords.historyMetadataBatch",
+  "routeOperations": 16,
+  "eligible": "lineage current query + current Work + no additional search meter",
+  "factory": "SessionHistorySizedMetadataBatch.load",
+  "statement": "SessionHistoryRetentionMapper.metadataTaskSessionHistorySized",
+  "oldStatementPreserved": true,
+  "newColumn": "binding_snapshot: OCTET_LENGTH(CONVERT(binding_snapshot USING utf8mb4))",
+  "other13Columns": "fresh each call, original order and labels, including NULL cleanup slot",
+  "rawProof": "unchanged independent history reader/digest/schema + version/binding comparison + retained and live/fence",
+  "marker": "private SqlUtf8Length(batchOwner,bytes), issued only after valid source; ordinary Long27 still 2",
+  "services": "both original values() loops unchanged",
+  "scratchModel": "267596 original +8192 new, bootstrap +64, separate Result retention; not complete A12"
+}

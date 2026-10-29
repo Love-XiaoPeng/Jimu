@@ -74,4 +74,6 @@
   <select id="metadataReservation" resultType="map" resultSetType="FORWARD_ONLY" fetchSize="-2147483648"><![CDATA[SELECT tenant_id,id,task_id,dispatch_id,category,amount,actual,usage_quality,cost_quality,state,record_version FROM reservation WHERE tenant_id=#{tenant} AND task_id=#{taskId}]]></select>
   <select id="metadataEvent" resultType="map" resultSetType="FORWARD_ONLY" fetchSize="-2147483648"><![CDATA[SELECT tenant_id,task_id,seq,event_id,fact_id,type,code,status,artifact_id,occurred_at,payload_version FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId}]]></select>
 <update id="retainAuthorityHistory"><![CDATA[UPDATE task_session_history SET retain_until=#{retain} WHERE tenant_id=#{tenant} AND task_id=#{id}]]></update>
+
+  <select id="metadataTaskSessionHistorySized" resultType="map" useCache="false" flushCache="true"><![CDATA[SELECT tenant_id,task_id,record_version,history_version,OCTET_LENGTH(CONVERT(binding_snapshot USING utf8mb4)) AS binding_snapshot,binding_digest,content_state,next_seq,body_bytes,metadata_bytes,reserved_bytes,held_bytes,retain_until,cleanup_receipt FROM task_session_history WHERE tenant_id=#{tenant} AND task_id=#{taskId}]]></select>
 </mapper>

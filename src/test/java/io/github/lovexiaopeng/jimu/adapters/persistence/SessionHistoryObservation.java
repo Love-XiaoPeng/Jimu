@@ -81,7 +81,8 @@ final class SessionHistoryObservation implements Interceptor {
     boolean write = command.getSqlCommandType() != SqlCommandType.SELECT;
     boolean history = id.endsWith("SessionHistoryRetentionMapper.history");
     boolean size = id.endsWith("SessionHistoryRetentionMapper.historyBindingSize");
-    if (!write && !history && !size) return invocation.proceed();
+    boolean metadata = id.endsWith("SessionHistoryRetentionMapper.metadataTaskSessionHistorySized");
+    if (!write && !history && !size && !metadata) return invocation.proceed();
     var counts = queries.computeIfAbsent(query, ignored -> new Counts());
     if (write) counts.writes++;
     if (history) counts.history++;
@@ -94,6 +95,10 @@ final class SessionHistoryObservation implements Interceptor {
     event.put("before", query.resources());
     event.put("beforeGroups", query.groups());
     event.put("beforeLive", query.scratchLive());
+    if (metadata) {
+      event.put("sql", command.getBoundSql(parameters).getSql());
+      event.put("charsetBefore", charset(invocation));
+    }
     if (history)
       event.put(
           "caller",
@@ -103,7 +108,12 @@ final class SessionHistoryObservation implements Interceptor {
               .toList());
     try {
       Object result = invocation.proceed();
-      if ((history || size) && result instanceof List<?> rows) {
+      if ((history || size || metadata) && result instanceof List<?> rows) {
+        if (metadata && !rows.isEmpty() && rows.getFirst() instanceof Map<?, ?> row) {
+          Object length = row.get("binding_snapshot");
+          event.put("sqlLengthType", length == null ? "NULL" : length.getClass().getName());
+          event.put("sqlLength", length == null ? "NULL" : length);
+        }
         event.put(
             "rows",
             rows.stream()
@@ -119,6 +129,7 @@ final class SessionHistoryObservation implements Interceptor {
                   : null);
         }
       }
+      if (metadata) event.put("charsetAfter", charset(invocation));
       event.put("returned", true);
       return result;
     } catch (Throwable failure) {
@@ -131,6 +142,27 @@ final class SessionHistoryObservation implements Interceptor {
       event.put("peak", query.scratchPeak());
       EVENTS.add(event);
     }
+  }
+
+  private static Map<String, Object> charset(Invocation invocation) throws java.sql.SQLException {
+    var executor = (Executor) invocation.getTarget();
+    var connection = executor.getTransaction().getConnection();
+    var actual =
+        org.springframework.jdbc.datasource.DataSourceUtils.getTargetConnection(connection);
+    var jdbc = actual.unwrap(com.mysql.cj.jdbc.JdbcConnection.class);
+    var server = jdbc.getSession().getServerSession();
+    var values = new LinkedHashMap<String, Object>();
+    values.put("connectionClass", actual.getClass().getName());
+    values.put("connectionIdentity", System.identityHashCode(actual));
+    values.put(
+        "javaEncoding",
+        jdbc.getPropertySet()
+            .getStringProperty(com.mysql.cj.conf.PropertyKey.characterEncoding)
+            .getValue());
+    for (String name :
+        List.of("character_set_client", "character_set_connection", "character_set_results"))
+      values.put(name, server.getServerVariable(name));
+    return values;
   }
 
   static void snapshot(org.springframework.jdbc.core.JdbcTemplate db, String label) {

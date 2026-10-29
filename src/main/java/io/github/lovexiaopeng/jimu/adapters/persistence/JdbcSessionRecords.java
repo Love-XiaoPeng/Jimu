@@ -436,6 +436,22 @@ final class JdbcSessionRecords {
     return mapperSession;
   }
 
+  io.github.lovexiaopeng.jimu.kernel.session.port.SessionMetadataAccounting.Batch
+      historyMetadataBatch(Map<String, Object> task) {
+    // Added route is paid on fallback too; no catch-and-success after a resource refusal.
+    if (query != null) query.operation(16);
+    if (query != null
+        && query.lineage()
+        && searchBudget == null
+        && io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                .currentOwner()
+            != null)
+      return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistorySizedMetadataBatch
+          .load(mapperSession(), query, s(task, "tenant_id"), s(task, "id"));
+    return new SessionHistoryMetadataBatch(
+        query, () -> mapperRows("SessionHistoryRetentionMapper.metadataTaskSessionHistory", task));
+  }
+
   List<Map<String, Object>> historyRows(Map<String, Object> task) {
     // Prepay dispatch, guards, mapper/key lookups and handoff, including the fallback path.
     if (query != null) query.operation(12);
