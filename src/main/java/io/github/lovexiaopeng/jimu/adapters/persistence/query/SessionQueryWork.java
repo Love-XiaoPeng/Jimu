@@ -11,6 +11,44 @@ import java.util.Map;
 public final class SessionQueryWork {
   private final SessionQueryContext context;
   private final Object token = new Object();
+  private final RuntimeException metadataClosed;
+  private final MetadataError metadataError;
+
+  private static final class MetadataClosedFailure extends IllegalStateException {
+    MetadataClosedFailure() {
+      super("Closed or foreign metadata batch");
+    }
+
+    @Override
+    public synchronized Throwable fillInStackTrace() {
+      return this;
+    }
+  }
+
+  private static final class MetadataError extends RuntimeException {
+    private Error error;
+
+    MetadataError() {
+      super("Metadata length error", null, false, false);
+    }
+
+    @Override
+    public synchronized Throwable getCause() {
+      return error;
+    }
+  }
+
+  RuntimeException recordMetadataError(Error failure) {
+    var first = context.recordedFailure();
+    if (first != null) return first;
+    metadataError.error = failure;
+    return recordMetadataFailure(metadataError);
+  }
+
+  RuntimeException metadataClosedFailure() {
+    var first = context.recordedFailure();
+    return first == null ? metadataClosed : first;
+  }
 
   private record Dirty(boolean closing, java.util.function.Consumer<Boolean> action) {}
 
@@ -439,6 +477,13 @@ public final class SessionQueryWork {
     return left == right;
   }
 
+  // Metadata cleanup must be able to register failure after completion without reviving proof.
+  RuntimeException recordMetadataFailure(RuntimeException failure) {
+    var first = context.recordFailure(failure);
+    if (!completed && proofFailure == null) proofFailure = first;
+    return first;
+  }
+
   public RuntimeException poisonProof(RuntimeException failure) {
     active();
     var first = context.recordFailure(failure);
@@ -497,9 +542,16 @@ public final class SessionQueryWork {
 
   SessionQueryWork(SessionQueryContext context) {
     this.context = context;
+    context.operation(12); // two stackless metadata failures, fields and failure handoff.
     context.retainScratch(relationScratch, RELATION_ROOT_BYTES);
+    metadataClosed = new MetadataClosedFailure();
+    metadataError = new MetadataError();
     relations = new LinkedHashMap<>();
     relationStrings = new java.util.IdentityHashMap<>();
+  }
+
+  boolean metadataIdentity(SessionQueryContext query, Object expectedToken) {
+    return !completed && context == query && token == expectedToken;
   }
 
   boolean owns(SessionQueryContext query) {
@@ -524,7 +576,7 @@ public final class SessionQueryWork {
   private java.util.IdentityHashMap<String, Integer> relationStrings;
   private final Object relationScratch = new Object();
   // Root/map table and lease dependency; entry includes key/value/node and amortized table growth.
-  static final long RELATION_ROOT_BYTES = 1024,
+  static final long RELATION_ROOT_BYTES = 1280,
       RELATION_ENTRY_BYTES = 256,
       RELATION_STRING_BYTES = 192;
   private long relationBytes = RELATION_ROOT_BYTES;

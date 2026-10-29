@@ -22,6 +22,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 public final class SessionQueryTransaction {
   private static final org.slf4j.Logger LOG =
       org.slf4j.LoggerFactory.getLogger(SessionQueryTransaction.class);
+  static final long METADATA_BINDING_BYTES = 4096;
   private final DataSourceTransactionManager manager;
   private final JdbcTemplate db;
 
@@ -71,6 +72,34 @@ public final class SessionQueryTransaction {
     return null;
   }
 
+  // A private Spring resource identifies only the actual, unsuspended transaction.
+  // Unlike getSynchronizations(), getResource() creates no collection snapshot.
+  // No caller supplied query, authority, rows or ancestor ThreadLocal is used as a key.
+  static SessionQueryWork metadataOwner() {
+    Object resource = TransactionSynchronizationManager.getResource(ConnectionSettings.class);
+    if (!(resource instanceof ConnectionSettings settings)) return null;
+    // The root read allocates nothing. Once the real payer is recovered, charge before
+    // further provider calls. Fault handling returns its identity solely for failure latching.
+    try {
+      settings.context.rejectedOperation(64);
+      if (!settings.metadataBound
+          || !settings.work.metadataIdentity(settings.context, settings.metadataToken)
+          || !TransactionSynchronizationManager.isSynchronizationActive()
+          || !TransactionSynchronizationManager.isActualTransactionActive()
+          || TransactionSynchronizationManager.getResource(settings.source) != settings.holder
+          || org.springframework.jdbc.datasource.DataSourceUtils.getTargetConnection(
+                  settings.holder.getConnection())
+              != settings.physicalConnection)
+        settings.work.recordMetadataFailure(settings.metadataFailure);
+    } catch (RuntimeException failure) {
+      settings.work.recordMetadataFailure(failure);
+    } catch (Error failure) {
+      settings.work.recordMetadataError(failure);
+      throw failure;
+    }
+    return settings.work;
+  }
+
   private <T> T execute(SessionQueryContext context, Supplier<T> work, int propagation) {
     var transaction = new TransactionTemplate(manager);
     transaction.setPropagationBehavior(propagation);
@@ -110,9 +139,12 @@ public final class SessionQueryTransaction {
                         receipt.connection = System.identityHashCode(connection);
                         receipt.phase = Phase.CONNECTION_SETUP;
                         receipt.completion = Completion.UNKNOWN;
-                        var settings = new ConnectionSettings(context, connection, owner, receipt);
+                        var settings =
+                            new ConnectionSettings(
+                                context, connection, owner, receipt, db.getDataSource());
                         TransactionSynchronizationManager.registerSynchronization(settings);
                         try {
+                          settings.installMetadata();
                           settings.priorNetwork = connection.getNetworkTimeout();
                           connection.setNetworkTimeout(Runnable::run, context.remainingMillis());
                           int priorWait, priorMax;
@@ -222,22 +254,85 @@ public final class SessionQueryTransaction {
     }
   }
 
+  private static final class MetadataAccessFailure extends IllegalStateException {
+    MetadataAccessFailure() {
+      super("Invalid metadata transaction");
+    }
+
+    @Override
+    public synchronized Throwable fillInStackTrace() {
+      return this;
+    }
+  }
+
   private static final class ConnectionSettings implements TransactionSynchronization {
     private final SessionQueryContext context;
     private final java.sql.Connection connection;
     private Integer priorNetwork;
     private final SessionQueryWork work;
     private final Receipt receipt;
+    private final DataSource source;
+    private org.springframework.jdbc.datasource.ConnectionHolder holder;
+    private java.sql.Connection physicalConnection;
+    private Object metadataToken;
+    private boolean metadataBound, metadataRetained;
+    private RuntimeException metadataFailure;
 
     ConnectionSettings(
         SessionQueryContext context,
         java.sql.Connection connection,
         SessionQueryWork work,
-        Receipt receipt) {
+        Receipt receipt,
+        DataSource source) {
       this.context = context;
       this.connection = connection;
       this.work = work;
       this.receipt = receipt;
+      this.source = source;
+    }
+
+    private void installMetadata() {
+      // New binding node/provider aliases and stackless rejection; reserve before allocation.
+      context.operation(96);
+      context.retainScratch(this, METADATA_BINDING_BYTES);
+      metadataRetained = true;
+      metadataFailure = new MetadataAccessFailure();
+      metadataToken = work.token();
+      physicalConnection =
+          org.springframework.jdbc.datasource.DataSourceUtils.getTargetConnection(connection);
+      Object resource = TransactionSynchronizationManager.getResource(source);
+      if (!(resource instanceof org.springframework.jdbc.datasource.ConnectionHolder current)
+          || org.springframework.jdbc.datasource.DataSourceUtils.getTargetConnection(
+                  current.getConnection())
+              != physicalConnection
+          || TransactionSynchronizationManager.hasResource(ConnectionSettings.class))
+        throw work.recordMetadataFailure(metadataFailure);
+      holder = current;
+      TransactionSynchronizationManager.bindResource(ConnectionSettings.class, this);
+      metadataBound = true;
+    }
+
+    @Override
+    public void suspend() {
+      if (!metadataBound) return;
+      // Pay every suspend/resume pair, not an unlimited construction-time allowance.
+      context.operation(64);
+      detachMetadata();
+    }
+
+    @Override
+    public void resume() {
+      if (!metadataRetained) return;
+      TransactionSynchronizationManager.bindResource(ConnectionSettings.class, this);
+      metadataBound = true;
+    }
+
+    private void detachMetadata() {
+      if (!metadataBound) return;
+      // No second unbind or cleanup-time exception when an earlier fault removed the key.
+      if (TransactionSynchronizationManager.getResource(ConnectionSettings.class) == this)
+        TransactionSynchronizationManager.unbindResourceIfPossible(ConnectionSettings.class);
+      metadataBound = false;
     }
 
     @Override
@@ -259,6 +354,16 @@ public final class SessionQueryTransaction {
 
     @Override
     public void afterCompletion(int completion) {
+      // Unbind even on setup failure/rollback/unknown completion; never expose an ended owner.
+      detachMetadata();
+      holder = null;
+      physicalConnection = null;
+      metadataToken = null;
+      metadataFailure = null;
+      if (metadataRetained) {
+        metadataRetained = false;
+        context.releaseScratch(this);
+      }
       work.complete();
       receipt.completion =
           switch (completion) {

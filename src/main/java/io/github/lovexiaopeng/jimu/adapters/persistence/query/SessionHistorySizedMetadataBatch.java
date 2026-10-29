@@ -36,7 +36,6 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
   private final SessionQueryContext query;
   private List<Map<String, Object>> rows;
   private boolean closed;
-
   // 专用元数据投影；长度资格仅由完整具名 SQL、当前事务和连接校验签发。
   // 旧 raw 行、普通数字与外部值不能取得该资格。
   private static final Object BOOTSTRAP = new Object();
@@ -65,9 +64,13 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
   }
 
   private RuntimeException fail(RuntimeException failure) {
-    // 已结束的 Work 会在 poisonProof 内拒绝；先断行引用，清理不能依赖它仍然 active。
     close();
-    return owner.poisonProof(failure);
+    return owner.recordMetadataFailure(failure);
+  }
+
+  private void fail(Error failure) {
+    close();
+    owner.recordMetadataError(failure);
   }
 
   public static SessionHistorySizedMetadataBatch load(
@@ -92,9 +95,7 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
       // This synchronous factory has no user-supplied loader or reentrant callback.
       query.retainScratch(BOOTSTRAP, RETAINED_BYTES + EXTRA_BYTES + 64);
       bootstrap = true;
-      ops(
-          query,
-          20); // allocation/fields, owner handoff and 10 unconditional close actions prepaid.
+      ops(query, 40); // batch allocation, fields, handoff and failure/close actions prepaid.
       batch = new SessionHistorySizedMetadataBatch(query, owner);
       query.retainScratch(BOOTSTRAP, 64); // only the allocated receiver exists at this point.
       query.retainScratch(batch, RETAINED_BYTES + EXTRA_BYTES);
@@ -103,13 +104,11 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
       batch.read(session, tenant, task);
       return batch;
     } catch (RuntimeException failure) {
-      RuntimeException first = owner == null ? failure : owner.poisonProof(failure);
-      if (batch != null) batch.close();
-      throw first;
+      if (batch != null) throw batch.fail(failure);
+      throw owner == null ? failure : owner.recordMetadataFailure(failure);
     } catch (Error failure) {
-      if (owner != null)
-        owner.poisonProof(new IllegalStateException("Metadata length error", failure));
-      if (batch != null) batch.close();
+      if (batch != null) batch.fail(failure);
+      else if (owner != null) owner.recordMetadataError(failure);
       throw failure;
     } finally {
       if (bootstrap) query.releaseScratch(BOOTSTRAP);
@@ -262,11 +261,25 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
   }
 
   private void open() {
-    if (closed) throw new IllegalStateException("Closed metadata batch");
-    ops(query, 4); // source/current owner lookups, identity and dispatch on every access.
-    if (SessionQueryTransaction.currentOwner() != owner
-        || SessionQueryTransaction.current(query) != owner) throw fail(corrupt());
-    query.checkHealthy();
+    SessionQueryWork current = null;
+    try {
+      current = SessionQueryTransaction.metadataOwner();
+      if (closed || current != owner || !owner.owns(query)) {
+        // A closed receiver no longer owns storage. The actual Work's retained rejection is
+        // used on that path; no exception/collection is allocated on repeated stale access.
+        RuntimeException failure =
+            current == null ? owner.metadataClosedFailure() : current.metadataClosedFailure();
+        var first = fail(failure);
+        throw current == null ? first : current.recordMetadataFailure(first);
+      }
+      query.checkHealthy();
+    } catch (RuntimeException failure) {
+      var first = fail(failure);
+      throw current == null ? first : current.recordMetadataFailure(first);
+    } catch (Error failure) {
+      fail(failure);
+      throw failure;
+    }
   }
 
   private boolean bounded(Object value, int codePoints) {
@@ -342,8 +355,7 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
     } catch (RuntimeException failure) {
       throw fail(failure);
     } catch (Error failure) {
-      owner.poisonProof(new IllegalStateException("Metadata length error", failure));
-      close();
+      fail(failure);
       throw failure;
     }
   }

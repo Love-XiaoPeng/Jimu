@@ -57,7 +57,13 @@ class SessionProjectionOwnershipTest {
             assertSame(row, projection.loaded(row));
             rows.add(row);
           }
-          assertEquals(65536 + 1024 + 1024 + 3 * 8192, query.scratchLive());
+          assertEquals(
+              65536
+                  + SessionQueryWork.RELATION_ROOT_BYTES
+                  + SessionQueryTransaction.METADATA_BINDING_BYTES
+                  + 1024
+                  + 3 * 8192,
+              query.scratchLive());
           rows.forEach(row -> assertEquals("borrowed", row.get("summary")));
           return null;
         });

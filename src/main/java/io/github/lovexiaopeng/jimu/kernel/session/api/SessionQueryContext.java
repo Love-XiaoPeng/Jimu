@@ -33,6 +33,20 @@ public final class SessionQueryContext {
     return firstFailure;
   }
 
+  /**
+   * Count allocation-free rejection of an already failed owner without replacing its first slot.
+   * This never authorizes work: callers still have to throw the recorded failure.
+   */
+  public void rejectedOperation(long count) {
+    if (firstFailure == null) {
+      operation(count);
+      return;
+    }
+    if (!metered) return;
+    // No group Map/boxing/new refusal after failure. Saturation cannot permit any more work.
+    operations = count > Long.MAX_VALUE - operations ? Long.MAX_VALUE : operations + count;
+  }
+
   public RuntimeException recordedFailure() {
     return firstFailure;
   }
