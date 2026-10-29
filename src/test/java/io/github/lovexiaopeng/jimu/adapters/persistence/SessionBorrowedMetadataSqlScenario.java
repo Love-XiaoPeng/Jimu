@@ -181,7 +181,11 @@ final class SessionBorrowedMetadataSqlScenario {
           try {
             if (targets) db.update(insert, ID, legal);
             else db.update(insert, ID, legal, "boundary-" + legal);
-          } catch (org.springframework.dao.DataIntegrityViolationException expected) {
+          } catch (org.springframework.dao.DataAccessException expected) {
+            // MySQL 3819/HY000在当前Spring映射为UncategorizedSQLException；仅认原CHECK拒绝。
+            Throwable cause = expected.getMostSpecificCause();
+            if (!(cause instanceof java.sql.SQLException sql) || sql.getErrorCode() != 3819)
+              throw expected;
             refused = true;
           }
           check(
