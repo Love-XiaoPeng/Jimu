@@ -64,6 +64,7 @@ public final class SessionLineageController {
     json(request, 16384);
     var response = new SessionTaskResponse();
     response.prepare(deadline, 8192);
+    response.prepareInput(deadline, 16384);
     var result = new SessionTaskAsyncSubmit(deadline, response);
     request.setAttribute(
         "jimu.session.search.request",
@@ -75,7 +76,8 @@ public final class SessionLineageController {
                         lineages.submitSessionLineage(
                             identity, key, end -> body, deadline, response)),
             result.pump::terminate,
-            true));
+            true,
+            response));
     return result;
   }
 

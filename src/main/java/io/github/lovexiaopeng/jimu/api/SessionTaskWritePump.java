@@ -26,9 +26,8 @@ final class SessionTaskWritePump implements WriteListener {
   private ServletOutputStream sink;
   private SessionTaskResponse.ConsumerLease lease;
   private SessionTaskJsonCursor cursor;
-  private byte[] chunk;
-  private int offset, length;
-  private boolean eof, callbackPending, producerStarted;
+  private int pendingByte = -2;
+  private boolean callbackPending, producerStarted;
   private int active;
   private State state = State.PRODUCING;
   private Throwable terminalFailure;
@@ -55,10 +54,9 @@ final class SessionTaskWritePump implements WriteListener {
       producer.run();
       response.produced();
       checkIntent();
-      // scaffold已在Controller预留；此处先留byte[1024]/cursor/lease/primitive及诊断槽再分配。
+      // scaffold已在Controller预留；此处先留cursor/lease/primitive及诊断槽再分配。
       lease = response.consume(SessionTaskJsonCursor.WORKSPACE_BYTES);
       cursor = new SessionTaskJsonCursor(response, lease.view());
-      chunk = new byte[SessionTaskJsonCursor.CHUNK_BYTES];
       checkIntent();
       http.setStatus(202);
       http.setHeader("Location", "/api/tasks/" + response.taskId());
@@ -112,7 +110,7 @@ final class SessionTaskWritePump implements WriteListener {
   }
 
   private void finish() {
-    // 独占终态借用：先断开所有View/chunk/sink别名，再恰一次退款，最后完成MVC。
+    // 独占终态借用：先断开所有View/待写byte/sink别名，再恰一次退款，最后完成MVC。
     Throwable failure = terminalFailure;
     if (failure != null) {
       RuntimeException cause =
@@ -123,22 +121,27 @@ final class SessionTaskWritePump implements WriteListener {
     }
     if (cursor != null) cursor.close();
     cursor = null;
-    chunk = null;
+    pendingByte = -2;
     sink = null;
     http = null;
     if (lease != null) lease.close();
     lease = null;
-    response.close();
-    response.produced();
+    var completedResponse = response;
     response = null;
+    completedResponse.close();
+    completedResponse.produced();
     synchronized (this) {
       terminalFailure = null;
       callbackPending = false;
       active = 0;
       state = State.TERMINATED;
     }
-    if (failure == null) gate.setResult(null);
-    else gate.setErrorResult(failure);
+    Throwable result = failure;
+    completedResponse.afterRelease(
+        () -> {
+          if (result == null) gate.setResult(null);
+          else gate.setErrorResult(result);
+        });
   }
 
   private synchronized void checkIntent() {
@@ -177,50 +180,32 @@ final class SessionTaskWritePump implements WriteListener {
   private void drain() throws IOException {
     for (; ; ) {
       checkIntent();
-      serialize(1);
-      if (offset == length) {
-        serialize(1);
-        if (eof) {
-          terminate(null);
-          return;
-        }
-        // 仅补chunk前额外核就绪；已有chunk时直接走下面唯一实际写边界。
+      serialize(1); // 待写标量条件；暂停后不重编码。
+      if (pendingByte == -2) {
         boolean ready = response.primitive("response.serialize", 1, sink::isReady);
         checkIntent();
         serialize(1);
         if (!ready) return;
-        offset = 0;
-        length = 0;
-        for (; ; ) {
-          checkIntent();
-          serialize(2);
-          if (length == chunk.length) break;
-          int next = cursor.next();
-          serialize(1);
-          if (next < 0) {
-            eof = true;
-            break;
-          }
-          int value = next;
-          response.primitive(
-              "response.copy",
-              1,
-              () -> {
-                chunk[length++] = (byte) value;
-                return null;
-              });
-          serialize(1);
+        int next = cursor.next();
+        response.primitive(
+            "response.serialize",
+            1,
+            () -> {
+              pendingByte = next;
+              return null;
+            });
+        serialize(1); // EOF比较；不会再次调用已结束的cursor。
+        if (pendingByte < 0) {
+          terminate(null);
+          return;
         }
-        serialize(1);
-        if (length == 0) continue;
       }
-      checkIntent();
-      // 编码期间容器可改变就绪状态；每个实际写边界重新检查。
+      // 编码后仍在每个实际write前检查就绪；仅一个int跨暂停持有。
       boolean ready = response.primitive("response.serialize", 1, sink::isReady);
+      checkIntent();
       serialize(1);
       if (!ready) return;
-      checkIntent();
-      int value = response.primitive("response.encode", 2, () -> chunk[offset] & 255);
+      int value = response.primitive("response.serialize", 1, () -> pendingByte);
       response.primitive(
           "response.wire",
           1,
@@ -232,8 +217,13 @@ final class SessionTaskWritePump implements WriteListener {
             }
             return null;
           });
-      offset++;
-      serialize(1);
+      response.primitive(
+          "response.serialize",
+          1,
+          () -> {
+            pendingByte = -2;
+            return null;
+          }); // 成功写后的标量重置；每byte循环与wire仍逐次申请。
       checkIntent();
     }
   }

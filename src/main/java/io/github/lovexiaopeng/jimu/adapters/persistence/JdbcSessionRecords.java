@@ -156,6 +156,42 @@ final class JdbcSessionRecords {
             : traceTask(task) ? v3 : searchTask(task) ? v2 : contracts;
   }
 
+  /** 只共用当前Work内同一不可变本地策略；数据库副本仍独立encode/hash，不构成行证明。 */
+  String policyHash(Map<String, Object> task, String raw) {
+    if (query == null || !query.lineage()) return Payloads.hash(raw);
+    try {
+      query.operation(1);
+      if (samePolicyIdentity(raw, contract(task).binding())) {
+        var owner =
+            io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+                query);
+        if (owner != null) return owner.policyHash(raw, () -> policyHashRaw(raw));
+      }
+      return policyHashRaw(raw);
+    } catch (RuntimeException failure) {
+      throw query.recordFailure(failure);
+    }
+  }
+
+  private static boolean samePolicyIdentity(Object left, Object right) {
+    return left == right;
+  }
+
+  private String policyHashRaw(String raw) {
+    Object temporary = new Object();
+    query.retainScratch(temporary, 4096L + 4L * raw.length());
+    try {
+      byte[] encoded =
+          query.primitive(
+              "history.encode",
+              raw.length(),
+              () -> raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      return query.primitive("history.hash", encoded.length, () -> Payloads.hash(encoded));
+    } finally {
+      query.releaseScratch(temporary);
+    }
+  }
+
   private List<String> sensitive;
   static final DateTimeFormatter UTC =
       DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSS'Z'");

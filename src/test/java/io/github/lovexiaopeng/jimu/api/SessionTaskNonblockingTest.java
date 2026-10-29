@@ -439,7 +439,7 @@ class SessionTaskNonblockingTest {
         assertNull(f.get(response));
       }
       if (pump.state() == SessionTaskWritePump.State.TERMINATED)
-        for (String name : List.of("response", "lease", "cursor", "chunk", "sink", "http")) {
+        for (String name : List.of("response", "lease", "cursor", "sink", "http")) {
           var f = SessionTaskWritePump.class.getDeclaredField(name);
           f.setAccessible(true);
           assertNull(f.get(pump));

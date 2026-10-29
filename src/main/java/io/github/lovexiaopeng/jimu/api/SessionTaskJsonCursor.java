@@ -6,7 +6,6 @@ import java.time.Instant;
 
 /** 固定Tasks.View的可恢复UTF8游标；状态仅前进，不重编码已经准备的byte。 */
 final class SessionTaskJsonCursor implements AutoCloseable {
-  static final int CHUNK_BYTES = 1024;
   // 明确的内部同时驻留上界账模，见response-accounting.csv；不含容器socket缓冲。
   static final int WORKSPACE_BYTES = 12288;
   private SessionTaskResponse response;
@@ -33,7 +32,7 @@ final class SessionTaskJsonCursor implements AutoCloseable {
     response.primitive(name, count, () -> null);
   }
 
-  /** -1仅表示整个JSON结束；chunk切点不会改变token/UTF8/数字/日期状态。 */
+  /** -1仅表示整个JSON结束；暂停不会改变token/UTF8/数字/日期状态。 */
   int next() {
     for (; ; ) {
       work("response.serialize", 1); // token分派条件，每一次真实迭代。
@@ -168,6 +167,8 @@ final class SessionTaskJsonCursor implements AutoCloseable {
         work("response.encode", 1);
         if (c < 32) escape(c);
         else {
+          work("response.encode", 1);
+          if (c < 128) return c;
           work("response.encode", 1);
           if (Character.isSurrogate((char) c)) {
             work("response.encode", 1);

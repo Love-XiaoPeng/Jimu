@@ -268,6 +268,7 @@ public final class JdbcLedger
     query.restrictDeadline(end);
     query.restrictLineage();
     var inputScratch = new Object();
+    // 此owner仅覆盖decode/strict JSON/admission暂存；HTTP原byte[]由response输入lease连续持有。
     query.retainScratch(inputScratch, 4L * 16384);
     try {
       var raw = body.read(query.deadlineNanos());

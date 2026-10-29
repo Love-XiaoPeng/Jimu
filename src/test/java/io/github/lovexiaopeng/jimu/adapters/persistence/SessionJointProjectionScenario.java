@@ -362,6 +362,25 @@ public final class SessionJointProjectionScenario {
     SessionRepairSqlOracle.dump(db, task, label);
   }
 
+  private static void ownedSubmit(
+      JdbcLedger v,
+      int ordinal,
+      byte[] input,
+      io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse response) {
+    v.submitSessionLineage(
+        IDENTITY,
+        "joint-node-" + ordinal,
+        end -> input,
+        v.queryContext().deadlineNanos(),
+        response);
+  }
+
+  private static io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.View plainSubmit(
+      JdbcLedger v, int ordinal, byte[] input) {
+    return v.submitSessionLineage(
+        IDENTITY, "joint-node-" + ordinal, end -> input, v.queryContext().deadlineNanos());
+  }
+
   public static void main(String[] args) throws Exception {
     var props = new Properties();
     try (var in = Files.newInputStream(Path.of(args[0]))) {
@@ -422,11 +441,14 @@ public final class SessionJointProjectionScenario {
           if (args.length > 1 && args[1].endsWith("-owned")) {
             var response = new io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse();
             response.prepare(q.deadlineNanos(), 8192);
+            response.prepareInput(q.deadlineNanos(), 16384);
             try {
+              var inputLease = response.readInput();
               try {
-                v.submitSessionLineage(
-                    IDENTITY, "joint-node-" + i, end -> raw, q.deadlineNanos(), response);
+                ownedSubmit(v, i, raw, response);
               } finally {
+                raw = null;
+                inputLease.close();
                 response.produced();
               }
               String id = response.taskId();
@@ -440,8 +462,8 @@ public final class SessionJointProjectionScenario {
               response.produced();
             }
           } else {
-            var task =
-                v.submitSessionLineage(IDENTITY, "joint-node-" + i, end -> raw, q.deadlineNanos());
+            var task = plainSubmit(v, i, raw);
+            raw = null;
             nodes.add(task.taskId());
           }
         } catch (RuntimeException failure) {
@@ -472,6 +494,11 @@ public final class SessionJointProjectionScenario {
         if (args.length > 1 && args[1].contains("witness")) {
           last = "history-witness-" + i;
           historyWitness(lease);
+        }
+        if (args.length > 1 && args[1].contains("witness-negative-")) {
+          SessionHistoryWitnessSqlScenario.verify(
+              root, db, lease, args[1].substring(args[1].lastIndexOf('-') + 1));
+          return;
         }
         last = "finish-" + i;
         root.finish(lease, "joint terminal source " + i);

@@ -24,12 +24,21 @@ public interface SessionEventLedger {
       long deadlineNanos,
       java.util.function.Consumer<byte[]> completed,
       java.util.function.Consumer<RuntimeException> failed,
-      boolean deadlineThroughResponse) {
+      boolean deadlineThroughResponse,
+      SessionTaskResponse inputOwner) {
+    public SearchRequest(
+        long deadlineNanos,
+        java.util.function.Consumer<byte[]> completed,
+        java.util.function.Consumer<RuntimeException> failed,
+        boolean deadlineThroughResponse) {
+      this(deadlineNanos, completed, failed, deadlineThroughResponse, null);
+    }
+
     public SearchRequest(
         long deadlineNanos,
         java.util.function.Consumer<byte[]> completed,
         java.util.function.Consumer<RuntimeException> failed) {
-      this(deadlineNanos, completed, failed, false);
+      this(deadlineNanos, completed, failed, false, null);
     }
   }
 

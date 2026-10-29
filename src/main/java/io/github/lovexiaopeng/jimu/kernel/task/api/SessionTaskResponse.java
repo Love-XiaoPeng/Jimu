@@ -29,7 +29,43 @@ public final class SessionTaskResponse implements AutoCloseable {
   private long bytes;
   private long preparedBytes, preparedDeadline = Long.MAX_VALUE;
   private boolean producing = true, consuming, closing, released;
+  private boolean inputPrepared, inputBorrowed, inputReturned;
+  private Runnable completion;
   private RuntimeException firstFailure;
+
+  /** 固定容量累加器和交付副本各max+24；另512覆盖Reader/lease/正文supplier的引用。 */
+  public synchronized void prepareInput(long deadline, int max) {
+    if (inputPrepared) throw new IllegalStateException("Input already prepared");
+    prepare(deadline, Math.addExact(512L, 2L * (24L + max)));
+    inputPrepared = true;
+  }
+
+  /** Reader分配前唯一借用；业务finally不归还，所有正文回调别名退出后才归还。 */
+  public synchronized InputLease readInput() {
+    available();
+    if (!inputPrepared || inputBorrowed) throw new IllegalStateException("Input not prepared");
+    inputBorrowed = true;
+    return new InputLease();
+  }
+
+  public final class InputLease implements AutoCloseable {
+    private InputLease() {}
+
+    public void close() {
+      synchronized (SessionTaskResponse.this) {
+        if (inputReturned) return;
+        inputReturned = true;
+        if (closing && !producing && !consuming) release();
+      }
+    }
+  }
+
+  /** 完成MVC须等待输入Reader和producer/consumer全部归还，避免早退正文预算。 */
+  public synchronized void afterRelease(Runnable action) {
+    if (completion != null) throw new IllegalStateException("Completion already installed");
+    if (released) action.run();
+    else completion = action;
+  }
 
   public synchronized void bind(Budget context) {
     available();
@@ -189,12 +225,15 @@ public final class SessionTaskResponse implements AutoCloseable {
   }
 
   private void release() {
-    if (released) return;
+    if (released || (inputBorrowed && !inputReturned)) return;
     view = null;
     if (budget != null) budget.release(this);
     budget = null;
     bytes = 0;
     preparedBytes = 0;
     released = true;
+    Runnable action = completion;
+    completion = null;
+    if (action != null) action.run();
   }
 }
