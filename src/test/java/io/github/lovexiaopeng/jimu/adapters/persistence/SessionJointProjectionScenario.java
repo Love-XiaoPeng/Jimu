@@ -414,6 +414,10 @@ public final class SessionJointProjectionScenario {
     root.sessionTraceEnabled(true);
     root.priorSessionSearchEnabled(true);
     root.sessionLineageEnabled(true);
+    if (args.length > 1 && args[1].equals("sql-length")) {
+      SessionEventHistoryLengthSqlScenario.verify(db);
+      return;
+    }
     if (args.length > 1 && args[1].startsWith("borrowed")) {
       SessionBorrowedMetadataSqlScenario.verify(db, args[1]);
       if (args[1].equals("borrowed-shapes") || args[1].equals("borrowed-boundaries")) return;

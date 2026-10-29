@@ -52,6 +52,17 @@ public final class SessionQueryTransaction {
     return null;
   }
 
+  static java.sql.Connection connection(SessionQueryContext context) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) return null;
+    for (var sync : TransactionSynchronizationManager.getSynchronizations())
+      if (sync instanceof ConnectionSettings settings && settings.context == context)
+        return settings.connection
+                instanceof org.springframework.jdbc.datasource.ConnectionProxy proxy
+            ? proxy.getTargetConnection()
+            : settings.connection;
+    return null;
+  }
+
   /** 先认实际事务，再验显式query；缺参不能把已有owner变为旧版无query路径。 */
   public static SessionQueryWork currentOwner() {
     if (!TransactionSynchronizationManager.isSynchronizationActive()) return null;

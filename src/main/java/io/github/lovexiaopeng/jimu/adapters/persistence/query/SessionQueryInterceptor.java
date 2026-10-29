@@ -79,7 +79,7 @@ public final class SessionQueryInterceptor implements Interceptor {
       var statement = (Statement) invocation.getArgs()[0];
       try {
         context.remainingMillis();
-        return results(invocation, context);
+        return results(invocation, context, parameter);
       } catch (Throwable failure) {
         // MyBatis后续会丢弃反射包装；清理cause必须挂在真正向外传播的原异常上。
         Throwable primary = org.apache.ibatis.reflection.ExceptionUtil.unwrapThrowable(failure);
@@ -109,6 +109,15 @@ public final class SessionQueryInterceptor implements Interceptor {
       var statement = (Statement) invocation.proceed();
       try {
         QueryStatements.apply(statement, context);
+        if (owner != null && owner.eventHistoryPending()) {
+          var command =
+              (org.apache.ibatis.mapping.MappedStatement)
+                  SystemMetaObject.forObject(handler).getValue("delegate.mappedStatement");
+          var length = owner.eventHistoryLength(command.getId());
+          if (length != null)
+            length.prepared(
+                command.getId(), parameter, (Connection) invocation.getArgs()[0], statement);
+        }
         return statement;
       } catch (Throwable failure) {
         closeFailed(statement, failure);
@@ -126,8 +135,8 @@ public final class SessionQueryInterceptor implements Interceptor {
     }
   }
 
-  private static Object results(Invocation invocation, SessionQueryContext context)
-      throws Throwable {
+  private static Object results(
+      Invocation invocation, SessionQueryContext context, Object parameter) throws Throwable {
     var original = (Statement) invocation.getArgs()[0];
     var results = new java.util.IdentityHashMap<java.sql.ResultSet, java.sql.ResultSet>();
     invocation.getArgs()[0] =
@@ -139,16 +148,18 @@ public final class SessionQueryInterceptor implements Interceptor {
                 Object result = method.invoke(original, args);
                 if (method.getName().equals("getResultSet")
                     && result instanceof java.sql.ResultSet rows) {
-                  if (!results.containsKey(rows))
+                  if (!results.containsKey(rows)) {
+                    String statement =
+                        ((org.apache.ibatis.mapping.MappedStatement)
+                                SystemMetaObject.forObject(invocation.getTarget())
+                                    .getValue("mappedStatement"))
+                            .getId();
+                    var owner = SessionQueryTransaction.currentOwner();
+                    var length = owner == null ? null : owner.eventHistoryLength(statement);
                     results.put(
                         rows,
-                        QueryResults.meter(
-                            rows,
-                            context,
-                            ((org.apache.ibatis.mapping.MappedStatement)
-                                    SystemMetaObject.forObject(invocation.getTarget())
-                                        .getValue("mappedStatement"))
-                                .getId()));
+                        QueryResults.meter(rows, context, statement, length, parameter, original));
+                  }
                   return results.get(rows);
                 }
                 return result;

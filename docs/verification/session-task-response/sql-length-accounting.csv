@@ -1,0 +1,124 @@
+source,line,reservation_or_operation,scope
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,32,query.operation(4);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,38,query.operation(3);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,53,query.operation(2);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,55,"query.retainScratch(slot.scratch, Math.addExact(8192, Math.multiplyExact(8, bytes)));",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,57,query.operation(4);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,114,query.operation(2);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,127,query.operation(10L + statement.length() + tenant.length() + task.length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,148,query.operation(2);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,155,query.operation(4);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,168,query.operation(1L + expected.length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,173,query.operation(2);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,188,query.operation(2);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,199,query.operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,204,query.operation(1L + label.length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,206,query.operation(2);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,216,query.operation(2);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,224,query.releaseScratch(scratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionEventHistoryRows.java,257,query.releaseScratch(scratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/QueryResults.java,85,context.operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/QueryResults.java,210,context.operation(2);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,44,context.operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,47,"context.retainScratch(eventHistoryScratch, 4096);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,54,context.operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,59,context.operation(2);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,84,context.operation(4L + tenant.length() + task.length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,90,"context.retainScratch(projectionScratch, 1024);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,93,"context.retainScratch(rowOwner, bytes);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,107,context.operation(1L + tenant.length() + task.length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,111,context.operation(1L + source.caller().tenant().length() + source.caller().id().length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,132,context.operation(3L + tenant.length() + task.length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,148,context.releaseScratch(owner);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,202,"context.retainScratch(createdScratch, bytes);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,234,context.releaseScratch(createdScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,275,"context.retainScratch(stagingScratch, bytes);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,374,context.operation(1); // identity比较也计量；不以文本相同替代同一不可变对象。,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,378,"context.retainScratch(policyScratch, 512L + 2L * (raw.length() + 64L));",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,425,context.retainScratch(,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,450,"context.retainScratch(relationScratch, RELATION_ROOT_BYTES);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,488,"if (begin) context.retainScratch(extractionScratch, 4096);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,489,else context.releaseScratch(extractionScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,493,context.operation(operations);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,502,"context.primitive(""relation.lookup"", 1L + tenant.length() + id.length(), () -> null);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,503,"context.retainScratch(lookupScratch, 256);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,508,context.releaseScratch(lookupScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,509,"context.retainScratch(relationScratch, relationBytes);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,531,context.operation(7);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,555,context.operation(35L + 1 + tenant.length() + id.length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,556,"context.retainScratch(relationScratch, next);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,558,context.releaseScratch(lookupScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,577,"context.operation(1); // identity comparison, no content traversal",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,581,context.operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,584,return context.primitive(,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,598,"context.retainScratch(lookupScratch, 256);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,602,context.releaseScratch(lookupScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,613,"context.primitive(""relation.lookup"", 1L + tenant.length() + id.length(), () -> null);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,626,"&& context.primitive(""relation.prefix"", 5, () -> category.startsWith(""MODEL""))",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,685,"context.retainScratch(dependencyScratch, 4096);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,692,context.releaseScratch(dependencyScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,701,"context.retainScratch(relationScratch, relationBytes);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,710,"context.retainScratch(planOwner, 512L + 64L * relations.size());",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,714,context.releaseScratch(planOwner);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,722,context.operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,726,context.operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,732,context.operation(1); // plan append,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,739,context.operation(updateWork);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,793,context.releaseScratch(graphScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,797,"context.retainScratch(stagingScratch, bytes);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,868,context.releaseScratch(stagingScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,878,"context.retainScratch(graphScratch, bytes);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,925,context.releaseScratch(policyScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,956,context.releaseScratch(relationScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,957,context.releaseScratch(stagingScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,961,context.releaseScratch(scopeScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,962,context.releaseScratch(graphScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/query/SessionQueryWork.java,970,context.releaseScratch(projectionScratch);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,62,"public <T> T primitive(String kind, long count, java.util.function.Supplier<T> work) {",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,65,operation(count);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,109,"public void retainScratch(Object owner, long bytes) {",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,116,public void releaseScratch(Object owner) {,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,200,public void operation(long count) {,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,246,operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,270,operation(3L + statement.length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,302,operation(4L + label.length() + statement.length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,316,operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,318,operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,321,operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,324,"int chars = primitive(""result.sqlLength"", 1, text::length);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,325,operation(3);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,330,operation(1L + label.length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,335,"retainScratch(this, Math.multiplyExact(batch, 3));",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,353,releaseScratch(this);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,357,operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,374,operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,375,operation(label.length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,376,if (value instanceof String text) operation(text.length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,377,else if (value instanceof Integer || value instanceof Long) operation(scalarBytes(value));,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,382,"retainScratch(this, Math.multiplyExact(batch, 3));",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,402,operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,409,operation(3L + label.length());,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,418,operation(5);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/kernel/session/api/SessionQueryContext.java,422,operation(3);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,113,if (trace) operation(size);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,132,void operation(long count) {,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,163,query.operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,193,query.operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,229,query.operation(4);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,231,"query.retainScratch(query, 64); // 临时owner分配前的固定引用槽。",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,233,"query.retainScratch(temporary, capacity);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,235,query.primitive(,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,239,query.operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,247,if (temporary != null) query.releaseScratch(temporary);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,248,query.releaseScratch(query);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,258,"query.retainScratch(temporary, 4096L + 4L * raw.length());",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,261,query.primitive(,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,265,"return query.primitive(""history.hash"", encoded.length, () -> Payloads.hash(encoded));",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,267,query.releaseScratch(temporary);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,350,"if (owner != null) query.retainScratch(temporary, 4096);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,366,if (owner != null) query.releaseScratch(temporary);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,381,"query.retainScratch(temporary, 4096);",actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,386,query.releaseScratch(temporary);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,692,if (query != null) query.operation(1);,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,765,public void operation(long amount) {,actual production request; no prototype savings deducted
+src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/JdbcSessionRecords.java,766,budget.operation(amount);,actual production request; no prototype savings deducted

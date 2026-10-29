@@ -228,9 +228,121 @@ public final class SessionQueryContext {
     return new Result(statement);
   }
 
-  public final class Result implements AutoCloseable {
+  public boolean additionalMeter() {
+    return meter != null;
+  }
+
+  /** 只由已计量的具名长度Result产生；无公开构造器/数值hint入口，一次消费后失效。 */
+  public final class SqlUtf8Length implements AutoCloseable {
+    private final SessionQueryContext query = SessionQueryContext.this;
+    private final long bytes;
+    private boolean valid = true;
+
+    private SqlUtf8Length(long bytes) {
+      this.bytes = bytes;
+    }
+
+    public long bytes() {
+      operation(1);
+      if (!valid) throw recordFailure(new IllegalStateException("Consumed SQL length"));
+      return bytes;
+    }
+
+    @Override
+    public void close() {
+      valid = false;
+    }
+  }
+
+  private boolean sqlUtf8Lengths = true;
+
+  public boolean sqlUtf8Lengths() {
+    return sqlUtf8Lengths;
+  }
+
+  /** 只允许关闭快捷路径；回退仍执行原完整字段计量，不退款或重置预算。 */
+  public void disableSqlUtf8Lengths() {
+    sqlUtf8Lengths = false;
+  }
+
+  /** 内部provider工厂，无长度参数；架构门禁只允许具名结果包装器调用。 */
+  public Result sqlUtf8LengthResult(String statement) {
+    operation(3L + statement.length());
+    if (!sqlUtf8Lengths
+        || meter != null
+        || !statement.equals(
+            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.eventHistoryBindingSize"))
+      throw recordFailure(new IllegalStateException("Untrusted SQL length result"));
+    // 与普通result相同：包括空集，每个真实ResultSet只累计一次。
+    checkFailure();
+    if (metered) {
+      groupCounters()[0]++;
+      statements.merge(group + ":" + statement, 1L, Math::addExact);
+    }
+    remainingMillis();
+    if (metered && ++reads > readLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
+    return new SqlLengthResult(statement);
+  }
+
+  /** 仅内部子类可扩展；私有构造器保持普通调用方无法构造/派生Result。 */
+  public class Result implements AutoCloseable {
     private final String statement;
     private long batch;
+
+    public SqlUtf8Length takeSqlUtf8Length() {
+      throw recordFailure(new IllegalStateException("Ordinary result cannot issue SQL length"));
+    }
+
+    /** 无调用方数值hint；只消费当前query的不可构造能力，旧附加meter走原独立遍历。 */
+    public void columnSqlUtf8(String label, Object value, SqlUtf8Length capability) {
+      String priorStatement = activeStatement, priorColumn = activeColumn;
+      activeStatement = statement;
+      activeColumn = label;
+      try {
+        operation(4L + label.length() + statement.length());
+        if (capability == null
+            || capability.query != SessionQueryContext.this
+            || !capability.valid
+            || !label.equals("binding_snapshot")
+            || !statement.equals(
+                "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.eventHistory"))
+          throw recordFailure(new IllegalStateException("Invalid SQL length capability"));
+        long size = capability.bytes;
+        capability.close();
+        if (additional != null) {
+          columnMeasured(label, value);
+          return;
+        }
+        operation(1);
+        if (value == null) {
+          operation(1);
+          if (size != 1) throw recordFailure(new IllegalStateException("Invalid SQL NULL size"));
+        } else {
+          operation(1);
+          if (!(value instanceof String text))
+            throw recordFailure(new IllegalStateException("Invalid SQL text"));
+          int chars = primitive("result.sqlLength", 1, text::length);
+          operation(3);
+          if (size < chars || size > 3L * chars)
+            throw recordFailure(new IllegalStateException("Invalid SQL UTF8 size"));
+        }
+        if (metered) {
+          operation(1L + label.length());
+          long total = 8L + utf8(label) + size;
+          bytes = Math.addExact(bytes, total);
+          groupCounters()[1] = Math.addExact(groupCounters()[1], total);
+          batch = Math.addExact(batch, total);
+          retainScratch(this, Math.multiplyExact(batch, 3));
+          if (bytes > byteLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
+        }
+      } catch (RuntimeException failure) {
+        throw recordFailure(failure);
+      } finally {
+        activeStatement = priorStatement;
+        activeColumn = priorColumn;
+      }
+    }
+
     private final ColumnMeter additional = meter == null ? null : meter.begin();
 
     private Result(String statement) {
@@ -271,6 +383,53 @@ public final class SessionQueryContext {
         if (bytes > byteLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
       }
       if (additional != null) additional.column(label, value);
+    }
+  }
+
+  /** 只有此单列结果收集长度；普通Result无新增逐行/逐列条件或遍历。 */
+  private final class SqlLengthResult extends Result {
+    private int rows, columns;
+    private Object size;
+    private boolean taken;
+
+    private SqlLengthResult(String statement) {
+      super(statement);
+    }
+
+    @Override
+    public void row() {
+      super.row();
+      operation(1);
+      rows++;
+    }
+
+    @Override
+    public void column(String label, Object value) {
+      super.column(label, value);
+      operation(3L + label.length());
+      if (!label.equals("binding_snapshot_utf8_bytes"))
+        throw recordFailure(new IllegalStateException("Invalid SQL length label"));
+      columns++;
+      size = value;
+    }
+
+    @Override
+    public SqlUtf8Length takeSqlUtf8Length() {
+      operation(5);
+      if (taken || rows != 1 || columns != 1 || !(size instanceof Integer || size instanceof Long))
+        throw recordFailure(new IllegalStateException("Invalid SQL length shape"));
+      long bytes = ((Number) size).longValue();
+      operation(3);
+      if (bytes < 0) throw recordFailure(new IllegalStateException("Negative SQL length"));
+      size = null;
+      taken = true;
+      return new SqlUtf8Length(bytes);
+    }
+
+    @Override
+    public void close() {
+      size = null;
+      super.close();
     }
   }
 

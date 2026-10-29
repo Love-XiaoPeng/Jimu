@@ -279,6 +279,7 @@ final class SessionDependencyWrites {
   }
 
   static void before(String id, Object parameter, SessionQueryWork owner) {
+    owner.invalidateEventHistoryLength();
     owner.extraction(true);
     try {
       beforeReserved(id, parameter, owner);

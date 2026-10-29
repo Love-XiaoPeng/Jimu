@@ -427,6 +427,12 @@ final class JdbcSessionRecords {
   }
 
   List<Map<String, Object>> mapperRows(String operation, Map<String, Object> task) {
+    if (operation.equals("SessionHistoryRetentionMapper.eventHistory")
+        && query != null
+        && query.lineage()
+        && searchBudget == null)
+      return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionEventHistoryRows.load(
+          mapperSession(), query, s(task, "tenant_id"), s(task, "id"));
     var args = new java.util.HashMap<String, Object>();
     args.put("query", query);
     args.put("tenant", s(task, "tenant_id"));

@@ -35,6 +35,36 @@ public final class SessionQueryWork {
   private long dependencyGeneration;
   private SessionCheckedHistories histories;
   private final Object projectionScratch = new Object();
+  private final Object eventHistoryScratch = new Object();
+  private SessionEventHistoryRows.Slot eventHistoryLength;
+
+  SessionEventHistoryRows.Slot beginEventHistory(String tenant, String task) {
+    active();
+    context.checkHealthy();
+    context.operation(1);
+    if (eventHistoryLength != null) return null; // 固定一个槽；已有raw仍驻留时回原独立路径。
+    requireProjectionLocks(tenant, task);
+    context.retainScratch(eventHistoryScratch, 4096);
+    eventHistoryLength =
+        new SessionEventHistoryRows.Slot(this, context, eventHistoryScratch, tenant, task);
+    return eventHistoryLength;
+  }
+
+  boolean eventHistoryPending() {
+    context.operation(1);
+    return eventHistoryLength != null && eventHistoryLength.pending();
+  }
+
+  SessionEventHistoryRows.Slot eventHistoryLength(String statement) {
+    context.operation(2);
+    return eventHistoryLength != null && eventHistoryLength.accepts(statement)
+        ? eventHistoryLength
+        : null;
+  }
+
+  void invalidateEventHistoryLength() {
+    if (eventHistoryLength != null) eventHistoryLength.invalidate();
+  }
 
   public enum ProjectionRole {
     LINEAGE_SCOPE,
@@ -642,6 +672,7 @@ public final class SessionQueryWork {
 
   public void mutation() {
     active();
+    invalidateEventHistoryLength();
     if (sealed) throw new IllegalStateException("Session write after seal");
     generation = Math.incrementExact(generation);
   }
@@ -924,6 +955,8 @@ public final class SessionQueryWork {
     relationBytes = 0;
     context.releaseScratch(relationScratch);
     context.releaseScratch(stagingScratch);
+    if (eventHistoryLength != null) eventHistoryLength.clear();
+    eventHistoryLength = null;
     completed = true;
     context.releaseScratch(scopeScratch);
     context.releaseScratch(graphScratch);
