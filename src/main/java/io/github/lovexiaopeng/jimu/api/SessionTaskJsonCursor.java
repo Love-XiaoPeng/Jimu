@@ -37,10 +37,10 @@ final class SessionTaskJsonCursor implements AutoCloseable {
     for (; ; ) {
       work("response.serialize", 1); // token分派条件，每一次真实迭代。
       if (pendingBytes != 0) {
+        work("response.encode", 4);
         int value = (int) (pending & 255);
         pending >>>= 8;
         pendingBytes--;
-        work("response.encode", 4);
         return value;
       }
       switch (token) {
@@ -239,6 +239,13 @@ final class SessionTaskJsonCursor implements AutoCloseable {
     }
   }
 
+  /** month/day/hour/minute/second已由epoch转换限定0..59；不建立日期缓存。 */
+  private void twoDigits(int value) {
+    work("response.number", 8); // 两次除/余、两次加法、移位/或、两次状态写入。
+    pending = ('0' + value / 10) | ((long) ('0' + value % 10) << 8);
+    pendingBytes = 2;
+  }
+
   private void number(long value, int width) {
     work("response.number", 5);
     sign = value < 0;
@@ -326,21 +333,21 @@ final class SessionTaskJsonCursor implements AutoCloseable {
       }
       case 3 -> number(year, 4);
       case 4, 6 -> pending('-');
-      case 5 -> number(month, 2);
-      case 7 -> number(day, 2);
+      case 5 -> twoDigits(month);
+      case 7 -> twoDigits(day);
       case 8 -> pending('T');
       case 9 -> {
         work("response.instant", 1);
-        number(second / 3600, 2);
+        twoDigits(second / 3600);
       }
       case 10, 12 -> pending(':');
       case 11 -> {
         work("response.instant", 2);
-        number(second / 60 % 60, 2);
+        twoDigits(second / 60 % 60);
       }
       case 13 -> {
         work("response.instant", 1);
-        number(second % 60, 2);
+        twoDigits(second % 60);
       }
       case 14 -> {
         work("response.instant", 1);
