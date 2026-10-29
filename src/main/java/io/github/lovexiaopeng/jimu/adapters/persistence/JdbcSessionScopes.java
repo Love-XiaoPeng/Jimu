@@ -3,7 +3,6 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcSessionRecords.s;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionContracts;
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeEligibilityService;
 import io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionScopeEligibilityServiceImpl;
@@ -37,13 +36,7 @@ final class JdbcSessionScopes {
   JdbcSessionScopes(JdbcLedger ledger, JdbcTemplate db, JdbcSessionRecords sessions) {
     this.sessions = sessions;
     records = new MapperSessionScopeRecords(ledger);
-    eligibility =
-        new SessionScopeEligibilityServiceImpl(
-            records,
-            raw -> {
-              if (sessions.appendQuery() != null) sessions.appendQuery().operation(1);
-              return Payloads.hash(raw);
-            });
+    eligibility = new SessionScopeEligibilityServiceImpl(records, sessions::scopeHash);
     creation =
         new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionScopeCreationServiceImpl(
             new MapperSessionScopeCreationRecords(ledger, this, sessions));

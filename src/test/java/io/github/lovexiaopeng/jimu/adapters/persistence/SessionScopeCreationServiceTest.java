@@ -70,6 +70,8 @@ class SessionScopeCreationServiceTest {
             getClass().getClassLoader(),
             new Class<?>[] {SessionScopeCreationRecords.class},
             (p, m, a) -> {
+              if (m.getName().equals("utf8Bytes"))
+                return java.lang.reflect.InvocationHandler.invokeDefault(p, m, a);
               String name = m.getName();
               if (name.equals("version")) return 4;
               calls.add(name);

@@ -25,6 +25,11 @@ import java.util.Map;
 
 /** 行和JSON只在外层转换，查询计量与截止使用同一显式query和事务DS。 */
 final class MapperSessionScopeRecords implements SessionScopeRecords {
+  @Override
+  public long utf8Bytes(String raw) {
+    return JdbcSessionRecords.scopeUtf8Bytes(ledger.queryContext(), raw);
+  }
+
   private final JdbcLedger ledger;
   final SessionScopeMapper sql;
   private final SessionHistoryRetentionMapper safety;

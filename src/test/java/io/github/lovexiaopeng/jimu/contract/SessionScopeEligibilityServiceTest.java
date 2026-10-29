@@ -121,6 +121,8 @@ class SessionScopeEligibilityServiceTest {
                 getClass().getClassLoader(),
                 new Class<?>[] {SessionScopeRecords.class},
                 (proxy, method, args) -> {
+                  if (method.getName().equals("utf8Bytes"))
+                    return java.lang.reflect.InvocationHandler.invokeDefault(proxy, method, args);
                   calls.add(method.getName());
                   return switch (method.getName()) {
                     case "scope" -> ((Caller) args[0]).id().equals("caller") ? scope : own;

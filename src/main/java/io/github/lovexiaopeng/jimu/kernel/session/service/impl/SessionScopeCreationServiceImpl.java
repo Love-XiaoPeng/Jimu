@@ -5,7 +5,6 @@ import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeCreationRecor
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeCreationService;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -23,8 +22,8 @@ public final class SessionScopeCreationServiceImpl implements SessionScopeCreati
     this.records = records;
   }
 
-  private static int bytes(String value) {
-    return value.getBytes(StandardCharsets.UTF_8).length;
+  private int bytes(String value) {
+    return records.utf8Bytes(value);
   }
 
   public void create(Row caller, List<String> ids) {

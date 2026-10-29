@@ -173,6 +173,82 @@ final class JdbcSessionRecords {
     }
   }
 
+  /** 只认本地v5不可变binding；foreign行无论内容相同与否均独立编码/散列。 */
+  String scopeHash(String raw) {
+    var current =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (current != null && current.lineage()) {
+      try {
+        if (query == null
+            || io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                    .current(query)
+                != current) throw new IllegalStateException("Different scope query owner");
+      } catch (RuntimeException failure) {
+        throw current.poisonProof(failure);
+      }
+    }
+    if (query == null || !query.lineage()) return Payloads.hash(raw);
+    try {
+      query.operation(1);
+      if (samePolicyIdentity(raw, v5.binding())) {
+        var owner =
+            io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+                query);
+        if (owner != null) return owner.policyHash(raw, () -> policyHashRaw(raw));
+      }
+      return policyHashRaw(raw);
+    } catch (RuntimeException failure) {
+      throw query.recordFailure(failure);
+    }
+  }
+
+  /** scope原位置的真实UTF8编码；独立临时数组先预留、断引用后退款，不充当hash缓存。 */
+  static int scopeUtf8Bytes(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query, String raw) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (owner != null && owner.lineage()) {
+      try {
+        if (query == null
+            || io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                    .current(query)
+                != owner) throw new IllegalStateException("Different scope query owner");
+      } catch (RuntimeException failure) {
+        throw owner.poisonProof(failure);
+      }
+    }
+    if (query == null || !query.lineage())
+      return raw.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+    Object temporary = null;
+    byte[] encoded = null;
+    try {
+      query.checkHealthy();
+      // null保持旧getBytes的NPE；真实owner将它登记为首错。
+      query.operation(4);
+      long capacity = 4096L + 4L * raw.length();
+      query.retainScratch(query, 64); // 临时owner分配前的固定引用槽。
+      temporary = new Object();
+      query.retainScratch(temporary, capacity);
+      encoded =
+          query.primitive(
+              "scope.encode",
+              raw.length(),
+              () -> raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      query.operation(1);
+      return encoded.length;
+    } catch (RuntimeException failure) {
+      throw owner != null && owner.lineage()
+          ? owner.poisonProof(failure)
+          : query.recordFailure(failure);
+    } finally {
+      encoded = null;
+      if (temporary != null) query.releaseScratch(temporary);
+      query.releaseScratch(query);
+    }
+  }
+
   private static boolean samePolicyIdentity(Object left, Object right) {
     return left == right;
   }

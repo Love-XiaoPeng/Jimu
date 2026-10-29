@@ -15,7 +15,6 @@ import io.github.lovexiaopeng.jimu.kernel.snapshot.api.SnapshotDigest;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskState;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -45,8 +44,8 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
     return UTC.format(value);
   }
 
-  private static long bytes(String raw) {
-    return raw.getBytes(StandardCharsets.UTF_8).length;
+  private long bytes(String raw) {
+    return records.utf8Bytes(raw);
   }
 
   public void lock(String tenant, String caller) {

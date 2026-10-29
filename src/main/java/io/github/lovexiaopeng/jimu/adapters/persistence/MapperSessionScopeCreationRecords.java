@@ -9,6 +9,11 @@ import java.util.Map;
 
 /** Retains map identity and member access timing on the admission connection. */
 final class MapperSessionScopeCreationRecords implements SessionScopeCreationRecords {
+  @Override
+  public int utf8Bytes(String raw) {
+    return JdbcSessionRecords.scopeUtf8Bytes(sessions.appendQuery(), raw);
+  }
+
   private final JdbcLedger ledger;
   private final JdbcSessionScopes scopes;
   private final JdbcSessionRecords sessions;
@@ -100,7 +105,7 @@ final class MapperSessionScopeCreationRecords implements SessionScopeCreationRec
   }
 
   public String hash(String value) {
-    return Payloads.hash(value);
+    return sessions.scopeHash(value);
   }
 
   public String json(Object value) {

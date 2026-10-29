@@ -5,6 +5,11 @@ import java.util.List;
 
 /** 当前whole-scope资格所需事实；JSON解码和数据库行留在适配器。 */
 public interface SessionScopeRecords {
+  /** 原位置每次独立UTF8编码；适配器可在相同query中预留并计量。 */
+  default long utf8Bytes(String raw) {
+    return raw.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+  }
+
   record Caller(
       String tenant,
       String id,

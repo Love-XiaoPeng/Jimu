@@ -4,6 +4,11 @@ import java.time.LocalDateTime;
 
 /** Lazy original rows; each operation is one existing IO or codec boundary. */
 public interface SessionScopeCreationRecords {
+  /** 原位置每次独立UTF8编码；适配器可在相同query中预留并计量。 */
+  default int utf8Bytes(String raw) {
+    return raw.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+  }
+
   interface Row {
     String tenant();
 
