@@ -292,22 +292,26 @@ public final class SessionQueryContext {
       issuerName = null;
       releaseScratch(SQL_ISSUER);
     }
-    operation(3L + statement.length());
+    // Length only selects a candidate; the complete exact name still grants the route.
+    // Getter/store, two comparisons, branches and local handoff: eight prepaid operations.
+    operation(8);
+    int statementUnits = statement.length();
     String rawStatement;
-    // 独立 history 是常见路径：先匹配它，真正删除该路径原先失败的 event 名比较。
-    // event 仍做两次准确比较并付第二次成本；issuer/loader、开关及附加meter校验不变。
-    if (statement.equals(
-        "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.historyBindingSize"))
+    if (statementUnits == 112) {
+      operation(3L + statementUnits);
+      if (!statement.equals(
+          "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.historyBindingSize"))
+        throw recordFailure(new IllegalStateException("Untrusted SQL length result"));
       rawStatement =
           "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.history";
-    else {
-      operation(2L + statement.length());
+    } else if (statementUnits == 117) {
+      operation(3L + statementUnits);
       if (!statement.equals(
           "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.eventHistoryBindingSize"))
         throw recordFailure(new IllegalStateException("Untrusted SQL length result"));
       rawStatement =
           "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.eventHistory";
-    }
+    } else throw recordFailure(new IllegalStateException("Untrusted SQL length result"));
     if (!sqlUtf8Lengths || meter != null)
       throw recordFailure(new IllegalStateException("Untrusted SQL length result"));
     // 与普通result相同：包括空集，每个真实ResultSet只累计一次。
