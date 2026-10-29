@@ -494,9 +494,13 @@ public final class SessionJointProjectionScenario {
           if (observe) SessionHistoryObservation.snapshot(db, "after-submit-" + i);
         }
         if (args.length > 1 && args[1].contains("response-only")) return;
+        if (i == 0 && args.length > 1 && args[1].contains("metadata-negative"))
+          SessionHistorySizedMetadataSqlScenario.verify(root, db, nodes.getLast());
         if (args.length > 1 && args[1].contains("witness"))
           independentAccounting(nodes.getLast(), "after-submit-" + i);
-        if (args.length > 1 && args[1].contains("event-history"))
+        if (args.length > 1
+            && args[1].contains("event-history")
+            && (!args[1].contains("second-event-history") || i == 1))
           SessionEventHistorySqlScenario.verify(root, db, nodes.getLast());
         if (args.length > 1 && args[1].contains("append-failure"))
           SessionAppendFailureSqlScenario.verify(root, db, nodes.getLast());

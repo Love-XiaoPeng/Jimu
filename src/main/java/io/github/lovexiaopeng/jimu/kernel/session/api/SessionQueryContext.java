@@ -294,17 +294,19 @@ public final class SessionQueryContext {
     }
     operation(3L + statement.length());
     String rawStatement;
+    // 独立 history 是常见路径：先匹配它，真正删除该路径原先失败的 event 名比较。
+    // event 仍做两次准确比较并付第二次成本；issuer/loader、开关及附加meter校验不变。
     if (statement.equals(
-        "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.eventHistoryBindingSize"))
+        "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.historyBindingSize"))
       rawStatement =
-          "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.eventHistory";
+          "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.history";
     else {
       operation(2L + statement.length());
       if (!statement.equals(
-          "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.historyBindingSize"))
+          "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.eventHistoryBindingSize"))
         throw recordFailure(new IllegalStateException("Untrusted SQL length result"));
       rawStatement =
-          "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.history";
+          "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.eventHistory";
     }
     if (!sqlUtf8Lengths || meter != null)
       throw recordFailure(new IllegalStateException("Untrusted SQL length result"));
