@@ -238,8 +238,11 @@ public final class SessionMaintenanceRootScenario {
     boolean timeout = false;
     try {
       expired.historyRetention.cleanup();
-    } catch (io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure expected) {
-      timeout = expected.code().equals("SESSION_QUERY_TIMEOUT");
+    } catch (RuntimeException expected) {
+      // MyBatis translates an interceptor refusal; preserve and inspect its original cause.
+      for (Throwable cause = expected; cause != null; cause = cause.getCause())
+        if (cause instanceof io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure failure)
+          timeout = failure.code().equals("SESSION_QUERY_TIMEOUT");
     }
     check(
         timeout && expired.queryContext().resources().reads() == 0,

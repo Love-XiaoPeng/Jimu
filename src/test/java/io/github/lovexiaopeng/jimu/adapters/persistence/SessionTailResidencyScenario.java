@@ -556,6 +556,44 @@ public final class SessionTailResidencyScenario {
                 before.equals(SessionDependencyScenario.snapshot(db)),
                 "relation invalidation full 22-table rollback");
         }
+    for (boolean callerWrite : List.of(false, true)) {
+      var before = SessionDependencyScenario.snapshot(db);
+      var q = query();
+      boolean rejected = false;
+      try {
+        transactions.required(
+            q,
+            () -> {
+              SessionQueryTransaction.current(q).admission();
+              sql.selectList(
+                  ROOT + "execution.mapper.StepMapper.selectModelStep",
+                  args(q, "taskId", id(1), "stepId", id(3)));
+              write(
+                  "session.mapper.SessionLineageMapper.purge",
+                  args(q, "taskId", id(callerWrite ? 1 : 201)));
+              publish(q);
+              boolean refused = false;
+              try {
+                write(
+                    "execution.mapper.StepMapper.storeModelResponse",
+                    args(q, "taskId", id(1), "stepId", id(3), "response", "{}", "digest", DIGEST));
+              } catch (RuntimeException expected) {
+                refused = true;
+              }
+              check(
+                  refused == callerWrite,
+                  "precise dependency SQL invalidates caller and preserves unrelated task relation");
+              return null;
+            });
+      } catch (RuntimeException failure) {
+        rejected = true;
+      }
+      check(rejected == callerWrite, "precise dependency finish result");
+      if (callerWrite)
+        check(
+            before.equals(SessionDependencyScenario.snapshot(db)),
+            "precise caller dependency full 22-table rollback");
+    }
   }
 
   private static void batch() {
