@@ -42,17 +42,21 @@ final class SessionAcceptedTaskRows {
     io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork.Projection projection;
     query.retainScratch(sizeOwner, 4096);
     try {
-      boolean lineage = role == ProjectionRole.LINEAGE_SCOPE;
       var sizes =
           JdbcLedger.first(
-              lineage
-                  ? sql.lockLineageScopeSizes(query, tenant, task)
-                  : sql.lockAcceptedSizes(query, tenant, task));
+              switch (role) {
+                case LINEAGE_SCOPE -> sql.lockLineageScopeSizes(query, tenant, task);
+                case ACCEPTED_EVENT -> sql.lockAcceptedEventSizes(query, tenant, task);
+                case ACCEPTED_VIEW -> sql.lockAcceptedSizes(query, tenant, task);
+              });
       long textBytes = 0;
       for (String key :
-          lineage
-              ? List.of("capabilities", "tools_snapshot")
-              : List.of("goal", "capabilities", "summary", "tools_snapshot", "mcp_snapshot")) {
+          switch (role) {
+            case LINEAGE_SCOPE -> List.of("capabilities", "tools_snapshot");
+            case ACCEPTED_EVENT -> List.of("goal", "capabilities");
+            case ACCEPTED_VIEW ->
+                List.of("goal", "capabilities", "summary", "tools_snapshot", "mcp_snapshot");
+          }) {
         query.operation(2L + key.length());
         var value = sizes.get(key);
         if (value == null) continue;
@@ -60,7 +64,7 @@ final class SessionAcceptedTaskRows {
             || ((Number) value).longValue() < 0) throw JdbcSessionRecords.corrupt();
         textBytes = Math.addExact(textBytes, ((Number) value).longValue());
       }
-      // 两份provider/Map的UTF16文本、固定21列/标量/labels与转交；不信旧raw或DDL最大值。
+      // 两份provider/Map的UTF16文本；8192覆盖最大21列固定槽/labels和转交重叠。
       projection =
           owner.reserveProjection(
               role, tenant, task, Math.addExact(8192, Math.multiplyExact(8, textBytes)));

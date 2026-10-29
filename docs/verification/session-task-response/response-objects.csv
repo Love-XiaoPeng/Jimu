@@ -1,0 +1,15 @@
+reservation,objects,bytes,boundary
+prebind-scaffold,carrier+pump and monitor state,512,Controller response.prepare before new carrier
+prebind-scaffold,DeferredResult and lifecycle/result-handler callbacks,1024,same original deadline; no ready-result dispatch
+prebind-scaffold,MVC interceptor list/chain and AsyncWebRequest delegate,2048,before return handler installs cycle
+prebind-scaffold,Servlet listener/read callback/headers and references,2048,original filter deadline timer reused
+prebind-scaffold,bounded lifecycle and request adapter overlap allowance,2560,sum8192; model not measured framework transitive heap
+consumer-workspace,one byte[1024] with upper array header/alignment,1048,consume before new byte[]
+consumer-workspace,cursor fields and retained token/scalar stages,384,no request-sized token array/String/calendar object
+consumer-workspace,one current artifact/View alias,64,borrow existing immutable View; no copy
+consumer-workspace,simultaneously live capturing primitive suppliers,512,one callback; short-lived suppliers
+consumer-workspace,six requested and completed TreeMap diagnostic nodes/Longs,1536,all actual independent invocations charged
+consumer-workspace,native headers and boundary callback overlap,1024,no output reserialization prefix
+consumer-workspace,bound framework adapter/native sink bookkeeping allowance,4096,no arbitrary socket-buffer size claim
+consumer-workspace,remaining internal overlap allowance,3624,sum12288; explicitly a conservative model
+consumer-lease,explicit one-time ConsumerLease,128,consume reserves128 in addition to workspace

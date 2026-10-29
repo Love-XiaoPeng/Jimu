@@ -3,7 +3,10 @@ package io.github.lovexiaopeng.jimu.api;
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.List;
+import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
@@ -11,10 +14,28 @@ import org.springframework.http.MediaType;
 import org.springframework.http.converter.AbstractHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 
 /** v5请求私有句柄的固定Tasks.View JSON；通用serializer不再先分配再补计量。 */
 @Configuration(proxyBeanMethods = false)
 public class SessionTaskResponseConfiguration implements WebMvcConfigurer {
+  /** 默认ResponseBody/HttpEntity之前插入，保留其他handler的原顺序。 */
+  @Bean
+  public static BeanPostProcessor sessionTaskAsyncHandler() {
+    return new BeanPostProcessor() {
+      @Override
+      public Object postProcessAfterInitialization(Object bean, String name) {
+        if (bean instanceof RequestMappingHandlerAdapter adapter) {
+          var handlers =
+              new ArrayList<>(java.util.Objects.requireNonNull(adapter.getReturnValueHandlers()));
+          handlers.addFirst(new SessionTaskAsyncReturnValueHandler());
+          adapter.setReturnValueHandlers(handlers);
+        }
+        return bean;
+      }
+    };
+  }
+
   @Override
   public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
     converters.add(0, new Converter());

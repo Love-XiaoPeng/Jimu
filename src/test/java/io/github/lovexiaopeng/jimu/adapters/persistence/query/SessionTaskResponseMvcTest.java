@@ -34,13 +34,13 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 /** 真实MVC异步分派及JSON消费；业务端为具名假ledger/假JDBC，不代表MySQL受理通过。 */
 class SessionTaskResponseMvcTest {
   @Test
-  void transactionCompletionKeepsResponseInAccountUntilOriginalJsonConverterConsumesIt()
+  void transactionCompletionKeepsResponseUntilProductionPumpConsumesAndFinalNullDispatch()
       throws Exception {
     var fixture = new Harness(false);
     var pending = fixture.pending();
     fixture.complete(pending);
     assertEquals(1, fixture.transaction.commits);
-    assertTrue(fixture.query.scratchLive() > 65536);
+    assertEquals(65536, fixture.query.scratchLive());
     var result = fixture.mvc.perform(asyncDispatch(pending)).andReturn();
     assertEquals(202, result.getResponse().getStatus());
     var original = new MockHttpOutputMessage();
@@ -62,6 +62,10 @@ class SessionTaskResponseMvcTest {
             throw new AssertionError(failure);
           }
           assertTrue(fixture.query.scratchLive() > 65536);
+          org.junit.jupiter.api.Assertions.assertFalse(
+              org.springframework.web.context.request.async.WebAsyncUtils.getAsyncManager(
+                      pending.getRequest())
+                  .hasConcurrentResult());
         };
     var search =
         (SessionEventLedger.SearchRequest)
@@ -82,6 +86,34 @@ class SessionTaskResponseMvcTest {
     var pending = fixture.pending();
     fixture.complete(pending);
     assertThrows(Exception.class, () -> fixture.mvc.perform(asyncDispatch(pending)));
+    fixture.released();
+  }
+
+  @Test
+  void servletErrorCannotUseSpringLifecycleToDispatchWhileProducerStillBorrows() throws Exception {
+    var fixture = new Harness(false);
+    var pending = fixture.pending();
+    var marker = new java.io.IOException("servlet error marker");
+    fixture.afterHold =
+        () -> {
+          var context = (MockAsyncContext) pending.getRequest().getAsyncContext();
+          try {
+            for (var listener : context.getListeners())
+              listener.onError(new AsyncEvent(context, marker));
+          } catch (java.io.IOException failure) {
+            throw new AssertionError(failure);
+          }
+          assertTrue(fixture.query.scratchLive() > 65536);
+          org.junit.jupiter.api.Assertions.assertFalse(
+              org.springframework.web.context.request.async.WebAsyncUtils.getAsyncManager(
+                      pending.getRequest())
+                  .hasConcurrentResult());
+        };
+    fixture.complete(pending);
+    assertTrue(
+        org.springframework.web.context.request.async.WebAsyncUtils.getAsyncManager(
+                pending.getRequest())
+            .hasConcurrentResult());
     fixture.released();
   }
 
@@ -157,7 +189,45 @@ class SessionTaskResponseMvcTest {
                   new SessionLineageController(ignored -> new Tasks.Identity("t", "a"), ledger))
               .setControllerAdvice(new TaskErrors())
               .setMessageConverters(converters.toArray(HttpMessageConverter<?>[]::new))
+              .addFilters(
+                  (request, response, chain) ->
+                      chain.doFilter(
+                          request,
+                          new jakarta.servlet.http.HttpServletResponseWrapper(
+                              (jakarta.servlet.http.HttpServletResponse) response) {
+                            @Override
+                            public jakarta.servlet.ServletOutputStream getOutputStream()
+                                throws java.io.IOException {
+                              var delegate = super.getOutputStream();
+                              return new jakarta.servlet.ServletOutputStream() {
+                                public boolean isReady() {
+                                  return true;
+                                }
+
+                                public void setWriteListener(
+                                    jakarta.servlet.WriteListener listener) {
+                                  try {
+                                    listener.onWritePossible();
+                                  } catch (java.io.IOException failure) {
+                                    throw new java.io.UncheckedIOException(failure);
+                                  }
+                                }
+
+                                public void write(int value) throws java.io.IOException {
+                                  delegate.write(value);
+                                }
+                              };
+                            }
+                          }))
               .build();
+      var adapter =
+          mvc.getDispatcherServlet()
+              .getWebApplicationContext()
+              .getBean(
+                  org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter
+                      .class);
+      SessionTaskResponseConfiguration.sessionTaskAsyncHandler()
+          .postProcessAfterInitialization(adapter, "mvc-test");
     }
 
     MvcResult pending() throws Exception {

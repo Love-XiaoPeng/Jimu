@@ -421,6 +421,7 @@ public final class SessionJointProjectionScenario {
         try {
           if (args.length > 1 && args[1].endsWith("-owned")) {
             var response = new io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse();
+            response.prepare(q.deadlineNanos(), 8192);
             try {
               try {
                 v.submitSessionLineage(
@@ -430,36 +431,10 @@ public final class SessionJointProjectionScenario {
               }
               String id = response.taskId();
               System.out.println("OWNED_ADMISSION_COMMITTED " + id + " live=" + q.scratchLive());
-              // 实际生产converter在同累计query下消费；此局部不冒称公开HTTP或三trace M2。
-              var converters =
-                  new java.util.ArrayList<
-                      org.springframework.http.converter.HttpMessageConverter<?>>();
-              converters.add(
-                  new org.springframework.http.converter.json.JacksonJsonHttpMessageConverter());
-              new io.github.lovexiaopeng.jimu.api.SessionTaskResponseConfiguration()
-                  .extendMessageConverters(converters);
-              @SuppressWarnings("unchecked")
-              var converter =
-                  (org.springframework.http.converter.HttpMessageConverter<Object>)
-                      converters.getFirst();
-              converter.write(
-                  response,
-                  org.springframework.http.MediaType.APPLICATION_JSON,
-                  new org.springframework.http.HttpOutputMessage() {
-                    private final org.springframework.http.HttpHeaders headers =
-                        new org.springframework.http.HttpHeaders();
-
-                    public org.springframework.http.HttpHeaders getHeaders() {
-                      return headers;
-                    }
-
-                    public java.io.OutputStream getBody() {
-                      return java.io.OutputStream.nullOutputStream();
-                    }
-                  });
+              // 同累计query实际生产pump/cursor；sink替身不代公开HTTP或三trace M2。
+              io.github.lovexiaopeng.jimu.api.SessionTaskPumpScenario.write(
+                  response, q.deadlineNanos());
               nodes.add(id);
-            } catch (java.io.IOException failure) {
-              throw new IllegalStateException(failure);
             } finally {
               response.close();
               response.produced();
@@ -484,6 +459,10 @@ public final class SessionJointProjectionScenario {
           independentAccounting(nodes.getLast(), "after-submit-" + i);
         if (args.length > 1 && args[1].contains("event-history"))
           SessionEventHistorySqlScenario.verify(root, db, nodes.getLast());
+        if (args.length > 1 && args[1].contains("append-failure"))
+          SessionAppendFailureSqlScenario.verify(root, db, nodes.getLast());
+        if (args.length > 1 && args[1].contains("event11"))
+          SessionAcceptedEventSqlScenario.verify(root, db, nodes.getLast());
         if (i == 8) break;
         last = "claim-" + i;
         var lease = root.claim(worker).orElseThrow();

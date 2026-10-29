@@ -42,8 +42,14 @@ public interface TaskAdmissionMapper {
       @Param("tenant") String tenant,
       @Param("task") String task);
 
-  /** accepted-user事实仍消费goal；此21列只用于事件前，不替代初始history BODY。 */
+  /** accepted-user事实的十一列闭包；不得交给View/MCP或工具核权。 */
   List<Map<String, Object>> lockAcceptedEvent(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  /** accepted-event仅物化goal/capabilities，原文分配前读取同锁实际UTF8长度。 */
+  List<Map<String, Object>> lockAcceptedEventSizes(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("task") String task);

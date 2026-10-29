@@ -27,15 +27,34 @@ public final class SessionTaskResponse implements AutoCloseable {
   private Budget budget;
   private Tasks.View view;
   private long bytes;
+  private long preparedBytes, preparedDeadline = Long.MAX_VALUE;
   private boolean producing = true, consuming, closing, released;
   private RuntimeException firstFailure;
 
   public synchronized void bind(Budget context) {
     available();
     if (budget != null) throw new IllegalStateException("Response already bound");
-    context.retain(this, 1024);
+    long retained = Math.addExact(1024, preparedBytes);
+    context.retain(this, retained);
     budget = context;
-    bytes = 1024;
+    bytes = retained;
+    preparedBytes = 0;
+  }
+
+  /** 请求私有scaffold的分配前预留，bind原query时整体转入同一owner，不重开计量包络。 */
+  public synchronized void prepare(long deadline, long extra) {
+    available();
+    preparedDeadline = Math.min(preparedDeadline, deadline);
+    if (budget != null) {
+      retain(extra);
+      return;
+    }
+    long next = Math.addExact(preparedBytes, extra);
+    // 与原query的65536基座/1MiB scratch相同；尚未读正文、没有事务或授权证明可复用。
+    if (Math.addExact(65536 + 1024, next) > 1048576)
+      throw failed(new TaskFailure(429, "SESSION_HISTORY_LIMIT"));
+    preparedBytes = next;
+    available();
   }
 
   public synchronized void retain(long extra) {
@@ -64,24 +83,48 @@ public final class SessionTaskResponse implements AutoCloseable {
 
   /** 短锁借用；外部I/O不占生命周期锁，归还前仍持有View及其预算。 */
   public void write(Consumer<Tasks.View> consumer) {
-    Tasks.View borrowed;
+    try (var lease = consume(0)) {
+      try {
+        consumer.accept(lease.view());
+      } catch (RuntimeException failure) {
+        throw failed(failure);
+      } catch (Error failure) {
+        failed(new IllegalStateException("Task response failed", failure));
+        throw failure;
+      }
+    }
+  }
+
+  /** 一次性持有，可跨多个Servlet写回调；先预留lease及编码工作区，再分配句柄。 */
+  public ConsumerLease consume(long workspaceBytes) {
     synchronized (this) {
       available();
       if (producing || consuming || view == null)
         throw new IllegalStateException("Response not ready");
+      retain(Math.addExact(128, workspaceBytes));
       consuming = true;
-      borrowed = view;
+      return new ConsumerLease();
     }
-    try {
-      consumer.accept(borrowed);
-    } catch (RuntimeException failure) {
-      throw failed(failure);
-    } catch (Error failure) {
-      failed(new IllegalStateException("Task response failed", failure));
-      throw failure;
-    } finally {
-      borrowed = null;
-      synchronized (this) {
+  }
+
+  public final class ConsumerLease implements AutoCloseable {
+    private boolean returned;
+
+    private ConsumerLease() {}
+
+    public Tasks.View view() {
+      synchronized (SessionTaskResponse.this) {
+        available();
+        if (returned) throw new IllegalStateException("Response lease returned");
+        return view;
+      }
+    }
+
+    @Override
+    public void close() {
+      synchronized (SessionTaskResponse.this) {
+        if (returned) return;
+        returned = true;
         consuming = false;
         closing = true;
         release();
@@ -125,9 +168,16 @@ public final class SessionTaskResponse implements AutoCloseable {
     return firstFailure;
   }
 
+  /** 仅无在途producer或唯一consumer调用，终态线程不并发修改query计量Map。 */
+  public RuntimeException reject(RuntimeException failure) {
+    return failed(failure);
+  }
+
   private void available() {
     if (firstFailure != null) throw firstFailure;
     if (budget != null) budget.checkpoint();
+    else if (System.nanoTime() >= preparedDeadline)
+      throw failed(new TaskFailure(504, "SESSION_QUERY_TIMEOUT"));
     if (closing || released) throw failed(new TaskFailure(504, "SESSION_QUERY_TIMEOUT"));
   }
 
@@ -144,6 +194,7 @@ public final class SessionTaskResponse implements AutoCloseable {
     if (budget != null) budget.release(this);
     budget = null;
     bytes = 0;
+    preparedBytes = 0;
     released = true;
   }
 }

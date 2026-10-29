@@ -91,6 +91,7 @@ public final class SessionSearchBodyFilter implements Filter {
     private final ByteArrayOutputStream bytes = new ByteArrayOutputStream(2049);
     private final int max;
     private boolean done;
+    private boolean bodyDelivered;
     private java.util.concurrent.ScheduledFuture<?> timeout;
 
     Reader(ServletInputStream stream, SessionEventLedger.SearchRequest search, int max) {
@@ -131,7 +132,9 @@ public final class SessionSearchBodyFilter implements Filter {
       synchronized (this) {
         if (done) return;
         done = true;
-        stopTimer();
+        bodyDelivered = true;
+        // v5 submit沿用最初绝对deadline的同一个timer，直到写周期完成；不另开时钟。
+        if (!search.deadlineThroughResponse()) stopTimer();
         body = bytes.toByteArray();
         bytes.reset();
       }
@@ -143,8 +146,9 @@ public final class SessionSearchBodyFilter implements Filter {
     }
 
     private synchronized void fail(RuntimeException failure) {
-      if (done) return;
+      if (done && !(bodyDelivered && search.deadlineThroughResponse())) return;
       done = true;
+      bodyDelivered = false;
       stopTimer();
       bytes.reset();
       search.failed().accept(failure);
@@ -158,6 +162,7 @@ public final class SessionSearchBodyFilter implements Filter {
     @Override
     public synchronized void onComplete(AsyncEvent event) {
       done = true;
+      bodyDelivered = false;
       stopTimer();
       bytes.reset();
     }

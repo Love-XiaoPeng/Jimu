@@ -9,7 +9,6 @@ import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
-import java.net.URI;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -56,46 +55,27 @@ public final class SessionLineageController {
   }
 
   @PostMapping("/api/session-trace/tasks")
-  public DeferredResult<ResponseEntity<SessionTaskResponse>> submit(
+  public SessionTaskAsyncSubmit submit(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestHeader(value = "Idempotency-Key", required = false) String key,
       HttpServletRequest request) {
     long deadline = System.nanoTime() + SessionHistoryPolicyV1.QUERY_NANOS;
     var identity = authentication.authenticate(authorization);
     json(request, 16384);
-    DeferredResult<ResponseEntity<SessionTaskResponse>> result = result(deadline);
     var response = new SessionTaskResponse();
-    result.onTimeout(
-        () -> {
-          response.close();
-          result.setErrorResult(new TaskFailure(504, SessionErrorCode.SESSION_QUERY_TIMEOUT));
-        });
-    result.onError(failure -> response.close());
-    result.onCompletion(response::close);
+    response.prepare(deadline, 8192);
+    var result = new SessionTaskAsyncSubmit(deadline, response);
     request.setAttribute(
         "jimu.session.search.request",
         new SessionEventLedger.SearchRequest(
             deadline,
-            body -> {
-              try {
-                lineages.submitSessionLineage(identity, key, end -> body, deadline, response);
-              } catch (RuntimeException | Error failure) {
-                response.close();
-                throw failure;
-              } finally {
-                response.produced();
-              }
-              if (!result.setResult(
-                  ResponseEntity.accepted()
-                      .location(URI.create("/api/tasks/" + response.taskId()))
-                      .header("Cache-Control", "no-store")
-                      .body(response))) response.close();
-            },
-            failure -> {
-              response.close();
-              response.produced();
-              result.setErrorResult(failure);
-            }));
+            body ->
+                result.pump.produce(
+                    () ->
+                        lineages.submitSessionLineage(
+                            identity, key, end -> body, deadline, response)),
+            result.pump::terminate,
+            true));
     return result;
   }
 
