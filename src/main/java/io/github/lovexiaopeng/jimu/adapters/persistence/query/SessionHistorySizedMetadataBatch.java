@@ -65,9 +65,9 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
   }
 
   private RuntimeException fail(RuntimeException failure) {
-    RuntimeException first = owner.poisonProof(failure);
+    // 已结束的 Work 会在 poisonProof 内拒绝；先断行引用，清理不能依赖它仍然 active。
     close();
-    return first;
+    return owner.poisonProof(failure);
   }
 
   public static SessionHistorySizedMetadataBatch load(

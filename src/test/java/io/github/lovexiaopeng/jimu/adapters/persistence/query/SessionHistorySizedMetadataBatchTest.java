@@ -606,6 +606,8 @@ public class SessionHistorySizedMetadataBatchTest {
                 SessionHistorySizedMetadataBatch.load(
                     session(f2, q2, c2, List.of(row(4))), q2, TENANT, TASK));
     assertThrows(RuntimeException.class, leaked::iterator);
+    assertEquals(
+        65536, q2.scratchLive(), "ended Work access must release rows before poisonProof refuses");
     leaked.close();
     assertEquals(65536, q2.scratchLive());
     System.out.println("SQL_CAUSE_AND_ENDED_WORK_REJECTED");
