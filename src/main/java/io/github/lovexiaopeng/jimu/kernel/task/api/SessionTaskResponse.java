@@ -10,6 +10,11 @@ public final class SessionTaskResponse implements AutoCloseable {
     void release(Object owner);
 
     void wire(int count);
+
+    default <T> T primitive(String name, int count, java.util.function.Supplier<T> action) {
+      wire(count);
+      return action.get();
+    }
   }
 
   private Budget budget;
@@ -49,11 +54,10 @@ public final class SessionTaskResponse implements AutoCloseable {
     return java.util.Objects.requireNonNull(view).taskId();
   }
 
-  /** 序列化同步消费，不向MVC借出View；保留固定编码workspace并沿原累计预算/截止写出。 */
+  /** 序列化同步消费，不向MVC借出View；编码器负责分配前留其实际有界workspace。 */
   public synchronized void write(Consumer<Tasks.View> consumer) {
     available();
     if (producing || view == null) throw new IllegalStateException("Response not ready");
-    retain(65536);
     try {
       consumer.accept(view);
     } finally {
@@ -65,6 +69,12 @@ public final class SessionTaskResponse implements AutoCloseable {
   public synchronized void wire(int count) {
     available();
     budget.wire(count);
+  }
+
+  public synchronized <T> T primitive(
+      String name, int count, java.util.function.Supplier<T> action) {
+    available();
+    return budget.primitive(name, count, action);
   }
 
   private void available() {

@@ -163,6 +163,8 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
 
   private boolean bounded(String text, int points) {
     if (text.length() > 2 * points) return false;
+    SessionMetadataScalars.operation(query, 2); // 新增长度读取及充分条件比较。
+    if (text.length() <= points) return true;
     SessionMetadataScalars.operation(query, text.length());
     return text.codePointCount(0, text.length()) <= points;
   }

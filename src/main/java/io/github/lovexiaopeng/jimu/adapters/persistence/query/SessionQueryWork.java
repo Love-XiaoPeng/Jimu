@@ -334,6 +334,30 @@ public final class SessionQueryWork {
 
   private RuntimeException proofFailure;
   private com.fasterxml.jackson.databind.JsonNode authority;
+  private final Object policyScratch = new Object();
+  private String policyRaw, policyHash;
+
+  /** 仅同Work的不可变本地策略串散列；不是数据库raw证明或当前授权，外来串仍独立计算。 */
+  public String policyHash(String raw, java.util.function.Supplier<String> calculate) {
+    active();
+    context.checkHealthy();
+    context.operation(1); // identity比较也计量；不以文本相同替代同一不可变对象。
+    try {
+      if (sameIdentity(policyRaw, raw) && policyHash != null) return policyHash;
+      if (policyRaw != null) return calculate.get();
+      context.retainScratch(policyScratch, 512L + 2L * (raw.length() + 64L));
+      String value = calculate.get();
+      policyRaw = raw;
+      policyHash = value;
+      return value;
+    } catch (RuntimeException failure) {
+      throw poisonProof(failure);
+    }
+  }
+
+  private static boolean sameIdentity(Object left, Object right) {
+    return left == right;
+  }
 
   public RuntimeException poisonProof(RuntimeException failure) {
     active();
@@ -865,6 +889,9 @@ public final class SessionQueryWork {
   }
 
   void complete() {
+    policyRaw = null;
+    policyHash = null;
+    context.releaseScratch(policyScratch);
     if (histories != null) histories.clear();
     histories = null;
     releaseCreated();

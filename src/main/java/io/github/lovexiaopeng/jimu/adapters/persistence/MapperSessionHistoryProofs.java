@@ -68,6 +68,23 @@ final class MapperSessionHistoryProofs
   public String hash(String raw) {
     var query = records.appendQuery();
     if (query == null || !query.lineage()) return Payloads.hash(raw);
+    query.operation(1);
+    if (sameIdentity(raw, records.contract(task).binding())) {
+      var owner =
+          io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+              query);
+      if (owner != null) return owner.policyHash(raw, () -> hashRaw(raw));
+    }
+    return hashRaw(raw);
+  }
+
+  /** 只识别本地固定策略对象；内容相等的数据库副本也不能进入这条复用路径。 */
+  private static boolean sameIdentity(Object left, Object right) {
+    return left == right;
+  }
+
+  private String hashRaw(String raw) {
+    var query = records.appendQuery();
     Object temporary = new Object();
     query.retainScratch(temporary, 4096L + 4L * raw.length());
     try {

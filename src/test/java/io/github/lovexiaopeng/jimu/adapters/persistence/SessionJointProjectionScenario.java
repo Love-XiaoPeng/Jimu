@@ -310,6 +310,58 @@ public final class SessionJointProjectionScenario {
     }
   }
 
+  private static void historyWitness(
+      io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease lease) throws Exception {
+    var v = view();
+    var q = v.queryContext();
+    q.restrictLineage();
+    v.sessionTransaction(
+        () -> {
+          var task = v.fenced(lease, true);
+          v.sessionScopes.require(task);
+          // 实际commit fence更新和末端retained fence；不注入合成scope或空回调。
+          v.todoCommitFence(lease);
+          v.sessions.history(task, true);
+          long reads = q.resources().reads();
+          v.sessions.historyProof(task);
+          check(v.sessions.historyRetained(task), "second proof-only history consumer retained");
+          check(
+              q.resources().reads() == reads,
+              "two real checked-history consumers add no ResultSet");
+          phase("history-witness-consumers", q);
+          return null;
+        },
+        q.deadlineNanos());
+    phase("history-witness-committed-live-fence", q);
+    check(q.scratchLive() == 65536, "history witness transaction releases references");
+  }
+
+  private static void independentAccounting(String task, String label) {
+    var expected = SessionRepairSqlOracle.inspect(db, task);
+    var history =
+        db.queryForMap(
+            "SELECT metadata_bytes,body_bytes,reserved_bytes,held_bytes FROM task_session_history WHERE tenant_id='tenant-a' AND task_id=?",
+            task);
+    check(
+        ((Number) history.get("metadata_bytes")).longValue() == expected.metadata(),
+        label + " independent 18-table metadata " + expected.metadata());
+    check(
+        ((Number) history.get("body_bytes")).longValue() == expected.body(),
+        label + " independent all BODY " + expected.body());
+    var reservation =
+        db.queryForMap(
+            "SELECT amount,actual,state FROM reservation WHERE tenant_id='tenant-a' AND task_id=? AND category='SESSION_HISTORY_STORAGE'",
+            task);
+    check(
+        ((Number) history.get("reserved_bytes")).longValue() == 8388608
+            && ((Number) history.get("held_bytes")).longValue() == 8388608
+            && ((Number) reservation.get("amount")).longValue() == 8388608
+            && reservation.get("actual") == null
+            && "RESERVED".equals(reservation.get("state")),
+        label + " PRESENT original reserve and held unchanged");
+    SessionRepairSqlOracle.dump(db, task, label);
+  }
+
   public static void main(String[] args) throws Exception {
     var props = new Properties();
     try (var in = Files.newInputStream(Path.of(args[0]))) {
@@ -346,13 +398,17 @@ public final class SessionJointProjectionScenario {
     if (args.length > 1 && args[1].startsWith("borrowed")) {
       SessionBorrowedMetadataSqlScenario.verify(db, args[1]);
       if (args[1].equals("borrowed-shapes") || args[1].equals("borrowed-boundaries")) return;
-    } else if (args.length < 2 || !args[1].equals("genuine"))
+    } else if (args.length < 2 || !args[1].startsWith("genuine"))
       SessionTaskSizedSqlScenario.verify(db);
     String worker = "joint-private-worker";
     root.registerWorker(worker, worker, ProcessHandle.current().pid(), 1, "private", "private");
     String last = "begin";
+    int maximumNodes =
+        args.length > 1 && args[1].startsWith("genuine-first")
+            ? 1
+            : args.length > 1 && args[1].startsWith("genuine-two") ? 2 : 9;
     try {
-      for (int i = 0; i < 9; i++) {
+      for (int i = 0; i < maximumNodes; i++) {
         last = "submit-" + i;
         var fields = new java.util.LinkedHashMap<String, Object>();
         fields.put("goal", "joint-node-" + i);
@@ -363,7 +419,7 @@ public final class SessionJointProjectionScenario {
         var q = v.queryContext();
         var beforeAdmission = SessionDependencyScenario.snapshot(db);
         try {
-          if (args.length > 1 && args[1].equals("borrowed-owned")) {
+          if (args.length > 1 && args[1].endsWith("-owned")) {
             var response = new io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse();
             try {
               try {
@@ -416,7 +472,7 @@ public final class SessionJointProjectionScenario {
         } catch (RuntimeException failure) {
           boolean unchanged = beforeAdmission.equals(SessionDependencyScenario.snapshot(db));
           System.out.println("OWNED_FAILURE_DB_UNCHANGED " + unchanged);
-          if (!unchanged && args.length > 1 && args[1].equals("borrowed-owned"))
+          if (!unchanged && args.length > 1 && args[1].endsWith("-owned"))
             System.out.println(
                 "RESPONSE_FAILED_AFTER_ACCEPTANCE; committed SQL is not rolled back by wire failure");
           else check(unchanged, "failed genuine admission rolls back all 22 tables");
@@ -424,10 +480,16 @@ public final class SessionJointProjectionScenario {
         } finally {
           phase(last, q);
         }
+        if (args.length > 1 && args[1].contains("witness"))
+          independentAccounting(nodes.getLast(), "after-submit-" + i);
         if (i == 8) break;
         last = "claim-" + i;
         var lease = root.claim(worker).orElseThrow();
         check(lease.taskId().equals(nodes.getLast()), "claim exact genuine source " + i);
+        if (args.length > 1 && args[1].contains("witness")) {
+          last = "history-witness-" + i;
+          historyWitness(lease);
+        }
         last = "finish-" + i;
         root.finish(lease, "joint terminal source " + i);
         root.quiescent(lease);
@@ -435,8 +497,14 @@ public final class SessionJointProjectionScenario {
             db.queryForObject("SELECT state FROM task WHERE id=?", String.class, lease.taskId())
                 .equals("SUCCEEDED"),
             "legal terminal source " + i);
-        if (i == 0 && !(args.length > 1 && args[1].equals("borrowed-owned")))
+        if (args.length > 1 && args[1].contains("witness"))
+          independentAccounting(nodes.getLast(), "after-finish-" + i);
+        if (i == 0 && !(args.length > 1 && args[1].endsWith("-owned")))
           projection(nodes.getFirst());
+      }
+      if (maximumNodes < 9) {
+        System.out.println("BOUNDED_ADMISSION_PROBE_COMPLETED " + maximumNodes);
+        return;
       }
       last = "joint-candidate";
       joint(nodes.getLast());

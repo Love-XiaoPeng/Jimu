@@ -22,10 +22,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpInputMessage;
-import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
-import org.springframework.http.converter.AbstractHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.mock.http.MockHttpOutputMessage;
@@ -133,6 +130,11 @@ class SessionTaskResponseMvcTest {
                           }
 
                           public void wire(int count) {
+                            if (failSerialization) {
+                              assertTrue(query.scratchLive() >= 65536 + 8192 + 2048);
+                              throw new java.io.UncheckedIOException(
+                                  new java.io.IOException("injected serializer budget failure"));
+                            }
                             query.operation(count);
                             query.remainingMillis();
                           }
@@ -148,24 +150,6 @@ class SessionTaskResponseMvcTest {
                     return null;
                   });
       var converters = new ArrayList<HttpMessageConverter<?>>();
-      if (failSerialization)
-        converters.add(
-            new AbstractHttpMessageConverter<Tasks.View>(MediaType.APPLICATION_JSON) {
-              protected boolean supports(Class<?> type) {
-                return type == Tasks.View.class;
-              }
-
-              protected Tasks.View readInternal(
-                  Class<? extends Tasks.View> type, HttpInputMessage input) {
-                throw new UnsupportedOperationException();
-              }
-
-              protected void writeInternal(Tasks.View value, HttpOutputMessage output)
-                  throws java.io.IOException {
-                assertTrue(query.scratchLive() >= 65536 + 8192 + 65536);
-                throw new java.io.IOException("injected serializer failure");
-              }
-            });
       converters.add(json);
       new SessionTaskResponseConfiguration().extendMessageConverters(converters);
       mvc =

@@ -233,6 +233,10 @@ public final class JdbcLedger
             responseQuery.operation(count);
             responseQuery.remainingMillis();
           }
+
+          public <T> T primitive(String name, int count, java.util.function.Supplier<T> action) {
+            return responseQuery.primitive(name, count, action);
+          }
         });
     taskResponse = response;
     try {
@@ -1854,14 +1858,35 @@ public final class JdbcLedger
   }
 
   void access(Map<String, Object> row) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (owner != null && !owner.lineage()) owner = null;
     try {
+      if (owner != null) {
+        if (query == null) throw new IllegalStateException("Missing query in session transaction");
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            query);
+        query.checkHealthy();
+      }
       baseAccess(row);
       if (JdbcSessionScopes.task(row)) sessionScopes.require(row);
-    } catch (TaskFailure failure) {
-      if (JdbcSessionScopes.task(row) && failure.status() == 403) {
+    } catch (RuntimeException failure) {
+      if (failure instanceof TaskFailure denial
+          && JdbcSessionScopes.task(row)
+          && denial.status() == 403) {
+        // 只对健康、未发布、未保护写的owner保留原状态脱敏；首槽必须保留原403。
+        if (owner != null && !owner.scopeStatus(JdbcSessionScopes.unavailable()))
+          throw owner.poisonProof(failure);
         invalidateScopeAfterTransaction(row);
         throw JdbcSessionScopes.unavailable();
       }
+      if (owner == null) throw failure;
+      if (failure instanceof TaskFailure denial && owner.scopeStatus(denial)) throw failure;
+      throw owner.poisonProof(failure);
+    } catch (Error failure) {
+      if (owner != null)
+        owner.poisonProof(new IllegalStateException("Task access failed", failure));
       throw failure;
     }
   }

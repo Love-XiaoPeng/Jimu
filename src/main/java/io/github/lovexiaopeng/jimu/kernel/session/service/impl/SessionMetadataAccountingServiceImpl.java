@@ -115,18 +115,20 @@ public final class SessionMetadataAccountingServiceImpl
             histories++;
             content = (String) row.value("content_state");
             if (!java.util.List.of("PRESENT", "PURGED").contains(content)) throw corrupt();
-            old = number(row.value("metadata_bytes"));
+            Object metadataValue = row.value("metadata_bytes");
+            old = number(metadataValue);
             body = number(row.value("body_bytes"));
             reserved = number(row.value("reserved_bytes"));
             held = number(row.value("held_bytes"));
             if ("PRESENT".equals(content))
-              total = Math.subtractExact(total, scalarBytes(row.value("metadata_bytes")));
+              total = Math.subtractExact(total, scalarBytes(metadataValue));
           }
           if (table == SessionMetadataAccounting.Table.RESERVATION
               && "SESSION_HISTORY_STORAGE".equals(row.value("category"))) {
             reservations++;
             amount = number(row.value("amount"));
-            actual = row.value("actual") == null ? null : number(row.value("actual"));
+            Object actualValue = row.value("actual");
+            actual = actualValue == null ? null : number(actualValue);
             reservationState = (String) row.value("state");
           }
         }

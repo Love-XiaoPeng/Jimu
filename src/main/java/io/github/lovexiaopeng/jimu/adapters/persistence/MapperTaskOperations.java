@@ -147,6 +147,12 @@ final class MapperTaskOperations implements TaskOperationsRecords {
       retainArtifacts();
       var wrapper = new LambdaQueryWrapper<ArtifactViewEntity>();
       wrapper
+          .select(
+              ArtifactViewEntity::getRowId,
+              ArtifactViewEntity::getMediaType,
+              ArtifactViewEntity::getSize,
+              ArtifactViewEntity::getSha256,
+              ArtifactViewEntity::getExpiresAt)
           .eq(ArtifactViewEntity::getTenantId, tenant)
           .eq(ArtifactViewEntity::getTaskId, id)
           .eq(ArtifactViewEntity::getState, ArtifactState.PUBLISHED)
