@@ -61,7 +61,10 @@ final class MapperSessionEventAppend implements SessionEventAppend {
   }
 
   public History history(boolean readable) {
-    var h = records.history(task, readable);
+    var h =
+        fact.equals("accepted-user")
+            ? records.acceptedEventHistory(task, readable)
+            : records.history(task, readable);
     return () -> n(h, "next_seq");
   }
 

@@ -224,11 +224,20 @@ final class JdbcSessionRecords {
               .SessionHistoryProofServiceImpl();
 
   Map<String, Object> history(Map<String, Object> task, boolean readable) {
+    return history(task, readable, false);
+  }
+
+  Map<String, Object> acceptedEventHistory(Map<String, Object> task, boolean readable) {
+    return history(task, readable, version(task) == 5);
+  }
+
+  private Map<String, Object> history(
+      Map<String, Object> task, boolean readable, boolean acceptedEvent) {
     var owner = historyOwner();
     Object temporary = new Object();
     if (owner != null) query.retainScratch(temporary, 4096);
     try {
-      var proof = new MapperSessionHistoryProofs(this, task, null);
+      var proof = new MapperSessionHistoryProofs(this, task, null, acceptedEvent);
       historyProofs.history(proof, readable);
       if (readable && owner != null)
         owner.checkedHistory(

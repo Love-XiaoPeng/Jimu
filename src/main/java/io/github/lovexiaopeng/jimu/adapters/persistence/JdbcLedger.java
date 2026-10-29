@@ -234,6 +234,14 @@ public final class JdbcLedger
             responseQuery.remainingMillis();
           }
 
+          public void checkpoint() {
+            responseQuery.remainingMillis();
+          }
+
+          public RuntimeException failure(RuntimeException cause) {
+            return responseQuery.recordFailure(cause);
+          }
+
           public <T> T primitive(String name, int count, java.util.function.Supplier<T> action) {
             return responseQuery.primitive(name, count, action);
           }

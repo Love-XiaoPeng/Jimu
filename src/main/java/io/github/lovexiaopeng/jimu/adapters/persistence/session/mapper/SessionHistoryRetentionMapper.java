@@ -62,6 +62,11 @@ public interface SessionHistoryRetentionMapper {
       @Param("tenant") String tenant,
       @Param("taskId") String taskId);
 
+  List<Map<String, Object>> eventHistory(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
   List<Map<String, Object>> scopeInvalidated(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,

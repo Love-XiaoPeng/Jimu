@@ -11,6 +11,13 @@ public final class SessionTaskResponse implements AutoCloseable {
 
     void wire(int count);
 
+    /** 同一请求的绝对截止与首错，不另开计量包络。 */
+    default void checkpoint() {}
+
+    default RuntimeException failure(RuntimeException cause) {
+      return cause;
+    }
+
     default <T> T primitive(String name, int count, java.util.function.Supplier<T> action) {
       wire(count);
       return action.get();
@@ -20,7 +27,8 @@ public final class SessionTaskResponse implements AutoCloseable {
   private Budget budget;
   private Tasks.View view;
   private long bytes;
-  private boolean producing = true, closing, released;
+  private boolean producing = true, consuming, closing, released;
+  private RuntimeException firstFailure;
 
   public synchronized void bind(Budget context) {
     available();
@@ -46,7 +54,7 @@ public final class SessionTaskResponse implements AutoCloseable {
 
   public synchronized void produced() {
     producing = false;
-    if (closing) release();
+    if (closing && !consuming) release();
   }
 
   public synchronized String taskId() {
@@ -54,38 +62,80 @@ public final class SessionTaskResponse implements AutoCloseable {
     return java.util.Objects.requireNonNull(view).taskId();
   }
 
-  /** 序列化同步消费，不向MVC借出View；编码器负责分配前留其实际有界workspace。 */
-  public synchronized void write(Consumer<Tasks.View> consumer) {
-    available();
-    if (producing || view == null) throw new IllegalStateException("Response not ready");
+  /** 短锁借用；外部I/O不占生命周期锁，归还前仍持有View及其预算。 */
+  public void write(Consumer<Tasks.View> consumer) {
+    Tasks.View borrowed;
+    synchronized (this) {
+      available();
+      if (producing || consuming || view == null)
+        throw new IllegalStateException("Response not ready");
+      consuming = true;
+      borrowed = view;
+    }
     try {
-      consumer.accept(view);
+      consumer.accept(borrowed);
+    } catch (RuntimeException failure) {
+      throw failed(failure);
+    } catch (Error failure) {
+      failed(new IllegalStateException("Task response failed", failure));
+      throw failure;
     } finally {
-      closing = true;
-      release();
+      borrowed = null;
+      synchronized (this) {
+        consuming = false;
+        closing = true;
+        release();
+      }
     }
   }
 
-  public synchronized void wire(int count) {
-    available();
-    budget.wire(count);
+  public void wire(int count) {
+    Budget context = consumerBudget();
+    try {
+      context.wire(count);
+      checkpoint();
+    } catch (RuntimeException failure) {
+      throw failed(failure);
+    }
   }
 
-  public synchronized <T> T primitive(
-      String name, int count, java.util.function.Supplier<T> action) {
+  public <T> T primitive(String name, int count, java.util.function.Supplier<T> action) {
+    Budget context = consumerBudget();
+    try {
+      T result = context.primitive(name, count, action);
+      checkpoint();
+      return result;
+    } catch (RuntimeException failure) {
+      throw failed(failure);
+    }
+  }
+
+  private synchronized Budget consumerBudget() {
     available();
-    return budget.primitive(name, count, action);
+    if (!consuming) throw new IllegalStateException("Response consumer lease required");
+    return budget;
+  }
+
+  private synchronized void checkpoint() {
+    available();
+  }
+
+  private synchronized RuntimeException failed(RuntimeException failure) {
+    if (firstFailure == null) firstFailure = budget == null ? failure : budget.failure(failure);
+    return firstFailure;
   }
 
   private void available() {
-    if (closing || released) throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
+    if (firstFailure != null) throw firstFailure;
+    if (budget != null) budget.checkpoint();
+    if (closing || released) throw failed(new TaskFailure(504, "SESSION_QUERY_TIMEOUT"));
   }
 
   @Override
   public synchronized void close() {
     closing = true;
     // 超时不能在生产者仍借用View/局部列表时提前退款。
-    if (!producing) release();
+    if (!producing && !consuming) release();
   }
 
   private void release() {

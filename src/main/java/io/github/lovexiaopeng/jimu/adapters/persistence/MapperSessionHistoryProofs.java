@@ -16,12 +16,22 @@ final class MapperSessionHistoryProofs
   private Map<String, Object> history;
   private SessionHistoryProofs.HistoryRow checkedRow;
   private DurableAgent.Checkpoint checkpoint;
+  private final boolean acceptedEvent;
 
   MapperSessionHistoryProofs(
       JdbcSessionRecords records, Map<String, Object> task, Map<String, Object> step) {
+    this(records, task, step, false);
+  }
+
+  MapperSessionHistoryProofs(
+      JdbcSessionRecords records,
+      Map<String, Object> task,
+      Map<String, Object> step,
+      boolean acceptedEvent) {
     this.records = records;
     this.task = task;
     this.step = step;
+    this.acceptedEvent = acceptedEvent;
   }
 
   private static Long number(Map<String, Object> row, String key) {
@@ -29,7 +39,12 @@ final class MapperSessionHistoryProofs
   }
 
   public SessionHistoryProofs.HistoryRow load() {
-    var rows = records.mapperRows("SessionHistoryRetentionMapper.history", task);
+    var rows =
+        records.mapperRows(
+            acceptedEvent
+                ? "SessionHistoryRetentionMapper.eventHistory"
+                : "SessionHistoryRetentionMapper.history",
+            task);
     if (rows.isEmpty()) return null;
     history = rows.getFirst();
     checkedRow =

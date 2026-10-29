@@ -74,6 +74,17 @@ public final class SessionQueryInterceptor implements Interceptor {
       }
     }
     if (!(value instanceof SessionQueryContext context)) return invocation.proceed();
+    if (invocation.getTarget() instanceof ResultSetHandler) {
+      // JDBC已执行，流式ResultSet可能已打开；截止拒绝也必须在清理保护内。
+      var statement = (Statement) invocation.getArgs()[0];
+      try {
+        context.remainingMillis();
+        return results(invocation, context);
+      } catch (Throwable failure) {
+        closeFailed(statement, failure);
+        throw failure;
+      }
+    }
     context.remainingMillis();
     if (invocation.getTarget() instanceof org.apache.ibatis.executor.Executor) {
       var command = (org.apache.ibatis.mapping.MappedStatement) invocation.getArgs()[0];
@@ -94,9 +105,27 @@ public final class SessionQueryInterceptor implements Interceptor {
     }
     if (invocation.getTarget() instanceof StatementHandler handler) {
       var statement = (Statement) invocation.proceed();
-      QueryStatements.apply(statement, context);
-      return statement;
+      try {
+        QueryStatements.apply(statement, context);
+        return statement;
+      } catch (Throwable failure) {
+        closeFailed(statement, failure);
+        throw failure;
+      }
     }
+    return invocation.proceed();
+  }
+
+  private static void closeFailed(Statement statement, Throwable failure) {
+    try {
+      statement.close();
+    } catch (Throwable cleanup) {
+      if (cleanup != failure) failure.addSuppressed(cleanup);
+    }
+  }
+
+  private static Object results(Invocation invocation, SessionQueryContext context)
+      throws Throwable {
     var original = (Statement) invocation.getArgs()[0];
     var results = new java.util.IdentityHashMap<java.sql.ResultSet, java.sql.ResultSet>();
     invocation.getArgs()[0] =

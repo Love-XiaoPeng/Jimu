@@ -121,6 +121,77 @@ class SessionTaskJsonWriterTest {
     exhausted.released();
   }
 
+  @Test
+  void closeReturnsWhileSinkBorrowsViewAndRefundWaitsForConsumer() throws Exception {
+    blocked(true);
+  }
+
+  @Test
+  void sameAbsoluteDeadlineIsCheckedAfterOneBlockedByteBelowOperationPollingBoundary()
+      throws Exception {
+    blocked(false);
+  }
+
+  private static void blocked(boolean cancel) throws Exception {
+    var harness = new Harness(0);
+    harness.hold(new Tasks.View("c", "Q", 1, null, null, null, null, null, List.of()));
+    var entered = new java.util.concurrent.CountDownLatch(1);
+    var unblock = new java.util.concurrent.CountDownLatch(1);
+    var failure = new java.util.concurrent.atomic.AtomicReference<Throwable>();
+    var emitted = new java.util.concurrent.atomic.AtomicInteger();
+    var writer =
+        new Thread(
+            () -> {
+              try {
+                harness.write(
+                    new OutputStream() {
+                      public void write(int value) throws IOException {
+                        entered.countDown();
+                        try {
+                          if (!unblock.await(5, java.util.concurrent.TimeUnit.SECONDS))
+                            throw new IOException("test sink not released");
+                        } catch (InterruptedException interrupted) {
+                          Thread.currentThread().interrupt();
+                          throw new IOException(interrupted);
+                        }
+                        emitted.incrementAndGet();
+                      }
+                    });
+              } catch (Throwable caught) {
+                failure.set(caught);
+              }
+            });
+    var closer = new Thread(harness.response::close);
+    try {
+      writer.start();
+      assertTrue(entered.await(2, java.util.concurrent.TimeUnit.SECONDS));
+      if (cancel) {
+        closer.start();
+        closer.join(200);
+        assertFalse(closer.isAlive(), "close must not wait on external I/O");
+        assertEquals(0, harness.releases);
+        assertTrue(harness.query.scratchLive() > 65536);
+      } else harness.query.restrictDeadline(System.nanoTime() - 1);
+      unblock.countDown();
+      writer.join(2000);
+      assertFalse(writer.isAlive());
+      assertEquals(1, emitted.get());
+      assertTrue(failure.get() instanceof TaskFailure);
+      assertEquals("SESSION_QUERY_TIMEOUT", ((TaskFailure) failure.get()).code());
+      assertTrue(harness.query.resources().operations() < 1024);
+      assertEquals(1L, harness.query.completedWork().get("response.wire"));
+      org.junit.jupiter.api.Assertions.assertSame(failure.get(), harness.query.recordedFailure());
+      harness.released();
+    } finally {
+      unblock.countDown();
+      writer.join(6000);
+      if (closer.getState() != Thread.State.NEW) closer.join(2000);
+      assertFalse(writer.isAlive());
+      assertFalse(closer.isAlive());
+      harness.response.close();
+    }
+  }
+
   private static Tasks.View view(String text, Instant time, long number) {
     return new Tasks.View(
         "caller",
@@ -172,6 +243,14 @@ class SessionTaskJsonWriterTest {
 
             public void wire(int count) {
               query.operation(count);
+            }
+
+            public void checkpoint() {
+              query.remainingMillis();
+            }
+
+            public RuntimeException failure(RuntimeException cause) {
+              return query.recordFailure(cause);
             }
 
             public <T> T primitive(String name, int count, java.util.function.Supplier<T> action) {

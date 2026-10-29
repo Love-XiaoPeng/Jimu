@@ -482,10 +482,14 @@ public final class SessionJointProjectionScenario {
         }
         if (args.length > 1 && args[1].contains("witness"))
           independentAccounting(nodes.getLast(), "after-submit-" + i);
+        if (args.length > 1 && args[1].contains("event-history"))
+          SessionEventHistorySqlScenario.verify(root, db, nodes.getLast());
         if (i == 8) break;
         last = "claim-" + i;
         var lease = root.claim(worker).orElseThrow();
         check(lease.taskId().equals(nodes.getLast()), "claim exact genuine source " + i);
+        if (args.length > 1 && args[1].contains("access"))
+          SessionAccessSqlScenario.verify(root, db, lease);
         if (args.length > 1 && args[1].contains("witness")) {
           last = "history-witness-" + i;
           historyWitness(lease);
