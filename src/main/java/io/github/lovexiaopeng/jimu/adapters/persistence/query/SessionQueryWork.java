@@ -91,9 +91,9 @@ public final class SessionQueryWork {
 
   public void bind(String lease, String step, String response) {
     active();
-    if (leaseKey != null && !leaseKey.equals(lease)
-        || step != null && stepKey != null && !stepKey.equals(step)
-        || response != null && responseKey != null && !responseKey.equals(response))
+    if (leaseKey != null && !relationEqual(leaseKey, lease)
+        || step != null && stepKey != null && !relationEqual(stepKey, step)
+        || response != null && responseKey != null && !relationEqual(responseKey, response))
       throw new IllegalStateException("Different lease, step or response in session transaction");
     leaseKey = lease;
     if (step != null) stepKey = step;
@@ -313,13 +313,8 @@ public final class SessionQueryWork {
       Relation type, String tenant, String id, String task, String parent, String category) {
     active();
     if (tenant == null || id == null || task == null) return;
-    context.operation(
-        1L
-            + tenant.length()
-            + id.length()
-            + task.length()
-            + (parent == null ? 0 : parent.length())
-            + (category == null ? 0 : category.length()));
+    // Map lookup/key hashing is separate from the value comparisons below.
+    context.primitive("relation.lookup", 1L + tenant.length() + id.length(), () -> null);
     context.retainScratch(lookupScratch, 256);
     try {
       observeReserved(type, tenant, id, task, parent, category);
@@ -335,9 +330,9 @@ public final class SessionQueryWork {
     var key = new RelationKey(type, tenant, id);
     var previous = relations.get(key);
     if (previous != null) {
-      if (!java.util.Objects.equals(previous.task(), task)
-          || !java.util.Objects.equals(previous.parent(), parent)
-          || !java.util.Objects.equals(previous.category(), category)) {
+      if (!relationEqual(previous.task(), task)
+          || !relationEqual(previous.parent(), parent)
+          || !relationEqual(previous.category(), category)) {
         var failure = new IllegalStateException("Session row relationship changed");
         poisonProof(failure);
         throw failure;
@@ -369,7 +364,10 @@ public final class SessionQueryWork {
                 - relationStringTableBytes);
     // Reserve the bounded update work before publishing either map; a limit rejection cannot
     // leave the string reference counts partly updated or roll the live owner back to its old size.
-    context.operation(35);
+    // 35 bounds five unique scans (<=10 identity comparisons), five null tests,
+    // five branches and <=15 IdentityHashMap get/put actions. The entry Map put/hash
+    // is an additional operation, never paid by the preceding lookup.
+    context.operation(35L + 1 + tenant.length() + id.length());
     context.retainScratch(relationScratch, next);
     // Move the already allocated lookup key into the entry's ownership without charging it twice.
     context.releaseScratch(lookupScratch);
@@ -387,6 +385,19 @@ public final class SessionQueryWork {
     if (strings[i] == null) return false;
     for (int j = 0; j < i; j++) if (strings[j] == strings[i]) return false;
     return true;
+  }
+
+  private boolean relationEqual(String a, String b) {
+    if (a == b) {
+      context.operation(1); // identity comparison, no content traversal
+      return true;
+    }
+    if (a == null || b == null) {
+      context.operation(1);
+      return false;
+    }
+    return context.primitive(
+        "relation.compare", Math.max(a.length(), b.length()), () -> a.equals(b));
   }
 
   // Returns a borrowed scalar, never an unowned Dependency/Set escaping the lookup workspace.
@@ -414,36 +425,38 @@ public final class SessionQueryWork {
       String expectedTask,
       String expectedParent,
       String category) {
-    context.operation(1L + tenant.length() + id.length());
+    context.primitive("relation.lookup", 1L + tenant.length() + id.length(), () -> null);
     var value = relations.get(new RelationKey(type, tenant, id));
     if (value == null
-        || expectedTask != null && !expectedTask.equals(value.task())
-        || expectedParent != null && !expectedParent.equals(value.parent())
-        || category != null && !category.equals(value.category())) return null;
-    if (type == Relation.STEP && stepKey != null && !stepKey.equals(id)
-        || type == Relation.DISPATCH && responseKey != null && !responseKey.equals(id)
+        || expectedTask != null && !relationEqual(expectedTask, value.task())
+        || expectedParent != null && !relationEqual(expectedParent, value.parent())
+        || category != null && !relationEqual(category, value.category())) return null;
+    if (type == Relation.STEP && stepKey != null && !relationEqual(stepKey, id)
+        || type == Relation.DISPATCH && responseKey != null && !relationEqual(responseKey, id)
         || (type == Relation.INVOCATION || type == Relation.DISPATCH)
             && stepKey != null
-            && !stepKey.equals(value.parent())) return null;
+            && !relationEqual(stepKey, value.parent())) return null;
     if (type == Relation.RESERVATION
         && category != null
-        && category.startsWith("MODEL")
+        && context.primitive("relation.prefix", 5, () -> category.startsWith("MODEL"))
         && responseKey != null
-        && !responseKey.equals(value.parent())) return null;
+        && !relationEqual(responseKey, value.parent())) return null;
     if (type == Relation.RESERVATION
-        && "TOOL".equals(category)
+        && relationEqual("TOOL", category)
         && relatedReserved(Relation.INVOCATION, tenant, id, value.task(), null, null) == null)
       return null;
     if (type == Relation.RESERVATION
         && category == null
-        && !java.util.List.of("QUEUE", "RUNNING", "QUESTION_TASK").contains(value.category()))
-      return null;
+        && !relationEqual("QUEUE", value.category())
+        && !relationEqual("RUNNING", value.category())
+        && !relationEqual("QUESTION_TASK", value.category())) return null;
     return value.task();
   }
 
   public void leaseTask(String tenant, String task) {
     var next = new Dependency(tenant, task);
-    if (leaseTask != null && !leaseTask.equals(next))
+    if (leaseTask != null
+        && (!relationEqual(leaseTask.tenant(), tenant) || !relationEqual(leaseTask.task(), task)))
       throw new IllegalStateException("Different lease task");
     leaseTask = next;
   }
@@ -452,11 +465,15 @@ public final class SessionQueryWork {
     if (keys == null || keys.size() != 1) return false;
     var key = keys.iterator().next();
     return caller != null
-        ? java.util.Objects.equals(key.tenant(), caller.tenant())
-            && java.util.Objects.equals(key.task(), caller.id())
+        ? relationEqual(key.tenant(), caller.tenant())
+            && relationEqual(key.task(), caller.id())
             && key.actor() == null
             && key.plugin() == null
-        : key.equals(leaseTask);
+        : leaseTask != null
+            && relationEqual(key.tenant(), leaseTask.tenant())
+            && relationEqual(key.task(), leaseTask.task())
+            && key.actor() == null
+            && key.plugin() == null;
   }
 
   public Object token() {
@@ -482,6 +499,9 @@ public final class SessionQueryWork {
     context.retainScratch(dependencyScratch, 4096);
     try {
       mutateDependencies(writes);
+    } catch (RuntimeException failure) {
+      poisonProof(failure);
+      throw failure;
     } finally {
       context.releaseScratch(dependencyScratch);
     }
@@ -499,46 +519,54 @@ public final class SessionQueryWork {
   }
 
   private void invalidateRelations(java.util.Set<Dependency> writes) {
-    var entries = relations.entrySet().iterator();
-    while (entries.hasNext()) {
-      var entry = entries.next();
+    Object planOwner = new Object();
+    context.retainScratch(planOwner, 512L + 64L * relations.size());
+    try {
+      invalidateRelationsReserved(writes);
+    } finally {
+      context.releaseScratch(planOwner);
+    }
+  }
+
+  private void invalidateRelationsReserved(java.util.Set<Dependency> writes) {
+    var removals = new java.util.ArrayList<RelationKey>(relations.size());
+    long updateWork = 0;
+    for (var entry : relations.entrySet()) {
       context.operation(1);
       boolean remove = writes == null;
       if (writes != null)
         for (var write : writes) {
           context.operation(1);
-          if (entry.getKey().tenant().equals(write.tenant())
-              && (write.task() == null || entry.getValue().task().equals(write.task())))
+          if (relationEqual(entry.getKey().tenant(), write.tenant())
+              && (write.task() == null || relationEqual(entry.getValue().task(), write.task())))
             remove = true;
         }
       if (remove) {
-        context.operation(35);
-        var strings =
-            new String[] {
-              entry.getKey().tenant(),
-              entry.getKey().id(),
-              entry.getValue().task(),
-              entry.getValue().parent(),
-              entry.getValue().category()
-            };
-        for (int i = 0; i < strings.length; i++)
-          if (unique(strings, i)) {
-            int count = relationStrings.get(strings[i]);
-            if (count == 1) relationStrings.remove(strings[i]);
-            else relationStrings.put(strings[i], count - 1);
-          }
-        entries.remove();
+        context.operation(1); // plan append
+        removals.add(entry.getKey());
+        // Key Map get/remove (including key hash), iteration and the five identity
+        // count updates/unique tests. Reserve ALL mutations before touching either Map.
+        updateWork += 40L + 2L * (entry.getKey().tenant().length() + entry.getKey().id().length());
       }
     }
-    context.operation(relationStrings.size());
-    long remaining =
-        RELATION_ROOT_BYTES
-            + relationTableBytes
-            + relationStringTableBytes
-            + RELATION_ENTRY_BYTES * relations.size();
-    for (var text : relationStrings.keySet())
-      remaining += RELATION_STRING_BYTES + 2L * text.length();
-    relationBytes = remaining;
+    context.operation(updateWork);
+    for (var key : removals) {
+      var related = relations.get(key);
+      var strings =
+          new String[] {
+            key.tenant(), key.id(), related.task(), related.parent(), related.category()
+          };
+      for (int i = 0; i < strings.length; i++)
+        if (unique(strings, i)) {
+          int count = relationStrings.get(strings[i]);
+          if (count == 1) {
+            relationStrings.remove(strings[i]);
+            relationBytes -= RELATION_STRING_BYTES + 2L * strings[i].length();
+          } else relationStrings.put(strings[i], count - 1);
+        }
+      relations.remove(key);
+      relationBytes -= RELATION_ENTRY_BYTES;
+    }
   }
 
   private void invalidateProof(java.util.Set<Dependency> writes) {

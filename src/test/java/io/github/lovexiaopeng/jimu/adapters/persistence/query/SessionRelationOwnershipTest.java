@@ -113,4 +113,79 @@ class SessionRelationOwnershipTest {
     w.complete();
     assertEquals(65536, q.scratchLive());
   }
+
+  @Test
+  void aliasesAndEachWrongExpectationPayForActualComparisons() {
+    var q = query();
+    var w = new SessionQueryWork(q);
+    w.observed(SessionQueryWork.Relation.INVOCATION, "tenant", "id", "caller", "step", "TOOL");
+    long before = q.resources().operations();
+    assertEquals(
+        "caller",
+        w.related(SessionQueryWork.Relation.INVOCATION, "tenant", "id", null, null, null));
+    long lookup = q.resources().operations() - before;
+    before = q.resources().operations();
+    assertEquals(
+        "caller",
+        w.related(
+            SessionQueryWork.Relation.INVOCATION,
+            "tenant",
+            "id",
+            new String("caller"),
+            new String("step"),
+            new String("TOOL")));
+    assertEquals(lookup + 6 + 4 + 4, q.resources().operations() - before);
+    assertNull(
+        w.related(SessionQueryWork.Relation.INVOCATION, "tenant", "id", "wrong", null, null));
+    assertNull(
+        w.related(SessionQueryWork.Relation.INVOCATION, "tenant", "id", null, "wrong", null));
+    assertNull(
+        w.related(SessionQueryWork.Relation.INVOCATION, "tenant", "id", null, null, "wrong"));
+    w.bind("lease", "step", "response");
+    assertEquals(
+        "caller",
+        w.related(
+            SessionQueryWork.Relation.INVOCATION,
+            "tenant",
+            "id",
+            new String("caller"),
+            new String("step"),
+            null));
+    assertNull(w.related(SessionQueryWork.Relation.STEP, "tenant", "id", null, null, null));
+    w.complete();
+  }
+
+  @Test
+  void invalidationOperationBoundaryIsAtomicAcrossBothMaps() throws Exception {
+    var measured = query();
+    var first = new SessionQueryWork(measured);
+    first.observed(SessionQueryWork.Relation.INVOCATION, "tenant", "id", "caller", "step", "TOOL");
+    long start = measured.resources().operations();
+    first.dependencyMutation(
+        Set.of(new SessionQueryWork.Dependency(new String("tenant"), new String("caller"))));
+    long cost = measured.resources().operations() - start;
+    first.complete();
+    for (long remaining : new long[] {cost - 1, cost, cost + 1}) {
+      var q = query();
+      var w = new SessionQueryWork(q);
+      w.observed(SessionQueryWork.Relation.INVOCATION, "tenant", "id", "caller", "step", "TOOL");
+      long live = q.scratchLive();
+      q.operation(65536 - q.resources().operations() - remaining);
+      var writes =
+          Set.of(new SessionQueryWork.Dependency(new String("tenant"), new String("caller")));
+      if (remaining < cost) {
+        assertThrows(TaskFailure.class, () -> w.dependencyMutation(writes));
+        assertEquals(live, q.scratchLive());
+        assertThrows(TaskFailure.class, w::finish);
+      } else w.dependencyMutation(writes);
+      var entries = SessionQueryWork.class.getDeclaredField("relations");
+      var strings = SessionQueryWork.class.getDeclaredField("relationStrings");
+      entries.setAccessible(true);
+      strings.setAccessible(true);
+      assertEquals(remaining < cost ? 1 : 0, ((java.util.Map<?, ?>) entries.get(w)).size());
+      assertEquals(remaining < cost ? 5 : 0, ((java.util.Map<?, ?>) strings.get(w)).size());
+      w.complete();
+      assertEquals(65536, q.scratchLive());
+    }
+  }
 }

@@ -18,6 +18,14 @@ import org.apache.ibatis.reflection.SystemMetaObject;
 @Intercepts({
   @Signature(
       type = org.apache.ibatis.executor.Executor.class,
+      method = "queryCursor",
+      args = {
+        org.apache.ibatis.mapping.MappedStatement.class,
+        Object.class,
+        org.apache.ibatis.session.RowBounds.class
+      }),
+  @Signature(
+      type = org.apache.ibatis.executor.Executor.class,
       method = "query",
       args = {
         org.apache.ibatis.mapping.MappedStatement.class,
@@ -25,6 +33,10 @@ import org.apache.ibatis.reflection.SystemMetaObject;
         org.apache.ibatis.session.RowBounds.class,
         org.apache.ibatis.session.ResultHandler.class
       }),
+  @Signature(
+      type = ResultSetHandler.class,
+      method = "handleCursorResultSets",
+      args = {Statement.class}),
   @Signature(
       type = org.apache.ibatis.executor.Executor.class,
       method = "update",

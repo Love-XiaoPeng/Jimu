@@ -49,15 +49,67 @@ class TypedLineageOutputCandidateTest {
 
   private void oracle(SessionLineage.Result r) {
     boolean expected = accepts(() -> frozen.output(r));
-    boolean actual = accepts(() -> TypedLineageOutputCandidate.output(r, query()));
+    boolean actual =
+        accepts(
+            () -> {
+              try (var output = TypedLineageOutputCandidate.output(r, query())) {
+                output.raw();
+              }
+            });
     assertEquals(expected, actual, r.toString());
     if (expected) {
       var baseline = frozen.output(r, query());
-      var candidate = TypedLineageOutputCandidate.output(r, query());
-      assertEquals(baseline.raw(), candidate.raw());
-      assertEquals(baseline.bytes(), candidate.bytes());
-      assertEquals(baseline.digest(), candidate.digest());
+      try (var candidate = TypedLineageOutputCandidate.output(r, query())) {
+        assertEquals(baseline.raw(), candidate.raw());
+        assertEquals(baseline.bytes(), candidate.bytes());
+        assertEquals(baseline.digest(), candidate.digest());
+      }
     }
+  }
+
+  @Test
+  void nativeDateFormatDifferentialRetainsVerifiedLeapSecond() {
+    for (String year : List.of("0000", "0001", "1900", "2000", "2024", "2026", "9999"))
+      for (String day : List.of("01-01", "02-28", "02-29", "02-30", "04-31", "12-31"))
+        for (String time : List.of("00:00:00", "23:59:59", "23:59:60", "12:00:60", "24:00:00"))
+          oracle(result(node("ROOT", null, year + "-" + day + "T" + time + ".000000Z"), 0, 1));
+    oracle(result(node("ROOT", null, "2016-12-31T23:59:60.000000Z"), 0, 1));
+    oracle(result(node("ROOT", null, "2016-12-30T23:59:60.000000Z"), 0, 1));
+  }
+
+  @Test
+  void maximumShapeRetainsResultRawAndDigestUntilExplicitHandoff() {
+    var n = node("CONTINUATION", ID, "2026-10-29T00:00:00.000000Z");
+    var base = result(n, 8, 8);
+    var r =
+        new SessionLineage.Result(
+            base.caller(),
+            base.authority(),
+            base.graph(),
+            n,
+            base.root(),
+            java.util.Collections.nCopies(8, n),
+            base.descendants());
+    var q = query();
+    long initial = q.scratchLive();
+    var output = TypedLineageOutputCandidate.output(r, q);
+    assertEquals(5195, output.bytes());
+    org.junit.jupiter.api.Assertions.assertTrue(
+        q.scratchLive() >= initial + output.raw().length() * 2L + 16384);
+    Object receiver = new Object();
+    q.retainScratch(receiver, 1024L + output.raw().length() * 2L);
+    String adopted = output.raw();
+    output.close();
+    assertEquals(frozen.output(r), adopted);
+    assertThrows(IllegalStateException.class, output::raw);
+    assertThrows(IllegalStateException.class, output::digest);
+    output.close();
+    q.releaseScratch(receiver);
+    assertEquals(initial, q.scratchLive());
+    assertThrows(
+        RuntimeException.class,
+        () -> TypedLineageOutputCandidate.output(result(node("ROOT", null, "bad"), 0, 1), q));
+    assertEquals(initial, q.scratchLive());
   }
 
   @Test

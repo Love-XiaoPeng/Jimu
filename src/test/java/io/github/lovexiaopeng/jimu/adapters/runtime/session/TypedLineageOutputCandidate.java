@@ -20,7 +20,58 @@ public final class TypedLineageOutputCandidate {
 
   private TypedLineageOutputCandidate() {}
 
-  public static LineageRawView output(SessionLineage.Result r, SessionQueryContext q) {
+  /** Borrowed raw must be adopted by a receiver before this owner is closed. */
+  public static final class OwnedOutput implements AutoCloseable {
+    private SessionQueryContext query;
+    private SessionLineage.Result result;
+    private LineageRawView view;
+
+    private OwnedOutput(SessionLineage.Result result, SessionQueryContext query) {
+      this.query = query;
+      // Result/nodes/lists/strings plus returned view, raw and digest, before allocation.
+      query.retainScratch(this, 16384 + 8192L * 2 + 1024);
+      this.result = result;
+    }
+
+    private LineageRawView open() {
+      if (view == null) throw new IllegalStateException("Closed typed output");
+      return view;
+    }
+
+    public String raw() {
+      return open().raw();
+    }
+
+    public int bytes() {
+      return open().bytes();
+    }
+
+    public String digest() {
+      return open().digest();
+    }
+
+    public void close() {
+      if (query == null) return;
+      var prior = query;
+      view = null;
+      result = null;
+      query = null;
+      prior.releaseScratch(this);
+    }
+  }
+
+  public static OwnedOutput output(SessionLineage.Result r, SessionQueryContext q) {
+    var output = new OwnedOutput(r, q);
+    try {
+      output.view = generate(output.result, q);
+      return output;
+    } catch (RuntimeException | Error failure) {
+      output.close();
+      throw failure;
+    }
+  }
+
+  private static LineageRawView generate(SessionLineage.Result r, SessionQueryContext q) {
     Object owner = new Object();
     q.retainScratch(owner, 8192L * 4 + 32768 + 4096);
     try {
@@ -187,11 +238,14 @@ public final class TypedLineageOutputCandidate {
         });
     q.primitive(
         "typed.time-format",
-        29,
+        56,
         () -> {
           if (t.charAt(11) > '2' || t.charAt(11) == '2' && t.charAt(12) > '3')
             throw new IllegalArgumentException("hour");
-          return java.time.Instant.parse(t);
+          // Use the exact frozen schema dependency, including verified leap seconds.
+          if (!new com.networknt.schema.format.DateTimeFormat().matches(null, t))
+            throw new IllegalArgumentException("time format");
+          return null;
         });
   }
 

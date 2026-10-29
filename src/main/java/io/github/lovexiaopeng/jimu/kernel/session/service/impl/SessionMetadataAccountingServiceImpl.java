@@ -74,6 +74,12 @@ public final class SessionMetadataAccountingServiceImpl
 
   /** 最终行快照只读一次；仅metadata_bytes的十进制内容参与影子自依赖。 */
   private void finalPresent(SessionMetadataAccounting records, boolean closing) {
+    try (var retained = records.finalization()) {
+      finalPresentReserved(records, closing);
+    }
+  }
+
+  private void finalPresentReserved(SessionMetadataAccounting records, boolean closing) {
     long total = 0, headroom = SessionHistoryPolicyV1.CLEANUP_BASE_BYTES;
     long old = -1, body = -1, reserved = -1, held = -1, amount = -1;
     Long actual = null;

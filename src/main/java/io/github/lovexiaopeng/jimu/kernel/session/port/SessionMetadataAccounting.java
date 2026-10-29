@@ -79,6 +79,12 @@ public interface SessionMetadataAccounting {
     return false;
   }
 
+  /** 跨batch保留的终算标量及readback/影子固定点临时，必须先有接收owner。 */
+  default io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.MeterScope
+      finalization() {
+    return () -> {};
+  }
+
   default Balance readBack() {
     throw new UnsupportedOperationException("Final account readback");
   }

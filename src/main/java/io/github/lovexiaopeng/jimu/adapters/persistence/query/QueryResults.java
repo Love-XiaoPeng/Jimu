@@ -24,6 +24,15 @@ public final class QueryResults {
             ResultSet.class.getClassLoader(),
             new Class<?>[] {ResultSet.class},
             (proxy, method, args) -> {
+              if (method.getName().equals("close")) {
+                try {
+                  return method.invoke(delegate, args);
+                } catch (InvocationTargetException failure) {
+                  throw failure.getCause();
+                } finally {
+                  result.close();
+                }
+              }
               try {
                 Object value = method.invoke(delegate, args);
                 if (method.getName().equals("next")) {
@@ -39,7 +48,7 @@ public final class QueryResults {
                       result.column(metadata.getColumnLabel(column), scalar);
                     }
                   } else result.close();
-                } else if (method.getName().equals("close")) result.close();
+                }
                 return value;
               } catch (InvocationTargetException failure) {
                 throw failure.getCause();

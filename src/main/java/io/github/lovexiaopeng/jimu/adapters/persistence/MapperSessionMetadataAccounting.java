@@ -31,6 +31,10 @@ final class MapperSessionMetadataAccounting implements SessionMetadataAccounting
   }
 
   public Batch batch(Table table) {
+    var projection = SessionMetadataProjection.forTable(table);
+    if (projection != null && JdbcSessionScopes.lineage(task))
+      return new SessionCursorMetadataBatch(
+          records.appendQuery(), projection, () -> records.mapperCursor(operation(table), task));
     if (table == Table.TASK_SESSION_HISTORY && JdbcSessionScopes.lineage(task))
       return new SessionHistoryMetadataBatch(
           records.appendQuery(),
@@ -46,12 +50,7 @@ final class MapperSessionMetadataAccounting implements SessionMetadataAccounting
   public Iterable<? extends Row> rows(Table table) {
     if ((table == Table.TASK_SESSION_LINEAGE || table == Table.INVOCATION_SESSION_LINEAGE_TRACE)
         && !JdbcSessionScopes.lineage(task)) return java.util.List.of();
-    String operation =
-        "SessionHistoryRetentionMapper.metadata"
-            + java.util.Arrays.stream(table.name().toLowerCase(Locale.ROOT).split("_"))
-                .map(p -> Character.toUpperCase(p.charAt(0)) + p.substring(1))
-                .collect(java.util.stream.Collectors.joining());
-    var rows = records.mapperRows(operation, task);
+    var rows = records.mapperRows(operation(table), task);
     return () ->
         new Iterator<Row>() {
           private final Iterator<Map<String, Object>> iterator = rows.iterator();
@@ -75,8 +74,26 @@ final class MapperSessionMetadataAccounting implements SessionMetadataAccounting
         };
   }
 
+  private static String operation(Table table) {
+    return "SessionHistoryRetentionMapper.metadata"
+        + java.util.Arrays.stream(table.name().toLowerCase(Locale.ROOT).split("_"))
+            .map(p -> Character.toUpperCase(p.charAt(0)) + p.substring(1))
+            .collect(java.util.stream.Collectors.joining());
+  }
+
   public boolean finalPresent() {
     return finalPresent;
+  }
+
+  public io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.MeterScope
+      finalization() {
+    var query = records.appendQuery();
+    Object owner = new Object();
+    // <=16/24 code-point state strings, boxed counters, Balance and fixed-point temporaries.
+    if (query != null) query.retainScratch(owner, 4096);
+    return () -> {
+      if (query != null) query.releaseScratch(owner);
+    };
   }
 
   public Balance readBack() {

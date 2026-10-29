@@ -270,6 +270,19 @@ final class JdbcSessionRecords {
     }
   }
 
+  org.apache.ibatis.cursor.Cursor<Map<String, Object>> mapperCursor(
+      String operation, Map<String, Object> task) {
+    var args = new java.util.HashMap<String, Object>();
+    args.put("query", query);
+    args.put("tenant", s(task, "tenant_id"));
+    args.put("taskId", s(task, "id"));
+    try (var ignored = query == null ? null : query.meter(searchBudget)) {
+      return mapperSession()
+          .selectCursor(
+              "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper." + operation, args);
+    }
+  }
+
   long metadata(Map<String, Object> task, boolean closing) {
     return metadata(task, closing, 0);
   }

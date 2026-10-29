@@ -105,4 +105,41 @@ class SessionQueryResourcesTest {
     assertEquals(0, fixture.commits);
     assertEquals(1, fixture.rollbacks);
   }
+
+  @Test
+  void resultCloseFailureStillReleasesItsCursorRetention() throws Exception {
+    var query = query();
+    query.restrictLineage();
+    var close = new java.sql.SQLException("private-close-marker", "08003", 9001);
+    var metadata =
+        (java.sql.ResultSetMetaData)
+            java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[] {java.sql.ResultSetMetaData.class},
+                (proxy, method, args) ->
+                    switch (method.getName()) {
+                      case "getColumnCount" -> 1;
+                      case "getColumnLabel" -> "value";
+                      default -> null;
+                    });
+    var delegate =
+        (java.sql.ResultSet)
+            java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[] {java.sql.ResultSet.class},
+                (proxy, method, args) ->
+                    switch (method.getName()) {
+                      case "getMetaData" -> metadata;
+                      case "next" -> true;
+                      case "getObject" -> "retained";
+                      case "close" -> throw close;
+                      default -> null;
+                    });
+    var result = QueryResults.meter(delegate, query);
+    org.junit.jupiter.api.Assertions.assertTrue(result.next());
+    org.junit.jupiter.api.Assertions.assertTrue(query.scratchLive() > 65536);
+    org.junit.jupiter.api.Assertions.assertSame(
+        close, assertThrows(java.sql.SQLException.class, result::close));
+    assertEquals(65536, query.scratchLive());
+  }
 }
