@@ -79,17 +79,16 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
       String tenant,
       String task) {
     // The lookup itself is new work: pay before consulting the transaction owner.
-    ops(query, 12);
+    ops(query, 10);
     var owner = SessionQueryTransaction.currentOwner();
     SessionHistorySizedMetadataBatch batch = null;
     boolean bootstrap = false;
     try {
-      // owner/current/lineage/null checks, locals, comparisons, dispatch and handoff.
-      if (owner == null
-          || query == null
-          || !query.lineage()
-          || SessionQueryTransaction.current(query) != owner
-          || !owner.owns(query)) throw corrupt();
+      // The captured currentOwner and owner.owns(query) prove the same Settings/query pair.
+      // No callback occurs between those identity reads. A second current(query) snapshot
+      // cannot add provenance here; remove that provider call and its two call/compare units.
+      // Keep all lineage/null/query identity, lock, connection and post-SELECT owner checks.
+      if (owner == null || query == null || !query.lineage() || !owner.owns(query)) throw corrupt();
       owner.requireProjectionLocks(tenant, task);
       // Whole original 2-TEXT reservation retained; no speculative TEXT refund.
       // This synchronous factory has no user-supplied loader or reentrant callback.

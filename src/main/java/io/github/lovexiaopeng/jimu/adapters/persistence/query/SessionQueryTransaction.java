@@ -78,8 +78,8 @@ public final class SessionQueryTransaction {
   static SessionQueryWork metadataOwner() {
     Object resource = TransactionSynchronizationManager.getResource(ConnectionSettings.class);
     if (!(resource instanceof ConnectionSettings settings)) return null;
-    // The root read allocates nothing. Once the real payer is recovered, charge before
-    // further provider calls. Fault handling returns its identity solely for failure latching.
+    // In an active owned transaction its Spring resource Map already exists. Recover the
+    // payer before later provider calls; return its identity solely for failure latching.
     try {
       settings.context.rejectedOperation(64);
       if (!settings.metadataBound
