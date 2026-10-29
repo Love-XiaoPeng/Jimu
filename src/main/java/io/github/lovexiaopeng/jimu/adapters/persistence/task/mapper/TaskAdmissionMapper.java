@@ -36,6 +36,18 @@ public interface TaskAdmissionMapper {
       @Param("tenant") String tenant,
       @Param("task") String task);
 
+  /** 同锁实际文本长度，先预留driver/Map及尾部借用owner，再物化原文。 */
+  List<Map<String, Object>> lockAcceptedSizes(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  /** accepted-user事实仍消费goal；此21列只用于事件前，不替代初始history BODY。 */
+  List<Map<String, Object>> lockAcceptedEvent(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
   long maxPacket(@Param("query") SessionQueryContext query);
 
   List<Map<String, Object>> sampleBound(

@@ -104,8 +104,12 @@ final class SessionRepairSqlOracle {
   }
 
   static Totals inspect(JdbcTemplate db, String task) {
+    return inspect(db, task, TABLES);
+  }
+
+  static Totals inspect(JdbcTemplate db, String task, List<String> tables) {
     long metadata = 0, body = 0;
-    for (String table : TABLES) {
+    for (String table : tables) {
       var columns =
           db.queryForList(
               "SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? ORDER BY ORDINAL_POSITION",

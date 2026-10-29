@@ -33,6 +33,20 @@ public final class SessionQueryWork {
   private String fenceKey, leaseKey, stepKey, responseKey;
   private long dependencyGeneration;
   private SessionCheckedHistories histories;
+  private final Object projectionScratch = new Object();
+  private java.util.List<Object> projectionOwners;
+
+  /** 具名accepted投影会被account/live借用到提交；实际清引用之后才退款。 */
+  public void retainAcceptedProjection(Object owner, long bytes) {
+    active();
+    context.retainScratch(projectionScratch, 512);
+    context.operation(2);
+    if (projectionOwners == null) projectionOwners = new java.util.ArrayList<>(2);
+    if (projectionOwners.size() == 2)
+      throw new IllegalStateException("Accepted projections already held");
+    context.retainScratch(owner, bytes);
+    projectionOwners.add(owner);
+  }
 
   /** 仅供真实history service成功后登记；调用者已持有原history锁。 */
   public void checkedHistory(
@@ -252,7 +266,8 @@ public final class SessionQueryWork {
 
   public void poisonProof(RuntimeException failure) {
     active();
-    if (proofFailure == null) proofFailure = failure;
+    var first = context.recordFailure(failure);
+    if (proofFailure == null) proofFailure = first;
   }
 
   public com.fasterxml.jackson.databind.JsonNode authority(
@@ -799,5 +814,11 @@ public final class SessionQueryWork {
     completed = true;
     context.releaseScratch(scopeScratch);
     context.releaseScratch(graphScratch);
+    if (projectionOwners != null) {
+      for (var owner : projectionOwners) context.releaseScratch(owner);
+      projectionOwners.clear();
+      projectionOwners = null;
+    }
+    context.releaseScratch(projectionScratch);
   }
 }

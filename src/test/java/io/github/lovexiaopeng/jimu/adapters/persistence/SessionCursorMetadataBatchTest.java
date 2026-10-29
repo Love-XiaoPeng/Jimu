@@ -21,6 +21,63 @@ import org.apache.ibatis.cursor.Cursor;
 import org.junit.jupiter.api.Test;
 
 class SessionCursorMetadataBatchTest {
+  @Test
+  void borrowedValuesPreserveNullPresenceAcrossRowsAndDropAllOwnedReferences() throws Exception {
+    for (var table : Table.values()) {
+      var p = SessionMetadataProjection.forTable(table);
+      if (p == null || p.maximumRows == 1) continue;
+      var full = row(p);
+      var explicit = row(p);
+      var missing = row(p);
+      for (var c : p.columns)
+        if (c.nullable()) {
+          explicit.put(c.name(), null);
+          missing.remove(c.name());
+        }
+      var q = query();
+      var batch =
+          new SessionCursorMetadataBatch(q, p, () -> new Rows(List.of(full, explicit, missing)));
+      var iterator = batch.iterator();
+      for (var expected : List.of(full, explicit, missing)) {
+        var actual = new java.util.ArrayList<Object>();
+        for (var value : iterator.next().values()) actual.add(value);
+        assertEquals(new java.util.ArrayList<>(expected.values()), actual, table.name());
+      }
+      assertFalse(iterator.hasNext());
+      batch.close();
+      for (String name : List.of("current", "slots", "present", "source", "cursor")) {
+        var field = SessionCursorMetadataBatch.class.getDeclaredField(name);
+        field.setAccessible(true);
+        org.junit.jupiter.api.Assertions.assertNull(field.get(batch), name);
+      }
+      assertEquals(65536, q.scratchLive());
+    }
+  }
+
+  @Test
+  void borrowedArrayReservationRejectsBeforeOpeningAtTheExactScratchBoundary() {
+    var p = SessionMetadataProjection.taskSized();
+    for (int delta : List.of(-1, 0, 1)) {
+      var q = query();
+      Object pressure = new Object();
+      q.retainScratch(pressure, 1048576 - 65536 - p.retainedBytes - 1216 - delta);
+      long start = q.scratchLive();
+      var loaded = new AtomicBoolean();
+      java.util.function.Supplier<Cursor<Map<String, Object>>> load =
+          () -> {
+            loaded.set(true);
+            return new Rows(List.of());
+          };
+      if (delta < 0)
+        assertThrows(TaskFailure.class, () -> new SessionCursorMetadataBatch(q, p, load));
+      else try (var batch = new SessionCursorMetadataBatch(q, p, load)) {}
+      assertEquals(delta >= 0, loaded.get());
+      assertEquals(start, q.scratchLive());
+      q.releaseScratch(pressure);
+      assertEquals(65536, q.scratchLive());
+    }
+  }
+
   private SessionQueryContext query() {
     var q =
         new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
@@ -205,7 +262,9 @@ class SessionCursorMetadataBatchTest {
       var p = SessionMetadataProjection.forTable(table);
       int limit = p.maximumRows;
       for (int count : new int[] {0, limit > 0 ? limit : 129, limit > 0 ? limit + 1 : 130}) {
-        var q = query();
+        // 单独核业务行数上限；大行累计操作可能先触发独立预算，不改变生产限额。
+        var q = new SessionQueryContext(System.nanoTime() + 2_000_000_000L, null);
+        q.restrictLineage();
         var rows = new Rows(java.util.Collections.nCopies(count, row(p)));
         Runnable scan =
             () -> {
@@ -227,7 +286,14 @@ class SessionCursorMetadataBatchTest {
     for (int delta : List.of(-1, 0, 1)) {
       var q = query();
       Object proof = new Object();
-      q.retainScratch(proof, 1048576 - q.scratchLive() - p.retainedBytes - 1024 - delta);
+      q.retainScratch(
+          proof,
+          1048576
+              - q.scratchLive()
+              - p.retainedBytes
+              - (256L + 16L * p.columns.size())
+              - 1024
+              - delta);
       long start = q.scratchLive();
       var called = new AtomicBoolean();
       java.util.function.Supplier<Cursor<Map<String, Object>>> load =

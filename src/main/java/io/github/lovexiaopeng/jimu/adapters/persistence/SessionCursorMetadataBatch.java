@@ -18,6 +18,9 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
   private Cursor<Map<String, Object>> cursor;
   private Iterator<Map<String, Object>> source;
   private Map<String, Object> current;
+  private Object[] slots;
+  private boolean[] present;
+  private final Object slotsOwner = new Object();
   private boolean closed, iterated, delivered, ended;
   private int count, generation;
 
@@ -29,6 +32,7 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     this.projection = projection;
     try {
       if (query != null) query.retainScratch(this, projection.retainedBytes);
+      if (query != null) query.retainScratch(slotsOwner, 256L + 16L * projection.columns.size());
       cursor = load.get();
       source = cursor.iterator();
     } catch (RuntimeException | Error failure) {
@@ -42,7 +46,7 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     try {
       close();
     } catch (RuntimeException | Error closeFailure) {
-      failure.addSuppressed(closeFailure);
+      if (failure != closeFailure) failure.addSuppressed(closeFailure);
     }
   }
 
@@ -57,6 +61,16 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
               : new IllegalStateException("Metadata cursor failure", failure));
   }
 
+  private RuntimeException closeFailure(RuntimeException failure) {
+    poison(failure);
+    if (io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            query)
+        == null) return failure;
+    var first = query.recordFailure(failure);
+    if (first != failure) first.addSuppressed(failure);
+    return first;
+  }
+
   private void open() {
     if (closed) throw new IllegalStateException("Closed metadata batch");
   }
@@ -65,6 +79,8 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     open();
     if (delivered) {
       current = null;
+      slots = null;
+      present = null;
       generation++;
       delivered = false;
     }
@@ -93,9 +109,20 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
       SessionMetadataScalars.operation(query, 1L + 2L * key.length());
       if (!projection.names.contains(key)) throw JdbcSessionRecords.corrupt();
     }
+    SessionMetadataScalars.operation(query, 2L + 2L * projection.columns.size());
+    slots = new Object[projection.columns.size()];
+    present = new boolean[projection.columns.size()];
+    int slot = 0;
     for (var column : projection.columns) {
       SessionMetadataScalars.operation(query, 1);
       var value = current.get(column.name());
+      SessionMetadataScalars.operation(query, 3); // 两次数组写入及索引前移。
+      int index = slot++;
+      slots[index] = value;
+      if (value == null) {
+        SessionMetadataScalars.operation(query, 2L + column.name().length());
+        present[index] = current.containsKey(column.name());
+      } else present[index] = true;
       if (value == null) {
         if (!column.nullable()) throw JdbcSessionRecords.corrupt();
         continue;
@@ -107,14 +134,14 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
             case 'L' -> value instanceof Long;
             case 'B' -> value instanceof Boolean;
             case 'D' -> value instanceof java.time.LocalDateTime;
-            case 'T', 'M', 'X' -> sizedLength(column, value);
+            case 'T', 'M', 'X' -> sizedLength(column, value, index);
             default -> false;
           };
       if (!valid) throw JdbcSessionRecords.corrupt();
     }
   }
 
-  private boolean sizedLength(SessionMetadataProjection.Column column, Object value) {
+  private boolean sizedLength(SessionMetadataProjection.Column column, Object value, int index) {
     if (!projection.taskSized || !(value instanceof Long || value instanceof Integer)) return false;
     long bytes = ((Number) value).longValue();
     long maximum =
@@ -127,7 +154,10 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     SessionMetadataScalars.operation(query, 3L + column.name().length());
     if (bytes < 0 || bytes > maximum) return false;
     // 两行workspace及额外4096已在开cursor前保留，包含11个wrapper与Map替换。
-    current.put(column.name(), new SqlUtf8Length(bytes));
+    var wrapped = new SqlUtf8Length(bytes);
+    current.put(column.name(), wrapped);
+    SessionMetadataScalars.operation(query, 1);
+    slots[index] = wrapped;
     return true;
   }
 
@@ -193,9 +223,8 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
               try {
                 valid();
                 while (index < projection.columns.size()) {
-                  var name = projection.columns.get(index).name();
-                  SessionMetadataScalars.operation(query, 2L + name.length());
-                  if (current.containsKey(name)) return true;
+                  SessionMetadataScalars.operation(query, 2); // 边界与presence读取。
+                  if (present[index]) return true;
                   index++;
                 }
                 SessionMetadataScalars.operation(query, 1);
@@ -209,7 +238,8 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
             public Object next() {
               try {
                 if (!hasNext()) throw new NoSuchElementException();
-                return value(projection.columns.get(index++).name());
+                SessionMetadataScalars.operation(query, 2); // 索引前移及借用数组读取。
+                return slots[index++];
               } catch (RuntimeException | Error failure) {
                 fail(failure);
                 throw failure;
@@ -237,6 +267,8 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     if (closed) return;
     closed = true;
     current = null;
+    slots = null;
+    present = null;
     source = null;
     var prior = cursor;
     cursor = null;
@@ -244,14 +276,18 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
       if (prior != null) prior.close();
     } catch (java.io.IOException failure) {
       var error = new IllegalStateException("Metadata cursor close failed", failure);
-      poison(error);
-      throw error;
-    } catch (RuntimeException | Error failure) {
+      throw closeFailure(error);
+    } catch (RuntimeException failure) {
+      throw closeFailure(failure);
+    } catch (Error failure) {
       poison(failure);
       throw failure;
     } finally {
       prior = null;
-      if (query != null) query.releaseScratch(this);
+      if (query != null) {
+        query.releaseScratch(this);
+        query.releaseScratch(slotsOwner);
+      }
     }
   }
 }

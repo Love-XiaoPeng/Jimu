@@ -88,22 +88,26 @@ class SessionHistoryMetadataBatchTest {
 
   @Test
   void refusalBeforeLoadAndFailuresReleaseOnlyTheOwnedBatch() {
-    var q = query();
-    long base = q.scratchLive();
+    var refused = query();
+    long base = refused.scratchLive();
     Object other = new Object();
-    q.retainScratch(other, 1048576 - base - SessionHistoryMetadataBatch.RETAINED_BYTES + 1);
+    refused.retainScratch(other, 1048576 - base - SessionHistoryMetadataBatch.RETAINED_BYTES + 1);
     var called = new AtomicBoolean();
     assertThrows(
         TaskFailure.class,
         () ->
             new SessionHistoryMetadataBatch(
-                q,
+                refused,
                 () -> {
                   called.set(true);
                   return List.of();
                 }));
     assertFalse(called.get());
-    q.releaseScratch(other);
+    refused.releaseScratch(other);
+    assertEquals(base, refused.scratchLive());
+    assertThrows(TaskFailure.class, refused::checkHealthy);
+    // 拒绝后的owner不能复用；余下独立资源释放场景使用新查询。
+    var q = query();
     try (var empty = new SessionHistoryMetadataBatch(q, List::of)) {
       assertFalse(empty.iterator().hasNext());
     }

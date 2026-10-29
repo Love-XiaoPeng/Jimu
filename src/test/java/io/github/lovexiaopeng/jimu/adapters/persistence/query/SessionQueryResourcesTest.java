@@ -11,6 +11,55 @@ import org.junit.jupiter.api.Test;
 
 /** 同时存活结果及入口收紧必须共享同一scratch总量。 */
 class SessionQueryResourcesTest {
+  @Test
+  void proofAndBudgetFailuresKeepOneThrowableInEitherOrderAndStopLaterWork() {
+    for (boolean proofFirst : java.util.List.of(true, false)) {
+      var fixture = new SessionQueryTransactionTest.Fixture();
+      var q = query();
+      q.restrictLineage();
+      RuntimeException[] first = {null};
+      var observed =
+          assertThrows(
+              RuntimeException.class,
+              () ->
+                  fixture.transaction.required(
+                      q,
+                      () -> {
+                        var owner = SessionQueryTransaction.current(q);
+                        var corrupt = new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+                        if (proofFirst) {
+                          owner.poisonProof(corrupt);
+                          first[0] = corrupt;
+                        } else first[0] = assertThrows(TaskFailure.class, () -> q.operation(65537));
+                        long operations = q.resources().operations();
+                        owner.poisonProof(corrupt);
+                        org.junit.jupiter.api.Assertions.assertSame(
+                            first[0],
+                            assertThrows(RuntimeException.class, () -> q.operation(65537)));
+                        org.junit.jupiter.api.Assertions.assertSame(
+                            first[0], assertThrows(RuntimeException.class, q::checkHealthy));
+                        org.junit.jupiter.api.Assertions.assertSame(
+                            first[0],
+                            assertThrows(
+                                RuntimeException.class,
+                                () ->
+                                    q.primitive(
+                                        "later",
+                                        1,
+                                        () -> {
+                                          throw new AssertionError();
+                                        })));
+                        assertEquals(operations, q.resources().operations());
+                        assertEquals(java.util.Map.of(), q.requestedWork());
+                        return null;
+                      }));
+      org.junit.jupiter.api.Assertions.assertSame(first[0], observed);
+      assertEquals(0, fixture.commits);
+      assertEquals(1, fixture.rollbacks);
+      assertEquals(65536, q.scratchLive());
+    }
+  }
+
   private SessionQueryContext query() {
     return new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
   }

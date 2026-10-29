@@ -343,7 +343,11 @@ public final class SessionJointProjectionScenario {
     root.sessionTraceEnabled(true);
     root.priorSessionSearchEnabled(true);
     root.sessionLineageEnabled(true);
-    SessionTaskSizedSqlScenario.verify(db);
+    if (args.length > 1 && args[1].startsWith("borrowed")) {
+      SessionBorrowedMetadataSqlScenario.verify(db, args[1]);
+      if (args[1].equals("borrowed-shapes") || args[1].equals("borrowed-boundaries")) return;
+    } else if (args.length < 2 || !args[1].equals("genuine"))
+      SessionTaskSizedSqlScenario.verify(db);
     String worker = "joint-private-worker";
     root.registerWorker(worker, worker, ProcessHandle.current().pid(), 1, "private", "private");
     String last = "begin";

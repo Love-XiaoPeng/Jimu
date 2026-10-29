@@ -15,7 +15,7 @@ public final class SessionQueryContext {
   private ResultMeter meter;
   private final java.util.Map<Object, Long> retainedScratch = new java.util.HashMap<>();
   private long scratchPeak;
-  private TaskFailure firstFailure;
+  private RuntimeException firstFailure;
   private String activeStatement, activeColumn;
 
   public record OperationRejection(
@@ -27,9 +27,14 @@ public final class SessionQueryContext {
     return operationRejection;
   }
 
-  private TaskFailure refuse(int status, String code) {
-    if (firstFailure == null) firstFailure = new TaskFailure(status, code);
+  /** 同一owner的证明、预算与截止共用首错；登记不阻止必须执行的清理。 */
+  public RuntimeException recordFailure(RuntimeException failure) {
+    if (firstFailure == null) firstFailure = java.util.Objects.requireNonNull(failure);
     return firstFailure;
+  }
+
+  private RuntimeException refuse(int status, String code) {
+    return recordFailure(new TaskFailure(status, code));
   }
 
   private void checkFailure() {
@@ -51,6 +56,7 @@ public final class SessionQueryContext {
 
   /** 原单位累计；先申请后执行，拒绝处不能登记为已完成。 */
   public <T> T primitive(String kind, long count, java.util.function.Supplier<T> work) {
+    checkFailure();
     requestedWork.merge(kind, count, Math::addExact);
     operation(count);
     T result = work.get();
@@ -208,6 +214,7 @@ public final class SessionQueryContext {
   }
 
   public Result result(String statement) {
+    checkFailure();
     if (metered) {
       groupCounters()[0]++;
       statements.merge(group + ":" + statement, 1L, Math::addExact);
