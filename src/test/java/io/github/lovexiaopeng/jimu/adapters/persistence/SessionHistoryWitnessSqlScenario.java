@@ -28,6 +28,18 @@ public final class SessionHistoryWitnessSqlScenario {
     return v;
   }
 
+  private static Object without(Object table, String... columns) {
+    return ((List<?>) table)
+        .stream()
+            .map(
+                value -> {
+                  var row = new java.util.LinkedHashMap<>((Map<?, ?>) value);
+                  for (String column : columns) row.remove(column);
+                  return row;
+                })
+            .toList();
+  }
+
   static void verify(JdbcLedger root, JdbcTemplate db, Lease lease, String ending)
       throws Exception {
     var configuration = root.mappers.session().getConfiguration();
@@ -219,12 +231,28 @@ public final class SessionHistoryWitnessSqlScenario {
       var after = SessionDependencyScenario.snapshot(db);
       boolean invalidating = List.of("retain", "purged", "dbtime").contains(mode);
       for (int table = 0; table < before.size(); table++) {
-        if (invalidating && table == 6) continue; // 原snapshot第6表为task_session_scope。
-        check(
-            before.get(table).equals(after.get(table)),
-            "live rollback table " + mode + " " + table);
+        Object old = before.get(table), current = after.get(table);
+        if (invalidating && (table == 5 || table == 6)) {
+          System.out.println(
+              "HISTORY_INVALIDATION_CHANGE "
+                  + mode
+                  + " table="
+                  + table
+                  + " before="
+                  + io.github.lovexiaopeng.jimu.adapters.codec.Payloads.json(old)
+                  + " after="
+                  + io.github.lovexiaopeng.jimu.adapters.codec.Payloads.json(current));
+          // 实际REQUIRES_NEW invalidation还会重算metadata；其余原字段必须逐字回滚。
+          String[] changed =
+              table == 5
+                  ? new String[] {"metadata_bytes"}
+                  : new String[] {"invalidated_at", "next_validation_at"};
+          old = without(old, changed);
+          current = without(current, changed);
+        }
+        check(old.equals(current), "live rollback table " + mode + " " + table);
       }
-      if (invalidating)
+      if (invalidating) {
         check(
             db.queryForObject(
                 "SELECT invalidated_at IS NOT NULL FROM task_session_scope WHERE tenant_id=? AND caller_task_id=?",
@@ -232,6 +260,16 @@ public final class SessionHistoryWitnessSqlScenario {
                 lease.tenant(),
                 lease.taskId()),
             "real REQUIRES_NEW invalidation persisted after rollback " + mode);
+        var oracle = SessionRepairSqlOracle.inspect(db, lease.taskId());
+        check(
+            oracle.metadata()
+                == db.queryForObject(
+                    "SELECT metadata_bytes FROM task_session_history WHERE tenant_id=? AND task_id=?",
+                    Long.class,
+                    lease.tenant(),
+                    lease.taskId()),
+            "independent18 metadata agrees after invalidation " + mode);
+      }
       check(q.scratchLive() == 65536, "live negative releases witness " + mode);
       System.out.println(
           "HISTORY_LIVE_RESOURCES " + mode + " " + q.resources() + " groups=" + q.groups());
