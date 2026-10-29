@@ -383,27 +383,40 @@ public final class QueryResults {
 
   private static ResultSetMetaData historyMetadataView(
       HistoryState state, SessionQueryContext context) {
-    return (ResultSetMetaData)
-        Proxy.newProxyInstance(
-            ResultSetMetaData.class.getClassLoader(),
-            new Class<?>[] {ResultSetMetaData.class},
-            (proxy, method, args) -> {
-              try {
-                context.checkHealthy();
-                if (state.metadata == null) throw new SQLException("ResultSet closed");
-                return method.invoke(state.metadata, args);
-              } catch (InvocationTargetException failure) {
-                throw state.failure(failure.getCause());
-              } catch (SQLException | RuntimeException failure) {
-                throw state.failure(failure);
-              }
-            });
+    context.checkHealthy();
+    context.operation(3); // cached field lookup, null test and view handoff on every access
+    if (state.metadataView == null) {
+      // Loader lookup; interface array/allocation+store; handler/allocation+two captures;
+      // proxy allocation; field publication; prepaid cached-view and cursor-alias clears.
+      // At most two views (size/raw) fit the existing per-slot 4096-byte object inventory.
+      context.operation(10);
+      state.metadataView =
+          (ResultSetMetaData)
+              Proxy.newProxyInstance(
+                  ResultSetMetaData.class.getClassLoader(),
+                  new Class<?>[] {ResultSetMetaData.class},
+                  (proxy, method, args) -> {
+                    try {
+                      context.checkHealthy();
+                      context.operation(
+                          4); // current metadata lookup, null test, invoke and handoff
+                      if (state.metadata == null) throw new SQLException("ResultSet closed");
+                      return method.invoke(state.metadata, args);
+                    } catch (InvocationTargetException failure) {
+                      throw state.failure(failure.getCause());
+                    } catch (SQLException | RuntimeException failure) {
+                      throw state.failure(failure);
+                    }
+                  });
+    }
+    return state.metadataView;
   }
 
   /** 游标引用只由本句柄持有；失败登记不阻止close，释放后不再捕获driver/metadata。 */
   private static final class HistoryState {
     private ResultSet delegate;
     private ResultSetMetaData metadata;
+    private ResultSetMetaData metadataView;
     private SessionQueryContext.Result result;
     private SessionHistoryRows.Slot length;
     private boolean size;
@@ -438,6 +451,7 @@ public final class QueryResults {
       var cursor = delegate;
       delegate = null;
       metadata = null;
+      metadataView = null;
       try {
         cursor.close();
       } catch (SQLException | RuntimeException failure) {
@@ -445,6 +459,7 @@ public final class QueryResults {
         if (primary instanceof SQLException sql) throw sql;
         throw (RuntimeException) primary;
       } finally {
+        cursor = null;
         if (result != null) result.close();
         result = null;
         if (length != null) length.closed(size);
