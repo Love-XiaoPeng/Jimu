@@ -1,0 +1,4 @@
+path,objects,operation_cost,reservation,lifetime,scope
+year 0..9999,existing final LocalDateTime reference and one primitive int; no new owner/key/cache/String,7 prepaid: getter1 store1 comparisons2 boolean1 dispatch1 return1,no additional 2048,local int; incoming value follows original batch lifetime,27 metadata bytes unchanged; no formatter String or UTF8 scan; HistoryBatch also avoids ofPattern
+negative/wide year,original temporary Object key + formatter temporary text; HistoryBatch retains original per-call formatter,7 plus original 27 plus formatted UTF16 scan,original 2048 before formatter; temporary key still new before retain,finally releases original key after formatted scan,existing key allocation boundary not repaired; no full JVM/native claim
+SessionMetadataScalars UTC,original static formatter,unchanged,static baseline,class lifetime,retained for fallback; no timezone conversion; literal Z

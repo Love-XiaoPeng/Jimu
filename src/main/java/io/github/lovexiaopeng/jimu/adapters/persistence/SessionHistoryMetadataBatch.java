@@ -163,6 +163,10 @@ final class SessionHistoryMetadataBatch implements SessionMetadataAccounting.Bat
       return 1;
     }
     if (value instanceof java.time.LocalDateTime time) {
+      // The frozen six-digit fraction truncates; years 0000..9999 always use 27 ASCII bytes.
+      if (query != null) query.operation(7);
+      int year = time.getYear();
+      if ((year >= 0) & (year <= 9999)) return 27;
       // Frozen UTC metadata encoding; formatter and its temporary text are covered before
       // allocation.
       Object temporary = new Object();

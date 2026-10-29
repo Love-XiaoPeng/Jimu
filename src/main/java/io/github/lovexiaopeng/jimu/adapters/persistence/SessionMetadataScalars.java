@@ -36,6 +36,10 @@ final class SessionMetadataScalars {
       return bool ? 4 : 5;
     }
     if (value instanceof java.time.LocalDateTime time) {
+      // The frozen six-digit fraction truncates; years 0000..9999 always use 27 ASCII bytes.
+      operation(query, 7);
+      int year = time.getYear();
+      if ((year >= 0) & (year <= 9999)) return 27;
       Object temporary = new Object();
       if (query != null) query.retainScratch(temporary, 2048);
       try {
