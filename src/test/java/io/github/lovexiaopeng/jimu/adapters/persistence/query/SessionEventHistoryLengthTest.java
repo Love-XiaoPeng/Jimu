@@ -467,4 +467,103 @@ class SessionEventHistoryLengthTest {
     assertEquals(1, f.rollbacks);
     assertEquals(65536, q.scratchLive());
   }
+
+  @Test
+  void movedBindingAndLabelChangedAfterBindCannotUseOrdinalAsAuthority() {
+    for (boolean late : new boolean[] {false, true}) {
+      var q = query();
+      var f = new SessionQueryTransactionTest.Fixture();
+      RuntimeException[] first = {null};
+      var thrown =
+          assertThrows(
+              RuntimeException.class,
+              () ->
+                  f.transaction.required(
+                      q,
+                      () -> {
+                        try {
+                          var slot = start(q);
+                          size(q, slot, 3L);
+                          var labels =
+                              new String[] {
+                                "record_version",
+                                "history_version",
+                                "binding_snapshot",
+                                "binding_digest",
+                                "content_state",
+                                "next_seq",
+                                "retain_until",
+                                "retained"
+                              };
+                          if (!late) {
+                            labels[2] = "binding_digest";
+                            labels[3] = "binding_snapshot";
+                          }
+                          var raw =
+                              rows(
+                                  labels,
+                                  1L,
+                                  5L,
+                                  "abc",
+                                  "d".repeat(64),
+                                  "PRESENT",
+                                  1L,
+                                  "2026-10-30",
+                                  1L);
+                          var metadata = raw.getMetaData();
+                          boolean[] columnRead = {false};
+                          var changing =
+                              SessionHistoryLengthTest.proxy(
+                                  java.sql.ResultSetMetaData.class,
+                                  (p, method, args) -> {
+                                    if (late
+                                        && columnRead[0]
+                                        && method.getName().equals("getColumnLabel")
+                                        && args[0].equals(3)) return "binding_snapshoX";
+                                    return SessionHistoryLengthTest.call(method, metadata, args);
+                                  });
+                          var delegate =
+                              SessionHistoryLengthTest.proxy(
+                                  ResultSet.class,
+                                  (p, method, args) -> {
+                                    if (method.getName().equals("getMetaData")) return changing;
+                                    if (method.getName().equals("getObject")) columnRead[0] = true;
+                                    return SessionHistoryLengthTest.call(method, raw, args);
+                                  });
+                          var prepared = statement();
+                          var params = Map.of("query", q, "tenant", "t", "taskId", "x");
+                          slot.prepared(
+                              SessionEventHistoryRows.RAW,
+                              params,
+                              SessionQueryTransaction.connection(q),
+                              prepared);
+                          first[0] =
+                              assertThrows(
+                                  RuntimeException.class,
+                                  () -> {
+                                    try (var result =
+                                        QueryResults.meter(
+                                            delegate,
+                                            q,
+                                            SessionEventHistoryRows.RAW,
+                                            slot,
+                                            params,
+                                            prepared)) {
+                                      result.next();
+                                    }
+                                  });
+                          assertSame(first[0], q.recordedFailure());
+                          return null;
+                        } catch (RuntimeException failure) {
+                          throw failure;
+                        } catch (Exception failure) {
+                          throw new AssertionError(failure);
+                        }
+                      }));
+      assertSame(first[0], thrown);
+      assertEquals(0, f.commits);
+      assertEquals(1, f.rollbacks);
+      assertEquals(65536, q.scratchLive());
+    }
+  }
 }

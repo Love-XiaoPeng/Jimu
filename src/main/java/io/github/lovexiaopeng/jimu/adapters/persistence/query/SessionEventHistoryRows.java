@@ -200,10 +200,11 @@ public final class SessionEventHistoryRows {
       capability = result.takeSqlUtf8Length();
     }
 
-    void column(SessionQueryContext.Result result, String label, Object value) {
-      query.operation(1L + label.length());
-      if (label.equals("binding_snapshot")) {
-        query.operation(2);
+    void column(SessionQueryContext.Result result, int column, String label, Object value) {
+      // bind checked the eight-column order. The capability still verifies the actual label,
+      // query and raw statement; only the repeated per-column String dispatch is removed.
+      query.operation(4); // ordinal handoff/comparison, route and capability-state branch
+      if (column == 3) {
         if (consumed || capability == null || invalid)
           throw new IllegalStateException("Missing event history column capability");
         result.columnSqlUtf8(label, value, capability);

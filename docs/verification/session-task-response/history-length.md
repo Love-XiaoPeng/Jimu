@@ -1,5 +1,7 @@
 ## 运行时签发与独立history owner
 
+具名路由和metadata补账后的真实finish与wire仍拒绝，因此后继实际删除了eventHistory八列的重复标签分派：bind已核八列准确顺序，provider传真实ordinal，第3列才走原cap；每列新增4普通操作覆盖参数/比较/分派/cap条件。原八列分派各申请`1+label.length`及binding额外2，完整一行共110，新分派32，局部差78。原label/query/raw statement单次能力校验、size/raw ResultSet及全部当前权限/末端fence不动；没有新容器/owner或动态值缓存。不把这78从旧业务首拒中相减当成通过，原首次补账带来的净增成本另行保留；最终准确制品另跑必要链。
+
 具名 history 调用由 `MapperSessionHistoryProofs.load` 的 acceptedEvent=false 分支直接进入包内 `JdbcSessionRecords.historyRows`。每个非空 query 在所有分支先申请12普通操作，覆盖分派、guard、字段引用、mapper及两个key查询和交接；不新增容器、闭包或owner。通用 mapperRows 删除 history 专属的 suffix 判断12及完整比较43，保原 eventHistory、args/meter/selectList。真实调用图另列于 routing CSV；metadata 表投影数不是 mapperRows 次数。原型同输入局部 history1941→1898、metadata2480→2468；searchBudget/nonlineage2468→2480的新增成本保留，不从旧失败差值推业务通过。
 
 独立十五列 history 的每个 size/raw ResultSet 至多缓存一份 metadata view，缓存仅是包装器，不保存值/label/raw/权限。每次 getMetaData 在健康检查后申请3操作（字段查询、判断、交接）；首次另预付10（loader、接口数组及元素、handler及两个捕获引用、proxy、发布、缓存字段及cursor临时引用清理）；每次 view getter 申请4（当前metadata查询、判断、真实反射调用、交接）。全部分配前完成申请，已有首错时不再申请。两份view的对象、临时数组和别名逐项纳入原slot4096清单，未扩大优化资格或复用cap。关闭在driver.close前清缓存/metadata/delegate，finally先断局部cursor，再按原顺序清Result/length/Statement/cap；清理不在sticky failure后补申请。外部view只能见已脱离driver的state，原Work清raw后才退款。此修复只影响独立history包装器，通用及eventHistory包装器未借此声称全覆盖。
