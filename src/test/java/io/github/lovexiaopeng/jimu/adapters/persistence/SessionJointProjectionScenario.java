@@ -509,7 +509,9 @@ public final class SessionJointProjectionScenario {
             "legal terminal source " + i);
         if (args.length > 1 && args[1].contains("witness"))
           independentAccounting(nodes.getLast(), "after-finish-" + i);
-        if (i == 0 && !(args.length > 1 && args[1].endsWith("-owned")))
+        if (i == 0
+            && !(args.length > 1 && args[1].endsWith("-owned"))
+            && !(args.length > 1 && args[1].contains("admission-only")))
           projection(nodes.getFirst());
       }
       if (maximumNodes < 9) {

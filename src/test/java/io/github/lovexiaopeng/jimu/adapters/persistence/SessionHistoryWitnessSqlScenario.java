@@ -63,14 +63,33 @@ public final class SessionHistoryWitnessSqlScenario {
         v.sessionTransaction(
             () -> {
               var task = v.fenced(lease, true);
-              v.sessionScopes.require(task);
-              v.todoCommitFence(lease);
-              var history = v.sessions.history(task, true);
               var owner = SessionQueryTransaction.current(q);
               var caller = MapperSessionScopeRecords.caller(task);
               check(
+                  !owner.checkedHistory(caller, 5, v.sessions.contract(task).binding()),
+                  "fresh real transaction cannot inherit witness " + mode);
+              v.sessionScopes.require(task);
+              v.todoCommitFence(lease);
+              var history = v.sessions.history(task, true);
+              check(
                   owner.checkedHistory(caller, 5, v.sessions.contract(task).binding()),
                   "real readable witness before " + mode);
+              if (mode.equals("disjoint")) {
+                var altered = new java.util.HashMap<String, Object>(task);
+                altered.put("owner_actor_id", "different-owner");
+                check(
+                    !owner.checkedHistory(
+                        MapperSessionScopeRecords.caller(altered),
+                        5,
+                        v.sessions.contract(task).binding()),
+                    "real witness refuses changed Caller");
+                check(
+                    !owner.checkedHistory(caller, 6, v.sessions.contract(task).binding()),
+                    "real witness refuses changed version");
+                check(
+                    !owner.checkedHistory(caller, 5, v.sessions.contract(task).binding() + "!"),
+                    "real witness refuses changed binding");
+              }
               long reads = q.resources().reads();
               try {
                 if (mode.equals("unknown"))
