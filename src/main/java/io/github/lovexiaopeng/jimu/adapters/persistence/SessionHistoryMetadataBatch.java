@@ -79,8 +79,13 @@ final class SessionHistoryMetadataBatch implements SessionMetadataAccounting.Bat
 
   private boolean bounded(Object value, int codePoints) {
     if (!(value instanceof String text) || text.length() > 2 * codePoints) return false;
-    if (query != null) query.operation(text.length());
-    return text.codePointCount(0, text.length()) <= codePoints;
+    // UTF16 units upper-bound code points, even for unpaired surrogates. Prepay getter,
+    // primitive store, comparison, branch and return/fallback handoff before reading the length.
+    if (query != null) query.operation(5);
+    int units = text.length();
+    if (units <= codePoints) return true;
+    if (query != null) query.operation(units);
+    return text.codePointCount(0, units) <= codePoints;
   }
 
   public Iterator<SessionMetadataAccounting.Row> iterator() {

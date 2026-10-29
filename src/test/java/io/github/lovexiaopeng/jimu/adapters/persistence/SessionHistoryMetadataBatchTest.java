@@ -2,6 +2,7 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
@@ -153,6 +154,59 @@ class SessionHistoryMetadataBatchTest {
       }
       assertEquals(13, columns);
       assertEquals(r.values().stream().mapToLong(SessionQueryContext::scalarBytes).sum(), actual);
+    }
+  }
+
+  @Test
+  void shortUtf16BoundsSkipCodePointScanAndLongValuesKeepIt() {
+    for (String tenant : List.of("租户😀", "", "😀".repeat(64), "a".repeat(65))) {
+      var q = query();
+      var r = row();
+      r.put("tenant_id", tenant);
+      // Four bounded fields each pay five guard units; only the long tenant needs a scan.
+      long expected = 14 + 4 * 5 + (tenant.length() > 64 ? tenant.length() : 0);
+      if (tenant.equals("a".repeat(65)))
+        assertThrows(TaskFailure.class, () -> new SessionHistoryMetadataBatch(q, () -> List.of(r)));
+      else {
+        try (var batch = new SessionHistoryMetadataBatch(q, () -> List.of(r))) {
+          assertEquals(expected, q.resources().operations());
+        }
+      }
+      assertEquals(65536, q.scratchLive());
+    }
+    var q = query();
+    var r = row();
+    r.put("tenant_id", "\ud800");
+    // The original bound accepts this width; the original scalar UTF8 check still rejects it.
+    try (var batch = new SessionHistoryMetadataBatch(q, () -> List.of(r))) {
+      assertEquals(34, q.resources().operations());
+      assertThrows(
+          TaskFailure.class, () -> batch.scalarBytes(batch.iterator().next().value("tenant_id")));
+    }
+    assertEquals(65536, q.scratchLive());
+  }
+
+  @Test
+  void shortBoundsAtExactOperationBoundaryPreserveStickyFailureAndRelease() {
+    for (int delta : List.of(-1, 0, 1)) {
+      var q = query();
+      q.operation(65536 - 34 - delta);
+      if (delta < 0) {
+        var failure =
+            assertThrows(
+                TaskFailure.class, () -> new SessionHistoryMetadataBatch(q, () -> List.of(row())));
+        long rejected = q.resources().operations();
+        assertSame(
+            failure,
+            assertThrows(
+                TaskFailure.class, () -> new SessionHistoryMetadataBatch(q, () -> List.of(row()))));
+        assertEquals(rejected, q.resources().operations());
+      } else {
+        try (var batch = new SessionHistoryMetadataBatch(q, () -> List.of(row()))) {
+          assertEquals(65536 - delta, q.resources().operations());
+        }
+      }
+      assertEquals(65536, q.scratchLive());
     }
   }
 }

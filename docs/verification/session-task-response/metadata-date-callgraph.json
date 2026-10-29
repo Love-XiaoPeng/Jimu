@@ -36,6 +36,12 @@
     "bytes": 27,
     "fallback": "unchanged formatter/scan/2048 plus 7"
   },
+  "historyBoundGuard": {
+    "prepaid": 5,
+    "sufficientCondition": "UTF16 units <= code point bound",
+    "fallback": "original codePointCount with original units plus 5 guard",
+    "noNewOwner": true
+  },
   "productionCallsites": [
     {
       "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionMetadataAccounting.java",

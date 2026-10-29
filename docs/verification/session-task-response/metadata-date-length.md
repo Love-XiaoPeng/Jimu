@@ -27,3 +27,18 @@ operation N-1/N/N+1 with sticky rejection, scratch 2047/2048/2049,
 locale ROOT/ar-EG/th-TH/ja, no-query calls, closed batches and preserved
 cause/suppressed failures. Real SQL terminal/response acceptance remains a
 separate requirement; local savings do not imply complete business acceptance.
+
+The first new artifact still rejected legal finish and truncated the response.
+Its ordinary-operation attribution identified the four history metadata string
+bounds as still executing `codePointCount` even when UTF16 length alone suffices.
+The follow-up preserves the original type / twice-bound rejection order, then
+prepays five units (getter, primitive store, comparison, branch, return or
+fallback handoff) before reading the length. UTF16 length at most the code point
+bound returns true without scanning. Longer strings retain the original full
+scan and its charge, plus five. No key, wrapper, owner or dynamic cache is added;
+malformed-surrogate rejection still occurs in the original scalar UTF8 scan.
+The fixture's four short fields cost 20 instead of 115 bound units; empty or
+very short fields can cost more than before. This is a local difference, not a
+deduction from the old query rejection or proof that finish now succeeds.
+`SessionHistoryMetadataBatchTest` adds long supplementary / invalid ASCII,
+surrogate-order and exact N-1/N/N+1 checks for this follow-up.
