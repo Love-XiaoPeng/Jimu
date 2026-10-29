@@ -63,6 +63,12 @@ public interface SessionHistoryRetentionMapper {
       @Param("taskId") String taskId);
 
   /** 同锁单列长度能力来源；不提供历史行/权限证明。 */
+  List<Map<String, Object>> historyBindingSize(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  /** eventHistory八列路径保持独立槽。 */
   List<Map<String, Object>> eventHistoryBindingSize(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,

@@ -109,6 +109,15 @@ public final class SessionQueryInterceptor implements Interceptor {
       var statement = (Statement) invocation.proceed();
       try {
         QueryStatements.apply(statement, context);
+        var history = owner == null ? null : owner.pendingHistory();
+        if (history != null) {
+          context.operation(5); // reflected command lookup and dispatch
+          var command =
+              (org.apache.ibatis.mapping.MappedStatement)
+                  SystemMetaObject.forObject(handler).getValue("delegate.mappedStatement");
+          history.prepared(
+              command.getId(), parameter, (Connection) invocation.getArgs()[0], statement);
+        }
         if (owner != null && owner.eventHistoryPending()) {
           var command =
               (org.apache.ibatis.mapping.MappedStatement)
@@ -155,6 +164,15 @@ public final class SessionQueryInterceptor implements Interceptor {
                                     .getValue("mappedStatement"))
                             .getId();
                     var owner = SessionQueryTransaction.currentOwner();
+                    var history = owner == null ? null : owner.pendingHistory();
+                    if (history != null) {
+                      context.operation(2); // distinct history route and ResultSet identity put
+                      results.put(
+                          rows,
+                          QueryResults.meterHistory(
+                              rows, context, statement, history, parameter, original));
+                      return results.get(rows);
+                    }
                     var length = owner == null ? null : owner.eventHistoryLength(statement);
                     results.put(
                         rows,

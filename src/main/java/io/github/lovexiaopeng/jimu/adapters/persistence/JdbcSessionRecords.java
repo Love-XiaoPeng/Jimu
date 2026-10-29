@@ -443,6 +443,15 @@ final class JdbcSessionRecords {
         && searchBudget == null)
       return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionEventHistoryRows.load(
           mapperSession(), query, s(task, "tenant_id"), s(task, "id"));
+    if (query != null && query.lineage() && searchBudget == null) {
+      query.operation(12); // eligibility and bounded suffix comparison
+      if (operation.endsWith(".history")) {
+        query.operation(43); // exact named mapper equality, before lookup/materialization
+        if (operation.equals("SessionHistoryRetentionMapper.history"))
+          return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistoryRows.load(
+              mapperSession(), query, s(task, "tenant_id"), s(task, "id"));
+      }
+    }
     var args = new java.util.HashMap<String, Object>();
     args.put("query", query);
     args.put("tenant", s(task, "tenant_id"));

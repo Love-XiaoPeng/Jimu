@@ -305,4 +305,151 @@ public final class QueryResults {
       }
     }
   }
+
+  static ResultSet meterHistory(
+      ResultSet delegate,
+      SessionQueryContext context,
+      String statement,
+      SessionHistoryRows.Slot length,
+      Object parameter,
+      java.sql.Statement prepared)
+      throws SQLException {
+    context.operation(8); // state/proxy allocation, route and lifecycle field stores
+    var state = new HistoryState(delegate, context);
+    state.length = length;
+    state.size = length.sizeSource();
+    try {
+      state.verify(context);
+      state.result =
+          state.size ? context.sqlUtf8LengthResult(statement) : context.result(statement);
+      state.metadata = delegate.getMetaData();
+      if (length != null) length.bind(statement, parameter, prepared, delegate);
+      return (ResultSet)
+          Proxy.newProxyInstance(
+              ResultSet.class.getClassLoader(),
+              new Class<?>[] {ResultSet.class},
+              (proxy, method, args) -> {
+                if (method.getName().equals("close")) {
+                  state.close();
+                  return null;
+                }
+                if (method.getName().equals("isClosed") && state.delegate == null) return true;
+                try {
+                  if (state.owner != null) context.checkHealthy();
+                  if (state.delegate == null) throw new SQLException("ResultSet closed");
+                  if (method.getName().equals("getMetaData") && state.owner != null)
+                    return historyMetadataView(state, context);
+                  Object value = method.invoke(state.delegate, args);
+                  if (method.getName().equals("next")) {
+                    context.remainingMillis();
+                    if (state.length != null)
+                      state.length.next(state.size, Boolean.TRUE.equals(value));
+                    if (Boolean.TRUE.equals(value)) {
+                      state.result.row();
+                      for (int column = 1; column <= state.metadata.getColumnCount(); column++) {
+                        // Include columns a projection ignores; repeated mapped getters cost no
+                        // extra
+                        // bytes.
+                        Object scalar = state.delegate.getObject(column);
+                        if (scalar instanceof java.sql.Timestamp time)
+                          scalar = time.toLocalDateTime();
+                        String label = state.metadata.getColumnLabel(column);
+                        context.operation(2);
+                        if (state.length != null && !state.size)
+                          state.length.column(state.result, label, scalar);
+                        else state.result.column(label, scalar);
+                      }
+                      if (state.length != null && state.size) state.length.size(state.result);
+                    } else state.result.close();
+                  }
+                  return value;
+                } catch (InvocationTargetException failure) {
+                  throw state.failure(failure.getCause());
+                } catch (SQLException | RuntimeException failure) {
+                  throw state.failure(failure);
+                }
+              });
+    } catch (SQLException | RuntimeException failure) {
+      Throwable primary = state.failure(failure);
+      try {
+        state.close();
+      } catch (SQLException | RuntimeException cleanup) {
+        suppress(primary, cleanup);
+      }
+      if (primary instanceof SQLException sql) throw sql;
+      throw (RuntimeException) primary;
+    }
+  }
+
+  private static ResultSetMetaData historyMetadataView(
+      HistoryState state, SessionQueryContext context) {
+    return (ResultSetMetaData)
+        Proxy.newProxyInstance(
+            ResultSetMetaData.class.getClassLoader(),
+            new Class<?>[] {ResultSetMetaData.class},
+            (proxy, method, args) -> {
+              try {
+                context.checkHealthy();
+                if (state.metadata == null) throw new SQLException("ResultSet closed");
+                return method.invoke(state.metadata, args);
+              } catch (InvocationTargetException failure) {
+                throw state.failure(failure.getCause());
+              } catch (SQLException | RuntimeException failure) {
+                throw state.failure(failure);
+              }
+            });
+  }
+
+  /** 游标引用只由本句柄持有；失败登记不阻止close，释放后不再捕获driver/metadata。 */
+  private static final class HistoryState {
+    private ResultSet delegate;
+    private ResultSetMetaData metadata;
+    private SessionQueryContext.Result result;
+    private SessionHistoryRows.Slot length;
+    private boolean size;
+    private final SessionQueryWork owner;
+
+    HistoryState(ResultSet delegate, SessionQueryContext context) {
+      this.delegate = delegate;
+      var current = SessionQueryTransaction.currentOwner();
+      owner = current != null && current.lineage() ? current : null;
+    }
+
+    void verify(SessionQueryContext context) {
+      if (owner != null && SessionQueryTransaction.current(context) != owner)
+        throw new IllegalStateException("Different query for owned ResultSet");
+    }
+
+    Throwable failure(Throwable failure) {
+      if (length != null) length.invalidate();
+      if (owner == null || failure instanceof Error) return failure;
+      var adapted =
+          failure instanceof RuntimeException runtime
+              ? runtime
+              : new DataAccessResourceFailureException("Session query unavailable", failure);
+      var first = owner.poisonProof(adapted);
+      // 清理故障保留实际SQLException；同一cause不会重复或自引用挂载。
+      if (first != adapted) suppress(first, failure);
+      return first;
+    }
+
+    void close() throws SQLException {
+      if (delegate == null) return;
+      var cursor = delegate;
+      delegate = null;
+      metadata = null;
+      try {
+        cursor.close();
+      } catch (SQLException | RuntimeException failure) {
+        Throwable primary = failure(failure);
+        if (primary instanceof SQLException sql) throw sql;
+        throw (RuntimeException) primary;
+      } finally {
+        if (result != null) result.close();
+        result = null;
+        if (length != null) length.closed(size);
+        length = null;
+      }
+    }
+  }
 }

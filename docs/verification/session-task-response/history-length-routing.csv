@@ -1,0 +1,4 @@
+statement,command,meaning,dependency_relation,invalidation
+SessionHistoryRetentionMapper.historyBindingSize,SELECT FOR UPDATE,same tenant/task DS/query/connection; PRESENT cleanup=NULL optimization only,read-only; never an observed task/step/invocation permission relation; no WRITES registry entry,all DML before hooks plus Work mutation invalidate in-flight cap
+SessionHistoryRetentionMapper.history,SELECT FOR UPDATE,original fifteen raw columns and reader/digest/version/schema/retained order unchanged,original independent source; length cannot prove current authorization,new raw each invocation; cap target bound exactly to this statement
+SessionHistoryRetentionMapper.eventHistoryBindingSize/eventHistory,SELECT FOR UPDATE,original size/eight-column path with its independent single slot,no history-slot/cap sharing,existing invalidation unchanged

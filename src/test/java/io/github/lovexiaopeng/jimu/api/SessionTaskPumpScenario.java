@@ -13,6 +13,9 @@ public final class SessionTaskPumpScenario {
   public static void write(SessionTaskResponse response, long deadline) {
     // 独立oracle/外部sink采集是测试设施，不伪装生产计量操作或Servlet全heap证明。
     var captured = new java.io.ByteArrayOutputStream();
+    var headers = new java.util.LinkedHashMap<String, String>();
+    int[] status = {0};
+    String acceptedId = response.taskId();
     byte[] expected;
     try {
       var field = SessionTaskResponse.class.getDeclaredField("view");
@@ -55,7 +58,12 @@ public final class SessionTaskPumpScenario {
             Proxy.newProxyInstance(
                 SessionTaskPumpScenario.class.getClassLoader(),
                 new Class<?>[] {HttpServletResponse.class},
-                (p, m, a) -> m.getName().equals("getOutputStream") ? output : null);
+                (p, m, a) -> {
+                  if (m.getName().equals("getOutputStream")) return output;
+                  if (m.getName().equals("setStatus")) status[0] = (Integer) a[0];
+                  if (m.getName().equals("setHeader")) headers.put((String) a[0], (String) a[1]);
+                  return null;
+                });
     var pump = new SessionTaskWritePump(deadline, response);
     pump.attach(http);
     pump.produce(() -> {});
@@ -68,21 +76,22 @@ public final class SessionTaskPumpScenario {
     System.out.println(
         "PRODUCTION_PUMP_EVIDENCE "
             + io.github.lovexiaopeng.jimu.adapters.codec.Payloads.json(
-                java.util.Map.of(
-                    "receivedBase64",
-                    java.util.Base64.getEncoder().encodeToString(bytes),
-                    "expectedBase64",
-                    java.util.Base64.getEncoder().encodeToString(expected),
-                    "receivedSha256",
-                    io.github.lovexiaopeng.jimu.adapters.codec.Payloads.hash(bytes),
-                    "expectedSha256",
-                    io.github.lovexiaopeng.jimu.adapters.codec.Payloads.hash(expected),
-                    "completeWire",
-                    java.util.Arrays.equals(bytes, expected),
-                    "state",
-                    pump.state().name(),
-                    "gateHasResult",
-                    pump.gate.hasResult())));
+                java.util.Map.ofEntries(
+                    java.util.Map.entry("status", status[0]),
+                    java.util.Map.entry("headers", headers),
+                    java.util.Map.entry(
+                        "receivedBase64", java.util.Base64.getEncoder().encodeToString(bytes)),
+                    java.util.Map.entry(
+                        "expectedBase64", java.util.Base64.getEncoder().encodeToString(expected)),
+                    java.util.Map.entry(
+                        "receivedSha256",
+                        io.github.lovexiaopeng.jimu.adapters.codec.Payloads.hash(bytes)),
+                    java.util.Map.entry(
+                        "expectedSha256",
+                        io.github.lovexiaopeng.jimu.adapters.codec.Payloads.hash(expected)),
+                    java.util.Map.entry("completeWire", java.util.Arrays.equals(bytes, expected)),
+                    java.util.Map.entry("state", pump.state().name()),
+                    java.util.Map.entry("gateHasResult", pump.gate.hasResult()))));
     System.out.flush();
     Object result = pump.gate.getResult();
     if (result instanceof RuntimeException failure) throw failure;
@@ -90,5 +99,9 @@ public final class SessionTaskPumpScenario {
     if (!pump.gate.hasResult())
       throw new AssertionError("uncompleted always-ready production pump");
     if (!java.util.Arrays.equals(bytes, expected)) throw new AssertionError("truncated success");
+    if (status[0] != 202
+        || !"no-store".equals(headers.get("Cache-Control"))
+        || !("/api/tasks/" + acceptedId).equals(headers.get("Location")))
+      throw new AssertionError("accepted response headers changed");
   }
 }

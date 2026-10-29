@@ -19,7 +19,10 @@ class SessionSqlLengthBoundaryTest {
         noClasses()
             .that()
             .doNotHaveFullyQualifiedName(
-                "io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionEventHistoryRows$Slot");
+                "io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionEventHistoryRows$Slot")
+            .and()
+            .doNotHaveFullyQualifiedName(
+                "io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistoryRows$Slot");
     noClasses()
         .that()
         .doNotHaveFullyQualifiedName(

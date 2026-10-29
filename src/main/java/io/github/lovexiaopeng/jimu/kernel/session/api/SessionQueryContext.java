@@ -236,10 +236,12 @@ public final class SessionQueryContext {
   public final class SqlUtf8Length implements AutoCloseable {
     private final SessionQueryContext query = SessionQueryContext.this;
     private final long bytes;
+    private final String rawStatement;
     private boolean valid = true;
 
-    private SqlUtf8Length(long bytes) {
+    private SqlUtf8Length(long bytes, String rawStatement) {
       this.bytes = bytes;
+      this.rawStatement = rawStatement;
     }
 
     public long bytes() {
@@ -291,10 +293,20 @@ public final class SessionQueryContext {
       releaseScratch(SQL_ISSUER);
     }
     operation(3L + statement.length());
-    if (!sqlUtf8Lengths
-        || meter != null
-        || !statement.equals(
-            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.eventHistoryBindingSize"))
+    String rawStatement;
+    if (statement.equals(
+        "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.eventHistoryBindingSize"))
+      rawStatement =
+          "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.eventHistory";
+    else {
+      operation(2L + statement.length());
+      if (!statement.equals(
+          "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.historyBindingSize"))
+        throw recordFailure(new IllegalStateException("Untrusted SQL length result"));
+      rawStatement =
+          "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.history";
+    }
+    if (!sqlUtf8Lengths || meter != null)
       throw recordFailure(new IllegalStateException("Untrusted SQL length result"));
     // 与普通result相同：包括空集，每个真实ResultSet只累计一次。
     checkFailure();
@@ -304,7 +316,7 @@ public final class SessionQueryContext {
     }
     remainingMillis();
     if (metered && ++reads > readLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
-    return new SqlLengthResult(statement);
+    return new SqlLengthResult(statement, rawStatement);
   }
 
   /** 仅内部子类可扩展；私有构造器保持普通调用方无法构造/派生Result。 */
@@ -327,8 +339,7 @@ public final class SessionQueryContext {
             || capability.query != SessionQueryContext.this
             || !capability.valid
             || !label.equals("binding_snapshot")
-            || !statement.equals(
-                "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.eventHistory"))
+            || !statement.equals(capability.rawStatement))
           throw recordFailure(new IllegalStateException("Invalid SQL length capability"));
         long size = capability.bytes;
         capability.close();
@@ -411,12 +422,14 @@ public final class SessionQueryContext {
 
   /** 只有此单列结果收集长度；普通Result无新增逐行/逐列条件或遍历。 */
   private final class SqlLengthResult extends Result {
+    private final String rawStatement;
     private int rows, columns;
     private Object size;
     private boolean taken;
 
-    private SqlLengthResult(String statement) {
+    private SqlLengthResult(String statement, String rawStatement) {
       super(statement);
+      this.rawStatement = rawStatement;
     }
 
     @Override
@@ -446,7 +459,7 @@ public final class SessionQueryContext {
       if (bytes < 0) throw recordFailure(new IllegalStateException("Negative SQL length"));
       size = null;
       taken = true;
-      return new SqlUtf8Length(bytes);
+      return new SqlUtf8Length(bytes, rawStatement);
     }
 
     @Override

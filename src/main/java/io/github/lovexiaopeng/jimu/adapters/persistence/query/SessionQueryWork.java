@@ -38,6 +38,56 @@ public final class SessionQueryWork {
   private final Object eventHistoryScratch = new Object();
   private SessionEventHistoryRows.Slot eventHistoryLength;
 
+  private static final Object HISTORY_HOLDER = new Object();
+  private SessionHistoryRows.Slot historyLength;
+  private int historyLoads;
+
+  SessionHistoryRows.Slot beginHistory(String tenant, String task) {
+    active();
+    context.checkHealthy();
+    context.operation(12); // capacity/pending, reserve, allocation, link, increment and handoff
+    if (historyLoads == 4) return null;
+    if (historyLength != null && historyLength.pending())
+      throw poisonProof(new IllegalStateException("History length already in flight"));
+    requireProjectionLocks(tenant, task);
+    context.retainScratch(HISTORY_HOLDER, 64); // new scratch-key reference, before allocation
+    Object scratch = null;
+    SessionHistoryRows.Slot next = null;
+    boolean transferred = false;
+    try {
+      scratch = new Object();
+      context.retainScratch(scratch, 4096);
+      // 全部清理分支预付：15 Map entries、list/iterator、field clears、cap/链/退款。
+      context.operation(64);
+      next = new SessionHistoryRows.Slot(this, context, scratch, tenant, task);
+      next.previous = historyLength;
+      historyLength = next;
+      historyLoads++;
+      transferred = true;
+      return next;
+    } catch (RuntimeException failure) {
+      throw poisonProof(failure);
+    } finally {
+      if (!transferred) {
+        if (next != null) next.clear();
+        next = null;
+        if (scratch != null) context.releaseScratch(scratch);
+      }
+      scratch = null;
+      context.releaseScratch(HISTORY_HOLDER);
+    }
+  }
+
+  SessionHistoryRows.Slot pendingHistory() {
+    context.operation(1);
+    return historyLength != null && historyLength.pending() ? historyLength : null;
+  }
+
+  void invalidateHistoryLength() {
+    context.operation(2);
+    if (historyLength != null) historyLength.invalidate();
+  }
+
   SessionEventHistoryRows.Slot beginEventHistory(String tenant, String task) {
     active();
     context.checkHealthy();
@@ -673,6 +723,7 @@ public final class SessionQueryWork {
   public void mutation() {
     active();
     invalidateEventHistoryLength();
+    invalidateHistoryLength();
     if (sealed) throw new IllegalStateException("Session write after seal");
     generation = Math.incrementExact(generation);
   }
@@ -957,6 +1008,8 @@ public final class SessionQueryWork {
     context.releaseScratch(stagingScratch);
     if (eventHistoryLength != null) eventHistoryLength.clear();
     eventHistoryLength = null;
+    if (historyLength != null) historyLength.clear();
+    historyLength = null;
     completed = true;
     context.releaseScratch(scopeScratch);
     context.releaseScratch(graphScratch);

@@ -408,12 +408,21 @@ public final class SessionJointProjectionScenario {
     }
     var env = new StandardEnvironment();
     env.getPropertySources().addFirst(new PropertiesPropertySource("joint", props));
-    root = new JdbcLedger(source, new ModelProfiles(env), null, null, null);
+    var mapperSession =
+        io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure.LedgerMapperSessions.create(
+            source);
+    boolean observe = args.length > 1 && args[1].contains("observe");
+    if (observe) mapperSession.getConfiguration().addInterceptor(new SessionHistoryObservation());
+    root = new JdbcLedger(source, new ModelProfiles(env), null, null, null, mapperSession);
     root.sessionReadEnabled(true, List.of());
     root.sessionSearchEnabled(true);
     root.sessionTraceEnabled(true);
     root.priorSessionSearchEnabled(true);
     root.sessionLineageEnabled(true);
+    if (args.length > 1 && args[1].equals("sql-history-length")) {
+      SessionHistoryLengthSqlScenario.verify(db);
+      return;
+    }
     if (args.length > 1 && args[1].equals("sql-length")) {
       SessionEventHistoryLengthSqlScenario.verify(db);
       return;
@@ -441,6 +450,7 @@ public final class SessionJointProjectionScenario {
         var v = view();
         var q = v.queryContext();
         var beforeAdmission = SessionDependencyScenario.snapshot(db);
+        if (observe) SessionHistoryObservation.snapshot(db, "before-submit-" + i);
         try {
           if (args.length > 1 && args[1].endsWith("-owned")) {
             var response = new io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse();
@@ -480,7 +490,9 @@ public final class SessionJointProjectionScenario {
           throw failure;
         } finally {
           phase(last, q);
+          if (observe) SessionHistoryObservation.snapshot(db, "after-submit-" + i);
         }
+        if (args.length > 1 && args[1].contains("response-only")) return;
         if (args.length > 1 && args[1].contains("witness"))
           independentAccounting(nodes.getLast(), "after-submit-" + i);
         if (args.length > 1 && args[1].contains("event-history"))
@@ -506,6 +518,7 @@ public final class SessionJointProjectionScenario {
         }
         last = "finish-" + i;
         var beforeFinish = SessionDependencyScenario.snapshot(db);
+        if (observe) SessionHistoryObservation.snapshot(db, "before-finish-" + i);
         // Invoke the exact factory used by root.finish, retaining its context only for evidence.
         var finishFactory =
             JdbcLedger.class.getDeclaredMethod(
@@ -523,6 +536,7 @@ public final class SessionJointProjectionScenario {
           throw failure;
         } finally {
           phase("finish-" + i, terminal.queryContext());
+          if (observe) SessionHistoryObservation.snapshot(db, "after-finish-" + i);
         }
         root.quiescent(lease);
         check(
