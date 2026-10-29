@@ -48,6 +48,17 @@ public interface TaskAdmissionMapper {
       @Param("tenant") String tenant,
       @Param("task") String task);
 
+  /** 第二次createLineage核权专用；完整Caller和末端tools/pin，不替代View/MCP核权。 */
+  List<Map<String, Object>> lockLineageScope(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  List<Map<String, Object>> lockLineageScopeSizes(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
   long maxPacket(@Param("query") SessionQueryContext query);
 
   List<Map<String, Object>> sampleBound(

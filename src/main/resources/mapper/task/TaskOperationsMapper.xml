@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskOperationsMapper">
+  <select id="publishedArtifactSizes" resultType="map"><![CDATA[SELECT COUNT(*) AS row_count,CAST(COALESCE(SUM(OCTET_LENGTH(CONVERT(id USING utf8mb4))+OCTET_LENGTH(CONVERT(media_type USING utf8mb4))+OCTET_LENGTH(CONVERT(sha256 USING utf8mb4))),0) AS SIGNED) AS text_bytes FROM artifact WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND state='PUBLISHED']]></select>
   <update id="requestCancelIntent"><![CDATA[UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{taskId}]]></update>
   <update id="requestCancel"><![CDATA[UPDATE task SET cancel_requested_at=CURRENT_TIMESTAMP(6), state='CANCEL_REQUESTED' WHERE tenant_id=#{tenant} AND id=#{taskId}]]></update>
   <select id="oldestEvent" resultType="long"><![CDATA[SELECT COALESCE(MIN(seq),0) FROM event WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND occurred_at>CURRENT_TIMESTAMP(6)-INTERVAL 7 DAY]]></select>

@@ -21,7 +21,7 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionSystemException;
 
 /** 真实 Spring 事务管理器加确定性 JDBC 清理故障；真实 MySQL 对照由独立夹具覆盖。 */
-class SessionQueryTransactionTest {
+public class SessionQueryTransactionTest {
   @Test
   void workFailureKeepsSqlCleanupAsSuppressed() {
     var fixture = new Fixture();
@@ -281,13 +281,14 @@ class SessionQueryTransactionTest {
         failure.outcome().phase());
   }
 
-  static final class Fixture {
+  public static final class Fixture {
     final AtomicBoolean active = new AtomicBoolean();
     final SessionQueryContext context =
         new SessionQueryContext(System.nanoTime() + 2_000_000_000L, null);
     Throwable reset;
     SQLException rollback, afterCompletion, setup, commit;
-    int commits, rollbacks, afterHits;
+    public int commits, rollbacks;
+    int afterHits;
     int network = 7000, lockWait = 50, maxExecution = 50;
     final Connection connection =
         proxy(
@@ -361,7 +362,7 @@ class SessionQueryTransactionTest {
             return connection;
           }
         };
-    final SessionQueryTransaction transaction =
+    public final SessionQueryTransaction transaction =
         new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
 
     <T> T execute(Supplier<T> work) {

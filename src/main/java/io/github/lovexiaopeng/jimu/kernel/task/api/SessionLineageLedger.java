@@ -14,6 +14,15 @@ public interface SessionLineageLedger {
   Tasks.View submitSessionLineage(
       Tasks.Identity identity, String key, SessionEventLedger.SearchBody body, long deadline);
 
+  default void submitSessionLineage(
+      Tasks.Identity identity,
+      String key,
+      SessionEventLedger.SearchBody body,
+      long deadline,
+      io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse response) {
+    throw new UnsupportedOperationException("Owned session response required");
+  }
+
   QueryResources authorizeSessionLineage(Tasks.Identity identity, String caller, long deadline);
 
   String sessionLineage(

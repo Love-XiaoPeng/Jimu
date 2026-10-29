@@ -4,8 +4,8 @@ import io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Authenticator;
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger;
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionLineageLedger;
+import io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
-import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -56,27 +56,46 @@ public final class SessionLineageController {
   }
 
   @PostMapping("/api/session-trace/tasks")
-  public DeferredResult<ResponseEntity<Tasks.View>> submit(
+  public DeferredResult<ResponseEntity<SessionTaskResponse>> submit(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestHeader(value = "Idempotency-Key", required = false) String key,
       HttpServletRequest request) {
     long deadline = System.nanoTime() + SessionHistoryPolicyV1.QUERY_NANOS;
     var identity = authentication.authenticate(authorization);
     json(request, 16384);
-    DeferredResult<ResponseEntity<Tasks.View>> result = result(deadline);
+    DeferredResult<ResponseEntity<SessionTaskResponse>> result = result(deadline);
+    var response = new SessionTaskResponse();
+    result.onTimeout(
+        () -> {
+          response.close();
+          result.setErrorResult(new TaskFailure(504, SessionErrorCode.SESSION_QUERY_TIMEOUT));
+        });
+    result.onError(failure -> response.close());
+    result.onCompletion(response::close);
     request.setAttribute(
         "jimu.session.search.request",
         new SessionEventLedger.SearchRequest(
             deadline,
             body -> {
-              var view = lineages.submitSessionLineage(identity, key, end -> body, deadline);
-              result.setResult(
+              try {
+                lineages.submitSessionLineage(identity, key, end -> body, deadline, response);
+              } catch (RuntimeException | Error failure) {
+                response.close();
+                throw failure;
+              } finally {
+                response.produced();
+              }
+              if (!result.setResult(
                   ResponseEntity.accepted()
-                      .location(URI.create("/api/tasks/" + view.taskId()))
+                      .location(URI.create("/api/tasks/" + response.taskId()))
                       .header("Cache-Control", "no-store")
-                      .body(view));
+                      .body(response))) response.close();
             },
-            failure -> result.setErrorResult(failure)));
+            failure -> {
+              response.close();
+              response.produced();
+              result.setErrorResult(failure);
+            }));
     return result;
   }
 

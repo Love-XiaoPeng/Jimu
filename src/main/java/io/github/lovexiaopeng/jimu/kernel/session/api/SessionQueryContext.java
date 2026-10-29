@@ -33,6 +33,10 @@ public final class SessionQueryContext {
     return firstFailure;
   }
 
+  public RuntimeException recordedFailure() {
+    return firstFailure;
+  }
+
   private RuntimeException refuse(int status, String code) {
     return recordFailure(new TaskFailure(status, code));
   }

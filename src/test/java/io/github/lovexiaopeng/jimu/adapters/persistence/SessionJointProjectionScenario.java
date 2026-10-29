@@ -363,13 +363,63 @@ public final class SessionJointProjectionScenario {
         var q = v.queryContext();
         var beforeAdmission = SessionDependencyScenario.snapshot(db);
         try {
-          var task =
-              v.submitSessionLineage(IDENTITY, "joint-node-" + i, end -> raw, q.deadlineNanos());
-          nodes.add(task.taskId());
+          if (args.length > 1 && args[1].equals("borrowed-owned")) {
+            var response = new io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse();
+            try {
+              try {
+                v.submitSessionLineage(
+                    IDENTITY, "joint-node-" + i, end -> raw, q.deadlineNanos(), response);
+              } finally {
+                response.produced();
+              }
+              String id = response.taskId();
+              System.out.println("OWNED_ADMISSION_COMMITTED " + id + " live=" + q.scratchLive());
+              // 实际生产converter在同累计query下消费；此局部不冒称公开HTTP或三trace M2。
+              var converters =
+                  new java.util.ArrayList<
+                      org.springframework.http.converter.HttpMessageConverter<?>>();
+              converters.add(
+                  new org.springframework.http.converter.json.JacksonJsonHttpMessageConverter());
+              new io.github.lovexiaopeng.jimu.api.SessionTaskResponseConfiguration()
+                  .extendMessageConverters(converters);
+              @SuppressWarnings("unchecked")
+              var converter =
+                  (org.springframework.http.converter.HttpMessageConverter<Object>)
+                      converters.getFirst();
+              converter.write(
+                  response,
+                  org.springframework.http.MediaType.APPLICATION_JSON,
+                  new org.springframework.http.HttpOutputMessage() {
+                    private final org.springframework.http.HttpHeaders headers =
+                        new org.springframework.http.HttpHeaders();
+
+                    public org.springframework.http.HttpHeaders getHeaders() {
+                      return headers;
+                    }
+
+                    public java.io.OutputStream getBody() {
+                      return java.io.OutputStream.nullOutputStream();
+                    }
+                  });
+              nodes.add(id);
+            } catch (java.io.IOException failure) {
+              throw new IllegalStateException(failure);
+            } finally {
+              response.close();
+              response.produced();
+            }
+          } else {
+            var task =
+                v.submitSessionLineage(IDENTITY, "joint-node-" + i, end -> raw, q.deadlineNanos());
+            nodes.add(task.taskId());
+          }
         } catch (RuntimeException failure) {
-          check(
-              beforeAdmission.equals(SessionDependencyScenario.snapshot(db)),
-              "failed genuine admission rolls back all 22 tables");
+          boolean unchanged = beforeAdmission.equals(SessionDependencyScenario.snapshot(db));
+          System.out.println("OWNED_FAILURE_DB_UNCHANGED " + unchanged);
+          if (!unchanged && args.length > 1 && args[1].equals("borrowed-owned"))
+            System.out.println(
+                "RESPONSE_FAILED_AFTER_ACCEPTANCE; committed SQL is not rolled back by wire failure");
+          else check(unchanged, "failed genuine admission rolls back all 22 tables");
           throw failure;
         } finally {
           phase(last, q);
@@ -385,7 +435,8 @@ public final class SessionJointProjectionScenario {
             db.queryForObject("SELECT state FROM task WHERE id=?", String.class, lease.taskId())
                 .equals("SUCCEEDED"),
             "legal terminal source " + i);
-        if (i == 0) projection(nodes.getFirst());
+        if (i == 0 && !(args.length > 1 && args[1].equals("borrowed-owned")))
+          projection(nodes.getFirst());
       }
       last = "joint-candidate";
       joint(nodes.getLast());

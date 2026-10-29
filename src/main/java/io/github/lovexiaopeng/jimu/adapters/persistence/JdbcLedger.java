@@ -206,6 +206,45 @@ public final class JdbcLedger
   }
 
   @Override
+  public void submitSessionLineage(
+      Identity identity,
+      String key,
+      io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger.SearchBody body,
+      long end,
+      io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse response) {
+    if (query == null) {
+      queryView(end, new QueryResources(0, 0, 0))
+          .submitSessionLineage(identity, key, body, end, response);
+      return;
+    }
+    query.restrictLineage();
+    var responseQuery = query;
+    response.bind(
+        new io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse.Budget() {
+          public void retain(Object owner, long bytes) {
+            responseQuery.retainScratch(owner, bytes);
+          }
+
+          public void release(Object owner) {
+            responseQuery.releaseScratch(owner);
+          }
+
+          public void wire(int count) {
+            responseQuery.operation(count);
+            responseQuery.remainingMillis();
+          }
+        });
+    taskResponse = response;
+    try {
+      submitSessionLineage(identity, key, body, end);
+    } finally {
+      taskResponse = null;
+    }
+  }
+
+  io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse taskResponse;
+
+  @Override
   public View submitSessionLineage(
       Identity identity,
       String key,

@@ -82,12 +82,30 @@ final class JdbcSessionScopes {
   record Scope(Map<String, Object> row, JsonNode authority, List<Map<String, Object>> sources) {}
 
   Scope require(Map<String, Object> task) {
-    var c = MapperSessionScopeRecords.caller(task);
     var owner =
-        lineage(task) && sessions.appendQuery() != null && sessions.appendQuery().lineage()
-            ? io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
-                .current(sessions.appendQuery())
-            : null;
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (owner != null && !owner.lineage()) owner = null;
+    try {
+      if (owner != null) {
+        if (sessions.appendQuery() == null)
+          throw new IllegalStateException("Missing query in session transaction");
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            sessions.appendQuery());
+        sessions.appendQuery().checkHealthy();
+      }
+      return require(task, owner);
+    } catch (RuntimeException failure) {
+      if (owner == null) throw failure;
+      if (failure instanceof TaskFailure denial && owner.scopeStatus(denial)) throw failure;
+      throw owner.poisonProof(failure);
+    }
+  }
+
+  private Scope require(
+      Map<String, Object> task,
+      io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork owner) {
+    var c = MapperSessionScopeRecords.caller(task);
     var found = owner == null ? null : owner.scope(c);
     if (found == null) {
       found = ledgerMeasure(c);
@@ -97,13 +115,8 @@ final class JdbcSessionScopes {
         owner.holdScope(proof);
         io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
             graph;
-        try {
-          graph = owner.stagedGraph(c.tenant(), c.id());
-          if (graph == null) graph = sessions.lineageService.verify(c.tenant(), c.id());
-        } catch (RuntimeException failure) {
-          owner.poisonProof(failure);
-          throw failure;
-        }
+        graph = owner.stagedGraph(c.tenant(), c.id());
+        if (graph == null) graph = sessions.lineageService.verify(c.tenant(), c.id());
         owner.scope(
             c,
             proof,

@@ -90,18 +90,69 @@ final class MapperTaskOperations implements TaskOperationsRecords {
           ledger.questionTask(value));
     }
 
+    public Tasks.View response(java.util.function.Supplier<Tasks.View> build) {
+      var response = ledger.taskResponse;
+      if (response == null) return build.get();
+      // Snapshot/Instant/View/文本及随后JSON转义同时驻留，先留再构造。
+      try {
+        long bytes = 8192;
+        for (String key : List.of("id", "state", "code", "summary")) {
+          ledger.queryContext().operation(3L + key.length());
+          if (value.get(key) instanceof String text)
+            bytes = Math.addExact(bytes, Math.multiplyExact(16L, text.length()));
+        }
+        response.retain(bytes);
+        var result = build.get();
+        response.hold(result);
+        return result;
+      } catch (RuntimeException failure) {
+        var owner =
+            io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+                ledger.queryContext());
+        throw owner == null ? failure : owner.poisonProof(failure);
+      }
+    }
+
+    private void retainArtifacts() {
+      var response = ledger.taskResponse;
+      if (response == null) return;
+      var q = ledger.queryContext();
+      Object workspace = new Object();
+      q.retainScratch(workspace, 4096);
+      try {
+        var size = JdbcLedger.first(sql.publishedArtifactSizes(q, tenant, id));
+        q.operation(4);
+        Object count = size.get("row_count"), text = size.get("text_bytes");
+        if (!(count instanceof Long || count instanceof Integer)
+            || !(text instanceof Long || text instanceof Integer)
+            || ((Number) count).longValue() < 0
+            || ((Number) text).longValue() < 0) throw JdbcSessionRecords.corrupt();
+        response.retain(
+            Math.addExact(
+                4096,
+                Math.addExact(
+                    Math.multiplyExact(2048, ((Number) count).longValue()),
+                    Math.multiplyExact(16, ((Number) text).longValue()))));
+        size = null;
+      } finally {
+        q.releaseScratch(workspace);
+      }
+    }
+
     public void requireAccess() {
       ledger.access(value);
     }
 
     public List<Tasks.Artifact> artifacts() {
+      retainArtifacts();
       var wrapper = new LambdaQueryWrapper<ArtifactViewEntity>();
       wrapper
           .eq(ArtifactViewEntity::getTenantId, tenant)
           .eq(ArtifactViewEntity::getTaskId, id)
           .eq(ArtifactViewEntity::getState, ArtifactState.PUBLISHED)
           .orderByAsc(ArtifactViewEntity::getRowId);
-      return select(ArtifactViewMapper.class, wrapper).stream()
+      var rows = select(ArtifactViewMapper.class, wrapper);
+      return rows.stream()
           .map(
               r ->
                   new Tasks.Artifact(

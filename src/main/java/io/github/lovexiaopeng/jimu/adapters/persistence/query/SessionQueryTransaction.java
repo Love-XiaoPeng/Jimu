@@ -53,7 +53,7 @@ public final class SessionQueryTransaction {
   }
 
   /** 先认实际事务，再验显式query；缺参不能把已有owner变为旧版无query路径。 */
-  static SessionQueryWork currentOwner() {
+  public static SessionQueryWork currentOwner() {
     if (!TransactionSynchronizationManager.isSynchronizationActive()) return null;
     for (var sync : TransactionSynchronizationManager.getSynchronizations())
       if (sync instanceof ConnectionSettings settings) return settings.work;
@@ -172,6 +172,7 @@ public final class SessionQueryTransaction {
       // MyBatis/Spring may wrap deterministic meter refusals in a persistence exception.
       // A confirmed rollback is not an unknown commit and must not trigger slot retries.
       if (!borrowed && receipt.completion == Completion.ROLLED_BACK) {
+        if (context.recordedFailure() != null) throw context.recordedFailure();
         Throwable cause = failure;
         for (int depth = 0; cause != null && depth < 32; depth++, cause = cause.getCause()) {
           if (cause instanceof TaskFailure refusal) throw refusal;

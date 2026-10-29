@@ -3,6 +3,7 @@ package io.github.lovexiaopeng.jimu.adapters.persistence.query;
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords;
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph;
+import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -34,18 +35,88 @@ public final class SessionQueryWork {
   private long dependencyGeneration;
   private SessionCheckedHistories histories;
   private final Object projectionScratch = new Object();
-  private java.util.List<Object> projectionOwners;
 
-  /** 具名accepted投影会被account/live借用到提交；实际清引用之后才退款。 */
-  public void retainAcceptedProjection(Object owner, long bytes) {
+  public enum ProjectionRole {
+    LINEAGE_SCOPE,
+    ACCEPTED_EVENT,
+    ACCEPTED_VIEW
+  }
+
+  private Projection[] projections;
+  private String projectionTenant, projectionTask;
+
+  /** 固定三role，不扩成任意行缓存；完整锁与同caller在物化前核验。 */
+  public Projection reserveProjection(ProjectionRole role, String tenant, String task, long bytes) {
+    try {
+      active();
+      context.checkHealthy();
+      requireProjectionLocks(tenant, task);
+      context.operation(4L + tenant.length() + task.length());
+      if (projectionTenant != null
+          && (!projectionTenant.equals(tenant) || !projectionTask.equals(task)))
+        throw new IllegalStateException("Different projection caller");
+      if (projections != null && projections[role.ordinal()] != null)
+        throw new IllegalStateException("Projection role already held");
+      context.retainScratch(projectionScratch, 1024);
+      if (projections == null) projections = new Projection[3];
+      Object rowOwner = new Object();
+      context.retainScratch(rowOwner, bytes);
+      var projection = new Projection(rowOwner, tenant, task);
+      projections[role.ordinal()] = projection;
+      projectionTenant = tenant;
+      projectionTask = task;
+      return projection;
+    } catch (RuntimeException failure) {
+      throw poisonProof(failure);
+    }
+  }
+
+  public void requireProjectionLocks(String tenant, String task) {
     active();
-    context.retainScratch(projectionScratch, 512);
-    context.operation(2);
-    if (projectionOwners == null) projectionOwners = new java.util.ArrayList<>(2);
-    if (projectionOwners.size() == 2)
-      throw new IllegalStateException("Accepted projections already held");
-    context.retainScratch(owner, bytes);
-    projectionOwners.add(owner);
+    context.checkHealthy();
+    context.operation(1L + tenant.length() + task.length());
+    if (!locks.contains(tenant + ":" + task))
+      throw poisonProof(new IllegalStateException("Task locks required before projection"));
+    for (var source : stagedSources.values()) {
+      context.operation(1L + source.caller().tenant().length() + source.caller().id().length());
+      if (!locks.contains(source.caller().tenant() + ":" + source.caller().id()))
+        throw poisonProof(new IllegalStateException("Full sorted task locks required"));
+    }
+  }
+
+  public final class Projection {
+    private final Object owner;
+    private String tenant, task;
+    private Map<String, Object> row;
+
+    private Projection(Object owner, String tenant, String task) {
+      this.owner = owner;
+      this.tenant = tenant;
+      this.task = task;
+    }
+
+    public Map<String, Object> loaded(Map<String, Object> value) {
+      try {
+        active();
+        context.checkHealthy();
+        context.operation(3L + tenant.length() + task.length());
+        if (row != null || !tenant.equals(value.get("tenant_id")) || !task.equals(value.get("id")))
+          throw new IllegalStateException("Different projection row");
+        row = value;
+        return row;
+      } catch (RuntimeException failure) {
+        throw poisonProof(failure);
+      }
+    }
+
+    private void clear() {
+      // 所有live/account/proof闭包先解除；原Map的文本引用随后消失，再释放本槽。
+      if (row != null) row.clear();
+      row = null;
+      tenant = null;
+      task = null;
+      context.releaseScratch(owner);
+    }
   }
 
   /** 仅供真实history service成功后登记；调用者已持有原history锁。 */
@@ -264,10 +335,25 @@ public final class SessionQueryWork {
   private RuntimeException proofFailure;
   private com.fasterxml.jackson.databind.JsonNode authority;
 
-  public void poisonProof(RuntimeException failure) {
+  public RuntimeException poisonProof(RuntimeException failure) {
     active();
     var first = context.recordFailure(failure);
     if (proofFailure == null) proofFailure = first;
+    return first;
+  }
+
+  public boolean lineage() {
+    return context.lineage();
+  }
+
+  /** 仅未发布证明、未写正文的具名scope不可用允许状态脱敏；损坏或已有首错永不豁免。 */
+  public boolean scopeStatus(TaskFailure failure) {
+    context.checkHealthy();
+    return !protectedWrite
+        && scope == null
+        && failure.status() == 404
+        && io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode.SESSION_SCOPE_UNAVAILABLE.equals(
+            failure.code());
   }
 
   public com.fasterxml.jackson.databind.JsonNode authority(
@@ -814,11 +900,13 @@ public final class SessionQueryWork {
     completed = true;
     context.releaseScratch(scopeScratch);
     context.releaseScratch(graphScratch);
-    if (projectionOwners != null) {
-      for (var owner : projectionOwners) context.releaseScratch(owner);
-      projectionOwners.clear();
-      projectionOwners = null;
+    if (projections != null) {
+      for (var projection : projections) if (projection != null) projection.clear();
+      java.util.Arrays.fill(projections, null);
+      projections = null;
     }
+    projectionTenant = null;
+    projectionTask = null;
     context.releaseScratch(projectionScratch);
   }
 }

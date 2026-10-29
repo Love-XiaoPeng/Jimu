@@ -264,6 +264,10 @@ final class SessionBorrowedMetadataSqlScenario {
     var mappers = LedgerMapperSessions.create(source);
     seed(db);
     try {
+      if (mode.equals("borrowed-owned")) {
+        SessionLineageProjectionSqlScenario.verify(db, mappers, tx, ID);
+        return;
+      }
       if (!mode.equals("borrowed-tail") && !mode.equals("borrowed-boundaries")) {
         int groups = 0;
         for (var table : Table.values()) {
@@ -404,10 +408,11 @@ final class SessionBorrowedMetadataSqlScenario {
                 mappers.getMapper(
                     io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskAdmissionMapper
                         .class);
-            var event = SessionAcceptedTaskRows.load(sql, acceptedQuery, "tenant-a", ID, true);
             var raw =
                 db.queryForMap(
                     "SELECT * FROM task WHERE tenant_id='tenant-a' AND id=? FOR UPDATE", ID);
+            SessionQueryTransaction.current(acceptedQuery).locked("tenant-a", ID);
+            var event = SessionAcceptedTaskRows.load(sql, acceptedQuery, "tenant-a", ID, true);
             check(
                 event.size() == 21 && event.get("goal").equals(raw.get("goal")),
                 "actual accepted21 retains original goal");
