@@ -1,10 +1,14 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
+import java.io.IOException;
+import java.time.temporal.TemporalAccessor;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,8 +40,20 @@ import org.apache.ibatis.plugin.Signature;
 final class SessionHistoryObservation implements Interceptor {
   private static final ObjectMapper JSON =
       new ObjectMapper()
-          .registerModule(new JavaTimeModule())
-          .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+          .registerModule(
+              new SimpleModule()
+                  .addSerializer(
+                      TemporalAccessor.class,
+                      new JsonSerializer<TemporalAccessor>() {
+                        @Override
+                        public void serialize(
+                            TemporalAccessor value,
+                            JsonGenerator output,
+                            SerializerProvider provider)
+                            throws IOException {
+                          output.writeString(value.toString());
+                        }
+                      }));
 
   private static String json(Object value) {
     try {
