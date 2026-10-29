@@ -314,7 +314,9 @@ public final class QueryResults {
       Object parameter,
       java.sql.Statement prepared)
       throws SQLException {
-    context.operation(8); // state/proxy allocation, route and lifecycle field stores
+    // State/proxy allocation, route/lifecycle stores and two unconditional close stores:
+    // cached metadata view and local cursor alias, even if no metadata view is requested.
+    context.operation(10);
     var state = new HistoryState(delegate, context);
     state.length = length;
     state.size = length.sizeSource();
@@ -387,9 +389,9 @@ public final class QueryResults {
     context.operation(3); // cached field lookup, null test and view handoff on every access
     if (state.metadataView == null) {
       // Loader lookup; interface array/allocation+store; handler/allocation+two captures;
-      // proxy allocation; field publication; prepaid cached-view and cursor-alias clears.
+      // proxy allocation; field publication. Cleanup is prepaid at cursor construction.
       // At most two views (size/raw) fit the existing per-slot 4096-byte object inventory.
-      context.operation(10);
+      context.operation(8);
       state.metadataView =
           (ResultSetMetaData)
               Proxy.newProxyInstance(

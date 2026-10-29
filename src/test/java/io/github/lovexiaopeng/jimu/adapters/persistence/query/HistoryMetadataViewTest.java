@@ -124,7 +124,7 @@ class HistoryMetadataViewTest {
             provider.open();
             long live = query.scratchLive(), before = query.resources().operations();
             external[0] = provider.rows.getMetaData();
-            assertEquals(13, query.resources().operations() - before);
+            assertEquals(11, query.resources().operations() - before);
             before = query.resources().operations();
             for (int i = 0; i < 100; i++) assertSame(external[0], provider.rows.getMetaData());
             assertEquals(300, query.resources().operations() - before);
@@ -160,7 +160,7 @@ class HistoryMetadataViewTest {
   void firstAllocationAndCachedAccessRefuseBeforePublicationAtTheirExactBoundaries()
       throws Exception {
     for (boolean cached : new boolean[] {false, true}) {
-      long required = cached ? 3 : 13;
+      long required = cached ? 3 : 11;
       for (long available : new long[] {required - 1, required, required + 1}) {
         var fixture = new SessionHistoryLengthTest.Fixture();
         var query = SessionEventHistoryLengthTest.query();
@@ -213,6 +213,53 @@ class HistoryMetadataViewTest {
         assertEquals(65536, query.scratchLive());
       }
     }
+  }
+
+  @Test
+  void closeWithoutMetadataViewUsesPrepaidCleanupAtExhaustedBudget() throws Exception {
+    var fixture = new SessionHistoryLengthTest.Fixture();
+    var query = SessionEventHistoryLengthTest.query();
+    Provider[] saved = {null};
+    RuntimeException[] first = {null};
+    var thrown =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                fixture.work(
+                    query,
+                    () -> {
+                      try {
+                        var provider = new Provider(fixture, query);
+                        saved[0] = provider;
+                        provider.open();
+                        assertNull(field(provider.state, "metadataView"));
+                        long live = query.scratchLive();
+                        provider.onClose =
+                            () -> {
+                              provider.detached(false);
+                              assertEquals(live, query.scratchLive());
+                            };
+                        query.operation(65536 - query.resources().operations());
+                        first[0] = assertThrows(RuntimeException.class, () -> query.operation(1));
+                        long before = query.resources().operations();
+                        provider.rows.close();
+                        provider.rows.close();
+                        assertEquals(before, query.resources().operations());
+                        provider.detached(true);
+                        return null;
+                      } catch (SQLException failure) {
+                        throw new AssertionError(failure);
+                      } catch (RuntimeException failure) {
+                        throw failure;
+                      } catch (Exception failure) {
+                        throw new AssertionError(failure);
+                      }
+                    }));
+    assertSame(first[0], thrown);
+    assertEquals(1, saved[0].closes);
+    assertEquals(0, fixture.database.commits);
+    assertEquals(1, fixture.database.rollbacks);
+    assertEquals(65536, query.scratchLive());
   }
 
   @Test
