@@ -70,4 +70,47 @@ class SessionRelationOwnershipTest {
       owner.complete();
     }
   }
+
+  @Test
+  void sharedStringIdentityHasOneOwnerAndCapacitySurvivesInvalidation() {
+    var q = query();
+    var w = new SessionQueryWork(q);
+    String shared = new String("shared");
+    w.observed(SessionQueryWork.Relation.STEP, shared, shared, shared, shared, shared);
+    long first = q.scratchLive();
+    w.observed(SessionQueryWork.Relation.INVOCATION, shared, shared, shared, shared, shared);
+    assertEquals(SessionQueryWork.RELATION_ENTRY_BYTES + 32, q.scratchLive() - first);
+    String distinct = new String(shared);
+    long before = q.scratchLive();
+    w.observed(
+        SessionQueryWork.Relation.DISPATCH, distinct, distinct, distinct, distinct, distinct);
+    assertEquals(
+        SessionQueryWork.RELATION_ENTRY_BYTES
+            + 32
+            + 64
+            + SessionQueryWork.RELATION_STRING_BYTES
+            + 2L * distinct.length(),
+        q.scratchLive() - before);
+    w.dependencyMutation();
+    assertNull(w.related(SessionQueryWork.Relation.STEP, shared, shared, null, null, null));
+    // HashMap and IdentityHashMap retain their arrays even after their entries are gone.
+    assertEquals(65536 + SessionQueryWork.RELATION_ROOT_BYTES + 3 * 32 + 2 * 64, q.scratchLive());
+    w.complete();
+    assertEquals(65536, q.scratchLive());
+  }
+
+  @Test
+  void exhaustedOperationBudgetDoesNotPartlyPublishNewRelationship() {
+    var q = query();
+    var w = new SessionQueryWork(q);
+    w.observed(SessionQueryWork.Relation.STEP, "t", "s", "caller", null, null);
+    long before = q.scratchLive();
+    q.operation(65536 - q.resources().operations() - 30);
+    assertThrows(
+        TaskFailure.class,
+        () -> w.observed(SessionQueryWork.Relation.INVOCATION, "t", "i", "caller", "s", null));
+    assertEquals(before, q.scratchLive());
+    w.complete();
+    assertEquals(65536, q.scratchLive());
+  }
 }

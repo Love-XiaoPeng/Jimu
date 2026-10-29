@@ -264,6 +264,7 @@ public final class SessionQueryWork {
     this.context = context;
     context.retainScratch(relationScratch, RELATION_ROOT_BYTES);
     relations = new LinkedHashMap<>();
+    relationStrings = new java.util.IdentityHashMap<>();
   }
 
   boolean owns(SessionQueryContext query) {
@@ -285,11 +286,15 @@ public final class SessionQueryWork {
   private record Related(String task, String parent, String category) {}
 
   private Map<RelationKey, Related> relations;
+  private java.util.IdentityHashMap<String, Integer> relationStrings;
   private final Object relationScratch = new Object();
   // Root/map table and lease dependency; entry includes key/value/node and amortized table growth.
-  static final long RELATION_ROOT_BYTES = 256, RELATION_ENTRY_BYTES = 256;
+  static final long RELATION_ROOT_BYTES = 1024,
+      RELATION_ENTRY_BYTES = 256,
+      RELATION_STRING_BYTES = 192;
   private long relationBytes = RELATION_ROOT_BYTES;
   private long relationTableBytes;
+  private long relationStringTableBytes;
   private final Object lookupScratch = new Object(),
       extractionScratch = new Object(),
       dependencyScratch = new Object();
@@ -339,30 +344,49 @@ public final class SessionQueryWork {
       }
       return;
     }
+    var strings = new String[] {tenant, id, task, parent, category};
+    long added = 0;
+    int addedStrings = 0;
+    for (int i = 0; i < strings.length; i++) {
+      context.operation(7);
+      if (unique(strings, i) && !relationStrings.containsKey(strings[i])) {
+        added += RELATION_STRING_BYTES + 2L * strings[i].length();
+        addedStrings++;
+      }
+    }
     long table = Math.max(relationTableBytes, 32L * (relations.size() + 1));
+    // Both map backing arrays remain at their high-water capacity after entries are removed.
+    long stringTable =
+        Math.max(relationStringTableBytes, 64L * (relationStrings.size() + addedStrings));
     long next =
         Math.addExact(
             relationBytes,
-            relationEntryBytes(tenant, id, task, parent, category) + table - relationTableBytes);
+            RELATION_ENTRY_BYTES
+                + added
+                + table
+                - relationTableBytes
+                + stringTable
+                - relationStringTableBytes);
+    // Reserve the bounded update work before publishing either map; a limit rejection cannot
+    // leave the string reference counts partly updated or roll the live owner back to its old size.
+    context.operation(35);
     context.retainScratch(relationScratch, next);
     // Move the already allocated lookup key into the entry's ownership without charging it twice.
     context.releaseScratch(lookupScratch);
     relations.put(key, new Related(task, parent, category));
+    for (int i = 0; i < strings.length; i++)
+      if (unique(strings, i)) {
+        relationStrings.put(strings[i], relationStrings.getOrDefault(strings[i], 0) + 1);
+      }
     relationTableBytes = table;
+    relationStringTableBytes = stringTable;
     relationBytes = next;
   }
 
-  private static long relationEntryBytes(
-      String tenant, String id, String task, String parent, String category) {
-    // Retain borrowed row strings after ResultSet closes; temporary keys reuse those scalars.
-    return RELATION_ENTRY_BYTES
-        + 5L * 64
-        + 2L
-            * (tenant.length()
-                + id.length()
-                + task.length()
-                + (parent == null ? 0 : parent.length())
-                + (category == null ? 0 : category.length()));
+  private static boolean unique(String[] strings, int i) {
+    if (strings[i] == null) return false;
+    for (int j = 0; j < i; j++) if (strings[j] == strings[i]) return false;
+    return true;
   }
 
   // Returns a borrowed scalar, never an unowned Dependency/Set escaping the lookup workspace.
@@ -487,17 +511,34 @@ public final class SessionQueryWork {
               && (write.task() == null || entry.getValue().task().equals(write.task())))
             remove = true;
         }
-      if (remove) entries.remove();
+      if (remove) {
+        context.operation(35);
+        var strings =
+            new String[] {
+              entry.getKey().tenant(),
+              entry.getKey().id(),
+              entry.getValue().task(),
+              entry.getValue().parent(),
+              entry.getValue().category()
+            };
+        for (int i = 0; i < strings.length; i++)
+          if (unique(strings, i)) {
+            int count = relationStrings.get(strings[i]);
+            if (count == 1) relationStrings.remove(strings[i]);
+            else relationStrings.put(strings[i], count - 1);
+          }
+        entries.remove();
+      }
     }
-    relationBytes = RELATION_ROOT_BYTES + relationTableBytes;
-    for (var e : relations.entrySet())
-      relationBytes +=
-          relationEntryBytes(
-              e.getKey().tenant(),
-              e.getKey().id(),
-              e.getValue().task(),
-              e.getValue().parent(),
-              e.getValue().category());
+    context.operation(relationStrings.size());
+    long remaining =
+        RELATION_ROOT_BYTES
+            + relationTableBytes
+            + relationStringTableBytes
+            + RELATION_ENTRY_BYTES * relations.size();
+    for (var text : relationStrings.keySet())
+      remaining += RELATION_STRING_BYTES + 2L * text.length();
+    relationBytes = remaining;
   }
 
   private void invalidateProof(java.util.Set<Dependency> writes) {
@@ -687,6 +728,8 @@ public final class SessionQueryWork {
     leaseTask = null;
     relations.clear();
     relations = null;
+    relationStrings.clear();
+    relationStrings = null;
     relationBytes = 0;
     context.releaseScratch(relationScratch);
     context.releaseScratch(stagingScratch);
