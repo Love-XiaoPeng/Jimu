@@ -14,6 +14,7 @@ final class MapperSessionHistoryProofs
   private final JdbcSessionRecords records;
   private final Map<String, Object> task, step;
   private Map<String, Object> history;
+  private SessionHistoryProofs.HistoryRow checkedRow;
   private DurableAgent.Checkpoint checkpoint;
 
   MapperSessionHistoryProofs(
@@ -31,13 +32,19 @@ final class MapperSessionHistoryProofs
     var rows = records.mapperRows("SessionHistoryRetentionMapper.history", task);
     if (rows.isEmpty()) return null;
     history = rows.getFirst();
-    return new SessionHistoryProofs.HistoryRow(
-        number(history, "record_version"),
-        number(history, "history_version"),
-        s(history, "binding_snapshot"),
-        s(history, "binding_digest"),
-        s(history, "content_state"),
-        number(history, "retained"));
+    checkedRow =
+        new SessionHistoryProofs.HistoryRow(
+            number(history, "record_version"),
+            number(history, "history_version"),
+            s(history, "binding_snapshot"),
+            s(history, "binding_digest"),
+            s(history, "content_state"),
+            number(history, "retained"));
+    return checkedRow;
+  }
+
+  SessionHistoryProofs.HistoryRow checkedRow() {
+    return checkedRow;
   }
 
   Map<String, Object> historyRow() {
@@ -48,12 +55,34 @@ final class MapperSessionHistoryProofs
     return records.version(task);
   }
 
+  public boolean matches(String expected, String actual) {
+    var query = records.appendQuery();
+    if (query == null || !query.lineage()) return expected.equals(actual);
+    return query.primitive(
+        "history.compare",
+        expected == actual ? 1 : expected.length(),
+        () -> expected.equals(actual));
+  }
+
   public String binding() {
     return records.contract(task).binding();
   }
 
   public String hash(String raw) {
-    return Payloads.hash(raw);
+    var query = records.appendQuery();
+    if (query == null || !query.lineage()) return Payloads.hash(raw);
+    Object temporary = new Object();
+    query.retainScratch(temporary, 4096L + 4L * raw.length());
+    try {
+      byte[] encoded =
+          query.primitive(
+              "history.encode",
+              raw.length(),
+              () -> raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      return query.primitive("history.hash", encoded.length, () -> Payloads.hash(encoded));
+    } finally {
+      query.releaseScratch(temporary);
+    }
   }
 
   public SessionHistoryProofs.StepRow step() {

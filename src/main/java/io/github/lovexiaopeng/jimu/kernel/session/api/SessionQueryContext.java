@@ -16,6 +16,16 @@ public final class SessionQueryContext {
   private final java.util.Map<Object, Long> retainedScratch = new java.util.HashMap<>();
   private long scratchPeak;
   private TaskFailure firstFailure;
+  private String activeStatement, activeColumn;
+
+  public record OperationRejection(
+      String statement, String column, long before, long requested, boolean columnSupplied) {}
+
+  private OperationRejection operationRejection;
+
+  public OperationRejection operationRejection() {
+    return operationRejection;
+  }
 
   private TaskFailure refuse(int status, String code) {
     if (firstFailure == null) firstFailure = new TaskFailure(status, code);
@@ -183,7 +193,12 @@ public final class SessionQueryContext {
     long previous = operations;
     operations = Math.addExact(operations, count);
     groupCounters()[2] = Math.addExact(groupCounters()[2], count);
-    if (operations > operationLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
+    if (operations > operationLimit) {
+      operationRejection =
+          new OperationRejection(
+              activeStatement, activeColumn, previous, count, activeColumn != null);
+      throw refuse(429, "SESSION_HISTORY_LIMIT");
+    }
     if (previous / 1024 != operations / 1024) remainingMillis();
   }
 
@@ -199,14 +214,17 @@ public final class SessionQueryContext {
     }
     remainingMillis();
     if (metered && ++reads > readLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
-    return new Result();
+    return new Result(statement);
   }
 
   public final class Result implements AutoCloseable {
+    private final String statement;
     private long batch;
     private final ColumnMeter additional = meter == null ? null : meter.begin();
 
-    private Result() {}
+    private Result(String statement) {
+      this.statement = statement;
+    }
 
     public void close() {
       releaseScratch(this);
@@ -217,6 +235,18 @@ public final class SessionQueryContext {
     }
 
     public void column(String label, Object value) {
+      String priorStatement = activeStatement, priorColumn = activeColumn;
+      activeStatement = statement;
+      activeColumn = label;
+      try {
+        columnMeasured(label, value);
+      } finally {
+        activeStatement = priorStatement;
+        activeColumn = priorColumn;
+      }
+    }
+
+    private void columnMeasured(String label, Object value) {
       if (metered) {
         operation(1);
         operation(label.length());

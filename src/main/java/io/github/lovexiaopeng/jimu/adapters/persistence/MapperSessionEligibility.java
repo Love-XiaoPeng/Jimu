@@ -34,7 +34,7 @@ final class MapperSessionEligibility implements SessionEligibility.Access {
   }
 
   public void history() {
-    if (!terminal) ledger.sessions.history(task, false); // 末端history由逐节点currentState精确核验。
+    if (!terminal) ledger.sessions.historyProof(task); // 末端history由逐节点currentState精确核验。
   }
 
   public List<String> capabilities() {

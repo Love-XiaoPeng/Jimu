@@ -224,9 +224,56 @@ final class JdbcSessionRecords {
               .SessionHistoryProofServiceImpl();
 
   Map<String, Object> history(Map<String, Object> task, boolean readable) {
-    var proof = new MapperSessionHistoryProofs(this, task, null);
-    historyProofs.history(proof, readable);
-    return proof.historyRow();
+    var owner = historyOwner();
+    Object temporary = new Object();
+    if (owner != null) query.retainScratch(temporary, 4096);
+    try {
+      var proof = new MapperSessionHistoryProofs(this, task, null);
+      historyProofs.history(proof, readable);
+      if (readable && owner != null)
+        owner.checkedHistory(
+            MapperSessionScopeRecords.caller(task),
+            version(task),
+            contract(task).binding(),
+            proof.checkedRow(),
+            (java.time.LocalDateTime) proof.historyRow().get("retain_until"));
+      return proof.historyRow();
+    } catch (RuntimeException failure) {
+      if (owner != null) owner.poisonProof(failure);
+      throw failure;
+    } finally {
+      if (owner != null) query.releaseScratch(temporary);
+    }
+  }
+
+  private io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork historyOwner() {
+    return query != null && query.lineage()
+        ? io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            query)
+        : null;
+  }
+
+  private boolean checkedHistory(Map<String, Object> task) {
+    var owner = historyOwner();
+    if (owner == null) return false;
+    Object temporary = new Object();
+    query.retainScratch(temporary, 4096);
+    try {
+      return owner.checkedHistory(
+          MapperSessionScopeRecords.caller(task), version(task), contract(task).binding());
+    } finally {
+      query.releaseScratch(temporary);
+    }
+  }
+
+  void historyProof(Map<String, Object> task) {
+    if (!checkedHistory(task)) history(task, false);
+  }
+
+  boolean historyRetained(Map<String, Object> task) {
+    if (checkedHistory(task)) return true;
+    var h = history(task, false);
+    return n(h, "retained") == 1 && "PRESENT".equals(s(h, "content_state"));
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionHistoryStorageService

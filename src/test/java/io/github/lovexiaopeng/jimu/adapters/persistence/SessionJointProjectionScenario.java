@@ -60,7 +60,11 @@ public final class SessionJointProjectionScenario {
                     "statements",
                     q.statements(),
                     "nodes",
-                    List.copyOf(nodes))));
+                    List.copyOf(nodes),
+                    "atNanos",
+                    System.nanoTime(),
+                    "operationRejection",
+                    q.operationRejection() == null ? "none" : q.operationRejection())));
     System.out.flush();
   }
 
@@ -182,39 +186,54 @@ public final class SessionJointProjectionScenario {
   }
 
   private static void joint(String caller) throws Exception {
-    // Unreached diagnostic helper, not acceptance evidence: baseline strings and raw comparison
-    // still need explicit ownership/metering before this can prove a joint candidate.
+    // 独立原reader输出作oracle；候选事务必须同时持有三份baseline和三份typed输出。
     var base = view();
     var bq = base.queryContext();
     bq.restrictLineage();
     var targets = List.of(nodes.getFirst(), nodes.get(4), caller);
-    var baseline =
-        base.sessionTransaction(
-            () -> {
-              base.authorizeSessionLineage(IDENTITY, caller, bq.deadlineNanos());
-              var graph = base.lineages.verify(IDENTITY.tenant(), caller);
-              var contracts = new SessionLineageContracts();
-              var out = new ArrayList<String>();
-              for (String target : targets)
-                out.add(
-                    contracts.output(
-                        SessionLineageGraph.trace(
-                            caller,
-                            target,
-                            graph.authorityDigest(),
-                            graph.graphDigest(),
-                            graph.genesis(),
-                            graph.nodes(),
-                            graph.children(),
-                            ignored -> {})));
-              return List.copyOf(out);
-            },
-            bq.deadlineNanos());
+    Object baselineOwner = new Object(), baselineWorkspace = new Object();
+    bq.retainScratch(baselineOwner, 3L * (128 + 2 * 8192 + 128));
+    bq.retainScratch(baselineWorkspace, 163840);
+    List<String> baseline;
+    try {
+      baseline =
+          base.sessionTransaction(
+              () -> {
+                base.authorizeSessionLineage(IDENTITY, caller, bq.deadlineNanos());
+                var graph = base.lineages.verify(IDENTITY.tenant(), caller);
+                var contracts = new SessionLineageContracts();
+                var out = new ArrayList<String>();
+                for (String target : targets)
+                  out.add(
+                      contracts.output(
+                          SessionLineageGraph.trace(
+                              caller,
+                              target,
+                              graph.authorityDigest(),
+                              graph.graphDigest(),
+                              graph.genesis(),
+                              graph.nodes(),
+                              graph.children(),
+                              bq::operation)));
+                return List.copyOf(out);
+              },
+              bq.deadlineNanos());
+    } catch (RuntimeException | Error failure) {
+      bq.releaseScratch(baselineOwner);
+      throw failure;
+    } finally {
+      bq.releaseScratch(baselineWorkspace);
+    }
     SessionRepairSqlOracle.dump(db, caller, "joint-baseline");
     var before = SessionDependencyScenario.snapshot(db);
     var v = view();
     var q = v.queryContext();
     q.restrictLineage();
+    try {
+      q.retainScratch(baselineOwner, 3L * (128 + 2 * 8192 + 128));
+    } finally {
+      bq.releaseScratch(baselineOwner);
+    }
     var outputs = new ArrayList<TypedLineageOutputCandidate.OwnedOutput>();
     String[] last = {"authority"};
     try {
@@ -241,7 +260,31 @@ public final class SessionJointProjectionScenario {
                         q::operation);
                 var output = TypedLineageOutputCandidate.output(result, q);
                 outputs.add(output);
-                check(output.raw().equals(baseline.get(i)), "same-fixture original raw " + i);
+                String original = baseline.get(i);
+                check(
+                    q.primitive(
+                        "joint.raw.compare",
+                        Math.max(output.raw().length(), original.length()),
+                        () -> output.raw().equals(original)),
+                    "same-fixture original raw " + i);
+                Object compareOwner = new Object();
+                q.retainScratch(compareOwner, 4096L + 4L * original.length());
+                try {
+                  byte[] encoded =
+                      q.primitive(
+                          "joint.baseline.encode",
+                          original.length(),
+                          () -> original.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                  String expectedDigest =
+                      q.primitive(
+                          "joint.baseline.hash", encoded.length, () -> Payloads.hash(encoded));
+                  check(
+                      q.primitive(
+                          "joint.digest.compare", 64, () -> expectedDigest.equals(output.digest())),
+                      "same-fixture independent digest " + i);
+                } finally {
+                  q.releaseScratch(compareOwner);
+                }
                 phase(last[0], q);
               } finally {
                 q.releaseScratch(resultOwner);
@@ -257,6 +300,7 @@ public final class SessionJointProjectionScenario {
     } finally {
       for (var output : outputs) output.close();
       outputs.clear();
+      q.releaseScratch(baselineOwner);
       phase(last[0], q);
       check(
           before.equals(SessionDependencyScenario.snapshot(db)),
@@ -299,6 +343,7 @@ public final class SessionJointProjectionScenario {
     root.sessionTraceEnabled(true);
     root.priorSessionSearchEnabled(true);
     root.sessionLineageEnabled(true);
+    SessionTaskSizedSqlScenario.verify(db);
     String worker = "joint-private-worker";
     root.registerWorker(worker, worker, ProcessHandle.current().pid(), 1, "private", "private");
     String last = "begin";

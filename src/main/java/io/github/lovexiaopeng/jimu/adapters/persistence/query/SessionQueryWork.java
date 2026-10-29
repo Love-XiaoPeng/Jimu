@@ -32,6 +32,36 @@ public final class SessionQueryWork {
   private final Object scopeScratch = new Object(), graphScratch = new Object();
   private String fenceKey, leaseKey, stepKey, responseKey;
   private long dependencyGeneration;
+  private SessionCheckedHistories histories;
+
+  /** 仅供真实history service成功后登记；调用者已持有原history锁。 */
+  public void checkedHistory(
+      SessionScopeRecords.Caller identity,
+      long version,
+      String binding,
+      io.github.lovexiaopeng.jimu.kernel.session.port.SessionHistoryProofs.HistoryRow row,
+      java.time.LocalDateTime retain) {
+    active();
+    context.checkHealthy();
+    if (!locks.contains(identity.tenant() + ":" + identity.id())) return;
+    if (histories == null) histories = new SessionCheckedHistories(context, token);
+    histories.remember(identity, version, binding, row, retain);
+  }
+
+  /** 只复用已发布且必经live/fence的caller证明；不返回任何动态history字段。 */
+  public boolean checkedHistory(SessionScopeRecords.Caller identity, long version, String binding) {
+    active();
+    context.checkHealthy();
+    if (proofFailure != null) throw proofFailure;
+    return histories != null
+        && scope != null
+        && live != null
+        && fence != null
+        && caller != null
+        && relationEqual(caller.tenant(), identity.tenant())
+        && relationEqual(caller.id(), identity.id())
+        && histories.checked(identity, version, binding);
+  }
 
   private record CheckedCreated(
       Object token,
@@ -509,6 +539,7 @@ public final class SessionQueryWork {
 
   private void mutateDependencies(java.util.Set<Dependency> writes) {
     mutation();
+    if (histories != null) histories.invalidate(writes);
     // Invalidate before SQL, including staging/unknown writes; fresh SELECT/INSERT must reprove.
     invalidateRelations(writes);
     context.retainScratch(relationScratch, relationBytes);
@@ -733,6 +764,8 @@ public final class SessionQueryWork {
   }
 
   void complete() {
+    if (histories != null) histories.clear();
+    histories = null;
     releaseCreated();
     accounts.clear();
     invalidators.clear();

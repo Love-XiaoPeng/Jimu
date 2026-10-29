@@ -18,6 +18,10 @@ public interface SessionHistoryProofs {
     String binding();
 
     String hash(String raw);
+
+    default boolean matches(String expected, String actual) {
+      return expected.equals(actual);
+    }
   }
 
   record StepRow(

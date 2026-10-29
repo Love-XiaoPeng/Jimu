@@ -532,7 +532,15 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     public View accepted(String task) {
       var row = ledger.locked(identity.tenant(), task);
       ledger.event(row, "accepted", "task.accepted", null);
-      var finalRow = ledger.locked(identity.tenant(), task);
+      // event已改变revision/序号/时间；只在v5具名入口重新读View及其真实授权消费者。
+      // 其他受理保留全行，不把该投影扩散到通用locked或重用event前的动态Map。
+      var finalRow =
+          ledger.queryContext() != null
+                  && ledger.queryContext().lineage()
+                  && JdbcSessionScopes.lineage(row)
+              ? JdbcLedger.first(
+                  sql.lockAcceptedView(ledger.queryContext(), identity.tenant(), task))
+              : ledger.locked(identity.tenant(), task);
       if (JdbcSessionScopes.lineage(finalRow))
         new MapperCommitFence(ledger, null).admission(finalRow, true);
       return ledger.view(finalRow);

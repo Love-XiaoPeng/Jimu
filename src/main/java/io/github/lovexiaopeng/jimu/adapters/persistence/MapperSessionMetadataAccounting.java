@@ -31,6 +31,11 @@ final class MapperSessionMetadataAccounting implements SessionMetadataAccounting
   }
 
   public Batch batch(Table table) {
+    if (table == Table.TASK && JdbcSessionScopes.lineage(task))
+      return new SessionCursorMetadataBatch(
+          records.appendQuery(),
+          SessionMetadataProjection.taskSized(),
+          () -> records.mapperCursor("SessionHistoryRetentionMapper.metadataTaskSized", task));
     var projection = SessionMetadataProjection.forTable(table);
     if (projection != null && JdbcSessionScopes.lineage(task))
       return new SessionCursorMetadataBatch(

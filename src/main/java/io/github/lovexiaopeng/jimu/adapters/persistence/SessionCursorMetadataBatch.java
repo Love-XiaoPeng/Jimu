@@ -10,6 +10,9 @@ import org.apache.ibatis.cursor.Cursor;
 
 /** 原Mapper的流式metadata投影；facade只借当前行，前移/关闭后失效，不保留旧Map。 */
 final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batch {
+  /** 仅metadataTaskSized的具名长度列可构造，不赋予普通Long长度语义。 */
+  private record SqlUtf8Length(long bytes) {}
+
   private final SessionQueryContext query;
   private final SessionMetadataProjection projection;
   private Cursor<Map<String, Object>> cursor;
@@ -104,10 +107,28 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
             case 'L' -> value instanceof Long;
             case 'B' -> value instanceof Boolean;
             case 'D' -> value instanceof java.time.LocalDateTime;
+            case 'T', 'M', 'X' -> sizedLength(column, value);
             default -> false;
           };
       if (!valid) throw JdbcSessionRecords.corrupt();
     }
+  }
+
+  private boolean sizedLength(SessionMetadataProjection.Column column, Object value) {
+    if (!projection.taskSized || !(value instanceof Long || value instanceof Integer)) return false;
+    long bytes = ((Number) value).longValue();
+    long maximum =
+        switch (column.kind()) {
+          case 'T' -> 65535L;
+          case 'M' -> 16777215L;
+          case 'X' -> 4294967295L;
+          default -> throw new IllegalStateException("Not a SQL length column");
+        };
+    SessionMetadataScalars.operation(query, 3L + column.name().length());
+    if (bytes < 0 || bytes > maximum) return false;
+    // 两行workspace及额外4096已在开cursor前保留，包含11个wrapper与Map替换。
+    current.put(column.name(), new SqlUtf8Length(bytes));
+    return true;
   }
 
   private boolean bounded(String text, int points) {
@@ -201,6 +222,10 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
   public long scalarBytes(Object value) {
     try {
       open();
+      if (projection.taskSized && value instanceof SqlUtf8Length length) {
+        SessionMetadataScalars.operation(query, 1);
+        return length.bytes();
+      }
       return SessionMetadataScalars.bytes(value, query);
     } catch (RuntimeException | Error failure) {
       fail(failure);

@@ -30,6 +30,12 @@ public interface TaskAdmissionMapper {
       @Param("actor") String actor,
       @Param("key") String key);
 
+  /** 仅已持锁v5受理的event后View；动态字段重新读取，授权仍消费原tools/MCP列。 */
+  List<Map<String, Object>> lockAcceptedView(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
   long maxPacket(@Param("query") SessionQueryContext query);
 
   List<Map<String, Object>> sampleBound(

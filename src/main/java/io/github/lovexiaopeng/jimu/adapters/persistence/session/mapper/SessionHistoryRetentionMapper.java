@@ -10,6 +10,11 @@ import org.apache.ibatis.annotations.Param;
 /** 清理锁、CAS及账目；列按冻结V22显式声明。 */
 @Mapper
 public interface SessionHistoryRetentionMapper {
+  org.apache.ibatis.cursor.Cursor<Map<String, Object>> metadataTaskSized(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
   List<Map<String, Object>> lineageContents(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
