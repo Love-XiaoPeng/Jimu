@@ -1,5 +1,5 @@
 owner,bytes,before,release,limit
 eventHistory fixed slot,4096,Slot/args/size Map/capability/provider wrapper/metadata/diagnostic construction,Work clear after references cleared; empty size before fallback,"one slot, no generic cache"
 eventHistory raw overlap,8192 + 8 * SQL UTF8 bytes,original eight-column driver fetch,Work clear: raw Map cleared before scratch refund,"includes provider/Map labels, two UTF16 copies and transfer overlap; internal model not full A12 heap"
-scope UTF8 owner,64 then 4096 + 4 * raw UTF16 length,new temporary owner then every getBytes allocation,byte[] reference null before release,each invocation independently encodes; no foreign cache
+scope UTF8 and raw hash owners,64 then 4096 + 4 * raw UTF16 length,temporary owner then every getBytes allocation,byte[] reference null before release; hash primitive supplier alias expires before caller finally,each foreign invocation independently encodes/hashes; no foreign cache
 SQL ResultSets,size + raw (including empty),context Result opening,cumulative; never refunded,256 unchanged

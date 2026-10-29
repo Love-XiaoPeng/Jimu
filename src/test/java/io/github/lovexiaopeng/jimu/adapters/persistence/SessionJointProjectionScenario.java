@@ -505,7 +505,25 @@ public final class SessionJointProjectionScenario {
           return;
         }
         last = "finish-" + i;
-        root.finish(lease, "joint terminal source " + i);
+        var beforeFinish = SessionDependencyScenario.snapshot(db);
+        // Invoke the exact factory used by root.finish, retaining its context only for evidence.
+        var finishFactory =
+            JdbcLedger.class.getDeclaredMethod(
+                "queryView",
+                io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease.class,
+                boolean.class);
+        finishFactory.setAccessible(true);
+        var terminal = (JdbcLedger) finishFactory.invoke(root, lease, true);
+        try {
+          terminal.finish(lease, "joint terminal source " + i);
+        } catch (RuntimeException failure) {
+          check(
+              beforeFinish.equals(SessionDependencyScenario.snapshot(db)),
+              "failed legal finish rolls back all 22 tables");
+          throw failure;
+        } finally {
+          phase("finish-" + i, terminal.queryContext());
+        }
         root.quiescent(lease);
         check(
             db.queryForObject("SELECT state FROM task WHERE id=?", String.class, lease.taskId())

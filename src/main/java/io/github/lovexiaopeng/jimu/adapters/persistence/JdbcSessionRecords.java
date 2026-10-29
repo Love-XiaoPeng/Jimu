@@ -254,18 +254,28 @@ final class JdbcSessionRecords {
   }
 
   private String policyHashRaw(String raw) {
-    Object temporary = new Object();
-    query.retainScratch(temporary, 4096L + 4L * raw.length());
+    Object temporary = null;
+    byte[] encoded = null;
     try {
-      byte[] encoded =
+      query.retainScratch(query, 64); // reserve the owner reference before constructing it
+      temporary = new Object();
+      query.retainScratch(temporary, 4096L + 4L * raw.length());
+      encoded =
           query.primitive(
               "history.encode",
               raw.length(),
               () -> raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-      return query.primitive("history.hash", encoded.length, () -> Payloads.hash(encoded));
+      return hashEncoded(encoded);
     } finally {
-      query.releaseScratch(temporary);
+      encoded = null;
+      if (temporary != null) query.releaseScratch(temporary);
+      query.releaseScratch(query);
     }
+  }
+
+  // The primitive supplier and its byte[] alias expire before the caller clears and refunds it.
+  private String hashEncoded(byte[] encoded) {
+    return query.primitive("history.hash", encoded.length, () -> Payloads.hash(encoded));
   }
 
   private List<String> sensitive;
