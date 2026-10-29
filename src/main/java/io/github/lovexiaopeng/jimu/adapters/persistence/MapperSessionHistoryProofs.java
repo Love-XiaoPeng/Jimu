@@ -58,10 +58,7 @@ final class MapperSessionHistoryProofs
   public boolean matches(String expected, String actual) {
     var query = records.appendQuery();
     if (query == null || !query.lineage()) return expected.equals(actual);
-    return query.primitive(
-        "history.compare",
-        expected == actual ? 1 : expected.length(),
-        () -> expected.equals(actual));
+    return query.primitive("history.compare", expected.length(), () -> expected.equals(actual));
   }
 
   public String binding() {
