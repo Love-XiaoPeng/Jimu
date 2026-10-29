@@ -62,6 +62,7 @@ class SessionHistoryLengthTest {
       1L
     };
     boolean missing, forceEmptySize, nullSize, extraSize, extraRaw;
+    boolean lateBindingLabel, rawColumnRead;
     Object overrideSize;
     String[] labels = LABELS;
     String failAt;
@@ -170,6 +171,16 @@ class SessionHistoryLengthTest {
             String prefix = size ? "size-" : "raw-";
             if (m.getName().equals("isClosed")) return false;
             if ((prefix + m.getName()).equals(failAt)) throw driver;
+            if (!size && lateBindingLabel && m.getName().equals("getMetaData"))
+              return proxy(
+                  java.sql.ResultSetMetaData.class,
+                  (metadataProxy, method, args) -> {
+                    if (rawColumnRead
+                        && method.getName().equals("getColumnLabel")
+                        && args[0].equals(5)) return "binding_snapshoX";
+                    return call(method, metadata, args);
+                  });
+            if (!size && m.getName().equals("getObject")) rawColumnRead = true;
             if (m.getName().equals("close")) closed++;
             return call(m, data, a);
           });
@@ -342,6 +353,8 @@ class SessionHistoryLengthTest {
           "extra-size",
           "extra-raw",
           "labels",
+          "binding-moved",
+          "late-binding-label",
           "state",
           "receipt"
         }) {
@@ -359,6 +372,12 @@ class SessionHistoryLengthTest {
           f.labels = LABELS.clone();
           f.labels[2] = "wrong_version";
         }
+        case "binding-moved" -> {
+          f.labels = LABELS.clone();
+          f.labels[3] = LABELS[4];
+          f.labels[4] = LABELS[3];
+        }
+        case "late-binding-label" -> f.lateBindingLabel = true;
         // Size succeeds, but getObject changes the raw only after the SQL eligibility check.
         default -> f.failAt = mode;
       }
@@ -573,7 +592,11 @@ class SessionHistoryLengthTest {
 
   @Test
   void budgetRefusalsAcrossSlotAndRawConstructionReleaseAllRetainedOwners() throws Exception {
-    for (long remaining : new long[] {1, 12, 32, 78, 128, 256, 512, 1024, 2048}) {
+    var measured = new Fixture();
+    var measuredQuery = SessionEventHistoryLengthTest.query();
+    measured.work(measuredQuery, () -> measured.load(measuredQuery));
+    long required = measuredQuery.resources().operations();
+    for (long remaining : new long[] {1, 12, 32, 78, 128, 256, 512, 1024, required - 1}) {
       var f = new Fixture();
       var q =
           new SessionQueryContext(

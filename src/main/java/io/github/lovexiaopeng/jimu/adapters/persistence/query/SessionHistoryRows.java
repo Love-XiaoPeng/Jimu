@@ -232,9 +232,11 @@ public final class SessionHistoryRows {
       capability = meter.takeSqlUtf8Length();
     }
 
-    void column(SessionQueryContext.Result meter, String label, Object value) {
-      query.operation(3L + "binding_snapshot".length());
-      if ("binding_snapshot".equals(label)) {
+    void column(SessionQueryContext.Result meter, int column, String label, Object value) {
+      // bind已核定十五列的准确顺序；provider真实ordinal替代每列重复字符串分派。
+      // 第5列仍由columnSqlUtf8重新核label、query和准确raw statement，非binding完整扫描。
+      query.operation(4); // ordinal传递/比较、分派与原cap状态；不新增容器或缓存。
+      if (column == 5) {
         if (consumed || capability == null || invalid)
           throw new IllegalStateException("Missing history column capability");
         meter.columnSqlUtf8(label, value, capability);

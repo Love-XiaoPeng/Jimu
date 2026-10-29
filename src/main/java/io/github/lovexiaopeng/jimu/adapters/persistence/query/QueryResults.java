@@ -356,7 +356,7 @@ public final class QueryResults {
                         String label = state.metadata.getColumnLabel(column);
                         context.operation(2);
                         if (state.length != null && !state.size)
-                          state.length.column(state.result, label, scalar);
+                          state.length.column(state.result, column, label, scalar);
                         else state.result.column(label, scalar);
                       }
                       if (state.length != null && state.size) state.length.size(state.result);

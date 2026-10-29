@@ -8,4 +8,6 @@
 
 `history-length-accounting.csv`列出实际请求位置，`history-length-objects.csv`列出每份owner及引用，`history-length-routing.csv`登记新SELECT只读语义；长度前查不进入依赖关系证明或DML放行表。模型仍不证明A12全部heap/native/socket或所有公开出口。新增比较、lookups、容器/链接/清理和额外ResultSet均计在原单位，未从旧日志扣减影子原型收益。
 
-真实业务测试的SessionHistoryObservation只在test sources和显式observe模式装配。其独立stack/Map/UTF8 oracle/序列化/日志不写生产meter；耗时仍包含在原2秒绝对截止。它逐query记录history ordinal、caller、B/P组、进出meter、写间隔和实际动态raw，并单独导出22表快照；不构造authority、不改变计数/权限/业务行，也不将测试设施的副本计作生产A12完成证据。
+真实业务测试的SessionHistoryObservation只在test sources和显式observe模式装配。其独立stack/Map/UTF8 oracle不写生产meter，观察与复制耗时仍包含在原2秒绝对截止；观察记录在事务返回后才序列化输出。22表独立baseline先于请求创建，后续同一个query/原绝对2秒贯穿准入、终算和wire，不重设deadline。观察逐query记录history ordinal、caller、B/P组、进出meter、写间隔和实际动态raw；不构造authority、不改变计数/权限/业务行，也不将测试设施的副本计作生产A12完成证据。
+
+新增局部删除点是history raw的逐列分派。原十五列每列都执行一次`binding_snapshot.equals(label)`，现在provider将其真实loop ordinal传给Slot，仅第5列可消费cap；bind仍核对十五列准确顺序，columnSqlUtf8仍重新核对实际label、query、raw statement及单次cap。其他十四列全部使用原独立scalar计量，动态next_seq/body/metadata及所有owner生命周期不变。新增ordinal参数/比较/分派请求4普通ops，替代原3+16的比较包络；一个真实十五列raw调用局部少225 ops，不从旧失败中直接扣减宣称业务通过。无新增对象、缓存或提前退款。移位binding列及bind后更改binding label均必须poison，catch后原首错仍回滚。
