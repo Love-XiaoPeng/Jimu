@@ -178,20 +178,17 @@ final class SessionTaskWritePump implements WriteListener {
     for (; ; ) {
       checkIntent();
       serialize(1);
-      if (eof) {
+      if (offset == length) {
         serialize(1);
-        if (offset == length) {
+        if (eof) {
           terminate(null);
           return;
         }
-      }
-      // 未就绪不编码、不等待、不flush，也不虚记wire完成。
-      boolean ready = response.primitive("response.serialize", 1, sink::isReady);
-      checkIntent();
-      serialize(1);
-      if (!ready) return;
-      serialize(1);
-      if (offset == length) {
+        // 仅补chunk前额外核就绪；已有chunk时直接走下面唯一实际写边界。
+        boolean ready = response.primitive("response.serialize", 1, sink::isReady);
+        checkIntent();
+        serialize(1);
+        if (!ready) return;
         offset = 0;
         length = 0;
         for (; ; ) {
@@ -219,7 +216,7 @@ final class SessionTaskWritePump implements WriteListener {
       }
       checkIntent();
       // 编码期间容器可改变就绪状态；每个实际写边界重新检查。
-      ready = response.primitive("response.serialize", 1, sink::isReady);
+      boolean ready = response.primitive("response.serialize", 1, sink::isReady);
       serialize(1);
       if (!ready) return;
       checkIntent();
