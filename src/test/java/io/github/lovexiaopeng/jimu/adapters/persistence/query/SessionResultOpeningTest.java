@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger.QueryResources;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.sql.CallableStatement;
 import java.sql.SQLException;
@@ -95,6 +94,7 @@ class SessionResultOpeningTest {
     var marker = new IllegalStateException("handler marker");
     var handler = new Handler(query, marker);
     int[] closed = {0};
+    var cleanup = new SQLException("handler cleanup marker", "08003");
     var statement =
         (Statement)
             Proxy.newProxyInstance(
@@ -103,7 +103,7 @@ class SessionResultOpeningTest {
                 (proxy, method, args) -> {
                   if (!method.getName().equals("close")) throw new AssertionError(method);
                   closed[0]++;
-                  return null;
+                  throw cleanup;
                 });
     var call =
         new Invocation(
@@ -112,10 +112,8 @@ class SessionResultOpeningTest {
             new Object[] {statement});
     assertSame(
         marker,
-        assertThrows(
-                InvocationTargetException.class,
-                () -> new SessionQueryInterceptor().intercept(call))
-            .getCause());
+        assertThrows(RuntimeException.class, () -> new SessionQueryInterceptor().intercept(call)));
+    assertSame(cleanup, marker.getSuppressed()[0]);
     assertEquals(1, handler.calls);
     assertEquals(1, closed[0]);
   }

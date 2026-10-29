@@ -81,8 +81,10 @@ public final class SessionQueryInterceptor implements Interceptor {
         context.remainingMillis();
         return results(invocation, context);
       } catch (Throwable failure) {
-        closeFailed(statement, failure);
-        throw failure;
+        // MyBatis后续会丢弃反射包装；清理cause必须挂在真正向外传播的原异常上。
+        Throwable primary = org.apache.ibatis.reflection.ExceptionUtil.unwrapThrowable(failure);
+        closeFailed(statement, primary);
+        throw primary;
       }
     }
     context.remainingMillis();

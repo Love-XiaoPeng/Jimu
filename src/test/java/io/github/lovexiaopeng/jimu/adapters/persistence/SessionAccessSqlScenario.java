@@ -6,7 +6,6 @@ import io.github.lovexiaopeng.jimu.adapters.runtime.model.ModelProfiles;
 import io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease;
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger.QueryResources;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
-import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
 import java.sql.SQLException;
 import java.util.List;
 import javax.sql.DataSource;
@@ -30,6 +29,12 @@ public final class SessionAccessSqlScenario {
     if (!value) throw new AssertionError(message);
     System.out.println("PASS " + message);
     System.out.flush();
+  }
+
+  private static boolean causedBy(Throwable failure, Throwable marker) {
+    for (Throwable current = failure; current != null; current = current.getCause())
+      if (current == marker) return true;
+    return false;
   }
 
   @Intercepts(
@@ -122,6 +127,7 @@ public final class SessionAccessSqlScenario {
                               lease.tenant(),
                               step.id())),
                   "natural storeResponse SQL executed " + mode);
+              var task = v.locked(lease.tenant(), lease.taskId());
               if (mode.equals("403"))
                 db.update(
                     "UPDATE actor_access SET enabled=FALSE WHERE tenant_id=? AND actor_id=?",
@@ -129,15 +135,17 @@ public final class SessionAccessSqlScenario {
                     lease.actor());
               else fault.mode = mode;
               try {
-                var redacted =
-                    v.get(new Tasks.Identity(lease.tenant(), lease.actor()), lease.taskId());
+                // 真实Service.visibleView捕获；不额外嵌套tx的出站健康检查遮住返回值。
+                var redacted = v.view(task);
                 check(
                     mode.equals("403")
                         && redacted.summary() == null
                         && redacted.artifacts().isEmpty(),
                     "Service caught actual protected 403 without leaking summary/artifacts");
               } catch (RuntimeException caught) {
-                check(!mode.equals("403"), "only non-redactable access fault escaped Service");
+                if (mode.equals("403"))
+                  throw new AssertionError("403 must be caught by visibleView", caught);
+                check(caught == q.recordedFailure(), "access caller sees first object " + mode);
               }
               original[0] = q.recordedFailure();
               check(original[0] != null, "natural access failure registered " + mode);
@@ -146,11 +154,11 @@ public final class SessionAccessSqlScenario {
                     ((TaskFailure) original[0]).status() == 403,
                     "protected actor denial retains original 403");
               else {
-                check(original[0] == fault.marker, "original injected access object " + mode);
+                check(
+                    causedBy(original[0], fault.marker), "original access cause retained " + mode);
                 if (mode.equals("sql"))
                   check(
-                      original[0].getCause() == fault.sql
-                          && "42S02".equals(fault.sql.getSQLState()),
+                      causedBy(original[0], fault.sql) && "42S02".equals(fault.sql.getSQLState()),
                       "actual MySQL cause and SQLState");
               }
               q.restrictDeadline(System.nanoTime() - 1);
