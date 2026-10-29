@@ -38,6 +38,8 @@ import org.apache.ibatis.plugin.Signature;
       args = {MappedStatement.class, Object.class})
 })
 final class SessionHistoryObservation implements Interceptor {
+  // 独立test-only副本只保存本批观察；事务返回后输出，不在原2秒内同步打印。
+  private static final List<Map<String, Object>> EVENTS = new java.util.ArrayList<>();
   private static final ObjectMapper JSON =
       new ObjectMapper()
           .registerModule(
@@ -92,16 +94,21 @@ final class SessionHistoryObservation implements Interceptor {
     event.put("before", query.resources());
     event.put("beforeGroups", query.groups());
     event.put("beforeLive", query.scratchLive());
-    event.put(
-        "caller",
-        java.util.Arrays.stream(new Exception().getStackTrace())
-            .filter(frame -> frame.getClassName().startsWith("io.github.lovexiaopeng.jimu"))
-            .map(Object::toString)
-            .toList());
+    if (history)
+      event.put(
+          "caller",
+          java.util.Arrays.stream(new Exception().getStackTrace())
+              .filter(frame -> frame.getClassName().startsWith("io.github.lovexiaopeng.jimu"))
+              .map(Object::toString)
+              .toList());
     try {
       Object result = invocation.proceed();
       if ((history || size) && result instanceof List<?> rows) {
-        event.put("rows", rows);
+        event.put(
+            "rows",
+            rows.stream()
+                .map(row -> row instanceof Map<?, ?> map ? new LinkedHashMap<>(map) : row)
+                .toList());
         if (history && !rows.isEmpty() && rows.getFirst() instanceof Map<?, ?> row) {
           Object binding = row.get("binding_snapshot");
           event.put("bindingUtf16", binding instanceof String text ? text.length() : null);
@@ -122,13 +129,14 @@ final class SessionHistoryObservation implements Interceptor {
       event.put("afterGroups", query.groups());
       event.put("afterLive", query.scratchLive());
       event.put("peak", query.scratchPeak());
-      System.out.println("HISTORY_OBSERVATION " + json(event));
-      System.out.flush();
-      event.clear();
+      EVENTS.add(event);
     }
   }
 
   static void snapshot(org.springframework.jdbc.core.JdbcTemplate db, String label) {
+    for (var event : EVENTS) System.out.println("HISTORY_OBSERVATION " + json(event));
+    EVENTS.clear();
+    System.out.flush();
     var names =
         List.of(
             "task",

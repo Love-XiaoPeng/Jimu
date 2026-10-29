@@ -447,10 +447,11 @@ public final class SessionJointProjectionScenario {
         fields.put("history_session_ids", List.copyOf(nodes));
         if (!nodes.isEmpty()) fields.put("parent_session_id", nodes.getLast());
         byte[] raw = Payloads.json(fields).getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        var v = view();
-        var q = v.queryContext();
         var beforeAdmission = SessionDependencyScenario.snapshot(db);
         if (observe) SessionHistoryObservation.snapshot(db, "before-submit-" + i);
+        // 22表独立baseline先于请求；从这里起同一个2秒query贯穿准入、终算和wire。
+        var v = view();
+        var q = v.queryContext();
         try {
           if (args.length > 1 && args[1].endsWith("-owned")) {
             var response = new io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse();
