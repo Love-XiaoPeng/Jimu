@@ -19,10 +19,9 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
   private Iterator<Map<String, Object>> source;
   private Map<String, Object> current;
   private Object[] slots;
-  private boolean[] present;
   private final Object slotsOwner = new Object();
   private boolean closed, iterated, delivered, ended;
-  private int count, generation;
+  private int count, generation, valueCount;
 
   SessionCursorMetadataBatch(
       SessionQueryContext query,
@@ -80,7 +79,6 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     if (delivered) {
       current = null;
       slots = null;
-      present = null;
       generation++;
       delivered = false;
     }
@@ -109,22 +107,24 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     // 不再另建keySet视图、遍历行键及逐键hash/比较，不缓存值或省略原类型检查。
     SessionMetadataScalars.operation(query, 1); // 局部计数器初始化。
     int recognized = 0;
-    SessionMetadataScalars.operation(query, 2L + 2L * projection.columns.size());
+    // 仅保留紧凑数组；缺失nullable列不进入逻辑前缀，显式NULL仍占位。
+    // 分配前预付数组创建、字段写入与清零，原slotsOwner预留不缩减。
+    SessionMetadataScalars.operation(query, 2L + projection.columns.size());
     slots = new Object[projection.columns.size()];
-    present = new boolean[projection.columns.size()];
-    int slot = 0;
     for (var column : projection.columns) {
       SessionMetadataScalars.operation(query, 1);
       var value = current.get(column.name());
-      SessionMetadataScalars.operation(query, 3); // 两次数组写入及索引前移。
-      int index = slot++;
+      // 保留原3项预付：局部索引、数组值写入与局部presence写入。
+      SessionMetadataScalars.operation(query, 3);
+      int index = recognized;
       slots[index] = value;
+      boolean present;
       if (value == null) {
         SessionMetadataScalars.operation(query, 2L + column.name().length());
-        present[index] = current.containsKey(column.name());
-      } else present[index] = true;
-      SessionMetadataScalars.operation(query, 3); // presence读取、分支及最多一次计数推进。
-      if (present[index]) recognized++;
+        present = current.containsKey(column.name());
+      } else present = true;
+      SessionMetadataScalars.operation(query, 3); // 保留presence读取、分支及至多一次计数推进。
+      if (present) recognized++;
       if (value == null) {
         if (!column.nullable()) throw JdbcSessionRecords.corrupt();
         continue;
@@ -141,8 +141,9 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
           };
       if (!valid) throw JdbcSessionRecords.corrupt();
     }
-    SessionMetadataScalars.operation(query, 4); // Map大小读取、比较、分支/返回交接。
+    SessionMetadataScalars.operation(query, 5); // 集合大小校验及新增valueCount字段写入均先付费。
     if (recognized != current.size()) throw JdbcSessionRecords.corrupt();
+    valueCount = recognized;
   }
 
   private boolean sizedLength(SessionMetadataProjection.Column column, Object value, int index) {
@@ -228,13 +229,8 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
             public boolean hasNext() {
               try {
                 valid();
-                while (index < projection.columns.size()) {
-                  SessionMetadataScalars.operation(query, 2); // 边界与presence读取。
-                  if (present[index]) return true;
-                  index++;
-                }
-                SessionMetadataScalars.operation(query, 1);
-                return false;
+                SessionMetadataScalars.operation(query, 1); // 只比较紧凑前缀边界，每次仍先valid。
+                return index < valueCount;
               } catch (RuntimeException | Error failure) {
                 fail(failure);
                 throw failure;
@@ -274,7 +270,6 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     closed = true;
     current = null;
     slots = null;
-    present = null;
     source = null;
     var prior = cursor;
     cursor = null;

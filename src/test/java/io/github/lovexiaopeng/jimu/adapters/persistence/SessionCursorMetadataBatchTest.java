@@ -139,7 +139,7 @@ class SessionCursorMetadataBatchTest {
       }
       assertFalse(iterator.hasNext());
       batch.close();
-      for (String name : List.of("current", "slots", "present", "source", "cursor")) {
+      for (String name : List.of("current", "slots", "source", "cursor")) {
         var field = SessionCursorMetadataBatch.class.getDeclaredField(name);
         field.setAccessible(true);
         org.junit.jupiter.api.Assertions.assertNull(field.get(batch), name);
