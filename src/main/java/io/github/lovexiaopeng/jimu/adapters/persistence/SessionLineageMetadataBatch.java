@@ -45,18 +45,26 @@ final class SessionLineageMetadataBatch implements SessionMetadataAccounting.Bat
                 default -> 0;
               };
           if (query != null) query.operation(1);
-          if (max == 0
-              ? !(value instanceof Integer)
-              : !(value instanceof String s)
-                  || s.length() > 2 * max
-                  || s.codePointCount(0, s.length()) > max) throw JdbcSessionRecords.corrupt();
-          if (query != null && value instanceof String text) query.operation(text.length());
+          if (max == 0 ? !(value instanceof Integer) : !bounded(value, max))
+            throw JdbcSessionRecords.corrupt();
         }
       }
     } catch (RuntimeException | Error failure) {
       close();
       throw failure;
     }
+  }
+
+  private boolean bounded(Object value, int points) {
+    if (!(value instanceof String text)) return false;
+    // 先付getter、局部存储、两次长度比较与分支/返回或fallback交接的7操作。
+    // UTF16长度不超过码点上限已充分；仅较宽字符串仍预付后扫描，不缓存内容。
+    if (query != null) query.operation(7);
+    int units = text.length();
+    if (units > 2 * points) return false;
+    if (units <= points) return true;
+    if (query != null) query.operation(units);
+    return text.codePointCount(0, units) <= points;
   }
 
   private void open() {
