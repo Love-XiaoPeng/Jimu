@@ -105,10 +105,10 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
   }
 
   private void validate() {
-    for (var key : current.keySet()) {
-      SessionMetadataScalars.operation(query, 1L + 2L * key.length());
-      if (!projection.names.contains(key)) throw JdbcSessionRecords.corrupt();
-    }
+    // 原逐列读取已区分缺列/显式NULL；计数准确已知键，再比较Map大小即可拒绝所有多列。
+    // 不再另建keySet视图、遍历行键及逐键hash/比较，不缓存值或省略原类型检查。
+    SessionMetadataScalars.operation(query, 1); // 局部计数器初始化。
+    int recognized = 0;
     SessionMetadataScalars.operation(query, 2L + 2L * projection.columns.size());
     slots = new Object[projection.columns.size()];
     present = new boolean[projection.columns.size()];
@@ -123,6 +123,8 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
         SessionMetadataScalars.operation(query, 2L + column.name().length());
         present[index] = current.containsKey(column.name());
       } else present[index] = true;
+      SessionMetadataScalars.operation(query, 3); // presence读取、分支及最多一次计数推进。
+      if (present[index]) recognized++;
       if (value == null) {
         if (!column.nullable()) throw JdbcSessionRecords.corrupt();
         continue;
@@ -139,6 +141,8 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
           };
       if (!valid) throw JdbcSessionRecords.corrupt();
     }
+    SessionMetadataScalars.operation(query, 4); // Map大小读取、比较、分支/返回交接。
+    if (recognized != current.size()) throw JdbcSessionRecords.corrupt();
   }
 
   private boolean sizedLength(SessionMetadataProjection.Column column, Object value, int index) {

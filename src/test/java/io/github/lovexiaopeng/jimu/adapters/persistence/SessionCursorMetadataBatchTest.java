@@ -22,6 +22,100 @@ import org.junit.jupiter.api.Test;
 
 class SessionCursorMetadataBatchTest {
   @Test
+  void exactMembershipNeedsNoSecondTraversalOfDriverLabels() {
+    var p = SessionMetadataProjection.forTable(Table.TASK_ATTEMPT);
+    var traversals = new java.util.concurrent.atomic.AtomicInteger();
+    var values =
+        new LinkedHashMap<String, Object>(row(p)) {
+          @Override
+          public java.util.Set<String> keySet() {
+            traversals.incrementAndGet();
+            return super.keySet();
+          }
+        };
+    var q = query();
+    try (var batch = new SessionCursorMetadataBatch(q, p, () -> new Rows(List.of(values)))) {
+      batch.iterator().next();
+      System.out.println(
+          "CURSOR_MEMBERSHIP operations="
+              + q.resources().operations()
+              + " labelTraversals="
+              + traversals.get());
+      assertEquals(0, traversals.get());
+    }
+    assertEquals(65536, q.scratchLive());
+  }
+
+  @Test
+  void exactMembershipRejectsExtraKeysEvenWhenReplacingNullableMissingColumns() {
+    int checked = 0;
+    for (var table : Table.values()) {
+      var p = SessionMetadataProjection.forTable(table);
+      if (p == null) continue;
+      assertEquals(p.columns.size(), p.names.size());
+      for (String mode : List.of("extra", "missing", "nullable-substitution", "wrong-type")) {
+        var values = row(p);
+        switch (mode) {
+          case "extra" -> values.put("unknown_column", "x");
+          case "missing" ->
+              values.remove(
+                  p.columns.stream().filter(c -> !c.nullable()).findFirst().orElseThrow().name());
+          case "nullable-substitution" -> {
+            var nullable =
+                p.columns.stream().filter(SessionMetadataProjection.Column::nullable).findFirst();
+            if (nullable.isEmpty()) continue;
+            int size = values.size();
+            values.remove(nullable.get().name());
+            values.put("unknown_column", null);
+            assertEquals(size, values.size());
+          }
+          case "wrong-type" -> values.put("tenant_id", 1);
+          default -> throw new AssertionError();
+        }
+        var q = query();
+        var cursor = new Rows(List.of(values));
+        try (var batch = new SessionCursorMetadataBatch(q, p, () -> cursor)) {
+          assertThrows(TaskFailure.class, () -> batch.iterator().hasNext(), table + " " + mode);
+        }
+        assertTrue(cursor.closed);
+        assertEquals(65536, q.scratchLive());
+        checked++;
+      }
+    }
+    assertTrue(checked >= 45);
+    System.out.println("CURSOR_MEMBERSHIP malformedSamples=" + checked);
+  }
+
+  @Test
+  void membershipBudgetBoundaryPreservesFirstFailureAndReleasesExactlyItsOwners() {
+    var p = SessionMetadataProjection.forTable(Table.TASK_ATTEMPT);
+    var baseline = query();
+    try (var batch = new SessionCursorMetadataBatch(baseline, p, () -> new Rows(List.of(row(p))))) {
+      batch.iterator().next();
+    }
+    long cost = baseline.resources().operations();
+    for (long free : new long[] {cost - 1, cost, cost + 1}) {
+      var q = query();
+      q.operation(65536 - free);
+      Object unrelated = new Object();
+      q.retainScratch(unrelated, 100);
+      var cursor = new Rows(List.of(row(p)));
+      try (var batch = new SessionCursorMetadataBatch(q, p, () -> cursor)) {
+        if (free < cost) {
+          var first = assertThrows(TaskFailure.class, () -> batch.iterator().next());
+          org.junit.jupiter.api.Assertions.assertSame(first, q.recordedFailure());
+          org.junit.jupiter.api.Assertions.assertSame(
+              first, assertThrows(TaskFailure.class, () -> q.operation(1)));
+        } else batch.iterator().next();
+      }
+      assertTrue(cursor.closed);
+      assertEquals(65636, q.scratchLive());
+      q.releaseScratch(unrelated);
+      assertEquals(65536, q.scratchLive());
+    }
+  }
+
+  @Test
   void borrowedValuesPreserveNullPresenceAcrossRowsAndDropAllOwnedReferences() throws Exception {
     for (var table : Table.values()) {
       var p = SessionMetadataProjection.forTable(table);
