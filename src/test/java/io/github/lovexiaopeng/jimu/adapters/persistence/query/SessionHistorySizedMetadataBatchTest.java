@@ -391,6 +391,37 @@ public class SessionHistorySizedMetadataBatchTest {
   }
 
   @Test
+  void valuesNextPaysOneGuardAndCaughtClosedAttemptStillRollsBack() throws Exception {
+    var f = new Fixture();
+    var q = q();
+    var c = config(f, xml());
+    var failure =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                owned(
+                    f,
+                    q,
+                    () -> {
+                      try (var batch =
+                          SessionHistorySizedMetadataBatch.load(
+                              session(f, q, c, List.of(row(2174))), q, TENANT, TASK)) {
+                        var values = batch.iterator().next().values().iterator();
+                        long before = q.resources().operations();
+                        assertEquals(TENANT, values.next());
+                        assertEquals(62, q.resources().operations() - before);
+                        batch.close();
+                        assertThrows(RuntimeException.class, values::next);
+                        return "caught";
+                      }
+                    }));
+    assertSame(q.recordedFailure(), failure);
+    assertEquals(0, f.base.commits);
+    assertEquals(1, f.base.rollbacks);
+    assertEquals(65536, q.scratchLive());
+  }
+
+  @Test
   void localCostAndOperationThreshold() throws Exception {
     var f = new Fixture();
     var q = q();

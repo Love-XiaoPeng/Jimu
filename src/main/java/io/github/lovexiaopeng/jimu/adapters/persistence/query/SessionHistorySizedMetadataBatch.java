@@ -336,7 +336,10 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
 
             public Object next() {
               if (!hasNext()) throw new NoSuchElementException();
-              return value(COLUMNS.get(column++));
+              // hasNext刚核实际Work/连接/截止；其后仅私有列和已持有Map的读取，无回调。
+              // 直接读取避免同一次next再经公开value重复身份查找，独立value入口仍核验。
+              if (query != null) query.operation(1);
+              return rows.get(index).get(COLUMNS.get(column++));
             }
           };
     }

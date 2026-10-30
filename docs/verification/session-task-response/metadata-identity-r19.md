@@ -13,3 +13,12 @@ head/count及next/previous/thread由同一类monitor保护；挂起摘链，恢�
 metadata局部5528，scalar仍2295；比5714少186，但仍比原raw4777多751。history/event含安装为2134/1381，各自N−1拒绝、N和N+1通过。不能据局部净减推真实SQL或响应通过；真实私库探针须另绑定准确commit/tree/JAR。
 
 其他current/currentOwner/connection及execute同步器快照仍保留。完整A12仍缺通用计量容器/ThreadLocal基础设施、JVM/native/socket、外部facade持有脱离rows的query/Work及fallback key先new后retain等账。14列/原WHERE/时机/两values循环、动态权限live/fence、独立raw reader-digest-schema、日期/字符串及四raw驻留与第五回退均保留。256 ResultSets、2秒、1MiB、65536不变；不是稳定候选、正式独审QA、A03、九节点、M2或网络ACK验收。
+
+
+## 真实拒绝后删除内部重复查找
+
+351ff0b两批仍在首submit拒绝（second65536+1→65537，response65511+64→65575），各22表回滚；这些只说明首拒位置，不能估作总缺口。原始PHASE、OP_ACCOUNT、制品与cleanup另保留，各少于180秒，不借旧finish/wire。
+
+随后在生产values迭代器next实际删除一次内部value(name)调用。next内部hasNext已经执行open，核Work/query/token、事务/holder/物理连接和原绝对截止；其后只有私有列List、已持有MyBatis结果Map和primitive索引读取，中间没有外部provider或应用回调。直接从rows.get(index)按固定列取值，仍付原1操作；独立公开value(name)、每次外部hasNext/next/scalar及closed/foreign入口全部保留原检查。不能把外部hasNext的旧结果缓存到下一次next。
+
+a1/r1/p0局部单次next从123变62，只删除实际内部重复的61；完整样本5528→4674，scalar2295不变。原4777对新4674差103仅属于这个样本；生产两values循环、14列投影及全部动态值不删。新增回归同时检查next费用、closed next被catch后首错和整事务回滚；10个原metadata方法及8个生命周期方法按影响复验，19项通过。新的真实SQL与响应仍需按新commit/tree/JAR分别判断。
