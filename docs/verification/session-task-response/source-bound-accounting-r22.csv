@@ -1,0 +1,7 @@
+action,before,additional_fee,prepay_point,details
+source_count,deleted absent tail source visits,8,before reading final first/second and local init,owner condition1; field reads2; null tests2; selections2; int init1
+bounded_key_call,old key call replaced one-for-one,2 per invoked key,before additional int argument handoff,new payer condition1; new int handoff1; no extra frame/varargs array
+actual_value,unchanged1 per Fields.value,unchanged,before actual source read,all real Map and MetaObject sources read again
+string_compare,unchanged maximum lengths,unchanged,before original equals,no hash shortcut or skipped conflicts
+supplied,unchanged three-source original scan,unchanged,original point,retain even where return does not change
+observed_and_relation_keys,unchanged original key and Fields,0 new,original points,avoid charging source-bound specialization to short aliases
