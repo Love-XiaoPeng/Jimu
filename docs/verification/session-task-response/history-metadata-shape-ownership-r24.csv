@@ -1,0 +1,7 @@
+id,holder,acquisition,new_storage,lifetime,release_or_failure
+O01,BOOTSTRAP,original before batch constructor,unchanged original267596+8192+64,construction to receiver handoff,original finally release; no candidate changes
+O02,batch,original267596+8192 retained before read,unchanged full two-TEXT bound plus existing8192,all original rows and private length marker through close,rows=null then releaseScratch; original Error/runtime fail path preserved
+O03,Result,cursor separately retained by original query meter,unchanged,provider result and normal metered traversal,original close not changed
+O04,row and static column list/cleanup_receipt literal,borrow from existing batch and class storage,none new,private read method only,no new reference field; candidate removes keySet iterator and key local
+O05,expectedColumns,after prepaid45,primitive int only,method local,no heap owner or refund needed
+O06,failed shape,already retained batch and marker,existing owners cover prior construction,until fail closes batch,first error recorded; no returned receiver; current Work still refuses commit

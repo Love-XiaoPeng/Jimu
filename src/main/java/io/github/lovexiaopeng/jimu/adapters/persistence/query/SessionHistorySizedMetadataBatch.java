@@ -198,33 +198,6 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
     for (var row : rows) {
       ops(query, 3L + tenant.length() + task.length());
       if (!tenant.equals(row.get("tenant_id")) || !task.equals(row.get("task_id"))) throw corrupt();
-      for (String key : row.keySet()) {
-        // Delete repeated List.contains scans. Frozen labels have distinct String hash codes.
-        // Pay getter/store, then full uncached hash + full equality + fixed dispatch.
-        ops(query, 2);
-        int units = key.length();
-        ops(query, 8L + 2L * units);
-        boolean known =
-            switch (key) {
-              case "tenant_id",
-                      "task_id",
-                      "record_version",
-                      "history_version",
-                      "binding_snapshot",
-                      "binding_digest",
-                      "content_state",
-                      "next_seq",
-                      "body_bytes",
-                      "metadata_bytes",
-                      "reserved_bytes",
-                      "held_bytes",
-                      "retain_until",
-                      "cleanup_receipt" ->
-                  true;
-              default -> false;
-            };
-        if (!known) throw corrupt();
-      }
       for (int i = 0; i < COLUMNS.size(); i++) {
         ops(query, 4); // column read/Map lookup/local/index step.
         Object value = row.get(COLUMNS.get(i));
@@ -256,6 +229,14 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
         }
         if (!valid) throw corrupt();
       }
+      // The thirteen required columns above are non-null. Only cleanup_receipt may be absent
+      // (MyBatis callSettersOnNulls=false) or explicitly null. One fresh presence read plus
+      // exact Map size therefore rejects every extra key without another keySet/hash loop.
+      // Full optional-key lookup 8+2L, plus presence/size/selector/local/branch work 7, prepaid.
+      ops(query, 15L + 2L * "cleanup_receipt".length());
+      int expectedColumns =
+          row.containsKey("cleanup_receipt") ? COLUMNS.size() : COLUMNS.size() - 1;
+      if (row.size() != expectedColumns) throw corrupt();
     }
   }
 
