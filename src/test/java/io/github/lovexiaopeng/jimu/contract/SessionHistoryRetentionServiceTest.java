@@ -75,6 +75,8 @@ class SessionHistoryRetentionServiceTest {
               getClass().getClassLoader(),
               new Class<?>[] {LockedHistory.class},
               (p, m, a) -> {
+                if (m.getName().equals("matchesSnapshot"))
+                  return java.lang.reflect.InvocationHandler.invokeDefault(p, m, a);
                 String name = m.getName();
                 if (name.equals("lineageMetadataBytes")) return 0L;
                 calls.add(name);

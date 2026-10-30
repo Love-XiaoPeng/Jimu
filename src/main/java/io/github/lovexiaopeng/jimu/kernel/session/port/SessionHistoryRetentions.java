@@ -59,6 +59,11 @@ public interface SessionHistoryRetentions {
 
     String expectedBinding();
 
+    /** Validate actual storage bytes without replacing the SQL source. */
+    default boolean matchesSnapshot(String actual) {
+      return expectedBinding().equals(actual);
+    }
+
     boolean scoped();
 
     boolean searchable();

@@ -35,6 +35,7 @@ public final class SessionContracts {
   private final String schema, description, binding;
   private final ToolDescriptor descriptor;
   private final int version;
+  private final HistoryPolicyCodec historyPolicy;
 
   private static JsonMapper mapper(int depth) {
     return JsonMapper.builder(
@@ -102,6 +103,7 @@ public final class SessionContracts {
       if (!Payloads.hash(catalogBytes).equals(template.path("catalogDigest").asText()))
         throw new IllegalArgumentException("Session catalog pin");
       binding = Payloads.json(template);
+      historyPolicy = version == 5 ? new HistoryPolicyCodec(this) : null;
       schema = new String(in, StandardCharsets.UTF_8);
       descriptor =
           new ToolDescriptor(
@@ -150,6 +152,17 @@ public final class SessionContracts {
 
   public String binding() {
     return binding;
+  }
+
+  /** Database representation only; binding() remains the exact full logical policy. */
+  public String historySnapshot(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    return historyPolicy == null ? binding : historyPolicy.wire(query);
+  }
+
+  public boolean historySnapshotMatches(
+      String raw, io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    return historyPolicy == null ? binding.equals(raw) : historyPolicy.matches(raw, query);
   }
 
   public static int bytes(String value) {

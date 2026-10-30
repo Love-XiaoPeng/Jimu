@@ -36,7 +36,7 @@ final class MapperSessionHistoryStorage
         .create(
             records.appendQuery(),
             version,
-            binding.snapshot(),
+            records.contract(task).historySnapshot(records.appendQuery()),
             digest,
             binding.tenant(),
             binding.task());

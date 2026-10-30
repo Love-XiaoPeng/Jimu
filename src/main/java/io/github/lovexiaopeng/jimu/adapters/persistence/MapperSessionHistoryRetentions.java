@@ -208,6 +208,10 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
         return ledger.sessions.contract(task).binding();
       }
 
+      public boolean matchesSnapshot(String actual) {
+        return ledger.sessions.contract(task).historySnapshotMatches(actual, ledger.queryContext());
+      }
+
       public boolean scoped() {
         return JdbcSessionScopes.task(task);
       }

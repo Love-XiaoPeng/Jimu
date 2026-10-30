@@ -34,7 +34,7 @@ public final class SessionHistoryRetentionServiceImpl implements SessionHistoryR
     var h = task.history();
     if (h.recordVersion() != 1
         || h.version() != task.expectedVersion()
-        || !task.expectedBinding().equals(h.binding())
+        || !task.matchesSnapshot(h.binding())
         || !digest.hash(task.expectedBinding()).equals(h.digest()))
       throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_VERSION_UNSUPPORTED);
     return h;

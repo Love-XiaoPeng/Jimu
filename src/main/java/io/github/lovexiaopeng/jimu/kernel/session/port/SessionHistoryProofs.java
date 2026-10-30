@@ -19,6 +19,11 @@ public interface SessionHistoryProofs {
 
     String hash(String raw);
 
+    /** Validate the real SQL snapshot representation; does not grant freshness or authority. */
+    default boolean matchesSnapshot(String actual) {
+      return matches(binding(), actual);
+    }
+
     default boolean matches(String expected, String actual) {
       return expected.equals(actual);
     }

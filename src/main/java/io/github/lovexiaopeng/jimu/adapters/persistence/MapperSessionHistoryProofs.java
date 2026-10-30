@@ -74,6 +74,12 @@ final class MapperSessionHistoryProofs
     return query.primitive("history.compare", expected.length(), () -> expected.equals(actual));
   }
 
+  public boolean matchesSnapshot(String actual) {
+    return records.version(task) == 5
+        ? records.contract(task).historySnapshotMatches(actual, records.appendQuery())
+        : SessionHistoryProofs.History.super.matchesSnapshot(actual);
+  }
+
   public String binding() {
     return records.contract(task).binding();
   }
