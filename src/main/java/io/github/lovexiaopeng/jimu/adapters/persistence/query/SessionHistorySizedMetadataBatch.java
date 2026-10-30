@@ -262,7 +262,7 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
   private void open() {
     SessionQueryWork current = null;
     try {
-      current = SessionQueryTransaction.metadataOwner();
+      current = SessionQueryTransaction.metadataOwner(query);
       if (closed || current != owner || !owner.owns(query)) {
         // A closed receiver no longer owns storage. The actual Work's retained rejection is
         // used on that path; no exception/collection is allocated on repeated stale access.

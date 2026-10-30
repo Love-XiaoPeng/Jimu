@@ -23,6 +23,11 @@ public final class SessionQueryTransaction {
   private static final org.slf4j.Logger LOG =
       org.slf4j.LoggerFactory.getLogger(SessionQueryTransaction.class);
   static final long METADATA_BINDING_BYTES = 4096;
+  // 只登记已安装且未挂起的真实Settings；同一monitor保护节点与人口。
+  // 不增加ThreadLocal、Spring资源key、Map或独立节点，也不缓存权限。
+  private static ConnectionSettings metadataHead;
+  private static int metadataCount;
+  private static final Object METADATA_BOOTSTRAP = new Object();
   private final DataSourceTransactionManager manager;
   private final JdbcTemplate db;
 
@@ -72,32 +77,64 @@ public final class SessionQueryTransaction {
     return null;
   }
 
-  // A private Spring resource identifies only the actual, unsuspended transaction.
-  // Unlike getSynchronizations(), getResource() creates no collection snapshot.
-  // No caller supplied query, authority, rows or ancestor ThreadLocal is used as a key.
-  static SessionQueryWork metadataOwner() {
-    Object resource = TransactionSynchronizationManager.getResource(ConnectionSettings.class);
-    if (!(resource instanceof ConnectionSettings settings)) return null;
-    // In an active owned transaction its Spring resource Map already exists. Recover the
-    // payer before later provider calls; return its identity solely for failure latching.
+  // receiver只支付发现费用，身份来自当前线程的真实Settings。
+  // 失败后只允许发现当前Work并登记失效，不能恢复证明或业务权限。
+  static SessionQueryWork metadataOwner(SessionQueryContext payer) {
+    ConnectionSettings found = null;
+    RuntimeException refusal = null;
+    Error fatal = null;
+    synchronized (SessionQueryTransaction.class) {
+      try {
+        payer.rejectedOperation(12L + 3L * metadataCount);
+      } catch (RuntimeException failure) {
+        refusal = failure;
+      } catch (Error failure) {
+        fatal = failure;
+      }
+      Thread thread = Thread.currentThread();
+      for (ConnectionSettings node = metadataHead; node != null; node = node.metadataNext) {
+        if (node.metadataThread == thread) {
+          found = node;
+          break;
+        }
+      }
+    }
+    if (fatal != null) {
+      if (found != null) found.work.recordMetadataError(fatal);
+      throw fatal;
+    }
+    if (refusal == null) refusal = payer.recordedFailure();
+    if (refusal != null) {
+      if (found != null) {
+        if (found.context != payer) {
+          try {
+            found.context.rejectedOperation(8);
+          } catch (RuntimeException costFailure) {
+            found.work.recordMetadataFailure(costFailure);
+          }
+        }
+        found.work.recordMetadataFailure(refusal);
+      }
+      throw refusal;
+    }
+    if (found == null) return null; // no Spring/JDK ThreadLocal.get on this path
     try {
-      settings.context.rejectedOperation(64);
-      if (!settings.metadataBound
-          || !settings.work.metadataIdentity(settings.context, settings.metadataToken)
+      found.context.rejectedOperation(24);
+      if (found.context.recordedFailure() != null) return found.work;
+      if (!found.metadataBound
+          || !found.work.metadataIdentity(found.context, found.metadataToken)
           || !TransactionSynchronizationManager.isSynchronizationActive()
           || !TransactionSynchronizationManager.isActualTransactionActive()
-          || TransactionSynchronizationManager.getResource(settings.source) != settings.holder
-          || org.springframework.jdbc.datasource.DataSourceUtils.getTargetConnection(
-                  settings.holder.getConnection())
-              != settings.physicalConnection)
-        settings.work.recordMetadataFailure(settings.metadataFailure);
+          || found.metadataHolder() != found.holder
+          || found.physical(found.holder.getConnection()) != found.physicalConnection)
+        found.work.recordMetadataFailure(found.metadataFailure);
     } catch (RuntimeException failure) {
-      settings.work.recordMetadataFailure(failure);
+      found.work.recordMetadataFailure(failure);
     } catch (Error failure) {
-      settings.work.recordMetadataError(failure);
+      found.work.recordMetadataError(failure);
       throw failure;
     }
-    return settings.work;
+    return found.work;
   }
 
   private <T> T execute(SessionQueryContext context, Supplier<T> work, int propagation) {
@@ -139,10 +176,27 @@ public final class SessionQueryTransaction {
                         receipt.connection = System.identityHashCode(connection);
                         receipt.phase = Phase.CONNECTION_SETUP;
                         receipt.completion = Completion.UNKNOWN;
-                        var settings =
-                            new ConnectionSettings(
-                                context, connection, owner, receipt, db.getDataSource());
-                        TransactionSynchronizationManager.registerSynchronization(settings);
+                        // Reserve the Settings object itself BEFORE its constructor/field keys.
+                        ConnectionSettings settings = null;
+                        try {
+                          context.operation(12);
+                          context.retainScratch(METADATA_BOOTSTRAP, METADATA_BINDING_BYTES + 64);
+                          try {
+                            settings =
+                                new ConnectionSettings(
+                                    context, connection, owner, receipt, db.getDataSource());
+                            context.retainScratch(METADATA_BOOTSTRAP, 64);
+                            context.retainScratch(settings, METADATA_BINDING_BYTES);
+                            settings.metadataRetained = true;
+                          } finally {
+                            context.releaseScratch(METADATA_BOOTSTRAP);
+                          }
+                          TransactionSynchronizationManager.registerSynchronization(settings);
+                        } catch (RuntimeException | Error failure) {
+                          if (settings != null) settings.releaseMetadata();
+                          owner.complete();
+                          throw failure;
+                        }
                         try {
                           settings.installMetadata();
                           settings.priorNetwork = connection.getNetworkTimeout();
@@ -291,48 +345,112 @@ public final class SessionQueryTransaction {
       this.source = source;
     }
 
+    private ConnectionSettings metadataNext, metadataPrevious;
+    private Thread metadataThread;
+    private final Object metadataViewScratch = new Object();
+
+    private java.sql.Connection physical(java.sql.Connection connection) {
+      // Each additional proxy edge pays before the provider call; no arbitrary wrapper bound.
+      while (connection instanceof org.springframework.jdbc.datasource.ConnectionProxy proxy) {
+        context.operation(4);
+        connection = proxy.getTargetConnection();
+      }
+      context.operation(2);
+      return connection;
+    }
+
+    private Object metadataHolder() {
+      // Spring7.0.9 getResourceMap is an unmodifiable VIEW, not a map copy.
+      // Its wrapper is held before construction. Existing infrastructure map is borrowed.
+      context.operation(8);
+      context.retainScratch(metadataViewScratch, 64);
+      java.util.Map<Object, Object> view = null;
+      try {
+        view = TransactionSynchronizationManager.getResourceMap();
+        int count = view.size();
+        // HashMap one-bucket traversal is at most count nodes, including collisions.
+        // Source is the pinned actual DataSource. Preserve key unwrapping and void rejection,
+        // but do not call getResource: its void-holder cleanup can mutate/treeify the map.
+        context.operation(8L + 4L * count);
+        Object key =
+            org.springframework.transaction.support.TransactionSynchronizationUtils
+                .unwrapResourceIfNecessary(source);
+        Object value = view.get(key);
+        return value instanceof org.springframework.transaction.support.ResourceHolder h
+                && h.isVoid()
+            ? null
+            : value;
+      } finally {
+        view = null;
+        context.releaseScratch(metadataViewScratch);
+      }
+    }
+
     private void installMetadata() {
-      // New binding node/provider aliases and stackless rejection; reserve before allocation.
-      context.operation(96);
-      context.retainScratch(this, METADATA_BINDING_BYTES);
-      metadataRetained = true;
+      context.operation(64); // fields, retained stackless failure, install/detach/cleanup
       metadataFailure = new MetadataAccessFailure();
       metadataToken = work.token();
-      physicalConnection =
-          org.springframework.jdbc.datasource.DataSourceUtils.getTargetConnection(connection);
-      Object resource = TransactionSynchronizationManager.getResource(source);
+      physicalConnection = physical(connection);
+      Object resource = metadataHolder();
       if (!(resource instanceof org.springframework.jdbc.datasource.ConnectionHolder current)
-          || org.springframework.jdbc.datasource.DataSourceUtils.getTargetConnection(
-                  current.getConnection())
-              != physicalConnection
-          || TransactionSynchronizationManager.hasResource(ConnectionSettings.class))
+          || physical(current.getConnection()) != physicalConnection)
         throw work.recordMetadataFailure(metadataFailure);
       holder = current;
-      TransactionSynchronizationManager.bindResource(ConnectionSettings.class, this);
-      metadataBound = true;
+      attachMetadata();
+    }
+
+    private void attachMetadata() {
+      synchronized (SessionQueryTransaction.class) {
+        // Each install/resume pays the actual simultaneous roster population.
+        context.operation(12L + 3L * metadataCount);
+        Thread thread = Thread.currentThread();
+        for (ConnectionSettings node = metadataHead; node != null; node = node.metadataNext)
+          if (node.metadataThread == thread) throw work.recordMetadataFailure(metadataFailure);
+        metadataThread = thread;
+        metadataNext = metadataHead;
+        if (metadataNext != null) metadataNext.metadataPrevious = this;
+        metadataHead = this;
+        metadataCount++;
+        metadataBound = true;
+      }
     }
 
     @Override
     public void suspend() {
       if (!metadataBound) return;
-      // Pay every suspend/resume pair, not an unlimited construction-time allowance.
-      context.operation(64);
+      context.operation(16); // O(1) detach, independently paid on EVERY suspend
       detachMetadata();
     }
 
     @Override
     public void resume() {
-      if (!metadataRetained) return;
-      TransactionSynchronizationManager.bindResource(ConnectionSettings.class, this);
-      metadataBound = true;
+      if (metadataRetained) attachMetadata(); // own retained Settings/token, never ancestor copy
     }
 
     private void detachMetadata() {
-      if (!metadataBound) return;
-      // No second unbind or cleanup-time exception when an earlier fault removed the key.
-      if (TransactionSynchronizationManager.getResource(ConnectionSettings.class) == this)
-        TransactionSynchronizationManager.unbindResourceIfPossible(ConnectionSettings.class);
-      metadataBound = false;
+      synchronized (SessionQueryTransaction.class) {
+        if (!metadataBound) return;
+        if (metadataPrevious == null) metadataHead = metadataNext;
+        else metadataPrevious.metadataNext = metadataNext;
+        if (metadataNext != null) metadataNext.metadataPrevious = metadataPrevious;
+        metadataPrevious = null;
+        metadataNext = null;
+        metadataThread = null;
+        metadataCount--;
+        metadataBound = false;
+      }
+    }
+
+    private void releaseMetadata() {
+      detachMetadata();
+      holder = null;
+      physicalConnection = null;
+      metadataToken = null;
+      metadataFailure = null;
+      if (metadataRetained) {
+        metadataRetained = false;
+        context.releaseScratch(this);
+      }
     }
 
     @Override
@@ -354,16 +472,7 @@ public final class SessionQueryTransaction {
 
     @Override
     public void afterCompletion(int completion) {
-      // Unbind even on setup failure/rollback/unknown completion; never expose an ended owner.
-      detachMetadata();
-      holder = null;
-      physicalConnection = null;
-      metadataToken = null;
-      metadataFailure = null;
-      if (metadataRetained) {
-        metadataRetained = false;
-        context.releaseScratch(this);
-      }
+      releaseMetadata();
       work.complete();
       receipt.completion =
           switch (completion) {

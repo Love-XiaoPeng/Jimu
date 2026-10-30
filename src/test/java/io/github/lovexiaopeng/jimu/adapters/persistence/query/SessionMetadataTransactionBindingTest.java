@@ -41,18 +41,18 @@ class SessionMetadataTransactionBindingTest {
                 });
           int before = orderReads[0];
           long operations = q.resources().operations();
-          assertSame(actual, SessionQueryTransaction.metadataOwner());
-          assertEquals(64, q.resources().operations() - operations);
+          assertSame(actual, SessionQueryTransaction.metadataOwner(q));
+          assertEquals(61, q.resources().operations() - operations);
           assertEquals(before, orderReads[0], "lookup must not sort a synchronization snapshot");
           f.transaction.required(
               q,
               () -> {
-                assertSame(actual, SessionQueryTransaction.metadataOwner());
+                assertSame(actual, SessionQueryTransaction.metadataOwner(q));
                 return null;
               });
           return null;
         });
-    assertNull(SessionQueryTransaction.metadataOwner());
+    assertNull(SessionQueryTransaction.metadataOwner(q));
     assertEquals(1, f.commits);
     assertEquals(65536, q.scratchLive());
   }
@@ -66,25 +66,25 @@ class SessionMetadataTransactionBindingTest {
       f.transaction.required(
           outerQuery,
           () -> {
-            var outer = SessionQueryTransaction.metadataOwner();
+            var outer = SessionQueryTransaction.metadataOwner(outerQuery);
             var token = outer.token();
             long live = outerQuery.scratchLive();
             f.transaction.requiresNew(
                 innerQuery,
                 () -> {
-                  var inner = SessionQueryTransaction.metadataOwner();
+                  var inner = SessionQueryTransaction.metadataOwner(innerQuery);
                   assertNotSame(outer, inner);
                   assertNotSame(token, inner.token());
                   assertSame(inner, SessionQueryTransaction.current(innerQuery));
                   if (sameQuery) assertTrue(outerQuery.scratchLive() > live);
                   return null;
                 });
-            assertSame(outer, SessionQueryTransaction.metadataOwner());
+            assertSame(outer, SessionQueryTransaction.metadataOwner(outerQuery));
             assertSame(token, outer.token());
             assertEquals(live, outerQuery.scratchLive());
             return null;
           });
-      assertNull(SessionQueryTransaction.metadataOwner());
+      assertNull(SessionQueryTransaction.metadataOwner(outerQuery));
       assertEquals(2, f.commits);
       assertEquals(65536, outerQuery.scratchLive());
       assertEquals(65536, innerQuery.scratchLive());
@@ -98,7 +98,7 @@ class SessionMetadataTransactionBindingTest {
     f.transaction.required(
         outerQuery,
         () -> {
-          var outer = SessionQueryTransaction.metadataOwner();
+          var outer = SessionQueryTransaction.metadataOwner(outerQuery);
           f.setup = new SQLException("inner setup", "HY088");
           var innerQuery = query();
           assertThrows(
@@ -110,11 +110,11 @@ class SessionMetadataTransactionBindingTest {
                         throw new AssertionError("business must not run after setup failure");
                       }));
           f.setup = null;
-          assertSame(outer, SessionQueryTransaction.metadataOwner());
+          assertSame(outer, SessionQueryTransaction.metadataOwner(outerQuery));
           assertEquals(65536, innerQuery.scratchLive());
           return null;
         });
-    assertNull(SessionQueryTransaction.metadataOwner());
+    assertNull(SessionQueryTransaction.metadataOwner(outerQuery));
     assertEquals(1, f.commits);
     assertEquals(1, f.rollbacks);
   }
@@ -135,12 +135,12 @@ class SessionMetadataTransactionBindingTest {
                   () -> {
                     assertSame(
                         SessionQueryTransaction.current(q),
-                        SessionQueryTransaction.metadataOwner());
+                        SessionQueryTransaction.metadataOwner(q));
                     if (kind.equals("business") || kind.equals("rollback"))
                       throw new IllegalStateException("business");
                     return null;
                   }));
-      assertNull(SessionQueryTransaction.metadataOwner());
+      assertNull(SessionQueryTransaction.metadataOwner(q));
       assertEquals(65536, q.scratchLive());
       var next = query();
       f.setup = null;
@@ -150,10 +150,10 @@ class SessionMetadataTransactionBindingTest {
           next,
           () -> {
             assertSame(
-                SessionQueryTransaction.current(next), SessionQueryTransaction.metadataOwner());
+                SessionQueryTransaction.current(next), SessionQueryTransaction.metadataOwner(next));
             return null;
           });
-      assertNull(SessionQueryTransaction.metadataOwner());
+      assertNull(SessionQueryTransaction.metadataOwner(q));
       assertEquals(65536, next.scratchLive());
     }
   }
@@ -176,7 +176,7 @@ class SessionMetadataTransactionBindingTest {
                         TransactionSynchronizationManager.bindResource(
                             f.source,
                             new org.springframework.jdbc.datasource.ConnectionHolder(f.connection));
-                        assertSame(actual, SessionQueryTransaction.metadataOwner());
+                        assertSame(actual, SessionQueryTransaction.metadataOwner(q));
                         first[0] = q.recordedFailure();
                         assertTrue(first[0] != null);
                       } finally {
@@ -188,7 +188,9 @@ class SessionMetadataTransactionBindingTest {
     assertSame(first[0], failure);
     assertEquals(0, f.commits);
     assertEquals(1, f.rollbacks);
-    assertNull(SessionQueryTransaction.metadataOwner());
+    assertSame(
+        first[0],
+        assertThrows(RuntimeException.class, () -> SessionQueryTransaction.metadataOwner(q)));
     assertEquals(65536, q.scratchLive());
   }
 
@@ -215,7 +217,7 @@ class SessionMetadataTransactionBindingTest {
             f.transaction.required(
                 q,
                 () -> {
-                  var actual = SessionQueryTransaction.metadataOwner();
+                  var actual = SessionQueryTransaction.metadataOwner(q);
                   assertThrows(
                       IllegalStateException.class,
                       () ->
@@ -224,10 +226,10 @@ class SessionMetadataTransactionBindingTest {
                               () -> {
                                 throw new AssertionError("foreign query must not run");
                               }));
-                  assertSame(actual, SessionQueryTransaction.metadataOwner());
+                  assertSame(actual, SessionQueryTransaction.metadataOwner(q));
                   throw new IllegalStateException("rollback test");
                 }));
-    assertNull(SessionQueryTransaction.metadataOwner());
+    assertNull(SessionQueryTransaction.metadataOwner(q));
     assertEquals(0, f.commits);
   }
 }

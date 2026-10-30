@@ -18,7 +18,7 @@ public class SessionSqlLengthDispatchTest {
         });
     assertEquals(2, q.resources().reads());
     assertEquals(65536, q.scratchLive());
-    assertEquals(2114, q.resources().operations());
+    assertEquals(2134, q.resources().operations());
     System.out.println("DISPATCH_HISTORY total=" + q.resources().operations());
   }
 
@@ -40,13 +40,13 @@ public class SessionSqlLengthDispatchTest {
         });
     assertEquals(2, q.resources().reads());
     assertEquals(65536, q.scratchLive());
-    assertEquals(1361, q.resources().operations());
+    assertEquals(1381, q.resources().operations());
     System.out.println("DISPATCH_EVENT total=" + q.resources().operations());
   }
 
   @Test
   void historyThresholdIncludingTransactionBinding() throws Exception {
-    for (int remaining : new int[] {2113, 2114, 2115}) {
+    for (int remaining : new int[] {2133, 2134, 2135}) {
       var f = new SessionHistoryLengthTest.Fixture();
       var q =
           new io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext(
@@ -60,7 +60,7 @@ public class SessionSqlLengthDispatchTest {
       } catch (RuntimeException e) {
         thrown = e;
       }
-      assertEquals(remaining < 2114, thrown != null);
+      assertEquals(remaining < 2134, thrown != null);
       assertEquals(65536, q.scratchLive());
       System.out.println(
           "DISPATCH_HISTORY_BOUNDARY remaining=" + remaining + " refused=" + (thrown != null));
@@ -69,7 +69,7 @@ public class SessionSqlLengthDispatchTest {
 
   @Test
   void eventThresholdIncludingTransactionBinding() {
-    for (int remaining : new int[] {1360, 1361, 1362}) {
+    for (int remaining : new int[] {1380, 1381, 1382}) {
       var f = new SessionQueryTransactionTest.Fixture();
       var q =
           new io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext(
@@ -94,7 +94,7 @@ public class SessionSqlLengthDispatchTest {
       } catch (RuntimeException e) {
         thrown = e;
       }
-      assertEquals(remaining < 1361, thrown != null);
+      assertEquals(remaining < 1381, thrown != null);
       assertEquals(65536, q.scratchLive());
       System.out.println(
           "DISPATCH_EVENT_BOUNDARY remaining=" + remaining + " refused=" + (thrown != null));
