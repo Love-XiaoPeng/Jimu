@@ -424,7 +424,27 @@ public final class SessionQueryTransaction {
 
     @Override
     public void resume() {
-      if (metadataRetained) attachMetadata(); // own retained Settings/token, never ancestor copy
+      if (!metadataRetained) return;
+      synchronized (SessionQueryTransaction.class) {
+        // 失败query也须恢复自身同步器以完成回滚/断链，不能在Spring恢复中再抛首错。
+        // 原12+3C及新增失败登记/临时别名的保守32项逐次先记；不授权任何业务。
+        try {
+          context.rejectedOperation(44L + 3L * metadataCount);
+        } catch (RuntimeException failure) {
+          work.recordMetadataFailure(failure);
+        } catch (Error failure) {
+          work.recordMetadataError(failure);
+        }
+        Thread thread = Thread.currentThread();
+        for (ConnectionSettings node = metadataHead; node != null; node = node.metadataNext)
+          if (node.metadataThread == thread) throw work.recordMetadataFailure(metadataFailure);
+        metadataThread = thread;
+        metadataNext = metadataHead;
+        if (metadataNext != null) metadataNext.metadataPrevious = this;
+        metadataHead = this;
+        metadataCount++;
+        metadataBound = true;
+      }
     }
 
     private void detachMetadata() {

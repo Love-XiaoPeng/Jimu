@@ -94,9 +94,9 @@ public final class SessionQueryWork {
     boolean transferred = false;
     try {
       scratch = new Object();
-      context.retainScratch(scratch, 4096);
-      // 全部清理分支预付：15 Map entries、list/iterator、field clears、cap/链/退款。
-      context.operation(64);
+      context.retainScratch(scratch, 4112);
+      // 原4096及两条不可变statement别名16字节在Slot分配前保留；两字段清零及清引用先付。
+      context.operation(68);
       next = new SessionHistoryRows.Slot(this, context, scratch, tenant, task);
       next.previous = historyLength;
       historyLength = next;

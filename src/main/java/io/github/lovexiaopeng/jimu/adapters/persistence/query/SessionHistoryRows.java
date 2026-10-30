@@ -58,8 +58,8 @@ public final class SessionHistoryRows {
       sizes.clear();
       sizes = null;
       long bytes = slot.capability.bytes();
-      query.operation(4); // arithmetic plus scratch replacement before driver raw fetch
-      query.retainScratch(slot.scratch, Math.addExact(16384, Math.multiplyExact(8, bytes)));
+      query.operation(5); // 原算术/替换及新增16字节来源别名的加法先付
+      query.retainScratch(slot.scratch, Math.addExact(16400, Math.multiplyExact(8, bytes)));
       rows = sql.selectList(RAW, args);
       query.operation(5);
       if (rows.size() != 1 || !slot.rawEnded || !slot.consumed)
@@ -102,6 +102,7 @@ public final class SessionHistoryRows {
     private Object token;
     private final Object scratch;
     private String tenant, task;
+    private String confirmedSizeId, confirmedRawId;
     private Connection connection;
     private Statement sizeStatement, rawStatement;
     private ResultSet sizeResult, rawResult;
@@ -156,11 +157,17 @@ public final class SessionHistoryRows {
     }
 
     private void verify(String statement, Object parameter, Connection actual, boolean size) {
-      query.operation(
-          15L + (size ? SIZE.length() : RAW.length()) + tenant.length() + task.length());
-      if (invalid
-          || !(size ? SIZE : RAW).equals(statement)
-          || SessionQueryTransaction.current(query) != owner
+      // 原15项与tenant/task费用保持；新选择/读取/局部写/NULL/identity/分支共8项先付。
+      query.operation(23L + tenant.length() + task.length());
+      if (invalid) throw new IllegalStateException("Different history length source");
+      String confirmed = size ? confirmedSizeId : confirmedRawId;
+      boolean same = confirmed != null && confirmed == statement;
+      if (!same) {
+        query.operation(2L + (size ? SIZE.length() : RAW.length()));
+        if (!(size ? SIZE : RAW).equals(statement))
+          throw new IllegalStateException("Different history length source");
+      }
+      if (SessionQueryTransaction.current(query) != owner
           || owner.token() != token
           || connection != actual
           || !(parameter instanceof Map<?, ?> map)
@@ -169,6 +176,12 @@ public final class SessionHistoryRows {
           || !task.equals(map.get("taskId")))
         throw new IllegalStateException("Different history length source");
       owner.requireProjectionLocks(tenant, task);
+      query.operation(1); // 第二次发布条件也须在分支前支付，命中亦不退款。
+      if (!same) {
+        query.operation(3); // payer/size分支及字段写入先付；不得保留Map或权限结果。
+        if (size) confirmedSizeId = statement;
+        else confirmedRawId = statement;
+      }
     }
 
     void bind(String statement, Object parameter, Statement prepared, ResultSet result)
@@ -283,6 +296,8 @@ public final class SessionHistoryRows {
       token = null;
       tenant = null;
       task = null;
+      confirmedSizeId = null;
+      confirmedRawId = null;
       if (rows != null) {
         for (var row : rows) row.clear();
         rows.clear();
