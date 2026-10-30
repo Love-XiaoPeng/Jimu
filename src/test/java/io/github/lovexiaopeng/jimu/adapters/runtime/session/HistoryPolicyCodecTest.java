@@ -74,16 +74,20 @@ class HistoryPolicyCodecTest {
     cases.add(wire.replace("\"version\":2", "\"version\":2,\"version\":2"));
     cases.add(wire.replace("{", "{\"extra\":0,"));
     cases.add(wire + " ");
+    cases.add(wire.replace("\"version\":2", "\"version\": 2"));
+    cases.add(wire.replace("refs.v2", "refs.v1"));
     cases.add(wire + "{}");
     cases.add(contracts.binding().replace("\"version\":5", "\"version\":2"));
     for (String raw : cases) {
       var q = query(0);
       assertFalse(contracts.historySnapshotMatches(raw, q), raw);
+      assertFalse(contracts.historySnapshotMatches(raw, null), raw);
       assertEquals(65536, q.scratchLive());
     }
     for (String raw : List.of("\uD800", "\uDC00")) {
       var q = query(0);
       assertThrows(TaskFailure.class, () -> contracts.historySnapshotMatches(raw, q));
+      assertThrows(TaskFailure.class, () -> contracts.historySnapshotMatches(raw, null));
       assertEquals(65536, q.scratchLive());
     }
   }
@@ -94,11 +98,15 @@ class HistoryPolicyCodecTest {
     var q = query(0);
     assertTrue(contracts.historySnapshotMatches(wire, q));
     long cost = q.resources().operations();
+    assertEquals(1008, cost);
     assertTrue(contracts.historySnapshotMatches(wire, q));
     assertTrue(contracts.historySnapshotMatches(new String(wire), q));
     assertEquals(3 * cost, q.resources().operations());
     assertEquals(3L * wire.length(), q.completedWork().get("hash"));
-    assertEquals(18L * wire.length(), q.completedWork().get("history.schema"));
+    assertEquals(3L * wire.length(), q.completedWork().get("encode"));
+    assertEquals(3L * 64, q.completedWork().get("history.rawDigest"));
+    assertEquals(3L * wire.length(), q.completedWork().get("history.wire"));
+    assertFalse(q.completedWork().containsKey("history.schema"));
     for (int delta : List.of(-1, 0, 1)) {
       var limited = query(65536 - cost + delta);
       if (delta <= 0) assertTrue(contracts.historySnapshotMatches(wire, limited));
@@ -109,7 +117,7 @@ class HistoryPolicyCodecTest {
         assertSame(
             first,
             assertThrows(TaskFailure.class, () -> contracts.historySnapshotMatches(wire, limited)));
-        assertFalse(limited.completedWork().containsKey("history.schema"));
+        assertFalse(limited.completedWork().containsKey("history.wire"));
       }
       assertEquals(65536, limited.scratchLive());
     }
@@ -119,6 +127,11 @@ class HistoryPolicyCodecTest {
     assertThrows(TaskFailure.class, () -> contracts.historySnapshotMatches(wire, full));
     full.releaseScratch(owner);
     assertEquals(65536, full.scratchLive());
+    var legacy = query(0);
+    assertTrue(contracts.historySnapshotMatches(new String(contracts.binding()), legacy));
+    assertEquals(32L + contracts.binding().length(), legacy.resources().operations());
+    assertEquals(
+        (long) contracts.binding().length(), legacy.completedWork().get("history.compare"));
   }
 
   private final class Proof implements SessionHistoryProofs.History {

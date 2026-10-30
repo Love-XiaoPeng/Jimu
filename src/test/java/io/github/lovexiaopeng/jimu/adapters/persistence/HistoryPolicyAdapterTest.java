@@ -77,13 +77,16 @@ class HistoryPolicyAdapterTest {
     String wire = records.v5.historySnapshot(null);
     for (boolean accepted : java.util.List.of(false, true)) {
       var reader = new MapperSessionHistoryProofs(records, task, null, accepted);
-      assertTrue(reader.matchesSnapshot(wire));
+      long before = q.resources().operations();
+      assertTrue(reader.matchesSnapshot(new String(wire)));
+      assertEquals(1008, q.resources().operations() - before);
       assertTrue(reader.matchesSnapshot(records.v5.binding()));
       assertFalse(reader.matchesSnapshot(wire.replace("catalog_digest", "wrong_catalog")));
       assertFalse(reader.matches(wire, records.v5.binding()));
       assertSame(records.v5.binding(), reader.binding());
       assertEquals(Payloads.hash(records.v5.binding()), reader.hash(reader.binding()));
     }
+    assertFalse(q.completedWork().containsKey("history.schema"));
     assertEquals(65536, q.scratchLive());
   }
 }

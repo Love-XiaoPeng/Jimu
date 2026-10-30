@@ -71,16 +71,16 @@ final class HistoryPolicyCodec {
     if (query == null) {
       SessionContracts.unicode(raw);
       if (!Payloads.hash(raw).equals(rawDigest) || !wire.equals(raw)) return false;
-      schema.validate(contracts.json(raw, 4096));
+      // Exact equality transfers the private canonical wire's startup schema proof.
       return true;
     }
-    // Reserve before allocating the per-read view, parser tree, aliases and strict encoder.
+    // Keep the full reservation before allocating the per-read view, aliases and strict encoder.
     // No decoded policy copy is allocated: the immutable logical policy stays package-owned.
     query.retainScratch(this, 4096L + 32L * raw.length());
     try {
       return verify(raw, query);
     } finally {
-      // verify's view/tree/closures have returned before their owner is released.
+      // verify's view/closures have returned before their owner is released.
       query.releaseScratch(this);
     }
   }
@@ -91,13 +91,7 @@ final class HistoryPolicyCodec {
         || !query.primitive(
             "history.wire", Math.max(wire.length(), raw.length()), () -> wire.equals(raw)))
       return false;
-    query.primitive(
-        "history.schema",
-        6L * raw.length(), // strict tree parse/unicode, stringify, validator parse and field checks
-        () -> {
-          schema.validate(contracts.json(view, 4096));
-          return null;
-        });
+    // Only this exact immutable wire inherits its startup schema proof; no tree is rebuilt.
     return true;
   }
 }
