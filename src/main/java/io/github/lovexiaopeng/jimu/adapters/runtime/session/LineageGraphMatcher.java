@@ -5,18 +5,24 @@ import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 
-/** 冻结graph-v1的窄比较器：字段任意顺序，节点按已核有序Node比较；不物化嵌入genesis。 */
+/** 固定graph-v1/v2的窄比较器：字段任意顺序，节点按已核有序Node比较；不物化嵌入genesis。 */
 final class LineageGraphMatcher {
   private final String raw;
   private final SessionQueryContext query;
-  private final java.util.function.Consumer<String> versionValidator;
+  private final java.util.function.ToIntFunction<String> versionValidator;
+  private final String schemaSha256;
+  private int version, nodeFields;
   private int offset;
 
   LineageGraphMatcher(
-      String raw, SessionQueryContext query, java.util.function.Consumer<String> versionValidator) {
+      String raw,
+      SessionQueryContext query,
+      java.util.function.ToIntFunction<String> versionValidator,
+      String schemaSha256) {
     this.raw = raw;
     this.query = query;
     this.versionValidator = versionValidator;
+    this.schemaSha256 = schemaSha256;
   }
 
   private static TaskFailure corrupt() {
@@ -122,7 +128,7 @@ final class LineageGraphMatcher {
     try {
       String number =
           query.primitive("copy.graph.number", offset - start, () -> raw.substring(start, offset));
-      versionValidator.accept(number);
+      version = versionValidator.applyAsInt(number);
     } catch (IllegalArgumentException | TaskFailure failure) {
       if (failure instanceof TaskFailure refusal
           && (refusal.status() == 429 || refusal.status() == 504)) throw refusal;
@@ -161,7 +167,9 @@ final class LineageGraphMatcher {
       if (end('}')) break;
       token(',');
     } while (true);
-    if (seen != 7) throw corrupt();
+    query.operation(4);
+    if (seen != 7 && seen != 5 || nodeFields != 0 && nodeFields != seen) throw corrupt();
+    nodeFields = seen;
   }
 
   private void nodes(java.util.List<SessionLineage.Node> expected) {
@@ -174,14 +182,33 @@ final class LineageGraphMatcher {
   }
 
   void match(SessionLineage.Graph expected) {
-    if (expected.version() != 1 || expected.nodes().isEmpty() || expected.nodes().size() > 9)
-      throw corrupt();
-    // 期望值来自逐份已核standalone genesis。这里再次约束graph自身的冻结标量schema。
-    if (!expected.callerSessionId().matches("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}")
-        || !expected.authoritySha256().matches("[0-9a-f]{64}")) throw corrupt();
     Object workspace = new Object();
     query.retainScratch(workspace, 4096);
     try {
+      if (expected.version() != 1 || expected.nodes().isEmpty() || expected.nodes().size() > 9)
+        throw corrupt();
+      // 期望值来自逐份已核standalone genesis。这里再次约束graph自身的冻结标量schema。
+      query.operation(expected.callerSessionId().length() + expected.authoritySha256().length());
+      if (!expected.callerSessionId().matches("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+          || !expected.authoritySha256().matches("[0-9a-f]{64}")) throw corrupt();
+      // Caller/source membership and order come from freshly verified standalone genesis.
+      query.operation(4L + expected.nodes().size() * 3L);
+      String previous = null;
+      for (var node : expected.nodes()) {
+        query.operation(5);
+        if (node == null
+            || node.sessionId() == null
+            || node.genesisSha256() == null
+            || node.genesisSnapshot() == null) throw corrupt();
+        query.operation(
+            node.sessionId().length()
+                + node.genesisSha256().length()
+                + (previous == null ? 0 : previous.length()));
+        if (!node.sessionId().matches("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+            || !node.genesisSha256().matches("[0-9a-f]{64}")
+            || previous != null && previous.compareTo(node.sessionId()) >= 0) throw corrupt();
+        previous = node.sessionId();
+      }
       token('{');
       int seen = 0;
       if (end('}')) throw corrupt();
@@ -200,6 +227,14 @@ final class LineageGraphMatcher {
             seen = field(seen, 4);
             text(expected.authoritySha256());
           }
+          case "codec_id" -> {
+            seen = field(seen, 16);
+            text(LineageGraphCodecs.ID);
+          }
+          case "schema_sha256" -> {
+            seen = field(seen, 32);
+            text(schemaSha256);
+          }
           case "nodes" -> {
             seen = field(seen, 8);
             nodes(expected.nodes());
@@ -210,7 +245,11 @@ final class LineageGraphMatcher {
         token(',');
       } while (true);
       whitespace();
-      if (seen != 15 || offset != raw.length()) throw corrupt();
+      query.operation(6);
+      if (version != 1 && version != 2
+          || offset != raw.length()
+          || version == 1 && (seen != 15 || nodeFields != 7)
+          || version == 2 && (seen != 63 || nodeFields != 5)) throw corrupt();
     } finally {
       query.releaseScratch(workspace);
     }

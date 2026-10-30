@@ -80,6 +80,7 @@ public interface SessionLineageRecords {
 
   String graph(Graph value);
 
+  /** Legacy full-payload decoder. Reference codecs need fresh sources via matchGraph instead. */
   Graph graph(String raw);
 
   /** 每源原字节先独立核摘要；与本次共享且已核的有序Node逐字段匹配。 */

@@ -50,6 +50,7 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
 
   private final Object scratchOwner = new Object();
   private final Object rawOwner = new Object();
+  private final Object generatedGraphOwner = new Object();
   private java.util.IdentityHashMap<
           String, io.github.lovexiaopeng.jimu.adapters.runtime.session.LineageRawView>
       rawViews;
@@ -88,6 +89,7 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
       if (owner != null) owner.removeInvalidator(rawOwner);
       rawViews.clear();
       rawViews = null;
+      ledger.queryContext().releaseScratch(generatedGraphOwner);
       ledger.queryContext().releaseScratch(rawOwner);
     }
   }
@@ -317,8 +319,20 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
   }
 
   public String graph(SessionLineage.Graph value) {
-    var encoded = contracts.graph(value, ledger.queryContext());
-    if (rawViews != null) rawViews.put(encoded.raw(), encoded);
+    if (rawViews == null)
+      throw new IllegalStateException("Storage graph requires the original proof owner");
+    var encoded =
+        contracts.storageGraph(
+            value,
+            ledger.queryContext(),
+            raw -> {
+              ledger.queryContext().operation(4);
+              ledger
+                  .queryContext()
+                  .retainScratch(generatedGraphOwner, 128L + 2L * raw.raw().length());
+              ledger.queryContext().retainScratch(rawOwner, (rawViews.size() + 1L) * 256);
+              rawViews.put(raw.raw(), raw);
+            });
     return encoded.raw();
   }
 

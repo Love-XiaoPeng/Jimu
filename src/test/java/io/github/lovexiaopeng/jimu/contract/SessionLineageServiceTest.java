@@ -22,6 +22,7 @@ class SessionLineageServiceTest {
   private final SessionContracts json = new SessionContracts(5);
   private final Map<String, SessionLineageRecords.Fact> facts = new HashMap<>();
   private final Map<String, SessionLineage.Stored> rows = new HashMap<>();
+  private boolean referenceWrites;
   private final List<String> reads = new ArrayList<>();
   private final SessionLineageRecords records =
       new SessionLineageRecords() {
@@ -60,7 +61,19 @@ class SessionLineageServiceTest {
         }
 
         public String graph(SessionLineage.Graph value) {
-          return contracts.graph(value);
+          return referenceWrites
+              ? contracts.storageGraph(value, query(), raw -> {}).raw()
+              : contracts.graph(value);
+        }
+
+        public boolean matchGraph(SessionLineage.Stored stored, SessionLineage.Graph expected) {
+          var query = query();
+          contracts.matchGraph(
+              new io.github.lovexiaopeng.jimu.adapters.runtime.session.LineageRawView(
+                  stored.graph(), query),
+              expected,
+              query);
+          return true;
         }
 
         public SessionLineage.Graph graph(String raw) {
@@ -76,6 +89,75 @@ class SessionLineageServiceTest {
         }
       };
   private final SessionLineageServiceImpl service = new SessionLineageServiceImpl(records);
+
+  private io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query() {
+    return new io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext(
+        System.nanoTime() + 2_000_000_000L,
+        new io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger.QueryResources(
+            0, 0, 0));
+  }
+
+  @Test
+  void mixedCodecsUseFreshStandaloneRowsAndRejectChangedTenantAuthorityAndMissingSources() {
+    String a = add(1, List.of(), null);
+    String originalV1 = rows.get(a).graph();
+    referenceWrites = true;
+    String b = add(2, List.of(a), a);
+    assertEquals(1, rows.get(b).version());
+    assertEquals(2, json.json(rows.get(b).graph(), 16384).path("version").intValue());
+    String output = service.trace("tenant", b, a);
+    assertEquals(originalV1, rows.get(a).graph());
+    assertEquals(a, json.json(output, 8192).path("target").path("session_id").textValue());
+    var old = rows.remove(a);
+    assertThrows(TaskFailure.class, () -> service.trace("tenant", b, a));
+    rows.put(
+        a,
+        new SessionLineage.Stored(
+            old.genesis() + " ",
+            old.genesisDigest(),
+            old.genesisBytes() + 1,
+            old.graph(),
+            old.graphDigest(),
+            old.graphBytes(),
+            old.state(),
+            1));
+    assertThrows(TaskFailure.class, () -> service.trace("tenant", b, a));
+    rows.put(
+        a,
+        new SessionLineage.Stored(
+            old.genesis(),
+            old.genesisDigest(),
+            old.genesisBytes(),
+            old.graph(),
+            old.graphDigest(),
+            old.graphBytes(),
+            "PURGED",
+            1));
+    assertThrows(TaskFailure.class, () -> service.trace("tenant", b, a));
+    rows.put(a, old);
+    var fact = facts.get(a);
+    for (boolean wrongTenant : List.of(true, false)) {
+      facts.put(
+          a,
+          new SessionLineageRecords.Fact(
+              wrongTenant ? "other" : "tenant",
+              a,
+              fact.created(),
+              fact.request(),
+              fact.requestDigest(),
+              wrongTenant ? fact.authorityDigest() : "c".repeat(64),
+              fact.bindingDigest(),
+              fact.sources(),
+              fact.declaredParent()));
+      assertThrows(TaskFailure.class, () -> service.trace("tenant", b, a));
+    }
+    facts.put(a, fact);
+    assertEquals(output, service.trace("tenant", b, a));
+    reads.clear();
+    service.trace("tenant", b, a);
+    assertTrue(reads.contains("row:" + a));
+    assertTrue(reads.contains("row:" + b));
+  }
 
   private String add(int ordinal, List<String> sources, String parent) {
     String id = "00000000-0000-0000-0000-%012d".formatted(ordinal);

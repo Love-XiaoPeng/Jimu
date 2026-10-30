@@ -121,7 +121,8 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
 
   private void raw(Stored s) {
     records.checkpoint(1);
-    if (s.version() != 1
+    if (s == null
+        || s.version() != 1
         || !"PRESENT".equals(s.state())
         || s.genesis() == null
         || s.graph() == null
@@ -163,6 +164,7 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
       HashMap<String, Stored> stored,
       Created created) {
     var fact = facts.get(caller);
+    if (fact == null || !tenant.equals(fact.tenant())) throw corrupt();
     long scratch = 3L * records.bytes(fact.request());
     records.scratch(scratch);
     if (fact.sources().size() > 8 || fact.sources().contains(caller)) throw corrupt();
@@ -173,6 +175,7 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
     var genesis = new HashMap<String, Genesis>();
     for (var id : ids) {
       var f = facts.computeIfAbsent(id, key -> records.fact(tenant, key));
+      if (f == null || !tenant.equals(f.tenant())) throw corrupt();
       if (!ids.containsAll(f.sources())) throw invalidScope();
       var s = stored.computeIfAbsent(id, key -> records.load(tenant, key));
       raw(s);

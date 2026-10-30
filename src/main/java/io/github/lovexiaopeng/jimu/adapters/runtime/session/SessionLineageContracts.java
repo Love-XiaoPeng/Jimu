@@ -21,6 +21,7 @@ public final class SessionLineageContracts {
   private final SessionContracts history = new SessionContracts(5);
   private final SchemaContract input, output, admission, genesis, graph, graphVersion;
   private final ToolDescriptor descriptor;
+  private final LineageGraphCodecs codecs;
   private final String schema, description;
 
   public SessionLineageContracts() {
@@ -56,12 +57,15 @@ public final class SessionLineageContracts {
                       catalog.path("schemas").path("graph.schema.json").asText()),
                   StandardCharsets.UTF_8),
               16384);
+      codecs = new LineageGraphCodecs(history);
       graphVersion =
           new SchemaContract(
               Payloads.json(
                       Map.of(
                           "$schema", graphSchema.path("$schema"),
-                          "const", graphSchema.path("properties").path("version").path("const")))
+                          "anyOf",
+                              List.of(
+                                  graphSchema.path("properties").path("version"), codecs.version)))
                   .getBytes(StandardCharsets.UTF_8));
       descriptor =
           new ToolDescriptor(
@@ -215,7 +219,9 @@ public final class SessionLineageContracts {
                     graphVersion.validate(value);
                     return null;
                   });
-            })
+              return value.intValue();
+            },
+            codecs.schemaSha256)
         .match(expected);
   }
 
@@ -249,6 +255,7 @@ public final class SessionLineageContracts {
     return value;
   }
 
+  /** Legacy complete graph-v1 only. Internal v2 requires matchGraph with fresh verified sources. */
   public SessionLineage.Graph graph(String raw) {
     var g = stored(graph, raw, 16384);
     var nodes = new ArrayList<SessionLineage.Node>();
@@ -277,6 +284,50 @@ public final class SessionLineageContracts {
     var raw = LineageJsonWriter.encode(graphWire(g), 16384, query);
     matchGraph(raw, g, query);
     return raw;
+  }
+
+  /** Internal persistence only; the public/legacy graph encoder remains graph-v1. */
+  public LineageRawView storageGraph(
+      SessionLineage.Graph g,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      java.util.function.Consumer<LineageRawView> handoff) {
+    Object owner = new Object();
+    query.retainScratch(owner, 32768L + 4096L + 512L * g.nodes().size());
+    Map<String, Object> wire = null;
+    List<Map<String, Object>> nodes = null;
+    try {
+      query.operation(12L + 7L * g.nodes().size());
+      nodes = new ArrayList<>(g.nodes().size());
+      for (var n : g.nodes())
+        nodes.add(Map.of("session_id", n.sessionId(), "genesis_sha256", n.genesisSha256()));
+      wire =
+          Map.of(
+              "version",
+              2,
+              "codec_id",
+              LineageGraphCodecs.ID,
+              "schema_sha256",
+              codecs.schemaSha256,
+              "caller_session_id",
+              g.callerSessionId(),
+              "authority_sha256",
+              g.authoritySha256(),
+              "nodes",
+              nodes);
+      var raw = LineageJsonWriter.encode(wire, 16384, query);
+      matchGraph(raw, g, query);
+      query.operation(3);
+      handoff.accept(raw);
+      return raw;
+    } finally {
+      // Cleanup was prepaid above. Clear aliases before refund, including Error exits.
+      if (nodes != null) {
+        nodes.clear();
+      }
+      wire = null;
+      nodes = null;
+      query.releaseScratch(owner);
+    }
   }
 
   private static Map<String, Object> graphWire(SessionLineage.Graph g) {
