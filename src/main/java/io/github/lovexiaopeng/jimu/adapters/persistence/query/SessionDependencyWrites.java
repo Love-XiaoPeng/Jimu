@@ -312,6 +312,10 @@ final class SessionDependencyWrites {
       String id, Object parameter, Kind kind, SessionQueryWork owner) {
     if (kind == Kind.UNKNOWN) return null;
     if (parameter instanceof Map<?, ?> map && map.containsKey("ew")) return null;
+    // 两次Kind比较先付费；普通task写只做原keys的完整抽取，删除无用的前置扫描。
+    // 安装类仍保留原task候选冲突检查，关系类仍只用真实observed证据。
+    owner.inspect(2);
+    if (kind == Kind.TASK || kind == Kind.PROGRESS) return keys(parameter, kind, owner);
     var f = fields(parameter, owner);
     String tenant = key(f, "tenant", "tenantId", "tenant_id");
     String task = key(f, "caller", "taskId", "task", "callerTaskId", "caller_task_id", "task_id");
