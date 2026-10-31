@@ -181,34 +181,40 @@ final class LineageGraphMatcher {
     token(']');
   }
 
+  static void validateExpected(SessionLineage.Graph expected, SessionQueryContext query) {
+    query.operation(7);
+    if (expected.callerSessionId() == null || expected.authoritySha256() == null) throw corrupt();
+    if (expected.version() != 1 || expected.nodes().isEmpty() || expected.nodes().size() > 9)
+      throw corrupt();
+    // 期望值来自逐份已核standalone genesis。这里再次约束graph自身的冻结标量schema。
+    query.operation(expected.callerSessionId().length() + expected.authoritySha256().length());
+    if (!expected.callerSessionId().matches("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+        || !expected.authoritySha256().matches("[0-9a-f]{64}")) throw corrupt();
+    // Caller/source membership and order come from freshly verified standalone genesis.
+    query.operation(4L + expected.nodes().size() * 3L);
+    String previous = null;
+    for (var node : expected.nodes()) {
+      query.operation(5);
+      if (node == null
+          || node.sessionId() == null
+          || node.genesisSha256() == null
+          || node.genesisSnapshot() == null) throw corrupt();
+      query.operation(
+          node.sessionId().length()
+              + node.genesisSha256().length()
+              + (previous == null ? 0 : previous.length()));
+      if (!node.sessionId().matches("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+          || !node.genesisSha256().matches("[0-9a-f]{64}")
+          || previous != null && previous.compareTo(node.sessionId()) >= 0) throw corrupt();
+      previous = node.sessionId();
+    }
+  }
+
   void match(SessionLineage.Graph expected) {
     Object workspace = new Object();
     query.retainScratch(workspace, 4096);
     try {
-      if (expected.version() != 1 || expected.nodes().isEmpty() || expected.nodes().size() > 9)
-        throw corrupt();
-      // 期望值来自逐份已核standalone genesis。这里再次约束graph自身的冻结标量schema。
-      query.operation(expected.callerSessionId().length() + expected.authoritySha256().length());
-      if (!expected.callerSessionId().matches("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}")
-          || !expected.authoritySha256().matches("[0-9a-f]{64}")) throw corrupt();
-      // Caller/source membership and order come from freshly verified standalone genesis.
-      query.operation(4L + expected.nodes().size() * 3L);
-      String previous = null;
-      for (var node : expected.nodes()) {
-        query.operation(5);
-        if (node == null
-            || node.sessionId() == null
-            || node.genesisSha256() == null
-            || node.genesisSnapshot() == null) throw corrupt();
-        query.operation(
-            node.sessionId().length()
-                + node.genesisSha256().length()
-                + (previous == null ? 0 : previous.length()));
-        if (!node.sessionId().matches("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}")
-            || !node.genesisSha256().matches("[0-9a-f]{64}")
-            || previous != null && previous.compareTo(node.sessionId()) >= 0) throw corrupt();
-        previous = node.sessionId();
-      }
+      validateExpected(expected, query);
       token('{');
       int seen = 0;
       if (end('}')) throw corrupt();

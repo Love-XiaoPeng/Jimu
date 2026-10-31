@@ -88,7 +88,7 @@ class LineageStorageCodecTest {
             });
     assertEquals(Payloads.hash(encoded.raw()), encoded.digest());
     assertTrue(query.completedWork().get("serialize") > 0);
-    assertTrue(query.completedWork().get("compare.graph") > 0);
+    assertFalse(query.completedWork().containsKey("compare.graph"));
     assertEquals(65536, query.scratchLive());
   }
 

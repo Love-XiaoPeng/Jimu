@@ -19,7 +19,7 @@ import java.util.Map;
 /** v5权威资源、严格输入和可清理证明的显式wire映射；不采用全局JSON命名策略。 */
 public final class SessionLineageContracts {
   private final SessionContracts history = new SessionContracts(5);
-  private final SchemaContract input, output, admission, genesis, graph, graphVersion;
+  private final SchemaContract input, output, admission, genesis, genesisTime, graph, graphVersion;
   private final ToolDescriptor descriptor;
   private final LineageGraphCodecs codecs;
   private final String schema, description;
@@ -48,6 +48,24 @@ public final class SessionLineageContracts {
       schema = new String(in, StandardCharsets.UTF_8);
       admission = contract(catalog, "admission-input.schema.json");
       genesis = contract(catalog, "genesis.schema.json");
+      // Keep the pinned format assertion implementation (including RFC3339 edge cases).
+      var genesisSchema =
+          history.json(
+              new String(
+                  SessionContracts.checked(
+                      "v5/genesis.schema.json",
+                      catalog.path("schemas").path("genesis.schema.json").asText()),
+                  StandardCharsets.UTF_8),
+              16384);
+      genesisTime =
+          new SchemaContract(
+              Payloads.json(
+                      Map.of(
+                          "$schema",
+                          genesisSchema.path("$schema"),
+                          "allOf",
+                          List.of(genesisSchema.path("properties").path("created_at"))))
+                  .getBytes(StandardCharsets.UTF_8));
       graph = contract(catalog, "graph.schema.json");
       var graphSchema =
           history.json(
@@ -234,9 +252,70 @@ public final class SessionLineageContracts {
   public LineageRawView genesis(
       SessionLineage.Genesis g,
       io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
-    var raw = LineageJsonWriter.encode(genesisWire(g), 1024, query);
-    genesis(raw, query);
-    return raw;
+    Object owner = new Object();
+    query.retainScratch(owner, 12288);
+    Map<String, Object> wire = null;
+    try {
+      // Only this local typed-to-wire route can omit parsing its own writer output.
+      // The externally supplied LineageRawView overload always parses and validates anew.
+      // Preserve writer/UTF8 limits before schema rejection, including malformed typed input.
+      // Prepay the bounded map construction, up to nine entries and their final clearing.
+      query.operation(40);
+      wire = genesisWire(g);
+      var raw = LineageJsonWriter.encode(wire, 1024, query);
+      query.operation(24);
+      if (g.version() != 1) throw corrupt();
+      generatedText(g.sessionId(), UUID_PATTERN, query);
+      generatedText(g.requestSha256(), HASH_PATTERN, query);
+      generatedText(g.authoritySha256(), HASH_PATTERN, query);
+      generatedText(g.bindingSha256(), HASH_PATTERN, query);
+      query.operation(20);
+      boolean continuation = "CONTINUATION".equals(g.kind());
+      if (!continuation && !"ROOT".equals(g.kind())) throw corrupt();
+      if (g.createdAt() == null) throw corrupt();
+      query.primitive(
+          "schema.genesis.time",
+          g.createdAt().length(),
+          () -> {
+            genesisTime.validateObject(g.createdAt());
+            return null;
+          });
+      query.operation(5);
+      if (g.parentSessionId() != null) {
+        if (!continuation) throw corrupt();
+        generatedText(g.parentSessionId(), UUID_PATTERN, query);
+        generatedText(g.parentGenesisSha256(), HASH_PATTERN, query);
+      } else if (continuation) throw corrupt();
+      // genesisWire historically omits both parent fields when parentSessionId is null.
+      return raw;
+    } catch (IllegalArgumentException failure) {
+      throw corrupt();
+    } finally {
+      if (wire != null) wire.clear();
+      wire = null;
+      query.releaseScratch(owner);
+    }
+  }
+
+  private static final java.util.regex.Pattern UUID_PATTERN =
+      java.util.regex.Pattern.compile(
+          "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+  private static final java.util.regex.Pattern HASH_PATTERN =
+      java.util.regex.Pattern.compile("^[0-9a-f]{64}$");
+
+  private static TaskFailure corrupt() {
+    return new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
+  }
+
+  private static void generatedText(
+      String value,
+      java.util.regex.Pattern pattern,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    query.operation(3);
+    if (value == null) throw corrupt();
+    if (!query.primitive(
+        "schema.genesis.scalar", value.length(), () -> pattern.matcher(value).matches()))
+      throw corrupt();
   }
 
   private static Map<String, Object> genesisWire(SessionLineage.Genesis g) {
@@ -315,7 +394,9 @@ public final class SessionLineageContracts {
               "nodes",
               nodes);
       var raw = LineageJsonWriter.encode(wire, 16384, query);
-      matchGraph(raw, g, query);
+      // Fixed keys/pins came from the host mapping. Check typed scalar/count/order
+      // constraints after the original size refusal, without reparsing the writer output.
+      LineageGraphMatcher.validateExpected(g, query);
       query.operation(3);
       handoff.accept(raw);
       return raw;
