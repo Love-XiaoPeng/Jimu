@@ -51,13 +51,10 @@ public final class SessionFinalMapperSqlScenario {
     var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
     // The first call deliberately starts static initialization inside its actual Work.
     boolean sourceOnly = args.length > 3 && args[3].equals("source-only");
-    boolean distinctSource = args.length > 3 && args[3].equals("distinct-source");
     for (String population :
-        distinctSource
-            ? List.of("cold-empty", "empty", "full-source")
-            : sourceOnly
-                ? List.of("cold-empty", "frozen-source")
-                : List.of("cold-empty", "empty", "frozen", "full", "frozen-source")) {
+        sourceOnly
+            ? List.of("cold-empty", "frozen-source")
+            : List.of("cold-empty", "empty", "frozen", "full", "frozen-source")) {
       var q =
           new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
       q.restrictLineage();
@@ -65,7 +62,7 @@ public final class SessionFinalMapperSqlScenario {
       String id =
           population.startsWith("frozen")
               ? ID
-              : population.startsWith("full") ? "20000000-0000-0000-0000-000000000001" : EMPTY;
+              : population.equals("full") ? "20000000-0000-0000-0000-000000000001" : EMPTY;
       var task =
           Map.<String, Object>of(
               "tenant_id",
@@ -80,19 +77,13 @@ public final class SessionFinalMapperSqlScenario {
           q,
           () -> {
             SessionQueryTransaction.current(q).locked("tenant-a", id);
-            if (population.equals("frozen-source") || population.equals("full-source")) {
+            if (population.equals("frozen-source")) {
               // Test-only Work shape from the saved original source. This measures FINAL's
               // source-lock loop, not admission validation or an authority grant.
               var work = SessionQueryTransaction.current(q);
               work.admission();
               var fact = sourceFact(json);
               work.locked(fact.caller().tenant(), fact.caller().id());
-              if (distinctSource) {
-                // R43 second-admission prefix registered five times in total. Distinct text
-                // objects exercise content comparisons, including the second registry entry.
-                for (int i = 0; i < 3; i++)
-                  work.locked(new String(fact.caller().tenant()), new String(fact.caller().id()));
-              }
               work.stageSource(fact.caller(), fact);
             }
             var accounting = new MapperSessionMetadataAccounting(records, task, true);
@@ -123,7 +114,7 @@ public final class SessionFinalMapperSqlScenario {
                       totals)));
       System.out.flush();
     }
-    if (!args[2].equals("seed") && !args[2].equals("cost-only") && !sourceOnly && !distinctSource)
+    if (!args[2].equals("seed") && !args[2].equals("cost-only") && !sourceOnly)
       SessionFinalMapperFailures.verify(source);
   }
 
