@@ -19,6 +19,35 @@ import org.junit.jupiter.api.Test;
 /** 通用延迟provider故障被业务catch仍须回滚；close始终执行且不重复挂清理异常。 */
 class QueryResultsFailureTest {
   @Test
+  void ordinaryMyBatisParametersDoNotRequireTheStepConsumer() throws Exception {
+    var parameters = new org.apache.ibatis.binding.MapperMethod.ParamMap<Object>();
+    parameters.put("tenant", "tenant-a");
+    int[] closes = {0};
+    var query = query();
+    try (var cursor =
+        QueryResults.meter(
+            provider("", null, null, closes), query, "ordinary", null, parameters, null)) {
+      assertTrue(cursor.next());
+    }
+    assertEquals(1, closes[0]);
+    assertEquals(65536, query.scratchLive());
+  }
+
+  @Test
+  void reflectedProviderErrorKeepsItsSuppressedCloseFailure() throws Exception {
+    var marker = new AssertionError("getter");
+    var cleanup = new SQLException("close");
+    int[] closes = {0};
+    var query = query();
+    var cursor = QueryResults.meter(provider("getObject", marker, cleanup, closes), query);
+    assertSame(marker, assertThrows(AssertionError.class, cursor::next));
+    assertSame(marker, assertThrows(AssertionError.class, cursor::close));
+    assertArrayEquals(new Throwable[] {cleanup}, marker.getSuppressed());
+    assertEquals(1, closes[0]);
+    assertEquals(65536, query.scratchLive());
+  }
+
+  @Test
   void foreignQueryCannotHideTheActualOwnerOrLeaveTheCursorOpen() {
     var fixture = new SessionQueryTransactionTest.Fixture();
     var query = query();
@@ -179,7 +208,7 @@ class QueryResultsFailureTest {
   }
 
   private static ResultSet provider(
-      String entry, SQLException marker, SQLException cleanup, int[] closes) {
+      String entry, Throwable marker, SQLException cleanup, int[] closes) {
     var metadata =
         (ResultSetMetaData)
             Proxy.newProxyInstance(

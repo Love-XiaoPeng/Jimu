@@ -60,15 +60,22 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
     ledger.models.admit(model);
     var budget = ledger.bucket(lease.tenant());
     var step =
-        JdbcLedger.first(
-            ledger
-                .mappers
-                .steps()
-                .selectModelStep(ledger.queryContext(), lease.tenant(), stepId, lease.taskId()));
+        JdbcSessionScopes.lineage(task)
+                && ledger.queryContext() != null
+                && ledger.queryContext().lineage()
+            ? ledger.sessions.modelStep(task, lease.tenant(), stepId, lease.taskId())
+            : JdbcLedger.first(
+                ledger
+                    .mappers
+                    .steps()
+                    .selectModelStep(
+                        ledger.queryContext(), lease.tenant(), stepId, lease.taskId()));
     return new Admission() {
       public void validateStep() {
         if (JdbcSessionRecords.task(task)) {
-          ledger.sessions.validateStep(task, step);
+          if (!JdbcSessionScopes.lineage(task)
+              || ledger.queryContext() == null
+              || !ledger.queryContext().lineage()) ledger.sessions.validateStep(task, step);
           ledger.sessions.metadata(task, false, 4096);
         }
       }

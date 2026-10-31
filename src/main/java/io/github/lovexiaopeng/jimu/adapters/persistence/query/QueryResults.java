@@ -6,6 +6,7 @@ import java.lang.reflect.Proxy;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.Map;
 import org.springframework.dao.DataAccessResourceFailureException;
 
 /** Meters provider rows/columns before a mapper can materialize an unbounded result collection. */
@@ -21,6 +22,11 @@ public final class QueryResults {
         throws SQLException;
   }
 
+  public static void verifyModelStepCommand(
+      org.apache.ibatis.mapping.MappedStatement command, SessionQueryContext query, Object args) {
+    SessionLineageSourceColumns.verifyModelStepCommand(command, query, args);
+  }
+
   public static ResultSet meter(ResultSet delegate, SessionQueryContext context)
       throws SQLException {
     return meter(delegate, context, "JDBC");
@@ -28,9 +34,26 @@ public final class QueryResults {
 
   public static ResultSet meter(ResultSet delegate, SessionQueryContext context, String statement)
       throws SQLException {
+    return meter(delegate, context, statement, null);
+  }
+
+  private static ResultSet meter(
+      ResultSet delegate, SessionQueryContext context, String statement, Object parameter)
+      throws SQLException {
     var state = new State(delegate, context);
+    var step =
+        parameter instanceof Map<?, ?> args && args.containsKey("modelStepHash")
+            ? args.get("modelStepHash")
+            : null;
+    if (step != null && !(step instanceof java.util.function.BiConsumer<?, ?>))
+      throw new IllegalStateException("Invalid model step consumer");
+    @SuppressWarnings("unchecked")
+    var stepHash = (java.util.function.BiConsumer<SessionQueryContext.Result, String>) step;
     try {
       state.verify(context);
+      if (stepHash != null && state.owner == null)
+        throw new IllegalStateException("Unowned step result");
+      final long stepVersion = stepHash == null ? 0 : state.owner.metadataFinalVersion(context);
       state.result = context.result(statement);
       state.metadata = delegate.getMetaData();
       if (state.owner != null) {
@@ -44,8 +67,17 @@ public final class QueryResults {
               new Class<?>[] {ResultSet.class},
               (proxy, method, args) -> {
                 if (method.getName().equals("close")) {
-                  state.close();
-                  return null;
+                  try {
+                    state.close();
+                    if (stepHash != null) checkStep(state, context, stepVersion);
+                    return null;
+                  } catch (RuntimeException failure) {
+                    if (state.owner != null) throw state.owner.poisonProof(failure);
+                    throw failure;
+                  } catch (Error failure) {
+                    if (state.owner != null) state.owner.poisonLineageSource(failure);
+                    throw failure;
+                  }
                 }
                 if (method.getName().equals("isClosed") && state.delegate == null) return true;
                 try {
@@ -53,19 +85,34 @@ public final class QueryResults {
                   if (state.delegate == null) throw new SQLException("ResultSet closed");
                   if (method.getName().equals("getMetaData") && state.owner != null)
                     return metadataView(state, context);
+                  if (stepHash != null) checkStep(state, context, stepVersion);
                   Object value = method.invoke(state.delegate, args);
+                  if (stepHash != null) checkStep(state, context, stepVersion);
                   if (method.getName().equals("next")) {
                     context.remainingMillis();
                     if (Boolean.TRUE.equals(value)) {
+                      if (stepHash != null)
+                        SessionLineageSourceColumns.verifyModelStep(
+                            state.delegate, context, statement, parameter, state.owner);
                       state.result.row();
                       for (int column = 1; column <= state.metadata.getColumnCount(); column++) {
                         // Include columns a projection ignores; repeated mapped getters cost no
                         // extra
                         // bytes.
+                        if (stepHash != null) checkStep(state, context, stepVersion);
                         Object scalar = state.delegate.getObject(column);
+                        if (stepHash != null) checkStep(state, context, stepVersion);
                         if (scalar instanceof java.sql.Timestamp time)
                           scalar = time.toLocalDateTime();
-                        state.result.column(state.metadata.getColumnLabel(column), scalar);
+                        String label = state.metadata.getColumnLabel(column);
+                        if (stepHash != null && label.equals("request_snapshot")) {
+                          if (!(scalar instanceof String raw))
+                            throw new IllegalStateException("Missing model step raw");
+                          stepHash.accept(state.result, raw);
+                          state.verify(context);
+                          context.checkHealthy();
+                        } else state.result.column(label, scalar);
+                        if (stepHash != null) checkStep(state, context, stepVersion);
                       }
                     } else state.result.close();
                   }
@@ -74,6 +121,10 @@ public final class QueryResults {
                   throw state.failure(failure.getCause());
                 } catch (SQLException | RuntimeException failure) {
                   throw state.failure(failure);
+                } catch (Error failure) {
+                  state.fatal = failure;
+                  if (state.owner != null) state.owner.poisonLineageSource(failure);
+                  throw failure;
                 }
               });
     } catch (SQLException | RuntimeException | Error failure) {
@@ -91,6 +142,13 @@ public final class QueryResults {
     }
   }
 
+  private static void checkStep(State state, SessionQueryContext context, long generation) {
+    state.verify(context);
+    if (state.owner.metadataFinalVersion(context) != generation)
+      throw state.owner.poisonProof(
+          new IllegalStateException("Write during model step consumption"));
+  }
+
   static ResultSet meter(
       ResultSet delegate,
       SessionQueryContext context,
@@ -100,7 +158,7 @@ public final class QueryResults {
       java.sql.Statement prepared)
       throws SQLException {
     context.operation(1);
-    if (length == null) return meter(delegate, context, statement);
+    if (length == null) return meter(delegate, context, statement, parameter);
     return meterEventHistory(delegate, context, statement, length, parameter, prepared);
   }
 
@@ -134,6 +192,7 @@ public final class QueryResults {
     private ResultSet delegate;
     private ResultSetMetaData metadata;
     private SessionQueryContext.Result result;
+    private Error fatal;
     private final SessionQueryWork owner;
 
     State(ResultSet delegate, SessionQueryContext context) {
@@ -148,7 +207,16 @@ public final class QueryResults {
     }
 
     Throwable failure(Throwable failure) {
-      if (owner == null || failure instanceof Error) return failure;
+      if (fatal != null && fatal != failure) {
+        suppress(fatal, failure);
+        return fatal;
+      }
+      if (failure instanceof Error error) {
+        fatal = error;
+        if (owner != null) owner.poisonLineageSource(error);
+        return error;
+      }
+      if (owner == null) return failure;
       var adapted =
           failure instanceof RuntimeException runtime
               ? runtime
@@ -166,9 +234,10 @@ public final class QueryResults {
       metadata = null;
       try {
         cursor.close();
-      } catch (SQLException | RuntimeException failure) {
+      } catch (SQLException | RuntimeException | Error failure) {
         Throwable primary = failure(failure);
         if (primary instanceof SQLException sql) throw sql;
+        if (primary instanceof Error error) throw error;
         throw (RuntimeException) primary;
       } finally {
         if (result != null) result.close();

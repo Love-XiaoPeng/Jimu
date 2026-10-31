@@ -47,6 +47,10 @@ public interface SessionHistoryProofs {
 
     String hash(String raw);
 
+    default String requestHash(String raw) {
+      return hash(raw);
+    }
+
     int checkpointVersion(String raw);
 
     boolean messagesEmpty();

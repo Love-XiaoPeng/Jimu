@@ -504,6 +504,69 @@ public final class SessionQueryContext {
       }
     }
 
+    /** Current step raw: one strict encoding supplies SQL length and the actual digest. */
+    public String modelStepColumn(String label, String raw) {
+      String priorStatement = activeStatement, priorColumn = activeColumn;
+      activeStatement = statement;
+      activeColumn = label;
+      java.nio.ByteBuffer encoded = null;
+      try {
+        operation(32L + label.length()); // encoder/digest objects, dispatch, arithmetic and cleanup
+        retainScratch(this, Math.addExact(Math.multiplyExact(batch, 3), 4096L + 4L * raw.length()));
+        encoded =
+            primitive(
+                "history.encode",
+                raw.length(),
+                () -> {
+                  try {
+                    return java.nio.charset.StandardCharsets.UTF_8
+                        .newEncoder()
+                        .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                        .encode(java.nio.CharBuffer.wrap(raw));
+                  } catch (java.nio.charset.CharacterCodingException failure) {
+                    throw refuse(409, "SESSION_HISTORY_CORRUPT");
+                  }
+                });
+        long scalar = encoded.remaining();
+        if (metered) {
+          long size = 8L + utf8(label) + scalar;
+          bytes = Math.addExact(bytes, size);
+          groupCounters()[1] = Math.addExact(groupCounters()[1], size);
+          batch = Math.addExact(batch, size);
+          retainScratch(
+              this, Math.addExact(Math.multiplyExact(batch, 3), 4096L + 4L * raw.length()));
+          if (bytes > byteLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
+        }
+        String hash = modelStepHash(encoded);
+        encoded = null;
+        retainScratch(this, Math.multiplyExact(batch, 3));
+        if (additional != null) additional.column(label, raw);
+        return hash;
+      } catch (RuntimeException failure) {
+        throw recordFailure(failure);
+      } finally {
+        encoded = null;
+        activeStatement = priorStatement;
+        activeColumn = priorColumn;
+      }
+    }
+
+    private String modelStepHash(java.nio.ByteBuffer input) {
+      return primitive(
+          "history.hash",
+          input.remaining(),
+          () -> {
+            try {
+              var digest = java.security.MessageDigest.getInstance("SHA-256");
+              digest.update(input);
+              return java.util.HexFormat.of().formatHex(digest.digest());
+            } catch (java.security.NoSuchAlgorithmException impossible) {
+              throw new IllegalStateException(impossible);
+            }
+          });
+    }
+
     private void columnMeasured(String label, Object value) {
       if (metered) {
         operation(1);

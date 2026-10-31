@@ -8,6 +8,91 @@ import java.sql.SQLException;
 final class SessionLineageSourceColumns {
   private SessionLineageSourceColumns() {}
 
+  private static final String STEP =
+      "io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper.selectModelStep";
+  private static final String STEP_COLUMNS =
+      "tenant_id,id,task_id,attempt_id,ordinal,state,request_snapshot,request_digest,response_snapshot,response_digest,dispatch_id,dispatches,model_version,record_version,request_cleanup_state,retained_request_digest,directory_revision,directory_cwd,directory_binding_digest,session_upper_seq,session_context_digest,session_binding_digest";
+  private static final String STEP_SQL =
+      "SELECT " + STEP_COLUMNS + " FROM step WHERE tenant_id=? AND id=? AND task_id=?";
+
+  public static void verifyModelStepCommand(
+      org.apache.ibatis.mapping.MappedStatement command, SessionQueryContext query, Object args) {
+    query.operation(24L + STEP.length() + STEP_SQL.length());
+    var bound = command.getBoundSql(args);
+    if (!STEP.equals(command.getId())
+        || !STEP_SQL.equals(bound.getSql())
+        || command.getSqlCommandType() != org.apache.ibatis.mapping.SqlCommandType.SELECT
+        || !(command.getSqlSource() instanceof org.apache.ibatis.scripting.defaults.RawSqlSource)
+        || command.getResultMaps().size() != 1
+        || command.getResultMaps().getFirst().getType() != java.util.Map.class
+        || !command.getResultMaps().getFirst().getResultMappings().isEmpty()
+        || bound.getParameterMappings().size() != 3)
+      throw new IllegalStateException("Changed model step command");
+    String[] names = {"tenant", "stepId", "taskId"};
+    for (int i = 0; i < names.length; i++) {
+      query.operation(8L + names[i].length());
+      var mapping = bound.getParameterMappings().get(i);
+      if (!names[i].equals(mapping.getProperty())
+          || mapping.getMode() != org.apache.ibatis.mapping.ParameterMode.IN)
+        throw new IllegalStateException("Changed model step parameters");
+    }
+  }
+
+  static void verifyModelStep(
+      ResultSet rows,
+      SessionQueryContext query,
+      String statement,
+      Object parameter,
+      SessionQueryWork owner)
+      throws SQLException {
+    query.operation(18L + statement.length() + STEP_COLUMNS.length());
+    if (!STEP.equals(statement)
+        || owner == null
+        || SessionQueryTransaction.current(query) != owner
+        || !(parameter instanceof java.util.Map<?, ?> args))
+      throw new IllegalStateException("Foreign model step result");
+    owner.requireProjectionLocks((String) args.get("tenant"), (String) args.get("taskId"));
+    if (rows.getStatement().getConnection() != SessionQueryTransaction.connection(query))
+      throw new IllegalStateException("Foreign model step connection");
+    if (!(rows.getMetaData() instanceof com.mysql.cj.jdbc.result.ResultSetMetaData mysql))
+      throw new IllegalStateException("Model step metadata unavailable");
+    String[] labels = STEP_COLUMNS.split(","); // caller reserves this bounded projection workspace
+    var fields = mysql.getFields();
+    if (mysql.getColumnCount() != labels.length)
+      throw new IllegalStateException("Model step shape");
+    for (int i = 0; i < labels.length; i++) {
+      query.operation(32L + 3L * labels[i].length() + 12);
+      var expected =
+          switch (i) {
+            case 4, 11, 13 -> com.mysql.cj.MysqlType.INT;
+            case 16, 19 -> com.mysql.cj.MysqlType.BIGINT;
+            case 6, 8 -> com.mysql.cj.MysqlType.MEDIUMTEXT;
+            case 0, 5, 12, 14, 17 -> com.mysql.cj.MysqlType.VARCHAR;
+            default -> com.mysql.cj.MysqlType.CHAR;
+          };
+      var field = fields[i];
+      if (!"step".equals(field.getOriginalTableName())
+          || !labels[i].equals(field.getOriginalName())
+          || !labels[i].equals(mysql.getColumnLabel(i + 1))
+          || field.getMysqlType() != expected)
+        throw new IllegalStateException("Changed model step projection");
+      if (expected != com.mysql.cj.MysqlType.INT
+          && expected != com.mysql.cj.MysqlType.BIGINT
+          && (!"utf8mb4".equalsIgnoreCase(mysql.getColumnCharacterSet(i + 1))
+              || !"UTF-8".equalsIgnoreCase(mysql.getColumnCharacterEncoding(i + 1))))
+        throw new IllegalStateException("Changed model step charset");
+    }
+    query.operation(
+        12L
+            + ((String) args.get("tenant")).length()
+            + ((String) args.get("taskId")).length()
+            + ((String) args.get("stepId")).length());
+    if (!args.get("tenant").equals(rows.getObject(1))
+        || !args.get("stepId").equals(rows.getObject(2))
+        || !args.get("taskId").equals(rows.getObject(3)))
+      throw new IllegalStateException("Changed model step identity");
+  }
+
   private static final String PREFIX =
       "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionLineageMapper.";
 

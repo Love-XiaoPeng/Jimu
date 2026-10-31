@@ -25,7 +25,7 @@ public final class SessionHistoryProofServiceImpl implements SessionHistoryProof
     if (st.version() != 1 || !p.task().equals(st.task()) || st.upper() == null)
       throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_VERSION_UNSUPPORTED);
     String request = st.request();
-    if (!p.hash(request).equals(st.requestDigest())) throw corrupt();
+    if (!p.requestHash(request).equals(st.requestDigest())) throw corrupt();
     if (p.checkpointVersion(request) != 2 || p.messagesEmpty()) throw corrupt();
     String context = p.lastContent();
     p.validateContext(context);

@@ -752,6 +752,68 @@ final class JdbcSessionRecords {
         });
   }
 
+  Map<String, Object> modelStep(
+      Map<String, Object> task, String tenant, String step, String taskId) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            query);
+    if (owner == null || !query.lineage())
+      throw new IllegalStateException("Missing model step owner");
+    query.operation(28); // references/array/callback/parameters, proof handoff and cleanup
+    query.retainScratch(this, 8192);
+    String[] digest = null;
+    MapperSessionHistoryProofs proof = null;
+    try {
+      digest = new String[1];
+      var hashes = digest;
+      java.util.function.BiConsumer<
+              io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.Result, String>
+          hash =
+              (result, raw) -> {
+                query.operation(3);
+                if (hashes[0] != null) throw new IllegalStateException("Duplicate model step");
+                hashes[0] = result.modelStepColumn("request_snapshot", raw);
+              };
+      long version = owner.metadataReadVersion(query);
+      String statement =
+          "io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper.selectModelStep";
+      var args =
+          Map.of(
+              "query",
+              query,
+              "tenant",
+              tenant,
+              "stepId",
+              step,
+              "taskId",
+              taskId,
+              "modelStepHash",
+              hash);
+      io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryResults.verifyModelStepCommand(
+          mapperSession.getConfiguration().getMappedStatement(statement), query, args);
+      var row = mapperSession.<Map<String, Object>>selectOne(statement, args);
+      query.operation(5);
+      if (owner.metadataReadVersion(query) != version || digest[0] == null)
+        throw new IllegalStateException("Changed or absent model step read");
+      proof = new MapperSessionHistoryProofs(this, task, row);
+      proof.modelStepHash(digest[0]);
+      digest[0] = null;
+      historyProofs.validateStep(proof);
+      return row;
+    } catch (RuntimeException failure) {
+      throw owner.poisonProof(failure);
+    } catch (Error failure) {
+      owner.poisonLineageSource(failure);
+      throw failure;
+    } finally {
+      if (digest != null) digest[0] = null;
+      if (proof != null) proof.modelStepHash(null);
+      proof = null;
+      digest = null;
+      query.releaseScratch(this);
+    }
+  }
+
   void validateStep(Map<String, Object> task, Map<String, Object> st) {
     historyProofs.validateStep(new MapperSessionHistoryProofs(this, task, st));
   }

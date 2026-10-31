@@ -38,12 +38,14 @@ final class SessionFinalMapperFailures {
     return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type}, handler));
   }
 
-  private static final class FaultSource extends DelegatingDataSource {
+  static final class FaultSource extends DelegatingDataSource {
+    String table = "task_attempt";
     String fault;
     Runnable write;
     boolean changed, closed;
     int getters, statements;
     Throwable primary, secondary;
+    ResultSet providerRows;
     final List<Object> binds = new ArrayList<>();
 
     FaultSource(DataSource source) {
@@ -59,20 +61,28 @@ final class SessionFinalMapperFailures {
             Object value = invoke(connection, m, a);
             if (!m.getName().equals("prepareStatement")
                 || !(value instanceof PreparedStatement statement)
-                || !a[0].toString().contains("FROM task_attempt")) return value;
+                || !a[0].toString().contains("FROM " + table)) return value;
             statements++;
             return proxy(
                 PreparedStatement.class,
                 (p, sm, sa) -> {
+                  if (table.equals("step") && sm.getName().equals("getConnection")) return o;
                   if (sm.getName().equals("setString")) binds.add(sa[1]);
                   Object output = invoke(statement, sm, sa);
+                  if (table.equals("step") && sm.getName().equals("close") && providerRows != null)
+                    closed = providerRows.isClosed();
                   if (!sm.getName().equals("getResultSet") || !(output instanceof ResultSet rows))
                     return output;
+                  providerRows = rows;
                   return proxy(
                       ResultSet.class,
                       (r, rm, ra) -> {
+                        if (table.equals("step") && rm.getName().equals("getStatement")) return p;
                         if (rm.getName().equals("getMetaData")) {
                           var metadata = rows.getMetaData();
+                          if (table.equals("step")
+                              && !List.of("count", "label", "type").contains(fault))
+                            return metadata;
                           return proxy(
                               ResultSetMetaData.class,
                               (m0, mm, ma) -> {
@@ -229,7 +239,7 @@ final class SessionFinalMapperFailures {
     }
   }
 
-  private static boolean contains(Throwable root, Throwable expected) {
+  static boolean contains(Throwable root, Throwable expected) {
     if (root == expected) return true;
     if (root.getCause() != null && root.getCause() != root && contains(root.getCause(), expected))
       return true;

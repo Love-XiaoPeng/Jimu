@@ -17,6 +17,18 @@ final class MapperSessionHistoryProofs
   private SessionHistoryProofs.HistoryRow checkedRow;
   private DurableAgent.Checkpoint checkpoint;
   private final boolean acceptedEvent;
+  private String modelStepHash;
+
+  void modelStepHash(String hash) {
+    modelStepHash = hash;
+  }
+
+  public String requestHash(String raw) {
+    if (modelStepHash == null) return hash(raw);
+    String hash = modelStepHash;
+    modelStepHash = null;
+    return hash;
+  }
 
   MapperSessionHistoryProofs(
       JdbcSessionRecords records, Map<String, Object> task, Map<String, Object> step) {
