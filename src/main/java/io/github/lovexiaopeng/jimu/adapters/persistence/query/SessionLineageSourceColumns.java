@@ -9,9 +9,9 @@ final class SessionLineageSourceColumns {
   private SessionLineageSourceColumns() {}
 
   private static final String STEP =
-      "io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper.selectModelStep";
+      "io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper.selectLineageModelAdmission";
   private static final String STEP_COLUMNS =
-      "tenant_id,id,task_id,attempt_id,ordinal,state,request_snapshot,request_digest,response_snapshot,response_digest,dispatch_id,dispatches,model_version,record_version,request_cleanup_state,retained_request_digest,directory_revision,directory_cwd,directory_binding_digest,session_upper_seq,session_context_digest,session_binding_digest";
+      "tenant_id,id,task_id,ordinal,request_snapshot,request_digest,response_snapshot,dispatch_id,dispatches,record_version,session_upper_seq,session_context_digest,session_binding_digest";
   private static final String STEP_SQL =
       "SELECT " + STEP_COLUMNS + " FROM step WHERE tenant_id=? AND id=? AND task_id=?";
 
@@ -65,10 +65,10 @@ final class SessionLineageSourceColumns {
       query.operation(32L + 3L * labels[i].length() + 12);
       var expected =
           switch (i) {
-            case 4, 11, 13 -> com.mysql.cj.MysqlType.INT;
-            case 16, 19 -> com.mysql.cj.MysqlType.BIGINT;
-            case 6, 8 -> com.mysql.cj.MysqlType.MEDIUMTEXT;
-            case 0, 5, 12, 14, 17 -> com.mysql.cj.MysqlType.VARCHAR;
+            case 3, 8, 9 -> com.mysql.cj.MysqlType.INT;
+            case 10 -> com.mysql.cj.MysqlType.BIGINT;
+            case 4, 6 -> com.mysql.cj.MysqlType.MEDIUMTEXT;
+            case 0 -> com.mysql.cj.MysqlType.VARCHAR;
             default -> com.mysql.cj.MysqlType.CHAR;
           };
       var field = fields[i];

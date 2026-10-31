@@ -15,6 +15,8 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 /** Current Connector step consumption; the seed is a shape fixture, never a business pass. */
 final class SessionModelStepSqlScenario {
   private static final String STATEMENT =
+      "io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper.selectLineageModelAdmission";
+  private static final String ORIGINAL =
       "io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper.selectModelStep";
   private static final String STEP = "20000000-0000-0000-0000-000000000020";
 
@@ -31,7 +33,7 @@ final class SessionModelStepSqlScenario {
     return q;
   }
 
-  static void verify(JdbcTemplate db, String task) {
+  static void verify(JdbcTemplate db, String task, boolean narrowOnly) {
     var source = db.getDataSource();
     var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
     var mappers = LedgerMapperSessions.create(source);
@@ -69,7 +71,8 @@ final class SessionModelStepSqlScenario {
             if (folded)
               QueryResults.verifyModelStepCommand(
                   mappers.getConfiguration().getMappedStatement(STATEMENT), q, args);
-            Map<String, Object> row = mappers.selectOne(STATEMENT, args);
+            Map<String, Object> row = mappers.selectOne(folded ? STATEMENT : ORIGINAL, args);
+            check(row.size() == (folded ? 13 : 22), "actual admission projection folded=" + folded);
             if (!folded)
               hash[0] =
                   new JdbcSessionRecords(db, q)
@@ -105,16 +108,18 @@ final class SessionModelStepSqlScenario {
     var faultTx =
         new SessionQueryTransaction(faultSource, new DataSourceTransactionManager(faultSource));
     for (String fault :
-        List.of(
-            "count",
-            "label",
-            "type",
-            "write",
-            "close-write",
-            "error",
-            "close",
-            "foreign",
-            "extra")) {
+        narrowOnly
+            ? List.of("count", "label", "type")
+            : List.of(
+                "count",
+                "label",
+                "type",
+                "write",
+                "close-write",
+                "error",
+                "close",
+                "foreign",
+                "extra")) {
       var q = query();
       var foreign = query();
       faultSource.fault = fault;

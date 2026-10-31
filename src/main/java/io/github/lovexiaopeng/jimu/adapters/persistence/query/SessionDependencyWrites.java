@@ -463,7 +463,12 @@ final class SessionDependencyWrites {
 
   private static Map<String, SessionQueryWork.Relation> reads() {
     var r = new HashMap<String, SessionQueryWork.Relation>();
-    for (String name : List.of("selectLatestStep", "selectModelStep", "selectInvocationStep"))
+    for (String name :
+        List.of(
+            "selectLatestStep",
+            "selectModelStep",
+            "selectLineageModelAdmission",
+            "selectInvocationStep"))
       r.put(ROOT + "execution.mapper.StepMapper." + name, SessionQueryWork.Relation.STEP);
     r.put(
         ROOT + "session.mapper.ScopeQueryStepReadMapper.selectMaps",

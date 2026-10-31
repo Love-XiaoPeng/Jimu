@@ -264,8 +264,8 @@ final class SessionBorrowedMetadataSqlScenario {
     var mappers = LedgerMapperSessions.create(source);
     seed(db);
     try {
-      if (mode.equals("borrowed-model-step")) {
-        SessionModelStepSqlScenario.verify(db, ID);
+      if (mode.equals("borrowed-model-step") || mode.equals("borrowed-model-admission")) {
+        SessionModelStepSqlScenario.verify(db, ID, mode.equals("borrowed-model-admission"));
         return;
       }
       if (mode.equals("borrowed-preflight")) {

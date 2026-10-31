@@ -210,12 +210,14 @@ class SessionDependencyTest {
     owner.complete();
   }
 
-  @Test
-  void observedRowsAllowOnlyTheirOwnCallerStepAndReservationCategory() {
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(
+      strings = {"selectModelStep", "selectLineageModelAdmission"})
+  void observedRowsAllowOnlyTheirOwnCallerStepAndReservationCategory(String command) {
     String root = "io.github.lovexiaopeng.jimu.adapters.persistence.";
     var owner = published();
     SessionDependencyWrites.observed(
-        root + "execution.mapper.StepMapper.selectModelStep",
+        root + "execution.mapper.StepMapper." + command,
         null,
         List.of(Map.of("tenant_id", "tenant", "id", "step", "task_id", "new")),
         owner);

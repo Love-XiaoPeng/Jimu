@@ -776,7 +776,7 @@ final class JdbcSessionRecords {
               };
       long version = owner.metadataReadVersion(query);
       String statement =
-          "io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper.selectModelStep";
+          "io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.StepMapper.selectLineageModelAdmission";
       var args =
           Map.of(
               "query",

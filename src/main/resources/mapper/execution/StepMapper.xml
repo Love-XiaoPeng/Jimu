@@ -16,6 +16,9 @@
   <select id="selectModelStep" resultType="map">
     <![CDATA[SELECT tenant_id,id,task_id,attempt_id,ordinal,state,request_snapshot,request_digest,response_snapshot,response_digest,dispatch_id,dispatches,model_version,record_version,request_cleanup_state,retained_request_digest,directory_revision,directory_cwd,directory_binding_digest,session_upper_seq,session_context_digest,session_binding_digest FROM step WHERE tenant_id=#{tenant} AND id=#{stepId} AND task_id=#{taskId}]]>
   </select>
+  <select id="selectLineageModelAdmission" resultType="map">
+    <![CDATA[SELECT tenant_id,id,task_id,ordinal,request_snapshot,request_digest,response_snapshot,dispatch_id,dispatches,record_version,session_upper_seq,session_context_digest,session_binding_digest FROM step WHERE tenant_id=#{tenant} AND id=#{stepId} AND task_id=#{taskId}]]>
+  </select>
   <update id="markModelRunning">
     <![CDATA[UPDATE step SET state='RUNNING',dispatch_id=#{dispatchId},dispatches=dispatches+1 WHERE tenant_id=#{tenant} AND id=#{stepId}]]>
   </update>

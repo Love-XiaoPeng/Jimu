@@ -44,6 +44,13 @@ public interface StepMapper {
       @Param("stepId") String stepId,
       @Param("taskId") String taskId);
 
+  /** v5模型准入仅消费身份、请求证明和派发计数；响应结算仍用原投影。 */
+  List<Map<String, Object>> selectLineageModelAdmission(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("stepId") String stepId,
+      @Param("taskId") String taskId);
+
   int markModelRunning(
       @Param("query") SessionQueryContext query,
       @Param("dispatchId") String dispatchId,
