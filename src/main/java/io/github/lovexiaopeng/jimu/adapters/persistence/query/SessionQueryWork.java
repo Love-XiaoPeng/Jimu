@@ -67,7 +67,71 @@ public final class SessionQueryWork {
     invalidators.remove(key);
   }
 
-  private final java.util.Set<String> locks = new java.util.HashSet<>();
+  private final Map<String, ProjectionLock> locks = new java.util.HashMap<>();
+  private final Object lockScratch = new Object(), lockLookupScratch = new Object();
+  private long lockBytes = 128;
+
+  /** 原真实持锁登记的不可变键；只是地址交接，每次消费仍查询当前锁集合。 */
+  public static final class ProjectionLock {
+    private final SessionQueryWork owner;
+    private final String key;
+
+    private ProjectionLock(SessionQueryWork owner, String key) {
+      this.owner = owner;
+      this.key = key;
+    }
+  }
+
+  public ProjectionLock projectionLock(SessionQueryContext query, String tenant, String task) {
+    try {
+      active();
+      context.checkHealthy();
+      context.operation(14L + 3L * (tenant.length() + task.length() + 1));
+      if (query != context || SessionQueryTransaction.current(query) != this)
+        throw new IllegalStateException("Foreign projection lock owner");
+      context.retainScratch(lockLookupScratch, 64L + 2L * (tenant.length() + task.length() + 1));
+      var registered = locks.get(tenant + ":" + task);
+      if (registered == null)
+        throw new IllegalStateException("Task locks required before projection");
+      return registered;
+    } catch (RuntimeException failure) {
+      throw poisonProof(failure);
+    } catch (Error failure) {
+      recordMetadataError(failure);
+      throw failure;
+    } finally {
+      context.releaseScratch(lockLookupScratch);
+    }
+  }
+
+  /** FINAL调用者已在本次finalCheck核实际Work；此处只核原键和当前完整锁集合。 */
+  public void requireProjectionLocks(SessionQueryContext query, ProjectionLock registered) {
+    try {
+      active();
+      context.checkHealthy();
+      context.operation(7); // identity, cached String hash, current membership and handoff
+      if (query != context
+          || registered == null
+          || registered.owner != this
+          || locks.get(registered.key) != registered)
+        throw new IllegalStateException("Foreign or missing projection lock");
+      requireSourceLocks();
+    } catch (RuntimeException failure) {
+      throw poisonProof(failure);
+    } catch (Error failure) {
+      recordMetadataError(failure);
+      throw failure;
+    }
+  }
+
+  private void requireSourceLocks() {
+    for (var source : stagedSources.values()) {
+      context.operation(6); // next/current source, original key and current membership
+      if (locks.get(source.lock().key) != source.lock())
+        throw poisonProof(new IllegalStateException("Full sorted task locks required"));
+    }
+  }
+
   private final Object scopeScratch = new Object(), graphScratch = new Object();
   private String fenceKey, leaseKey, stepKey, responseKey;
   private long dependencyGeneration;
@@ -193,13 +257,9 @@ public final class SessionQueryWork {
     active();
     context.checkHealthy();
     context.operation(1L + tenant.length() + task.length());
-    if (!locks.contains(tenant + ":" + task))
+    if (!locks.containsKey(tenant + ":" + task))
       throw poisonProof(new IllegalStateException("Task locks required before projection"));
-    for (var source : stagedSources.values()) {
-      context.operation(1L + source.caller().tenant().length() + source.caller().id().length());
-      if (!locks.contains(source.caller().tenant() + ":" + source.caller().id()))
-        throw poisonProof(new IllegalStateException("Full sorted task locks required"));
-    }
+    requireSourceLocks();
   }
 
   public final class Projection {
@@ -246,7 +306,7 @@ public final class SessionQueryWork {
       java.time.LocalDateTime retain) {
     active();
     context.checkHealthy();
-    if (!locks.contains(identity.tenant() + ":" + identity.id())) return;
+    if (!locks.containsKey(identity.tenant() + ":" + identity.id())) return;
     if (histories == null) histories = new SessionCheckedHistories(context, token);
     histories.remember(identity, version, binding, row, retain);
   }
@@ -335,7 +395,10 @@ public final class SessionQueryWork {
 
   private boolean admission;
   private SessionScopeRecords.Caller stagingCaller;
-  private final Map<String, SessionScopeRecords.SourceFact> stagedSources = new LinkedHashMap<>();
+
+  private record StagedSource(SessionScopeRecords.SourceFact fact, ProjectionLock lock) {}
+
+  private final Map<String, StagedSource> stagedSources = new LinkedHashMap<>();
   private VerifiedGraph stagedGraph;
   private String stagedGraphKey, stagedGraphTenant;
   private final Object stagingScratch = new Object();
@@ -347,7 +410,9 @@ public final class SessionQueryWork {
 
   public SessionScopeRecords.SourceFact stagedSource(SessionScopeRecords.Caller caller, String id) {
     active();
-    return admission && caller.equals(stagingCaller) ? stagedSources.get(id) : null;
+    context.operation(2); // staged wrapper lookup result and fact handoff
+    var staged = admission && caller.equals(stagingCaller) ? stagedSources.get(id) : null;
+    return staged == null ? null : staged.fact();
   }
 
   private SessionScopeRecords.SourceFact lineageSource;
@@ -384,7 +449,7 @@ public final class SessionQueryWork {
       for (var source : proof.sources()) {
         context.operation(2L + source.tenant().length() + source.id().length());
         if (!key.tenant().equals(source.tenant())
-            || !locks.contains(source.tenant() + ":" + source.id()))
+            || !locks.containsKey(source.tenant() + ":" + source.id()))
           throw new IllegalStateException("Full sorted source locks required");
       }
       context.retainScratch(lineageScopeScratch, 512);
@@ -510,8 +575,10 @@ public final class SessionQueryWork {
           || !tenant.equals(stagingCaller.tenant())
           || id.equals(stagingCaller.id())) return null;
       context.operation(4L + id.length());
-      var fact = stagedSources.get(id);
-      if (fact == null) return null;
+      var staged = stagedSources.get(id);
+      if (staged == null) return null;
+      context.operation(1);
+      var fact = staged.fact();
       context.operation(
           10L
               + tenant.length()
@@ -555,19 +622,29 @@ public final class SessionQueryWork {
     if (!admission) return;
     if (stagingCaller != null && !stagingCaller.equals(caller))
       throw new IllegalStateException("Different admission caller");
-    stagingCaller = caller;
     long bytes = 0;
-    for (var f : stagedSources.values())
-      if (!f.caller().id().equals(fact.caller().id())) bytes = Math.addExact(bytes, sourceBytes(f));
+    long previous = 0;
+    for (var staged : stagedSources.values()) {
+      context.operation(4L + fact.caller().id().length());
+      long held = sourceBytes(staged.fact());
+      bytes = Math.addExact(bytes, held);
+      if (staged.fact().caller().id().equals(fact.caller().id())) previous = held;
+    }
     bytes = Math.addExact(bytes, sourceBytes(fact));
+    context.operation(12); // wrapper, link, old reference drop and final owner adjustment
+    // Replacement temporarily holds both old and new facts, including their key aliases.
     context.retainScratch(stagingScratch, bytes);
-    stagedSources.put(fact.caller().id(), fact);
+    var registered = projectionLock(context, fact.caller().tenant(), fact.caller().id());
+    stagingCaller = caller;
+    stagedSources.put(fact.caller().id(), new StagedSource(fact, registered));
+    context.retainScratch(stagingScratch, bytes - previous);
   }
 
   private static long sourceBytes(SessionScopeRecords.SourceFact fact) {
     long bytes = fact.scope().bytes();
     for (var t : fact.targets()) bytes = Math.addExact(bytes, t.bytes());
-    return Math.addExact(Math.multiplyExact(3L, bytes), 2048);
+    return Math.addExact(
+        Math.multiplyExact(3L, bytes), 2080); // wrapper and original lock-key alias
   }
 
   public void stageGraph(String tenant, String id, VerifiedGraph proof) {
@@ -725,7 +802,19 @@ public final class SessionQueryWork {
 
   public void locked(String tenant, String task) {
     active();
-    locks.add(tenant + ":" + task);
+    long size = 128L + 2L * (tenant.length() + task.length() + 1);
+    context.operation(16L + 3L * (tenant.length() + task.length() + 1));
+    context.retainScratch(lockLookupScratch, size);
+    try {
+      var key = tenant + ":" + task;
+      if (!locks.containsKey(key)) {
+        context.retainScratch(lockScratch, Math.addExact(lockBytes, size));
+        locks.put(key, new ProjectionLock(this, key));
+        lockBytes += size;
+      }
+    } finally {
+      context.releaseScratch(lockLookupScratch);
+    }
   }
 
   public SessionScopeRecords.Validated proof() {
@@ -744,7 +833,8 @@ public final class SessionQueryWork {
 
   SessionQueryWork(SessionQueryContext context) {
     this.context = context;
-    context.operation(12); // two stackless metadata failures, fields and failure handoff.
+    context.operation(18); // failures plus original-lock registry/lookup owner and final cleanup
+    context.retainScratch(lockScratch, lockBytes);
     context.retainScratch(relationScratch, RELATION_ROOT_BYTES);
     metadataClosed = new MetadataClosedFailure();
     metadataError = new MetadataError();
@@ -1010,8 +1100,9 @@ public final class SessionQueryWork {
     if (lineageSource != null || lineageNode || lineageScope != null)
       throw poisonProof(new IllegalStateException("Write during lineage structure borrow"));
     if (lineageInputs && lineageIssued)
-      for (var fact : stagedSources.values()) {
-        if (lineageInputChanged(fact, writes))
+      for (var staged : stagedSources.values()) {
+        context.operation(1);
+        if (lineageInputChanged(staged.fact(), writes))
           throw poisonProof(new IllegalStateException("Write while lineage inputs remain live"));
       }
     mutation();
@@ -1111,10 +1202,13 @@ public final class SessionQueryWork {
     stagedSources
         .values()
         .removeIf(
-            fact ->
-                intersects(
-                    dependencies(fact.caller().tenant(), fact.caller().id(), fact.authority()),
-                    writes));
+            staged -> {
+              context.operation(1);
+              var fact = staged.fact();
+              return intersects(
+                  dependencies(fact.caller().tenant(), fact.caller().id(), fact.authority()),
+                  writes);
+            });
     authorities
         .entrySet()
         .removeIf(
@@ -1138,7 +1232,10 @@ public final class SessionQueryWork {
       context.releaseScratch(graphScratch);
     }
     long bytes = 0;
-    for (var fact : stagedSources.values()) bytes = Math.addExact(bytes, sourceBytes(fact));
+    for (var staged : stagedSources.values()) {
+      context.operation(1);
+      bytes = Math.addExact(bytes, sourceBytes(staged.fact()));
+    }
     context.retainScratch(stagingScratch, bytes);
     // 该树没有逐键证明；任何相关依赖写后必须重新解析，不能从旧Map回填。
     authority = null;
@@ -1187,8 +1284,8 @@ public final class SessionQueryWork {
     if (lineageScope != null || lineageSource != null || lineageNode)
       throw poisonProof(
           new IllegalStateException("Scope publication during lineage structure borrow"));
-    if (!locks.contains(key.tenant() + ":" + key.id())
-        || proof.sources().stream().anyMatch(s -> !locks.contains(s.tenant() + ":" + s.id())))
+    if (!locks.containsKey(key.tenant() + ":" + key.id())
+        || proof.sources().stream().anyMatch(s -> !locks.containsKey(s.tenant() + ":" + s.id())))
       throw new IllegalStateException("Full sorted task locks required before proof publication");
     caller = key;
     scope = proof;
@@ -1336,5 +1433,6 @@ public final class SessionQueryWork {
     projectionTenant = null;
     projectionTask = null;
     context.releaseScratch(projectionScratch);
+    context.releaseScratch(lockScratch); // all registry/source aliases have been dropped above
   }
 }

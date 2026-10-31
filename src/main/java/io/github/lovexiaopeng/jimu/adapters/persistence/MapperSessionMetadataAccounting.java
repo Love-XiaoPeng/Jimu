@@ -53,6 +53,9 @@ final class MapperSessionMetadataAccounting
 
   private io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext finalQuery;
   private io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork finalWork;
+  private io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork.ProjectionLock
+      finalLock;
+  private String finalTenant, finalTask;
   private Object finalOwner;
   private boolean finalActive, finalClosed;
 
@@ -126,7 +129,10 @@ final class MapperSessionMetadataAccounting
   private FinalTable readFinal(Table table) {
     finalQuery.operation(23); // args/command/handler dispatch, fields/version and finally clears
     if (readingTable != null) throw new IllegalStateException("Nested FINAL result");
-    finalWork.requireProjectionLocks(s(task, "tenant_id"), s(task, "id"));
+    finalQuery.operation(6); // current task Map still holds the identities bound at finalization
+    if (s(task, "tenant_id") != finalTenant || s(task, "id") != finalTask)
+      throw new IllegalStateException("Changed FINAL task identity");
+    finalWork.requireProjectionLocks(finalQuery, finalLock);
     var session = records.mapperSession();
     var command =
         session
@@ -270,8 +276,13 @@ final class MapperSessionMetadataAccounting
       finalOwner = new Object();
       // summary512 + balance/row overlap1024 + fixed-point/formatter2048 + closure/locals512.
       if (finalQuery != null) {
-        finalQuery.operation(12);
-        finalQuery.retainScratch(finalOwner, 4096);
+        finalQuery.operation(22);
+        finalQuery.retainScratch(finalOwner, 4120); // original key and both task identity aliases
+        if (finalWork != null && JdbcSessionScopes.lineage(task)) {
+          finalTenant = s(task, "tenant_id");
+          finalTask = s(task, "id");
+          finalLock = finalWork.projectionLock(finalQuery, finalTenant, finalTask);
+        }
       }
       finalActive = true;
       finalCheck();
@@ -284,6 +295,9 @@ final class MapperSessionMetadataAccounting
         finalOwner = null;
         finalQuery = null;
         finalWork = null;
+        finalLock = null;
+        finalTenant = null;
+        finalTask = null;
         if (query != null) query.releaseScratch(owner);
       };
     } catch (RuntimeException | Error failure) {
@@ -292,6 +306,9 @@ final class MapperSessionMetadataAccounting
       finalOwner = null;
       finalQuery = null;
       finalWork = null;
+      finalLock = null;
+      finalTenant = null;
+      finalTask = null;
       finalActive = false;
       finalClosed = true;
       throw failure;

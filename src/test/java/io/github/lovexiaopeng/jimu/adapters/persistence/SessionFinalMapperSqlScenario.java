@@ -114,7 +114,8 @@ public final class SessionFinalMapperSqlScenario {
                       totals)));
       System.out.flush();
     }
-    if (!args[2].equals("seed") && !sourceOnly) SessionFinalMapperFailures.verify(source);
+    if (!args[2].equals("seed") && !args[2].equals("cost-only") && !sourceOnly)
+      SessionFinalMapperFailures.verify(source);
   }
 
   private static SessionScopeRecords.SourceFact sourceFact(JsonNode saved) {
