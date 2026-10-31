@@ -680,7 +680,7 @@ public final class SessionQueryWork {
   }
 
   // Metadata cleanup must be able to register failure after completion without reviving proof.
-  public RuntimeException recordMetadataFailure(RuntimeException failure) {
+  RuntimeException recordMetadataFailure(RuntimeException failure) {
     var first = context.recordFailure(failure);
     if (!completed && proofFailure == null) proofFailure = first;
     return first;
@@ -972,14 +972,6 @@ public final class SessionQueryWork {
 
   private void active() {
     if (completed) throw new IllegalStateException("Completed session transaction");
-  }
-
-  /** 同步 FINAL 读者只比较写代次；不签发可跨 Result 使用的行证明。 */
-  public long metadataReadVersion(SessionQueryContext query) {
-    context.operation(5);
-    active();
-    if (context != query) throw poisonProof(new IllegalStateException("Foreign metadata query"));
-    return generation;
   }
 
   public void mutation() {

@@ -93,7 +93,14 @@ final class MapperSessionMetadataAccounting implements SessionMetadataAccounting
       // Route plus service's summary fold, headroom, special-field handoff and temporary clear.
       finalQuery.operation(32);
       FinalTable result;
-      if (table == Table.TASK) result = records.finalMetadata(table, task);
+      if (table == Table.TASK)
+        result =
+            SessionCursorMetadataBatch.measureFinal(
+                finalQuery,
+                table,
+                SessionMetadataProjection.taskSized(),
+                () ->
+                    records.mapperCursor("SessionHistoryRetentionMapper.metadataTaskSized", task));
       else if (table == Table.TASK_SESSION_HISTORY)
         result =
             io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistorySizedMetadataBatch
@@ -110,7 +117,9 @@ final class MapperSessionMetadataAccounting implements SessionMetadataAccounting
         var projection = SessionMetadataProjection.forTable(table);
         if (projection == null)
           throw new IllegalStateException("Missing final metadata projection");
-        result = records.finalMetadata(table, task);
+        result =
+            SessionCursorMetadataBatch.measureFinal(
+                finalQuery, table, projection, () -> records.mapperCursor(operation(table), task));
       }
       finalCheck();
       return result;

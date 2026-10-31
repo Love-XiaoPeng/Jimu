@@ -605,17 +605,6 @@ final class JdbcSessionRecords {
     }
   }
 
-  io.github.lovexiaopeng.jimu.kernel.session.port.SessionMetadataAccounting.FinalTable
-      finalMetadata(
-          io.github.lovexiaopeng.jimu.kernel.session.port.SessionMetadataAccounting.Table table,
-          Map<String, Object> task) {
-    query.operation(4); // original meter scope and direct FINAL handoff/cleanup
-    try (var ignored = query.meter(searchBudget)) {
-      return SessionFinalMetadataRows.measure(
-          mapperSession(), query, table, s(task, "tenant_id"), s(task, "id"));
-    }
-  }
-
   long metadata(Map<String, Object> task, boolean closing) {
     return metadata(task, closing, 0);
   }

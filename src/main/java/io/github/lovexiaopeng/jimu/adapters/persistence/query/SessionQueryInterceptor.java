@@ -1,6 +1,5 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence.query;
 
-import io.github.lovexiaopeng.jimu.adapters.persistence.SessionFinalMetadataRows.Request;
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
@@ -62,11 +61,9 @@ public final class SessionQueryInterceptor implements Interceptor {
                 : SystemMetaObject.forObject(invocation.getTarget())
                     .getValue("parameterHandler.parameterObject");
     Object value =
-        parameter instanceof Request request
-            ? request.getQuery()
-            : parameter instanceof Map<?, ?> values
-                ? (values.containsKey("query") ? values.get("query") : null)
-                : parameter;
+        parameter instanceof Map<?, ?> values
+            ? (values.containsKey("query") ? values.get("query") : null)
+            : parameter;
     var owner = SessionQueryTransaction.currentOwner();
     if (invocation.getTarget() instanceof org.apache.ibatis.executor.Executor) {
       if (owner != null
@@ -77,16 +74,11 @@ public final class SessionQueryInterceptor implements Interceptor {
       }
     }
     if (!(value instanceof SessionQueryContext context)) return invocation.proceed();
-    // 显式 query 已发现；新增 Request 路由及 ResultSet 分派在 fallback 上也照常付费。
-    context.operation(2);
     if (invocation.getTarget() instanceof ResultSetHandler) {
       // JDBC已执行，流式ResultSet可能已打开；截止拒绝也必须在清理保护内。
       var statement = (Statement) invocation.getArgs()[0];
       try {
         context.remainingMillis();
-        if (parameter instanceof Request request)
-          return java.util.Collections.singletonList(
-              request.consume(invocation.getTarget(), statement));
         return results(invocation, context, parameter);
       } catch (Throwable failure) {
         // MyBatis后续会丢弃反射包装；清理cause必须挂在真正向外传播的原异常上。
