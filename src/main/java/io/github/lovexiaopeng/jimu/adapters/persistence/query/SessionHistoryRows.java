@@ -59,7 +59,7 @@ public final class SessionHistoryRows {
       sizes = null;
       long bytes = slot.capability.bytes();
       query.operation(5); // 原算术/替换及新增16字节来源别名的加法先付
-      query.retainScratch(slot.scratch, Math.addExact(16400, Math.multiplyExact(8, bytes)));
+      query.retainScratch(slot.scratch, Math.addExact(16416, Math.multiplyExact(8, bytes)));
       rows = sql.selectList(RAW, args);
       query.operation(5);
       if (rows.size() != 1 || !slot.rawEnded || !slot.consumed)
@@ -102,6 +102,7 @@ public final class SessionHistoryRows {
     private Object token;
     private final Object scratch;
     private String tenant, task;
+    private SessionQueryWork.ProjectionLock lock;
     private String confirmedSizeId, confirmedRawId;
     private Connection connection;
     private Statement sizeStatement, rawStatement;
@@ -127,6 +128,8 @@ public final class SessionHistoryRows {
       token = owner.token();
       connection = SessionQueryTransaction.connection(query);
       if (connection == null) throw new IllegalStateException("Missing history connection");
+      lock = owner.projectionLock(query, tenant, task);
+      owner.requireProjectionLocks(query, lock);
     }
 
     boolean pending() {
@@ -175,7 +178,7 @@ public final class SessionHistoryRows {
           || !tenant.equals(map.get("tenant"))
           || !task.equals(map.get("taskId")))
         throw new IllegalStateException("Different history length source");
-      owner.requireProjectionLocks(tenant, task);
+      owner.requireProjectionLocks(query, lock);
       query.operation(1); // 第二次发布条件也须在分支前支付，命中亦不退款。
       if (!same) {
         query.operation(3); // payer/size分支及字段写入先付；不得保留Map或权限结果。
@@ -262,7 +265,9 @@ public final class SessionHistoryRows {
       query.operation(3);
       if (!sizeEnded || sizeRows != 0 || capability != null)
         throw new IllegalStateException("Invalid empty history size");
+      query.operation(1); // 空结果提前断开登记对象别名
       fallback = true;
+      lock = null;
     }
 
     void closed(boolean size) {
@@ -284,6 +289,7 @@ public final class SessionHistoryRows {
     }
 
     void clear() {
+      lock = null; // 原Slot owner先断开新增别名，再退款；失效期间仍由该owner覆盖。
       // Work先预付整个固定链的清理成本；失败清理也不调用会被首错阻断的operation。
       if (previous != null) previous.clear();
       previous = null;

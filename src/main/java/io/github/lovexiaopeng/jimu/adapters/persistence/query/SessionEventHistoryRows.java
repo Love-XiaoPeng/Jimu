@@ -52,7 +52,7 @@ public final class SessionEventHistoryRows {
       long bytes = slot.capability.bytes();
       query.operation(2);
       // 两份provider/Map UTF16及raw转交重叠，固定8192包含八列labels/Map/能力/诊断/临时Long。
-      query.retainScratch(slot.scratch, Math.addExact(8192, Math.multiplyExact(8, bytes)));
+      query.retainScratch(slot.scratch, Math.addExact(8208, Math.multiplyExact(8, bytes)));
       List<Map<String, Object>> rows = sql.selectList(RAW, args);
       query.operation(4);
       if (rows.size() != 1 || !slot.rawEnded || !slot.consumed)
@@ -74,6 +74,7 @@ public final class SessionEventHistoryRows {
     private final SessionQueryContext query;
     private final Object token, scratch;
     private String tenant, task;
+    private SessionQueryWork.ProjectionLock lock;
     private Connection connection;
     private ResultSet sizeResult, rawResult;
     private java.sql.Statement sizeStatement, rawStatement;
@@ -98,6 +99,8 @@ public final class SessionEventHistoryRows {
       connection = SessionQueryTransaction.connection(query);
       if (connection == null)
         throw owner.poisonProof(new IllegalStateException("Missing event history connection"));
+      lock = owner.projectionLock(query, tenant, task);
+      owner.requireProjectionLocks(query, lock);
     }
 
     boolean pending() {
@@ -134,7 +137,7 @@ public final class SessionEventHistoryRows {
           || !tenant.equals(map.get("tenant"))
           || !task.equals(map.get("taskId")))
         throw new IllegalStateException("Different event history length owner");
-      owner.requireProjectionLocks(tenant, task);
+      owner.requireProjectionLocks(query, lock);
     }
 
     void bind(
@@ -217,7 +220,9 @@ public final class SessionEventHistoryRows {
       query.operation(2);
       if (!sizeEnded || sizeRows != 0 || capability != null)
         throw new IllegalStateException("Invalid empty SQL size");
+      query.operation(1); // 空结果提前断开登记对象别名
       fallback = true;
+      lock = null;
       sizeResult = null;
       connection = null;
       tenant = null;
@@ -245,6 +250,7 @@ public final class SessionEventHistoryRows {
     }
 
     void clear() {
+      lock = null; // 原Slot owner先断开新增别名，再退款；失效期间仍由该owner覆盖。
       invalidate();
       sizeResult = null;
       rawResult = null;

@@ -151,16 +151,15 @@ public final class SessionQueryWork {
     if (historyLoads == 4) return null;
     if (historyLength != null && historyLength.pending())
       throw poisonProof(new IllegalStateException("History length already in flight"));
-    requireProjectionLocks(tenant, task);
     context.retainScratch(HISTORY_HOLDER, 64); // new scratch-key reference, before allocation
     Object scratch = null;
     SessionHistoryRows.Slot next = null;
     boolean transferred = false;
     try {
       scratch = new Object();
-      context.retainScratch(scratch, 4112);
-      // 原4096及两条不可变statement别名16字节在Slot分配前保留；两字段清零及清引用先付。
-      context.operation(68);
+      context.retainScratch(scratch, 4128);
+      // 原4112及登记对象交接/字段的两条别名16字节在Slot分配前保留。
+      context.operation(70); // 新字段交接和失效/清理写入预付
       next = new SessionHistoryRows.Slot(this, context, scratch, tenant, task);
       next.previous = historyLength;
       historyLength = next;
@@ -195,11 +194,18 @@ public final class SessionQueryWork {
     context.checkHealthy();
     context.operation(1);
     if (eventHistoryLength != null) return null; // 固定一个槽；已有raw仍驻留时回原独立路径。
-    requireProjectionLocks(tenant, task);
-    context.retainScratch(eventHistoryScratch, 4096);
-    eventHistoryLength =
-        new SessionEventHistoryRows.Slot(this, context, eventHistoryScratch, tenant, task);
-    return eventHistoryLength;
+    // 登记对象的交接和Slot字段在分配/取得引用前保留，构造失败也必须退款。
+    context.retainScratch(eventHistoryScratch, 4112);
+    boolean transferred = false;
+    try {
+      context.operation(7); // 新try/guard/交接/清理及字段失效
+      eventHistoryLength =
+          new SessionEventHistoryRows.Slot(this, context, eventHistoryScratch, tenant, task);
+      transferred = true;
+      return eventHistoryLength;
+    } finally {
+      if (!transferred) context.releaseScratch(eventHistoryScratch);
+    }
   }
 
   boolean eventHistoryPending() {

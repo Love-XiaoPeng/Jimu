@@ -50,11 +50,14 @@ public final class SessionFinalMapperSqlScenario {
     var mappers = LedgerMapperSessions.create(source);
     var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
     // The first call deliberately starts static initialization inside its actual Work.
+    boolean slots = args.length > 3 && args[3].equals("slot-source");
     boolean sourceOnly = args.length > 3 && args[3].equals("source-only");
     for (String population :
-        sourceOnly
-            ? List.of("cold-empty", "frozen-source")
-            : List.of("cold-empty", "empty", "frozen", "full", "frozen-source")) {
+        slots
+            ? List.of("cold-empty", "full-source")
+            : sourceOnly
+                ? List.of("cold-empty", "frozen-source")
+                : List.of("cold-empty", "empty", "frozen", "full", "frozen-source")) {
       var q =
           new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
       q.restrictLineage();
@@ -62,7 +65,7 @@ public final class SessionFinalMapperSqlScenario {
       String id =
           population.startsWith("frozen")
               ? ID
-              : population.equals("full") ? "20000000-0000-0000-0000-000000000001" : EMPTY;
+              : population.startsWith("full") ? "20000000-0000-0000-0000-000000000001" : EMPTY;
       var task =
           Map.<String, Object>of(
               "tenant_id",
@@ -77,7 +80,7 @@ public final class SessionFinalMapperSqlScenario {
           q,
           () -> {
             SessionQueryTransaction.current(q).locked("tenant-a", id);
-            if (population.equals("frozen-source")) {
+            if (population.endsWith("source")) {
               // Test-only Work shape from the saved original source. This measures FINAL's
               // source-lock loop, not admission validation or an authority grant.
               var work = SessionQueryTransaction.current(q);
@@ -85,6 +88,25 @@ public final class SessionFinalMapperSqlScenario {
               var fact = sourceFact(json);
               work.locked(fact.caller().tenant(), fact.caller().id());
               work.stageSource(fact.caller(), fact);
+              if (slots) {
+                // Repeat actual public loaders: four independent raw owners and the event
+                // Slot, all with current source membership. Complete FINAL and Work cleanup
+                // remain in this measured segment; this is not an admission transaction.
+                long prefix = q.resources().operations();
+                var values = new java.util.ArrayList<String>();
+                for (int i = 0; i < 4; i++) {
+                  var rows =
+                      io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistoryRows
+                          .load(mappers, q, new String("tenant-a"), new String(ID));
+                  values.add(rows.getFirst().get("binding_snapshot").toString());
+                }
+                var events =
+                    io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionEventHistoryRows
+                        .load(mappers, q, new String("tenant-a"), new String(ID));
+                values.add(events.getFirst().get("binding_snapshot").toString());
+                totals.put("slotValues", values);
+                totals.put("slotOperations", q.resources().operations() - prefix);
+              }
             }
             var accounting = new MapperSessionMetadataAccounting(records, task, true);
             try (var scope = accounting.finalization()) {

@@ -93,12 +93,12 @@ class SessionHistoryStatementIdentityTest {
           assertNotSame(SessionHistoryRows.RAW, field(slot, "confirmedRawId"));
           assertEquals(true, field(slot, "invalid"));
           assertSame(rows, field(slot, "rows"));
-          assertEquals(16400 + 8L * ((String) f.row[4]).length(), q.scratchLive() - live);
-          assertEquals(1844, q.resources().operations() - operations);
+          assertEquals(16416 + 8L * ((String) f.row[4]).length(), q.scratchLive() - live);
+          assertEquals(1895, q.resources().operations() - operations);
           assertEquals(2, q.resources().reads());
           assertEquals(2633, q.resources().bytes());
           System.out.println(
-              "MYBATIS_IDENTITY load=1844 rawOwner="
+              "MYBATIS_IDENTITY load=1895 rawOwner="
                   + (q.scratchLive() - live)
                   + " sizeIdIsLiteral=false rawIdIsLiteral=false reads=2 bytes=2633");
           return null;
@@ -122,8 +122,8 @@ class SessionHistoryStatementIdentityTest {
           var owner = SessionQueryTransaction.current(q);
           long live = q.scratchLive(), before = q.resources().operations();
           var slot = owner.beginHistory("t", "x");
-          assertEquals(4112, q.scratchLive() - live);
-          assertEquals(93, q.resources().operations() - before);
+          assertEquals(4128, q.scratchLive() - live);
+          assertEquals(122, q.resources().operations() - before);
           var dynamic =
               new HashMap<String, Object>(args(q)) {
                 @Override
@@ -140,7 +140,7 @@ class SessionHistoryStatementIdentityTest {
             for (String value : new String[] {id, id, fresh}) {
               before = q.resources().operations();
               verify(slot, value, dynamic, connection, size);
-              assertEquals(index == 1 ? 29 : size ? 146 : 135, q.resources().operations() - before);
+              assertEquals(index == 1 ? 33 : size ? 150 : 139, q.resources().operations() - before);
               index++;
             }
             assertSame(fresh, field(slot, size ? "confirmedSizeId" : "confirmedRawId"));
@@ -322,7 +322,7 @@ class SessionHistoryStatementIdentityTest {
       throws Exception {
     for (boolean size : new boolean[] {true, false}) {
       for (boolean repeated : new boolean[] {false, true}) {
-        long needed = repeated ? 29 : size ? 146 : 135;
+        long needed = repeated ? 33 : size ? 150 : 139;
         for (long free : new long[] {needed - 1, needed, needed + 1}) {
           var f = new SessionHistoryLengthTest.Fixture();
           var q = SessionEventHistoryLengthTest.query();
@@ -370,7 +370,7 @@ class SessionHistoryStatementIdentityTest {
         }
       }
     }
-    System.out.println("THRESHOLDS firstSize=146 firstRaw=135 repeat=29 N-1/N/N+1 verified");
+    System.out.println("THRESHOLDS firstSize=150 firstRaw=139 repeat=33 N-1/N/N+1 verified");
   }
 
   @Test
@@ -389,7 +389,7 @@ class SessionHistoryStatementIdentityTest {
                       () -> {
                         var owner = SessionQueryTransaction.current(q);
                         if (mode.equals("scratch"))
-                          q.retainScratch(held, 1048576 - q.scratchLive() - 64 - 4112 + 1);
+                          q.retainScratch(held, 1048576 - q.scratchLive() - 64 - 4128 + 1);
                         else q.operation(65536 - q.resources().operations() - 82);
                         try {
                           first[0] =
