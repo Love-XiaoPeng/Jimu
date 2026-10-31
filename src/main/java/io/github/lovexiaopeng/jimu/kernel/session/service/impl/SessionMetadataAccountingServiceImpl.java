@@ -16,6 +16,15 @@ public final class SessionMetadataAccountingServiceImpl
       DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
 
   public long metadata(SessionMetadataAccounting records, boolean closing, long planned) {
+    try (var retained = records.finalization()) {
+      return metadataReserved(records, closing, planned);
+    }
+  }
+
+  private long metadataReserved(SessionMetadataAccounting records, boolean closing, long planned) {
+    var totals = new MetadataTotals();
+    if (records.consumeMetadata(totals))
+      return metadataCapacity(totals.total, totals.headroom, closing, planned);
     long total = 0;
     long cleanupHeadroom = SessionHistoryPolicyV1.CLEANUP_BASE_BYTES;
     for (var table : SessionMetadataAccounting.Table.values()) {
@@ -40,6 +49,11 @@ public final class SessionMetadataAccountingServiceImpl
         }
       }
     }
+    return metadataCapacity(total, cleanupHeadroom, closing, planned);
+  }
+
+  private static long metadataCapacity(
+      long total, long cleanupHeadroom, boolean closing, long planned) {
     if (total
         > (closing
             ? SessionHistoryPolicyV1.CLOSED_METADATA_BYTES
@@ -48,6 +62,25 @@ public final class SessionMetadataAccountingServiceImpl
     if (!closing && total + cleanupHeadroom + planned > SessionHistoryPolicyV1.OPEN_METADATA_BYTES)
       throw limit();
     return total;
+  }
+
+  /** 预检只累计存储量和清理余量，不应用终算的metadata自依赖或更新账户。 */
+  private static final class MetadataTotals implements SessionMetadataAccounting.FinalRows {
+    long total, headroom = SessionHistoryPolicyV1.CLEANUP_BASE_BYTES;
+
+    public void accept(
+        SessionMetadataAccounting.Table table,
+        long rows,
+        long bytes,
+        long histories,
+        SessionMetadataAccounting.HistoryScalars history,
+        long reservations,
+        SessionMetadataAccounting.HistoryReservation reservation) {
+      if (rows == 0) return;
+      total = Math.addExact(total, bytes);
+      long cleanup = cleanupBytes(table);
+      if (cleanup != 0) headroom = Math.addExact(headroom, Math.multiplyExact(rows, cleanup));
+    }
   }
 
   private static int scalarBytes(Object value) {

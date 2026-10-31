@@ -111,13 +111,22 @@ final class SessionFinalMapperFailures {
   }
 
   static void verify(DataSource plain) {
+    verify(plain, ID, false);
+  }
+
+  static void verify(DataSource plain, String taskId, boolean preflight) {
     var source = new FaultSource(plain);
     var db = new JdbcTemplate(source);
     var mappers = LedgerMapperSessions.create(source);
     var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
     var task =
         Map.<String, Object>of(
-            "tenant_id", "tenant-a", "id", ID, "capabilities", SessionLineagePolicyV5.CAPABILITIES);
+            "tenant_id",
+            "tenant-a",
+            "id",
+            taskId,
+            "capabilities",
+            SessionLineagePolicyV5.CAPABILITIES);
     for (String fault :
         List.of(
             "count",
@@ -147,30 +156,37 @@ final class SessionFinalMapperFailures {
           new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
       foreign.restrictLineage();
       var records = new JdbcSessionRecords(db, fault.equals("foreign") ? foreign : q, mappers);
-      var accounting = new MapperSessionMetadataAccounting(records, task, true);
+      var accounting = new MapperSessionMetadataAccounting(records, task, !preflight);
+      var beforeTables = preflight ? SessionDependencyScenario.snapshot(db) : null;
       long before =
           db.queryForObject(
               "SELECT metadata_bytes FROM task_session_history WHERE tenant_id='tenant-a' AND task_id=?",
               Long.class,
-              ID);
+              taskId);
       source.write =
           () ->
               mappers
                   .getMapper(
                       io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper
                           .SessionContextMapper.class)
-                  .account(q, before + 1, "tenant-a", ID);
+                  .account(q, before + 1, "tenant-a", taskId);
       Throwable caught = null;
       try {
         tx.required(
             q,
             () -> {
-              SessionQueryTransaction.current(q).locked("tenant-a", ID);
+              SessionQueryTransaction.current(q).locked("tenant-a", taskId);
+              if (preflight && !fault.equals("parameter")) {
+                new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+                        .SessionMetadataAccountingServiceImpl()
+                    .metadata(accounting, false, 0);
+                return null;
+              }
               try (var scope = accounting.finalization()) {
                 if (fault.equals("parameter"))
                   mappers.select(
                       "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.metadataTaskAttempt",
-                      Map.of("query", foreign, "tenant", "tenant-a", "taskId", ID),
+                      Map.of("query", foreign, "tenant", "tenant-a", "taskId", taskId),
                       accounting);
                 else SessionFinalResultFoldTest.table(accounting, Table.TASK_ATTEMPT);
               }
@@ -185,7 +201,7 @@ final class SessionFinalMapperFailures {
       if (fault.equals("foreign") || fault.equals("parameter")) {
         if (source.statements != 0) throw new AssertionError("Foreign SQL executed");
       } else if (source.statements != 1
-          || !source.binds.equals(List.of("tenant-a", ID))
+          || !source.binds.equals(List.of("tenant-a", taskId))
           || !source.closed)
         throw new AssertionError("SQL/parameter/close changed " + fault + source.binds);
       if (fault.equals("error")
@@ -199,9 +215,11 @@ final class SessionFinalMapperFailures {
           != db.queryForObject(
               "SELECT metadata_bytes FROM task_session_history WHERE tenant_id='tenant-a' AND task_id=?",
               Long.class,
-              ID)) throw new AssertionError("Write not rolled back " + fault);
+              taskId)) throw new AssertionError("Write not rolled back " + fault);
+      if (preflight && !beforeTables.equals(SessionDependencyScenario.snapshot(db)))
+        throw new AssertionError("Preflight22-table rollback failed " + fault);
       System.out.println(
-          "PASS FINAL_REAL_FAULT "
+          (preflight ? "PASS PREFLIGHT_REAL_FAULT " : "PASS FINAL_REAL_FAULT ")
               + fault
               + " getters="
               + source.getters

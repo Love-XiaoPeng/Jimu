@@ -264,6 +264,15 @@ final class SessionBorrowedMetadataSqlScenario {
     var mappers = LedgerMapperSessions.create(source);
     seed(db);
     try {
+      if (mode.equals("borrowed-preflight")) {
+        preflight(db, tx, mappers);
+        SessionFinalMapperFailures.verify(source, ID, true);
+        return;
+      }
+      if (mode.equals("borrowed-preflight-faults")) {
+        SessionFinalMapperFailures.verify(source, ID, true);
+        return;
+      }
       if (mode.equals("borrowed-owned")) {
         SessionLineageProjectionSqlScenario.verify(db, mappers, tx, ID);
         return;
@@ -552,5 +561,104 @@ final class SessionBorrowedMetadataSqlScenario {
         db.update("DELETE FROM `" + table + "` WHERE tenant_id='tenant-a' AND `" + key + "`=?", ID);
       }
     }
+  }
+
+  private static void preflight(
+      JdbcTemplate db, SessionQueryTransaction tx, org.mybatis.spring.SqlSessionTemplate mappers) {
+    long expected = SessionRepairSqlOracle.inspect(db, ID).metadata();
+    var before = SessionDependencyScenario.snapshot(db);
+    long oldCost = 0;
+    for (int pass : List.of(0, 1, 2)) {
+      boolean folded = pass == 2;
+      var q = query(0);
+      long actual =
+          tx.required(
+              q,
+              () -> {
+                SessionQueryTransaction.current(q).locked("tenant-a", ID);
+                var task =
+                    Map.<String, Object>of(
+                        "tenant_id",
+                        "tenant-a",
+                        "id",
+                        ID,
+                        "capabilities",
+                        io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5
+                            .CAPABILITIES);
+                var records =
+                    new MapperSessionMetadataAccounting(
+                        new JdbcSessionRecords(db, q, mappers), task);
+                if (folded)
+                  return new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+                          .SessionMetadataAccountingServiceImpl()
+                      .metadata(records, false, 0);
+                long total = 0;
+                for (var table : Table.values()) {
+                  try (var batch = records.batch(table)) {
+                    for (var row : batch) {
+                      total += 32;
+                      for (var value : row.values()) total += 8 + batch.scalarBytes(value);
+                    }
+                  }
+                }
+                return total;
+              });
+      check(actual == expected, "18-table preflight independent oracle folded=" + folded);
+      check(
+          before.equals(SessionDependencyScenario.snapshot(db)) && q.scratchLive() == 65536,
+          "preflight reads only and releases all owners folded=" + folded);
+      if (!folded) oldCost = q.resources().operations();
+      else
+        check(
+            q.resources().operations() < oldCost,
+            "complete preflight deletes duplicate consumption");
+      System.out.println(
+          "PREFLIGHT_COST "
+              + Payloads.json(
+                  Map.of(
+                      "folded",
+                      folded,
+                      "pass",
+                      pass,
+                      "operations",
+                      q.resources().operations(),
+                      "reads",
+                      q.resources().reads(),
+                      "metadata",
+                      actual,
+                      "scratchPeak",
+                      q.scratchPeak(),
+                      "scratchLive",
+                      q.scratchLive())));
+    }
+    var q = query(60000);
+    boolean refused = false;
+    try {
+      tx.required(
+          q,
+          () -> {
+            SessionQueryTransaction.current(q).locked("tenant-a", ID);
+            db.update(
+                "UPDATE task SET revision=revision+1 WHERE tenant_id='tenant-a' AND id=?", ID);
+            var task =
+                Map.<String, Object>of(
+                    "tenant_id",
+                    "tenant-a",
+                    "id",
+                    ID,
+                    "capabilities",
+                    io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5
+                        .CAPABILITIES);
+            return new JdbcSessionRecords(db, q, mappers).metadata(task, false);
+          });
+    } catch (TaskFailure failure) {
+      refused = failure.code().equals("SESSION_HISTORY_LIMIT");
+    }
+    check(
+        refused
+            && before.equals(SessionDependencyScenario.snapshot(db))
+            && q.scratchLive() == 65536,
+        "preflight refusal rolls back22 tables and concurrent owners");
+    System.out.println("PREFLIGHT_REFUSAL " + q.operationRejection());
   }
 }

@@ -99,6 +99,11 @@ public interface SessionMetadataAccounting {
     return false;
   }
 
+  /** 预检沿当前读取生命周期同步消费18表；false表示未执行任何读取。 */
+  default boolean consumeMetadata(FinalRows rows) {
+    return false;
+  }
+
   default Balance accountAndReadBack(long observed, long desired) {
     if (observed != desired) account(desired);
     return readBack();

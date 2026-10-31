@@ -1,6 +1,7 @@
 package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction;
@@ -15,6 +16,31 @@ import org.junit.jupiter.api.Test;
 
 /** 新绑定只能供当前FINAL使用；变更task或挂起Work在任何Mapper/SQL之前失败。 */
 class SessionFinalLockOwnershipTest {
+  @Test
+  void querylessClaimAndOrdinaryAccountingKeepTheirOriginalReader() {
+    for (var query : java.util.Arrays.asList(null, new SessionQueryContext(Long.MAX_VALUE, null))) {
+      var accounting =
+          new MapperSessionMetadataAccounting(
+              new JdbcSessionRecords(null, query),
+              Map.of(
+                  "tenant_id",
+                  "t",
+                  "id",
+                  "c",
+                  "capabilities",
+                  SessionLineagePolicyV5.CAPABILITIES));
+      for (int round = 0; round < 4; round++) {
+        try (var scope = accounting.finalization()) {
+          assertFalse(
+              accounting.consumeMetadata(
+                  (t, r, b, h, hs, n, rs) -> {
+                    throw new AssertionError("No synchronous Result outside lineage Work");
+                  }));
+        }
+      }
+    }
+  }
+
   @Test
   void changedTenantTaskAndSuspendedWorkAreRejectedByActualFinalEntryBeforeSql() {
     for (String change : List.of("tenant_id", "id", "suspended")) {

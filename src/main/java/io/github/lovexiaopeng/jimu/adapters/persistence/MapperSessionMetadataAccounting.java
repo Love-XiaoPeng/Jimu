@@ -107,6 +107,20 @@ final class MapperSessionMetadataAccounting
 
   public boolean consumeFinal(Table table, FinalRows consumer) {
     if (!finalPresent || !JdbcSessionScopes.lineage(task)) return false;
+    return consumeTable(table, consumer);
+  }
+
+  public boolean consumeMetadata(FinalRows consumer) {
+    var query = records.appendQuery();
+    if (query == null || !query.lineage() || !JdbcSessionScopes.lineage(task)) return false;
+    finalCheck();
+    // 接收对象/两标量、values数组/18表路由及scope返回清理均在当前Work预付。
+    finalQuery.operation(64);
+    for (var table : Table.values()) consumeTable(table, consumer);
+    return true;
+  }
+
+  private boolean consumeTable(Table table, FinalRows consumer) {
     try {
       finalCheck();
       finalQuery.operation(9); // route, receiver store/check and finally clear; no summary readout
@@ -284,13 +298,19 @@ final class MapperSessionMetadataAccounting
 
   public io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.MeterScope
       finalization() {
+    var routeQuery = records.appendQuery();
+    if (routeQuery != null)
+      routeQuery.operation(5); // preflight routing/query/lineage and existing scope dispatch
+    if (!finalPresent
+        && (routeQuery == null || !routeQuery.lineage() || !JdbcSessionScopes.lineage(task)))
+      return SessionMetadataAccounting.super.finalization();
     if (finalActive || finalClosed) {
       var failure = new IllegalStateException("Metadata finalization already consumed");
       finalFailure(failure);
       throw failure;
     }
     try {
-      finalQuery = records.appendQuery();
+      finalQuery = routeQuery;
       finalWork =
           io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
               .currentOwner();

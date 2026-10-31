@@ -23,7 +23,7 @@ class SessionMetadataAccountingServiceTest {
   private final SessionMetadataAccountingServiceImpl service =
       new SessionMetadataAccountingServiceImpl();
 
-  private static final class Records implements SessionMetadataAccounting {
+  private static class Records implements SessionMetadataAccounting {
     final List<String> calls = new ArrayList<>();
     final EnumMap<Table, List<Row>> rows = new EnumMap<>(Table.class);
     final List<Long> writes = new ArrayList<>();
@@ -57,6 +57,60 @@ class SessionMetadataAccountingServiceTest {
     void value(String value) {
       rows.put(Table.TASK, List.of(() -> List.of(value)));
     }
+  }
+
+  @Test
+  void preflightConsumesCurrentRowsWithoutFinalSelfDependencyOrAccountWrites() {
+    var records =
+        new Records() {
+          boolean retained;
+
+          public io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.MeterScope
+              finalization() {
+            retained = true;
+            return () -> {
+              retained = false;
+              calls.add("closed");
+            };
+          }
+
+          public boolean consumeMetadata(FinalRows consumer) {
+            assertTrue(retained);
+            consumer.accept(Table.TASK, 1, 100, 0, null, 0, null);
+            consumer.accept(
+                Table.TASK_SESSION_HISTORY,
+                1,
+                200,
+                1,
+                new HistoryScalars(1234, 4, 0, 0, 0, "PRESENT"),
+                0,
+                null);
+            consumer.accept(Table.SESSION_PUBLIC_EVENT, 2, 300, 0, null, 0, null);
+            return true;
+          }
+        };
+    assertEquals(600, service.metadata(records, false, 0));
+    assertEquals(List.of("closed"), records.calls);
+    assertTrue(records.writes.isEmpty());
+    long headroom =
+        io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1.CLEANUP_BASE_BYTES
+            + io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
+                .TASK_CLEANUP_BYTES
+            + 2
+                * io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
+                    .DISPATCH_CLEANUP_BYTES;
+    long remaining =
+        io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1.OPEN_METADATA_BYTES
+            - 600
+            - headroom;
+    assertEquals(600, service.metadata(records, false, remaining));
+    assertEquals(
+        "SESSION_HISTORY_LIMIT",
+        assertThrows(TaskFailure.class, () -> service.metadata(records, false, remaining + 1))
+            .code());
+    assertEquals(600, service.metadata(records, true, remaining + 1));
+    assertEquals(4, records.calls.size());
+    assertTrue(records.calls.stream().allMatch("closed"::equals));
   }
 
   @Test
