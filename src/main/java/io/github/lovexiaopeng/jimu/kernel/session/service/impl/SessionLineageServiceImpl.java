@@ -110,8 +110,13 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
             1);
     inputs.put(caller, stored);
     var created = validate(tenant, caller, facts, inputs, new Created(stored, genesis));
+    // These lengths belong to the generated, validated immutable Stored, not a SQL row proof.
+    // Capture the body charge before insert invalidates the input owner; fresh readback below
+    // still independently validates the new database raw values.
+    records.checkpoint(4);
+    long bodyBytes = Math.addExact(stored.genesisBytes(), stored.graphBytes());
     records.insert(tenant, caller, stored);
-    records.body(tenant, caller, records.bytes(raw) + records.bytes(graph));
+    records.body(tenant, caller, bodyBytes);
     if (records.createdReadback(tenant, caller, stored, created))
       records.created(tenant, caller, created);
     else {

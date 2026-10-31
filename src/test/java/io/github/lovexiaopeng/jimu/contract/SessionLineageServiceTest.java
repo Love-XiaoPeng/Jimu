@@ -23,6 +23,9 @@ class SessionLineageServiceTest {
   private final Map<String, SessionLineageRecords.Fact> facts = new HashMap<>();
   private final Map<String, SessionLineage.Stored> rows = new HashMap<>();
   private boolean referenceWrites;
+  private boolean awaitingBody, corruptCreatedReadback;
+  private SessionLineage.Stored inserted;
+  private long bodyCharge;
   private final List<String> reads = new ArrayList<>();
   private final SessionLineageRecords records =
       new SessionLineageRecords() {
@@ -37,18 +40,37 @@ class SessionLineageServiceTest {
         }
 
         public void insert(String tenant, String id, SessionLineage.Stored row) {
+          inserted = row;
+          awaitingBody = true;
           rows.put(id, row);
+          if (corruptCreatedReadback)
+            rows.put(
+                id,
+                new SessionLineage.Stored(
+                    row.genesis() + " ",
+                    row.genesisDigest(),
+                    row.genesisBytes() + 1,
+                    row.graph(),
+                    row.graphDigest(),
+                    row.graphBytes(),
+                    row.state(),
+                    row.version()));
         }
 
         public void body(String tenant, String id, long bytes) {
-          assertTrue(bytes > 0);
+          assertTrue(awaitingBody);
+          assertEquals(Math.addExact(inserted.genesisBytes(), inserted.graphBytes()), bytes);
+          bodyCharge = bytes;
+          awaitingBody = false;
         }
 
         public String hash(String raw) {
+          assertTrue(!awaitingBody, "Body accounting must use the generated Stored lengths");
           return Payloads.hash(raw);
         }
 
         public int bytes(String raw) {
+          assertTrue(!awaitingBody, "Body accounting must not re-encode after insert");
           return SessionContracts.bytes(raw);
         }
 
@@ -95,6 +117,22 @@ class SessionLineageServiceTest {
         System.nanoTime() + 2_000_000_000L,
         new io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger.QueryResources(
             0, 0, 0));
+  }
+
+  @Test
+  void generatedBodyLengthsSurviveInputInvalidationButFreshReadbackIsStillVerified() {
+    referenceWrites = true;
+    String root = add(1, List.of(), null);
+    assertEquals(inserted.genesisBytes() + inserted.graphBytes(), bodyCharge);
+    assertTrue(reads.contains("row:" + root));
+    String continuation = add(2, List.of(root), root);
+    assertEquals(inserted.genesisBytes() + inserted.graphBytes(), bodyCharge);
+    assertTrue(reads.contains("row:" + continuation));
+    corruptCreatedReadback = true;
+    assertEquals(
+        "SESSION_HISTORY_CORRUPT",
+        assertThrows(TaskFailure.class, () -> add(3, List.of(root), root)).code());
+    assertTrue(reads.contains("row:00000000-0000-0000-0000-000000000003"));
   }
 
   @Test
