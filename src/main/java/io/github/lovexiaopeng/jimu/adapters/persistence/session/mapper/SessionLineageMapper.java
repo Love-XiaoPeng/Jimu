@@ -16,6 +16,16 @@ public interface SessionLineageMapper extends BaseMapper<SessionLineageEntity> {
       @Param("tenant") String tenant,
       @Param("id") String id);
 
+  List<Map<String, Object>> sourceFactSizes(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("id") String id);
+
+  List<Map<String, Object>> sourceFact(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("id") String id);
+
   int purge(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,

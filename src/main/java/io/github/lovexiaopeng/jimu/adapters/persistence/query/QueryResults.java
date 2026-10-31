@@ -24,6 +24,11 @@ public final class QueryResults {
       state.verify(context);
       state.result = context.result(statement);
       state.metadata = delegate.getMetaData();
+      if (state.owner != null) {
+        context.operation(1);
+        if (state.owner.lineageSourceActive())
+          SessionLineageSourceColumns.verify(delegate, context, statement, state.owner);
+      }
       return (ResultSet)
           Proxy.newProxyInstance(
               ResultSet.class.getClassLoader(),

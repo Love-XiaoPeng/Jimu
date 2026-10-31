@@ -51,6 +51,8 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
   private final Object scratchOwner = new Object();
   private final Object rawOwner = new Object();
   private final Object generatedGraphOwner = new Object();
+  private final Object sourceFactsOwner = new Object();
+  private long sourceFactsBytes;
   private java.util.IdentityHashMap<
           String, io.github.lovexiaopeng.jimu.adapters.runtime.session.LineageRawView>
       rawViews;
@@ -89,6 +91,8 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
       if (owner != null) owner.removeInvalidator(rawOwner);
       rawViews.clear();
       rawViews = null;
+      sourceFactsBytes = 0;
+      ledger.queryContext().releaseScratch(sourceFactsOwner);
       ledger.queryContext().releaseScratch(generatedGraphOwner);
       ledger.queryContext().releaseScratch(rawOwner);
     }
@@ -100,6 +104,31 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
   }
 
   public Fact fact(String tenant, String id) {
+    var query = ledger.queryContext();
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            query);
+    query.operation(4);
+    if (owner != null && rawViews != null) {
+      var source = owner.borrowLineageSource(query, tenant, id);
+      if (source != null) {
+        try {
+          return sourceFact(tenant, id, source);
+        } catch (RuntimeException failure) {
+          throw owner.poisonProof(failure);
+        } catch (Error failure) {
+          owner.poisonLineageSource(failure);
+          throw failure;
+        } finally {
+          source = null;
+          owner.releaseLineageSource();
+        }
+      }
+    }
+    return fullFact(tenant, id);
+  }
+
+  private Fact fullFact(String tenant, String id) {
     var rows =
         ledger
             .mappers
@@ -183,6 +212,116 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
         s(row, "binding_digest"),
         sources,
         json.has("parent_session_id") ? json.path("parent_session_id").textValue() : null);
+  }
+
+  /** 新request独立编码/hash/解析；authority只借用仍持有原raw的SourceFact。 */
+  private Fact sourceFact(
+      String tenant,
+      String id,
+      io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.SourceFact source) {
+    var query = ledger.queryContext();
+    var sql = ledger.mappers.session().getMapper(SessionLineageMapper.class);
+    query.operation(18); // size owner、容器/行检查、算术及清理先付，拒绝后不得换路。
+    query.retainScratch(sourceFactsOwner, Math.addExact(sourceFactsBytes, 8192));
+    var sizes = sql.sourceFactSizes(query, tenant, id);
+    if (sizes.size() != 1 || sizes.getFirst().size() != 1) throw JdbcSessionRecords.corrupt();
+    long length = n(sizes.getFirst(), "request_bytes");
+    if (length < 0 || length > 16384) throw JdbcSessionRecords.corrupt();
+    long held =
+        Math.addExact(sourceFactsBytes, Math.addExact(8192, Math.multiplyExact(24, length)));
+    query.retainScratch(sourceFactsOwner, held);
+    sourceFactsBytes = held;
+    sizes.clear();
+    sizes = null;
+    var rows = sql.sourceFact(query, tenant, id);
+    if (rows.size() != 1) throw JdbcSessionRecords.corrupt();
+    var row = rows.getFirst();
+    var c = source.caller();
+    var scope = source.scope();
+    var history = source.history();
+    same(row, "tenant_id", c.tenant());
+    same(row, "id", c.id());
+    same(row, "created_at", c.created());
+    same(row, "request_digest", c.requestDigest());
+    same(row, "capabilities", c.capabilities());
+    same(row, "owner_actor_id", c.owner());
+    same(row, "tools_digest", c.tools());
+    same(row, "installation_epoch", c.epoch());
+    same(row, "state", c.state());
+    same(row, "authority_digest", scope.digest());
+    same(row, "authority_bytes", scope.bytes());
+    same(row, "scope_content", scope.content());
+    same(row, "record_version", scope.recordVersion());
+    same(row, "authority_version", scope.authorityVersion());
+    same(row, "scope_owner", scope.owner());
+    same(row, "caller_tools_digest", scope.tools());
+    same(row, "caller_binding_digest", scope.binding());
+    same(row, "candidate_count", scope.count());
+    same(row, "scope_created", scope.created());
+    same(row, "scope_retain", scope.retain());
+    same(row, "binding_digest", history.binding());
+    same(row, "history_version", 5L);
+    same(row, "history_retain", history.retain());
+    String request = s(row, "request_snapshot");
+    // 每次新SELECT，即使String身份碰巧相同也重新构造独立raw proof。
+    query.operation(4);
+    rawViews.remove(request);
+    var raw = raw(request);
+    query.operation(8L + c.requestDigest().length());
+    if (raw.bytes() != length || !raw.digest().equals(c.requestDigest()))
+      throw JdbcSessionRecords.corrupt();
+    var json =
+        query.primitive(
+            "parse.request", request.length(), () -> ledger.sessions.v5.json(raw, 16384));
+    var authority = source.authority();
+    query.operation(12L + 8L * authority.targets().size());
+    var sources = new ArrayList<String>();
+    for (var target : authority.targets()) sources.add(target.id());
+    var declared = json.path("history_session_ids");
+    if (!declared.isArray() || declared.size() != sources.size())
+      throw JdbcSessionRecords.corrupt();
+    for (int i = 0; i < sources.size(); i++) {
+      query.operation(6L + sources.get(i).length());
+      if (!sources.get(i).equals(declared.get(i).textValue())) throw JdbcSessionRecords.corrupt();
+    }
+    var caps = new ArrayList<String>();
+    for (var item : json.path("request").path("capabilityIds")) {
+      query.operation(4L + item.asText().length());
+      caps.add(item.textValue());
+    }
+    query.operation(
+        10L + SessionLineagePolicyV5.CAPABILITIES.length() + id.length() + tenant.length());
+    if (!String.join(",", caps).equals(SessionLineagePolicyV5.CAPABILITIES)
+        || !authority.caller().equals(id)
+        || !authority.tenant().equals(tenant)) throw JdbcSessionRecords.corrupt();
+    String parent =
+        json.has("parent_session_id") ? json.path("parent_session_id").textValue() : null;
+    if (parent != null) {
+      query.operation(2L + parent.length() * sources.size());
+      if (!sources.contains(parent)) throw JdbcSessionRecords.corrupt();
+    }
+    query.operation(37); // Fact/source-list/parent/UTC27字符及返回；request owner持续至withProof退出。
+    return new Fact(
+        tenant,
+        id,
+        UTC.format(c.created()),
+        request,
+        c.requestDigest(),
+        scope.digest(),
+        history.binding(),
+        sources,
+        parent);
+  }
+
+  private void same(java.util.Map<String, Object> row, String key, Object expected) {
+    ledger
+        .queryContext()
+        .operation(6L + key.length() + (expected instanceof String text ? text.length() : 1));
+    Object value = row.get(key);
+    if (expected instanceof Long number) {
+      if (!(value instanceof Number actual) || actual.longValue() != number)
+        throw JdbcSessionRecords.corrupt();
+    } else if (!java.util.Objects.equals(value, expected)) throw JdbcSessionRecords.corrupt();
   }
 
   public boolean requestVerified(Fact fact) {

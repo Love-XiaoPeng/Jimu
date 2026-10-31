@@ -10,6 +10,26 @@
     JOIN task_session_history h ON h.tenant_id=t.tenant_id AND h.task_id=t.id
     WHERE t.tenant_id=#{tenant} AND t.id=#{id}
   </select>
+  <select id="sourceFactSizes" resultType="map">
+    SELECT OCTET_LENGTH(t.request_snapshot) AS request_bytes
+    FROM task t
+    JOIN task_session_scope s ON s.tenant_id=t.tenant_id AND s.caller_task_id=t.id
+    JOIN task_session_history h ON h.tenant_id=t.tenant_id AND h.task_id=t.id
+    WHERE t.tenant_id=#{tenant} AND t.id=#{id}
+  </select>
+  <select id="sourceFact" resultType="map">
+    SELECT t.tenant_id,t.id,t.created_at,t.request_snapshot,t.request_digest,t.capabilities,
+      t.owner_actor_id,t.tools_digest,t.installation_epoch,t.state,
+      s.authority_digest,s.authority_bytes,s.content_state AS scope_content,
+      s.record_version,s.authority_version,s.owner_actor_id AS scope_owner,
+      s.caller_tools_digest,s.caller_binding_digest,s.candidate_count,
+      s.created_at AS scope_created,s.retain_until AS scope_retain,
+      h.binding_digest,h.history_version,h.retain_until AS history_retain
+    FROM task t
+    JOIN task_session_scope s ON s.tenant_id=t.tenant_id AND s.caller_task_id=t.id
+    JOIN task_session_history h ON h.tenant_id=t.tenant_id AND h.task_id=t.id
+    WHERE t.tenant_id=#{tenant} AND t.id=#{id}
+  </select>
   <update id="purge">
     UPDATE task_session_lineage SET genesis_snapshot=NULL,graph_snapshot=NULL,content_state='PURGED'
     WHERE tenant_id=#{tenant} AND task_id=#{id} AND content_state='PRESENT'

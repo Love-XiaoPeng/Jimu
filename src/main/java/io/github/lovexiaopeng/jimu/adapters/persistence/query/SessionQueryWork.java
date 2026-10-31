@@ -350,6 +350,64 @@ public final class SessionQueryWork {
     return admission && caller.equals(stagingCaller) ? stagedSources.get(id) : null;
   }
 
+  private SessionScopeRecords.SourceFact lineageSource;
+
+  /** 同步Fact读取期间借原staging；不返回权限token，不允许借用中写入或发布后退款。 */
+  public SessionScopeRecords.SourceFact borrowLineageSource(
+      SessionQueryContext query, String tenant, String id) {
+    try {
+      active();
+      context.checkHealthy();
+      context.operation(12L + tenant.length() + id.length());
+      if (query != context || SessionQueryTransaction.metadataOwner(context) != this)
+        throw new IllegalStateException("Foreign lineage source owner");
+      context.checkHealthy();
+      if (lineageSource != null) throw new IllegalStateException("Nested lineage source borrow");
+      if (!admission
+          || stagingCaller == null
+          || scope != null
+          || !tenant.equals(stagingCaller.tenant())
+          || id.equals(stagingCaller.id())) return null;
+      context.operation(4L + id.length());
+      var fact = stagedSources.get(id);
+      if (fact == null) return null;
+      context.operation(
+          10L
+              + tenant.length()
+              + id.length()
+              + io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+                  .length());
+      if (!tenant.equals(fact.caller().tenant())
+          || !id.equals(fact.caller().id())
+          || !io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+              .equals(fact.caller().capabilities())
+          || fact.scope().recordVersion() != 1
+          || fact.scope().authorityVersion() != 1) return null;
+      requireProjectionLocks(tenant, stagingCaller.id());
+      // token仅作本Work已有的scratch key；512覆盖借用字段/栈别名和失败包装，先付清理动作。
+      context.operation(12);
+      context.retainScratch(token, 512);
+      lineageSource = fact;
+      return fact;
+    } catch (RuntimeException failure) {
+      throw poisonProof(failure);
+    }
+  }
+
+  public void releaseLineageSource() {
+    lineageSource = null;
+    context.releaseScratch(token);
+  }
+
+  boolean lineageSourceActive() {
+    return lineageSource != null;
+  }
+
+  /** Error仍原样抛出，记录cause以禁止被上层捕获后提交。 */
+  public void poisonLineageSource(Error failure) {
+    recordMetadataError(failure);
+  }
+
   public void stageSource(SessionScopeRecords.Caller caller, SessionScopeRecords.SourceFact fact) {
     active();
     if (!admission) return;
@@ -797,6 +855,9 @@ public final class SessionQueryWork {
   }
 
   private void mutateDependencies(java.util.Set<Dependency> writes) {
+    context.operation(1);
+    if (lineageSource != null)
+      throw poisonProof(new IllegalStateException("Write during lineage source borrow"));
     mutation();
     if (histories != null) histories.invalidate(writes);
     // Invalidate before SQL, including staging/unknown writes; fresh SELECT/INSERT must reprove.
@@ -960,6 +1021,9 @@ public final class SessionQueryWork {
 
   public void graph(String tenant, String id, VerifiedGraph proof) {
     active();
+    context.operation(1);
+    if (lineageSource != null)
+      throw poisonProof(new IllegalStateException("Publish during lineage source borrow"));
     if (caller == null || !caller.tenant().equals(tenant) || !caller.id().equals(id)) return;
     holdGraph(proof);
     graph = proof;
@@ -1023,6 +1087,7 @@ public final class SessionQueryWork {
   }
 
   void complete() {
+    releaseLineageSource();
     policyRaw = null;
     policyHash = null;
     context.releaseScratch(policyScratch);
