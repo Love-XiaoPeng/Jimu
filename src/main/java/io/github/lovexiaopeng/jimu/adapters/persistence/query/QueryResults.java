@@ -93,7 +93,12 @@ public final class QueryResults {
                     if (Boolean.TRUE.equals(value)) {
                       if (stepHash != null)
                         SessionLineageSourceColumns.verifyModelStep(
-                            state.delegate, context, statement, parameter, state.owner);
+                            state.delegate,
+                            context,
+                            statement,
+                            parameter,
+                            state.owner,
+                            stepVersion);
                       state.result.row();
                       for (int column = 1; column <= state.metadata.getColumnCount(); column++) {
                         // Include columns a projection ignores; repeated mapped getters cost no

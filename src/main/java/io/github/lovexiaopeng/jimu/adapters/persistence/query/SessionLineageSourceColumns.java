@@ -43,7 +43,8 @@ final class SessionLineageSourceColumns {
       SessionQueryContext query,
       String statement,
       Object parameter,
-      SessionQueryWork owner)
+      SessionQueryWork owner,
+      long generation)
       throws SQLException {
     query.operation(18L + statement.length() + STEP_COLUMNS.length());
     if (!STEP.equals(statement)
@@ -87,10 +88,21 @@ final class SessionLineageSourceColumns {
             + ((String) args.get("tenant")).length()
             + ((String) args.get("taskId")).length()
             + ((String) args.get("stepId")).length());
-    if (!args.get("tenant").equals(rows.getObject(1))
-        || !args.get("stepId").equals(rows.getObject(2))
-        || !args.get("taskId").equals(rows.getObject(3)))
-      throw new IllegalStateException("Changed model step identity");
+    for (int i = 1; i <= 3; i++) {
+      checkModelStep(query, owner, generation);
+      Object identity = rows.getObject(i);
+      checkModelStep(query, owner, generation);
+      query.operation(3); // identity dispatch/parameter lookup and loop control
+      if (!args.get(i == 1 ? "tenant" : i == 2 ? "stepId" : "taskId").equals(identity))
+        throw new IllegalStateException("Changed model step identity");
+    }
+  }
+
+  private static void checkModelStep(
+      SessionQueryContext query, SessionQueryWork owner, long generation) {
+    query.operation(2); // callback boundary and generation comparison
+    if (owner.metadataFinalVersion(query) != generation)
+      throw owner.poisonProof(new IllegalStateException("Write during model step identity read"));
   }
 
   private static final String PREFIX =

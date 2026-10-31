@@ -176,6 +176,8 @@ final class SessionModelStepSqlScenario {
           "all concurrent step owners released " + fault);
       if (List.of("count", "label", "type").contains(fault))
         check(faultSource.getters == 0, "full projection before dynamic getters " + fault);
+      if (fault.equals("write"))
+        check(faultSource.getters == 1, "write invalidates before the next identity getter");
       if (!fault.equals("foreign")) check(faultSource.closed, "actual Result closed " + fault);
       if (fault.equals("error"))
         check(
@@ -185,7 +187,7 @@ final class SessionModelStepSqlScenario {
     }
     for (String changed : List.of(raw + "changed", new String(raw))) {
       db.update(
-          "UPDATE step SET request_snapshot=?,request_digest=?,session_upper_seq=0 WHERE id=?",
+          "UPDATE step SET request_snapshot=?,request_digest=?,session_upper_seq=0,session_context_digest=REPEAT('a',64),session_binding_digest=REPEAT('a',64) WHERE id=?",
           changed,
           "0".repeat(64),
           STEP);
