@@ -132,10 +132,36 @@ class SessionFinalResultFoldTest {
     }
   }
 
+  static final class Collector implements SessionMetadataAccounting.FinalRows {
+    SessionMetadataAccounting.FinalTable value;
+
+    public void accept(
+        Table t,
+        long rows,
+        long bytes,
+        long histories,
+        SessionMetadataAccounting.HistoryScalars history,
+        long reservations,
+        SessionMetadataAccounting.HistoryReservation reservation) {
+      value =
+          new SessionMetadataAccounting.FinalTable(
+              rows, bytes, histories, history, reservations, reservation);
+    }
+  }
+
+  static SessionMetadataAccounting.FinalTable table(
+      MapperSessionMetadataAccounting accounting, Table table) {
+    var receiver = new Collector();
+    if (!accounting.consumeFinal(table, receiver)) throw new AssertionError("FINAL not consumed");
+    return receiver.value;
+  }
+
   static SessionMetadataAccounting.FinalTable direct(
       SessionQueryContext q, Table t, Driver d, boolean nulls) throws Exception {
     try (d.result) {
-      return SessionCursorMetadataBatch.measureResultSet(q, t, d.result, command(t), nulls);
+      var receiver = new Collector();
+      SessionCursorMetadataBatch.consumeResultSet(q, t, d.result, command(t), nulls, receiver);
+      return receiver.value;
     } finally {
       q.releaseScratch(d.result);
     }

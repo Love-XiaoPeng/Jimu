@@ -70,6 +70,20 @@ class SessionFinalAccountingTest {
           .toList();
     }
 
+    public boolean consumeFinal(Table table, FinalRows consumer) {
+      if (!summarized) return false;
+      var s = finalTable(table);
+      consumer.accept(
+          table,
+          s.rows(),
+          s.bytes(),
+          s.histories(),
+          s.history(),
+          s.reservations(),
+          s.reservation());
+      return true;
+    }
+
     public FinalTable finalTable(Table table) {
       if (!summarized) return null;
       scans.merge(table, 1, Integer::sum);

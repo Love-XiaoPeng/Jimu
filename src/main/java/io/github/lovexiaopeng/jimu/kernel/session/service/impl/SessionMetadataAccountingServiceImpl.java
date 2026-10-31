@@ -80,86 +80,14 @@ public final class SessionMetadataAccountingServiceImpl
   }
 
   private void finalPresentReserved(SessionMetadataAccounting records, boolean closing) {
-    long total = 0, headroom = SessionHistoryPolicyV1.CLEANUP_BASE_BYTES;
-    long old = -1, body = -1, reserved = -1, held = -1, amount = -1;
-    Long actual = null;
-    String reservationState = null;
-    String content = null;
-    int histories = 0, reservations = 0;
-    for (var table : SessionMetadataAccounting.Table.values()) {
-      var summary = records.finalTable(table);
-      if (summary != null) {
-        headroom = Math.addExact(headroom, Math.multiplyExact(summary.rows(), cleanupBytes(table)));
-        total = Math.addExact(total, summary.bytes());
-        histories = Math.addExact(histories, Math.toIntExact(summary.histories()));
-        reservations = Math.addExact(reservations, Math.toIntExact(summary.reservations()));
-        if (summary.history() != null) {
-          var history = summary.history();
-          content = history.content();
-          if (!java.util.List.of("PRESENT", "PURGED").contains(content)) throw corrupt();
-          old = history.metadata();
-          body = history.body();
-          reserved = history.reserved();
-          held = history.held();
-          if ("PRESENT".equals(content))
-            total = Math.subtractExact(total, history.metadataScalarBytes());
-        }
-        if (summary.reservation() != null) {
-          var reservation = summary.reservation();
-          amount = reservation.amount();
-          actual = reservation.actual();
-          reservationState = reservation.state();
-        }
-        summary = null;
-        continue;
-      }
-      try (var batch = records.batch(table)) {
-        for (var row : batch) {
-          headroom =
-              Math.addExact(
-                  headroom,
-                  switch (table) {
-                    case TASK -> SessionHistoryPolicyV1.TASK_CLEANUP_BYTES;
-                    case STEP,
-                            INVOCATION,
-                            INVOCATION_SESSION_SEARCH,
-                            INVOCATION_SESSION_LINEAGE_TRACE,
-                            TASK_SESSION_LINEAGE ->
-                        SessionHistoryPolicyV1.STEP_CLEANUP_BYTES;
-                    case MODEL_DISPATCH, SESSION_PUBLIC_EVENT ->
-                        SessionHistoryPolicyV1.DISPATCH_CLEANUP_BYTES;
-                    default -> 0;
-                  });
-          total = Math.addExact(total, SessionHistoryPolicyV1.ROW_HEADER_BYTES);
-          for (var value : row.values())
-            total =
-                Math.addExact(
-                    total,
-                    Math.addExact(
-                        SessionHistoryPolicyV1.FIELD_HEADER_BYTES, batch.scalarBytes(value)));
-          if (table == SessionMetadataAccounting.Table.TASK_SESSION_HISTORY) {
-            histories++;
-            content = (String) row.value("content_state");
-            if (!java.util.List.of("PRESENT", "PURGED").contains(content)) throw corrupt();
-            Object metadataValue = row.value("metadata_bytes");
-            old = number(metadataValue);
-            body = number(row.value("body_bytes"));
-            reserved = number(row.value("reserved_bytes"));
-            held = number(row.value("held_bytes"));
-            if ("PRESENT".equals(content))
-              total = Math.subtractExact(total, scalarBytes(metadataValue));
-          }
-          if (table == SessionMetadataAccounting.Table.RESERVATION
-              && "SESSION_HISTORY_STORAGE".equals(row.value("category"))) {
-            reservations++;
-            amount = number(row.value("amount"));
-            Object actualValue = row.value("actual");
-            actual = actualValue == null ? null : number(actualValue);
-            reservationState = (String) row.value("state");
-          }
-        }
-      }
-    }
+    var totals = new FinalTotals();
+    readFinal(records, totals);
+    long total = totals.total, headroom = totals.headroom;
+    long old = totals.old, body = totals.body, reserved = totals.reserved, held = totals.held;
+    long amount = totals.amount;
+    Long actual = totals.actual;
+    String content = totals.content, reservationState = totals.reservationState;
+    int histories = totals.histories, reservations = totals.reservations;
     if ("PURGED".equals(content)) {
       // purge自身已经收敛并释放预算；最终阶段只验证封闭余额，绝不再次释放或套PRESENT预留。
       if (histories != 1
@@ -216,6 +144,98 @@ public final class SessionMetadataAccountingServiceImpl
       value = next;
     }
     throw corrupt();
+  }
+
+  /** 最终消费者直接接收存活Result的标量；空表无摘要对象或零值累计交接。 */
+  private static final class FinalTotals implements SessionMetadataAccounting.FinalRows {
+    long total, headroom = SessionHistoryPolicyV1.CLEANUP_BASE_BYTES;
+    long old = -1, body = -1, reserved = -1, held = -1, amount = -1;
+    Long actual;
+    String content, reservationState;
+    int histories, reservations;
+
+    public void accept(
+        SessionMetadataAccounting.Table table,
+        long rows,
+        long bytes,
+        long historyCount,
+        SessionMetadataAccounting.HistoryScalars history,
+        long reservationCount,
+        SessionMetadataAccounting.HistoryReservation reservation) {
+      if (rows == 0) return;
+      total = Math.addExact(total, bytes);
+      long cleanup = cleanupBytes(table);
+      if (cleanup != 0) headroom = Math.addExact(headroom, Math.multiplyExact(rows, cleanup));
+      if (history != null) {
+        histories = Math.addExact(histories, Math.toIntExact(historyCount));
+        content = history.content();
+        if (!java.util.List.of("PRESENT", "PURGED").contains(content)) throw corrupt();
+        old = history.metadata();
+        body = history.body();
+        reserved = history.reserved();
+        held = history.held();
+        if ("PRESENT".equals(content))
+          total = Math.subtractExact(total, history.metadataScalarBytes());
+      }
+      if (reservation != null) {
+        reservations = Math.addExact(reservations, Math.toIntExact(reservationCount));
+        amount = reservation.amount();
+        actual = reservation.actual();
+        reservationState = reservation.state();
+      }
+    }
+  }
+
+  private void readFinal(SessionMetadataAccounting records, FinalTotals totals) {
+    for (var table : SessionMetadataAccounting.Table.values()) {
+      if (records.consumeFinal(table, totals)) continue;
+      try (var batch = records.batch(table)) {
+        for (var row : batch) {
+          totals.headroom =
+              Math.addExact(
+                  totals.headroom,
+                  switch (table) {
+                    case TASK -> SessionHistoryPolicyV1.TASK_CLEANUP_BYTES;
+                    case STEP,
+                            INVOCATION,
+                            INVOCATION_SESSION_SEARCH,
+                            INVOCATION_SESSION_LINEAGE_TRACE,
+                            TASK_SESSION_LINEAGE ->
+                        SessionHistoryPolicyV1.STEP_CLEANUP_BYTES;
+                    case MODEL_DISPATCH, SESSION_PUBLIC_EVENT ->
+                        SessionHistoryPolicyV1.DISPATCH_CLEANUP_BYTES;
+                    default -> 0;
+                  });
+          totals.total = Math.addExact(totals.total, SessionHistoryPolicyV1.ROW_HEADER_BYTES);
+          for (var value : row.values())
+            totals.total =
+                Math.addExact(
+                    totals.total,
+                    Math.addExact(
+                        SessionHistoryPolicyV1.FIELD_HEADER_BYTES, batch.scalarBytes(value)));
+          if (table == SessionMetadataAccounting.Table.TASK_SESSION_HISTORY) {
+            totals.histories++;
+            totals.content = (String) row.value("content_state");
+            if (!java.util.List.of("PRESENT", "PURGED").contains(totals.content)) throw corrupt();
+            Object metadataValue = row.value("metadata_bytes");
+            totals.old = number(metadataValue);
+            totals.body = number(row.value("body_bytes"));
+            totals.reserved = number(row.value("reserved_bytes"));
+            totals.held = number(row.value("held_bytes"));
+            if ("PRESENT".equals(totals.content))
+              totals.total = Math.subtractExact(totals.total, scalarBytes(metadataValue));
+          }
+          if (table == SessionMetadataAccounting.Table.RESERVATION
+              && "SESSION_HISTORY_STORAGE".equals(row.value("category"))) {
+            totals.reservations++;
+            totals.amount = number(row.value("amount"));
+            Object actualValue = row.value("actual");
+            totals.actual = actualValue == null ? null : number(actualValue);
+            totals.reservationState = (String) row.value("state");
+          }
+        }
+      }
+    }
   }
 
   private static long cleanupBytes(SessionMetadataAccounting.Table table) {

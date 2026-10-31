@@ -15,13 +15,11 @@ final class SessionCheckedHistories {
       long version,
       String policy,
       HistoryRow row,
-      LocalDateTime retain,
-      String[] strings) {}
+      LocalDateTime retain) {}
 
   private final SessionQueryContext query;
   private final Object token;
   private final ArrayList<Checked> entries;
-  private final Object temporary = new Object();
 
   SessionCheckedHistories(SessionQueryContext query, Object token) {
     this.query = query;
@@ -36,54 +34,36 @@ final class SessionCheckedHistories {
         || row.retained() != 1
         || !"PRESENT".equals(row.state())
         || retain == null) return;
-    query.retainScratch(temporary, 4096);
-    try {
-      // 先持有所有原串/record及List扩容的新增容量，再分配数组和追加；旧证明不提前断账。
-      long added = 1024;
-      String[] strings = {
-        caller.tenant(),
-        caller.id(),
-        caller.owner(),
-        caller.capabilities(),
-        caller.tools(),
-        caller.state(),
-        caller.requestDigest(),
-        policy,
-        row.snapshot(),
-        row.digest(),
-        row.state()
-      };
-      for (int i = 0; i < strings.length; i++) {
-        query.operation(1);
-        if (strings[i] == null || owned(strings[i])) continue;
-        boolean duplicate = false;
-        for (int j = 0; j < i; j++) {
-          query.operation(1);
-          if (strings[j] == strings[i]) duplicate = true;
-        }
-        if (!duplicate) added = Math.addExact(added, 64L + 2L * strings[i].length());
-      }
-      query.retainScratch(this, Math.addExact(bytes, added));
-      bytes += added;
-      capacityHighWater = Math.max(capacityHighWater, 1024L + 32L * (entries.size() + 1));
-      query.operation(1);
-      entries.add(new Checked(token, caller, version, policy, row, retain, strings));
-    } finally {
-      query.releaseScratch(temporary);
-    }
+    // 保守持有每条记录全部字符串；删除跨记录identity去重表与二次扫描。
+    // 同一String多处引用也各留一份容量，避免以实际共享为由提前退款。
+    query.operation(
+        20); // record/list-capacity/field stores; per-string access/arithmetic is separate
+    long added = 1024;
+    added = Math.addExact(added, retained(caller.tenant()));
+    added = Math.addExact(added, retained(caller.id()));
+    added = Math.addExact(added, retained(caller.owner()));
+    added = Math.addExact(added, retained(caller.capabilities()));
+    added = Math.addExact(added, retained(caller.tools()));
+    added = Math.addExact(added, retained(caller.state()));
+    added = Math.addExact(added, retained(caller.requestDigest()));
+    added = Math.addExact(added, retained(policy));
+    added = Math.addExact(added, retained(row.snapshot()));
+    added = Math.addExact(added, retained(row.digest()));
+    added = Math.addExact(added, retained(row.state()));
+    long next = Math.addExact(bytes, added);
+    query.retainScratch(this, next); // reserve before Checked allocation/List growth
+    bytes = next;
+    capacityHighWater = Math.max(capacityHighWater, 1024L + 32L * (entries.size() + 1));
+    entries.add(new Checked(token, caller, version, policy, row, retain));
+  }
+
+  private long retained(String value) {
+    query.operation(8); // getter/call/NULL/length/multiply/two additions and receiver handoff
+    return value == null ? 0 : Math.addExact(64L, Math.multiplyExact(2L, value.length()));
   }
 
   private long bytes = 1024;
   private long capacityHighWater = 1024;
-
-  private boolean owned(String text) {
-    for (var entry : entries)
-      for (String held : entry.strings()) {
-        query.operation(1);
-        if (held == text) return true;
-      }
-    return false;
-  }
 
   private boolean equal(String a, String b) {
     if (a == b) {
@@ -130,7 +110,7 @@ final class SessionCheckedHistories {
           }
           return false;
         });
-    // 活引用先移除再收缩；重算按identity共享，保留List历史容量的每项1024高水位。
+    // 活引用先移除再收缩；不重算/去重剩余引用，保留List历史容量高水位。
     // 非空时保守保持已预留的容量；不会因清数字而断开剩余引用的所有权。
     if (entries.isEmpty()) {
       bytes = capacityHighWater;

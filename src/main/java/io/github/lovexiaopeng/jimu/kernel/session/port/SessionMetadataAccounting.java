@@ -83,9 +83,20 @@ public interface SessionMetadataAccounting {
       long reservations,
       HistoryReservation reservation) {}
 
-  /** Optional synchronous scalar consumption; null leaves the legacy batch entirely unread. */
-  default FinalTable finalTable(Table table) {
-    return null;
+  /** 同步消费当前FINAL表标量，不物化逐表摘要；false表示尚未读取任何表。 */
+  interface FinalRows {
+    void accept(
+        Table table,
+        long rows,
+        long bytes,
+        long histories,
+        HistoryScalars history,
+        long reservations,
+        HistoryReservation reservation);
+  }
+
+  default boolean consumeFinal(Table table, FinalRows rows) {
+    return false;
   }
 
   default Balance accountAndReadBack(long observed, long desired) {

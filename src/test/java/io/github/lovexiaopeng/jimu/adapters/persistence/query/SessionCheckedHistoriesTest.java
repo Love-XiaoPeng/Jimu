@@ -45,6 +45,30 @@ class SessionCheckedHistoriesTest {
   }
 
   @Test
+  void ownershipAppendDoesNotRescanEarlierRawAndReservesEverySharedReference() {
+    var q = query();
+    var histories = new SessionCheckedHistories(q, new Object());
+    var c = caller("tenant", "task", "owner", 1);
+    long cost = -1, held = -1;
+    for (int i = 0; i < 4; i++) {
+      long before = q.resources().operations(), scratch = q.scratchLive();
+      histories.remember(c, 5, BINDING, ROW, UNTIL);
+      long delta = q.resources().operations() - before, added = q.scratchLive() - scratch;
+      if (i > 0) {
+        assertEquals(cost, delta); // appending never scans already retained proofs
+        assertEquals(held, added); // shared identity never makes a live reference unowned
+      }
+      assertTrue(added > 1024);
+      cost = delta;
+      held = added;
+    }
+    histories.invalidate(Set.of(new SessionQueryWork.Dependency("tenant", "task")));
+    assertEquals(65536 + 1024 + 32 * 4, q.scratchLive());
+    histories.clear();
+    assertEquals(65536, q.scratchLive());
+  }
+
+  @Test
   void requiresSuccessfulReadableHistoryLockPublishedScopeAndTailBeforeReuse() {
     var q = query();
     var w = new SessionQueryWork(q);

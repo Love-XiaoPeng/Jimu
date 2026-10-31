@@ -172,7 +172,7 @@ final class SessionFinalMapperFailures {
                       "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.metadataTaskAttempt",
                       Map.of("query", foreign, "tenant", "tenant-a", "taskId", ID),
                       accounting);
-                else accounting.finalTable(Table.TASK_ATTEMPT);
+                else SessionFinalResultFoldTest.table(accounting, Table.TASK_ATTEMPT);
               }
               return null;
             });

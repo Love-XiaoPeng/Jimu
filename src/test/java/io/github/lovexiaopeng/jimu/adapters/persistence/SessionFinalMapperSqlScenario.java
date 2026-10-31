@@ -114,7 +114,7 @@ public final class SessionFinalMapperSqlScenario {
               for (var table : Table.values()) {
                 if (!allTables && (table == Table.TASK || table == Table.TASK_SESSION_HISTORY))
                   continue;
-                totals.put(table.name(), accounting.finalTable(table));
+                totals.put(table.name(), SessionFinalResultFoldTest.table(accounting, table));
               }
             }
             return null;

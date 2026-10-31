@@ -49,10 +49,13 @@ class SessionFinalLockOwnershipTest {
                             var other =
                                 new SessionQueryContext(System.nanoTime() + 2_000_000_000L, null);
                             return f.transaction.requiresNew(
-                                other, () -> accounting.finalTable(Table.TASK_ATTEMPT));
+                                other,
+                                () ->
+                                    SessionFinalResultFoldTest.table(
+                                        accounting, Table.TASK_ATTEMPT));
                           }
                           task.put(change, "other");
-                          return accounting.finalTable(Table.TASK_ATTEMPT);
+                          return SessionFinalResultFoldTest.table(accounting, Table.TASK_ATTEMPT);
                         }
                       }));
       assertEquals(

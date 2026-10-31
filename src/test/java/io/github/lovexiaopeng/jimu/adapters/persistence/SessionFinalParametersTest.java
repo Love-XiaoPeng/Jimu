@@ -196,7 +196,7 @@ class SessionFinalParametersTest {
                                           if (fault.equals("error")) throw primary;
                                           work.mutation();
                                         })) {
-                          return accounting.finalTable(Table.TASK_ATTEMPT);
+                          return SessionFinalResultFoldTest.table(accounting, Table.TASK_ATTEMPT);
                         }
                       }));
       if (fault.equals("error")) assertSame(primary, caught);
@@ -246,7 +246,7 @@ class SessionFinalParametersTest {
                   () -> {
                     SessionQueryTransaction.current(q).locked("t", "c");
                     try (var scope = accounting.finalization()) {
-                      return accounting.finalTable(Table.TASK_ATTEMPT);
+                      return SessionFinalResultFoldTest.table(accounting, Table.TASK_ATTEMPT);
                     }
                   }));
       org.junit.jupiter.api.Assertions.assertNotNull(q.recordedFailure());
@@ -275,7 +275,7 @@ class SessionFinalParametersTest {
             try (var scope = accounting.finalization()) {
               for (var table : Table.values()) {
                 if (table == Table.TASK || table == Table.TASK_SESSION_HISTORY) continue;
-                assertEquals(0, accounting.finalTable(table).rows());
+                assertEquals(0, SessionFinalResultFoldTest.table(accounting, table).rows());
               }
               var parameters = session.parameters.get(start);
               assertEquals(Map.of("query", q, "tenant", "t", "taskId", "c"), parameters);
@@ -312,10 +312,11 @@ class SessionFinalParametersTest {
                     var work = SessionQueryTransaction.current(q);
                     work.locked("t", "c");
                     try (var scope = accounting.finalization()) {
-                      accounting.finalTable(Table.TASK_ATTEMPT);
+                      SessionFinalResultFoldTest.table(accounting, Table.TASK_ATTEMPT);
                       if (fault.equals("foreign"))
                         return fixture.transaction.requiresNew(
-                            query(), () -> accounting.finalTable(Table.EVENT));
+                            query(),
+                            () -> SessionFinalResultFoldTest.table(accounting, Table.EVENT));
                       if (fault.equals("lock")) {
                         try {
                           ((Map<?, ?>) field(work, "locks")).clear();
@@ -323,7 +324,7 @@ class SessionFinalParametersTest {
                           throw new AssertionError(failure);
                         }
                       } else task.put(fault, "other");
-                      return accounting.finalTable(Table.EVENT);
+                      return SessionFinalResultFoldTest.table(accounting, Table.EVENT);
                     }
                   }));
       assertEquals(1, session.parameters.size());
@@ -358,7 +359,7 @@ class SessionFinalParametersTest {
                       () -> {
                         SessionQueryTransaction.current(q).locked("t", "c");
                         try (var scope = accounting.finalization()) {
-                          return accounting.finalTable(Table.TASK_ATTEMPT);
+                          return SessionFinalResultFoldTest.table(accounting, Table.TASK_ATTEMPT);
                         }
                       }));
       if (fault.equals("error")) assertEquals("select primary", caught.getMessage());
@@ -366,7 +367,10 @@ class SessionFinalParametersTest {
       assertNull(field(accounting, "finalParameters"));
       assertNull(field(accounting, "readingCommand"));
       assertEquals(65536, q.scratchLive());
-      var closed = assertThrows(RuntimeException.class, () -> accounting.finalTable(Table.EVENT));
+      var closed =
+          assertThrows(
+              RuntimeException.class,
+              () -> SessionFinalResultFoldTest.table(accounting, Table.EVENT));
       if (fault.equals("error")) assertSame(caught, closed.getCause());
       assertEquals(1, session.parameters.size());
     }
@@ -407,7 +411,7 @@ class SessionFinalParametersTest {
                     var caller = source("t", "c").caller();
                     work.stageSource(caller, source("t", "s1"));
                     try (var scope = accounting.finalization()) {
-                      accounting.finalTable(Table.TASK_ATTEMPT);
+                      SessionFinalResultFoldTest.table(accounting, Table.TASK_ATTEMPT);
                       work.stageSource(caller, source("t", "s2"));
                       Map<?, ?> locks;
                       try {
@@ -419,10 +423,10 @@ class SessionFinalParametersTest {
                         work.locked("other", "s1");
                         work.stageSource(caller, source("other", "s1"));
                         locks.remove("t:s1");
-                        accounting.finalTable(Table.EVENT);
+                        SessionFinalResultFoldTest.table(accounting, Table.EVENT);
                         locks.remove("other:s1");
                       } else locks.remove("t:" + missing);
-                      return accounting.finalTable(Table.EVENT);
+                      return SessionFinalResultFoldTest.table(accounting, Table.EVENT);
                     }
                   }));
       assertEquals(missing.equals("replacement") ? 2 : 1, session.parameters.size());

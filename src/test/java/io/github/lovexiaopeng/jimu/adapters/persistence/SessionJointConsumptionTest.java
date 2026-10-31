@@ -222,6 +222,8 @@ class SessionJointConsumptionTest {
     f.transaction.required(
         q,
         () -> {
+          io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(q)
+              .locked("tenant", "caller");
           var records =
               new MapperSessionMetadataAccounting(
                   v.sessions, MapperSessionScopeRecords.row(caller("caller")), true);
@@ -265,7 +267,7 @@ class SessionJointConsumptionTest {
                                 f.transaction.requiresNew(
                                     nested.queryContext(),
                                     () -> {
-                                      records.finalTable(Table.EVENT);
+                                      SessionFinalResultFoldTest.table(records, Table.EVENT);
                                       return null;
                                     }));
                       } else
@@ -273,7 +275,8 @@ class SessionJointConsumptionTest {
                             RuntimeException.class,
                             () -> {
                               if (mode.equals("reenter")) records.finalization();
-                              else if (mode.equals("closed")) records.finalTable(Table.EVENT);
+                              else if (mode.equals("closed"))
+                                SessionFinalResultFoldTest.table(records, Table.EVENT);
                               else records.accountAndReadBack(9, 27);
                             });
                     } finally {

@@ -196,12 +196,13 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
   }
 
   /** Fold the original SELECT while its sole Result owner and current row are live. */
-  static SessionMetadataAccounting.FinalTable measureResultSet(
+  static void consumeResultSet(
       SessionQueryContext query,
       SessionMetadataAccounting.Table table,
       java.sql.ResultSet source,
       org.apache.ibatis.mapping.MappedStatement command,
-      boolean nullsPresent)
+      boolean nullsPresent,
+      SessionMetadataAccounting.FinalRows consumer)
       throws java.sql.SQLException {
     var projection = SessionMetadataProjection.forFinalTable(table);
     query.operation(16); // projection/metadata/results/locals and cleanup stores
@@ -278,9 +279,8 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
         }
       }
       query.checkHealthy();
-      query.operation(9); // summary and return; result releases only after row locals are dead
-      return new SessionMetadataAccounting.FinalTable(
-          rows, bytes, 0, null, reservations, reservation);
+      query.operation(8); // synchronous consumer call/arguments; no per-table summary allocation
+      consumer.accept(table, rows, bytes, 0, null, reservations, reservation);
     }
   }
 
