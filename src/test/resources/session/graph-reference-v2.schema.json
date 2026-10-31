@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session:v5:graph-reference:2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "caller_session_id", "authority_sha256", "nodes"],
+  "properties": {
+    "version": {"const": 2},
+    "caller_session_id": {"$ref": "#/$defs/uuid"},
+    "authority_sha256": {"$ref": "#/$defs/hash"},
+    "nodes": {
+      "type": "array", "minItems": 1, "maxItems": 9,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["session_id", "genesis_sha256"],
+        "properties": {
+          "session_id": {"$ref": "#/$defs/uuid"},
+          "genesis_sha256": {"$ref": "#/$defs/hash"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "uuid": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"},
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$comment": "Test-only shape candidate. Before production: authorize durable codec/schema pins, then compare the exact ordered caller+source set with independently verified fresh standalone genesis in the same owner/fence. Schema alone proves neither order, membership, digest nor permission."
+}

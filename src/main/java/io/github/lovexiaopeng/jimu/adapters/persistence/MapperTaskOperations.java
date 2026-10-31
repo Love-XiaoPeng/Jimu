@@ -11,7 +11,6 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.task.entity.TaskVisibili
 import io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskOperationsMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskVisibilityMapper;
 import io.github.lovexiaopeng.jimu.kernel.artifact.api.ArtifactState;
-import io.github.lovexiaopeng.jimu.kernel.session.api.SessionContentState;
 import io.github.lovexiaopeng.jimu.kernel.task.api.Tasks;
 import io.github.lovexiaopeng.jimu.kernel.task.port.TaskOperationsRecords;
 import java.util.List;
@@ -91,18 +90,75 @@ final class MapperTaskOperations implements TaskOperationsRecords {
           ledger.questionTask(value));
     }
 
+    public Tasks.View response(java.util.function.Supplier<Tasks.View> build) {
+      var response = ledger.taskResponse;
+      if (response == null) return build.get();
+      // Snapshot/Instant/View/文本及随后JSON转义同时驻留，先留再构造。
+      try {
+        long bytes = 8192;
+        for (String key : List.of("id", "state", "code", "summary")) {
+          ledger.queryContext().operation(3L + key.length());
+          if (value.get(key) instanceof String text)
+            bytes = Math.addExact(bytes, Math.multiplyExact(16L, text.length()));
+        }
+        response.retain(bytes);
+        var result = build.get();
+        response.hold(result);
+        return result;
+      } catch (RuntimeException failure) {
+        var owner =
+            io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+                ledger.queryContext());
+        throw owner == null ? failure : owner.poisonProof(failure);
+      }
+    }
+
+    private void retainArtifacts() {
+      var response = ledger.taskResponse;
+      if (response == null) return;
+      var q = ledger.queryContext();
+      Object workspace = new Object();
+      q.retainScratch(workspace, 4096);
+      try {
+        var size = JdbcLedger.first(sql.publishedArtifactSizes(q, tenant, id));
+        q.operation(4);
+        Object count = size.get("row_count"), text = size.get("text_bytes");
+        if (!(count instanceof Long || count instanceof Integer)
+            || !(text instanceof Long || text instanceof Integer)
+            || ((Number) count).longValue() < 0
+            || ((Number) text).longValue() < 0) throw JdbcSessionRecords.corrupt();
+        response.retain(
+            Math.addExact(
+                4096,
+                Math.addExact(
+                    Math.multiplyExact(2048, ((Number) count).longValue()),
+                    Math.multiplyExact(16, ((Number) text).longValue()))));
+        size = null;
+      } finally {
+        q.releaseScratch(workspace);
+      }
+    }
+
     public void requireAccess() {
       ledger.access(value);
     }
 
     public List<Tasks.Artifact> artifacts() {
+      retainArtifacts();
       var wrapper = new LambdaQueryWrapper<ArtifactViewEntity>();
       wrapper
+          .select(
+              ArtifactViewEntity::getRowId,
+              ArtifactViewEntity::getMediaType,
+              ArtifactViewEntity::getSize,
+              ArtifactViewEntity::getSha256,
+              ArtifactViewEntity::getExpiresAt)
           .eq(ArtifactViewEntity::getTenantId, tenant)
           .eq(ArtifactViewEntity::getTaskId, id)
           .eq(ArtifactViewEntity::getState, ArtifactState.PUBLISHED)
           .orderByAsc(ArtifactViewEntity::getRowId);
-      return select(ArtifactViewMapper.class, wrapper).stream()
+      var rows = select(ArtifactViewMapper.class, wrapper);
+      return rows.stream()
           .map(
               r ->
                   new Tasks.Artifact(
@@ -115,8 +171,7 @@ final class MapperTaskOperations implements TaskOperationsRecords {
     }
 
     public boolean historyRetained() {
-      var h = ledger.sessions.history(value, false);
-      return n(h, "retained") == 1 && SessionContentState.PRESENT.equals(s(h, "content_state"));
+      return ledger.sessions.historyRetained(value);
     }
 
     public boolean writersQuiescent() {
@@ -186,16 +241,19 @@ final class MapperTaskOperations implements TaskOperationsRecords {
     }
 
     public void releaseQueue() {
+      reservation(id + ":queue", "QUEUE");
       int count = sql.releaseReservation(ledger.queryContext(), tenant, id + ":queue");
       sql.releaseQueue(ledger.queryContext(), count, tenant);
     }
 
     public void releaseRun() {
+      reservation(id + ":run", "RUNNING");
       if (sql.releaseReservation(ledger.queryContext(), tenant, id + ":run") == 1)
         sql.releaseRun(ledger.queryContext(), tenant);
     }
 
     public void releaseQuestionTask() {
+      if (ledger.questionTask(value)) reservation(id + ":question-task", "QUESTION_TASK");
       if (ledger.questionTask(value)
           && sql.releaseReservation(ledger.queryContext(), tenant, id + ":question-task") == 1)
         sql.releaseQuestionTask(ledger.queryContext(), tenant);
@@ -206,7 +264,16 @@ final class MapperTaskOperations implements TaskOperationsRecords {
     }
 
     public void stopAttempt(String state) {
+      ledger.progressAttempt(value);
       sql.stopAttempt(ledger.queryContext(), state, tenant, s(value, "current_attempt_id"));
+    }
+
+    private void reservation(String reservation, String category) {
+      if (ledger.queryContext() != null && ledger.queryContext().lineage())
+        ledger
+            .mappers
+            .reservations()
+            .lockProgressReservation(ledger.queryContext(), tenant, id, reservation, category);
     }
   }
 }

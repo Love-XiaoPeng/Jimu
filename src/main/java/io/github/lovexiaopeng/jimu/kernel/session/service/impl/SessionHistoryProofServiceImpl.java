@@ -13,8 +13,8 @@ public final class SessionHistoryProofServiceImpl implements SessionHistoryProof
     if (h == null) throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_UNAVAILABLE);
     if (h.recordVersion() != 1
         || h.version() != p.version()
-        || !p.binding().equals(h.snapshot())
-        || !p.hash(p.binding()).equals(h.digest()))
+        || !p.matchesSnapshot(h.snapshot())
+        || !p.matches(p.hash(p.binding()), h.digest()))
       throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_VERSION_UNSUPPORTED);
     if (readable && (!SessionContentState.PRESENT.equals(h.state()) || h.retained() != 1))
       throw new TaskFailure(410, SessionErrorCode.SESSION_HISTORY_EXPIRED);

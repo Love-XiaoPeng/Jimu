@@ -28,6 +28,7 @@ import io.github.lovexiaopeng.jimu.plugin.api.ImageErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.QuestionErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import io.github.lovexiaopeng.jimu.plugin.api.TodoErrorCode;
+import io.github.lovexiaopeng.jimu.plugin.api.ToolCapability;
 import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 import java.time.Instant;
 import java.util.Arrays;
@@ -54,6 +55,7 @@ public final class JdbcLedger
         io.github.lovexiaopeng.jimu.kernel.task.api.WorkingDirectoryLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger,
+        io.github.lovexiaopeng.jimu.kernel.task.api.SessionLineageLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.UserQuestionLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.McpLedger,
         io.github.lovexiaopeng.jimu.kernel.task.api.ImageLedger {
@@ -145,6 +147,13 @@ public final class JdbcLedger
           new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionOwnerServiceImpl();
   final JdbcSessionRecords sessions;
   final JdbcSessionScopes sessionScopes;
+  final io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService lineages;
+  boolean sessionLineageEnabled;
+
+  public void sessionLineageEnabled(boolean enabled) {
+    sessionLineageEnabled = enabled;
+  }
+
   boolean priorSessionSearchEnabled;
 
   public void priorSessionSearchEnabled(boolean enabled) {
@@ -194,6 +203,154 @@ public final class JdbcLedger
     if (query == null) throw new IllegalStateException("Explicit session query context required");
     query.restrictDeadline(end);
     return queryTransactions.required(query, work);
+  }
+
+  @Override
+  public void submitSessionLineage(
+      Identity identity,
+      String key,
+      io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger.SearchBody body,
+      long end,
+      io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse response) {
+    if (query == null) {
+      queryView(end, new QueryResources(0, 0, 0))
+          .submitSessionLineage(identity, key, body, end, response);
+      return;
+    }
+    query.restrictLineage();
+    var responseQuery = query;
+    response.bind(
+        new io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse.Budget() {
+          public void retain(Object owner, long bytes) {
+            responseQuery.retainScratch(owner, bytes);
+          }
+
+          public void release(Object owner) {
+            responseQuery.releaseScratch(owner);
+          }
+
+          public void wire(int count) {
+            responseQuery.operation(count);
+            responseQuery.remainingMillis();
+          }
+
+          public void checkpoint() {
+            responseQuery.remainingMillis();
+          }
+
+          public RuntimeException failure(RuntimeException cause) {
+            return responseQuery.recordFailure(cause);
+          }
+
+          public <T> T primitive(String name, int count, java.util.function.Supplier<T> action) {
+            return responseQuery.primitive(name, count, action);
+          }
+        });
+    taskResponse = response;
+    try {
+      submitSessionLineage(identity, key, body, end);
+    } finally {
+      taskResponse = null;
+    }
+  }
+
+  io.github.lovexiaopeng.jimu.kernel.task.api.SessionTaskResponse taskResponse;
+
+  @Override
+  public View submitSessionLineage(
+      Identity identity,
+      String key,
+      io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger.SearchBody body,
+      long end) {
+    if (query == null)
+      return queryView(end, new QueryResources(0, 0, 0))
+          .submitSessionLineage(identity, key, body, end);
+    query.restrictDeadline(end);
+    query.restrictLineage();
+    var inputScratch = new Object();
+    // 此owner仅覆盖decode/strict JSON/admission暂存；HTTP原byte[]由response输入lease连续持有。
+    query.retainScratch(inputScratch, 4L * 16384);
+    try {
+      var raw = body.read(query.deadlineNanos());
+      query.operation(raw.length);
+      var input = sessions.lineage.admission(raw);
+      query.remainingMillis();
+      return sessionSearchOwnerRead(
+          () -> {
+            io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+                    query)
+                .admission();
+            return taskAdmissionService.submitLineage(
+                identity,
+                key,
+                new io.github.lovexiaopeng.jimu.kernel.task.api.TaskLineageSubmission(
+                    input.goal(), input.historySessionIds(), input.parentSessionId()));
+          },
+          end);
+    } finally {
+      query.releaseScratch(inputScratch);
+    }
+  }
+
+  private Map<String, Object> lineageOwner(Identity identity, String caller) {
+    Map<String, Object> task;
+    try {
+      task = sessionOwner(identity, caller);
+    } catch (TaskFailure failure) {
+      if (failure.status() == 403 || failure.status() == 404) throw JdbcSessionScopes.unavailable();
+      throw failure;
+    }
+    if (!JdbcSessionScopes.lineage(task))
+      throw new TaskFailure(404, SessionErrorCode.SESSION_LINEAGE_UNAVAILABLE);
+    return task;
+  }
+
+  @Override
+  public QueryResources authorizeSessionLineage(Identity identity, String caller, long end) {
+    if (query == null)
+      return queryView(end, new QueryResources(0, 0, 0))
+          .authorizeSessionLineage(identity, caller, end);
+    query.restrictLineage();
+    sessionSearchOwnerRead(
+        () -> {
+          lineageOwner(identity, caller);
+          return null;
+        },
+        end);
+    return query.resources();
+  }
+
+  @Override
+  public String sessionLineage(
+      Identity identity,
+      String caller,
+      io.github.lovexiaopeng.jimu.kernel.task.api.SessionEventLedger.SearchBody body,
+      long end,
+      QueryResources resources) {
+    if (query == null)
+      return queryView(end, resources).sessionLineage(identity, caller, body, end, resources);
+    query.restrictLineage();
+    return sessionSearchOwnerRead(
+        () -> {
+          var task = lineageOwner(identity, caller);
+          String target = sessions.lineage.input(body.read(end));
+          String output = lineages.trace(identity.tenant(), caller, target);
+          sessionScopes.ensure(task);
+          query.remainingMillis();
+          return output;
+        },
+        end);
+  }
+
+  @Override
+  public void revokeSessionLineage(Identity identity, String caller, boolean valid, long end) {
+    if (query == null) {
+      queryView(end, null).revokeSessionLineage(identity, caller, valid, end);
+      return;
+    }
+    new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionScopeRevocationServiceImpl(
+            new MapperSessionScopeRevocations(this, true))
+        .revoke(identity, caller, valid, end);
   }
 
   @Override
@@ -289,10 +446,10 @@ public final class JdbcLedger
     return sessionSearchOwnerRead(
         () -> {
           var task = priorSearchOwner(identity, caller);
-          var input = sessionScopes.contracts.input(body.read(deadlineNanos));
+          var input = sessionScopes.contracts(task).input(body.read(deadlineNanos));
           sessionRemainingMillis();
           var found = sessions.priorSearch(task, input, this::sessionRemainingMillis);
-          sessionScopes.require(task);
+          sessionScopes.ensure(task);
           sessionRemainingMillis();
           return found.output();
         },
@@ -318,14 +475,28 @@ public final class JdbcLedger
     return scopeQueries.scopedOrResult(lease, stepId, call, version, digest);
   }
 
+  @Override
+  public String lineageOrResult(
+      Lease lease, String stepId, Call call, String version, String digest) {
+    if (query == null)
+      return queryView(lease, true).lineageOrResult(lease, stepId, call, version, digest);
+    query.restrictLineage();
+    return lineages.traceSlot(lease, stepId, call, version, digest);
+  }
+
   private int sessionRemainingMillis() {
     return query.remainingMillis();
   }
 
   @Override
   public String sessionContext(Lease lease) {
-    if (query == null)
-      return queryView(System.nanoTime() + 2_000_000_000L, null).sessionContext(lease);
+    if (query == null) {
+      var view =
+          lease.capabilities().contains(ToolCapability.SESSION_TRACE)
+              ? queryView(lease, true)
+              : queryView(System.nanoTime() + 2_000_000_000L, null);
+      return view.sessionContext(lease);
+    }
     return sessionContexts.context(lease);
   }
 
@@ -334,18 +505,7 @@ public final class JdbcLedger
   }
 
   <T> T sessionOwnerRead(java.util.function.Supplier<T> work) {
-    long started = System.nanoTime();
-    try {
-      return sessionTransaction(work);
-    } catch (org.springframework.dao.QueryTimeoutException
-        | org.springframework.dao.CannotAcquireLockException e) {
-      throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
-    } catch (org.springframework.dao.DataAccessException
-        | org.springframework.transaction.TransactionException e) {
-      if (System.nanoTime() - started >= 2_000_000_000L)
-        throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
-      throw new TaskFailure(503, "SESSION_QUERY_UNAVAILABLE");
-    }
+    return sessionSearchOwnerRead(work, System.nanoTime() + 2_000_000_000L);
   }
 
   @Override
@@ -457,16 +617,17 @@ public final class JdbcLedger
   <T> T sessionSearchOwnerRead(Supplier<T> work, long deadlineNanos) {
     try {
       return sessionTransaction(work, deadlineNanos);
-    } catch (org.springframework.dao.QueryTimeoutException
-        | org.springframework.dao.CannotAcquireLockException e) {
-      throw new TaskFailure(504, "SESSION_QUERY_TIMEOUT");
     } catch (org.springframework.dao.DataAccessException
-        | org.springframework.transaction.TransactionException e) {
-      throw new TaskFailure(
-          System.nanoTime() >= deadlineNanos ? 504 : 503,
+        | org.springframework.transaction.TransactionException failure) {
+      boolean timeout =
           System.nanoTime() >= deadlineNanos
-              ? "SESSION_QUERY_TIMEOUT"
-              : "SESSION_QUERY_UNAVAILABLE");
+              || failure instanceof org.springframework.dao.QueryTimeoutException
+              || failure instanceof org.springframework.dao.CannotAcquireLockException;
+      var outward =
+          new TaskFailure(
+              timeout ? 504 : 503, timeout ? "SESSION_QUERY_TIMEOUT" : "SESSION_QUERY_UNAVAILABLE");
+      outward.initCause(failure);
+      throw outward;
     }
   }
 
@@ -543,7 +704,13 @@ public final class JdbcLedger
       historyRetention;
   final MapperSessionHistoryRetentions historyRetentionRecords;
 
-  private void cleanupSessionHistory() {
+  void cleanupSessionHistory() {
+    if (query == null) {
+      // 根在core事务外创建；候选探测与全部候选沿同一绝对截止/累计资源，权限逐事务重建。
+      var maintenance = queryView(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
+      maintenance.query.restrictLineage();
+      maintenance.historyRetention.cleanup();
+    }
     historyRetention.cleanup();
   }
 
@@ -1166,6 +1333,11 @@ public final class JdbcLedger
     scopeQueries =
         new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionScopeQueryServiceImpl(
             new MapperSessionScopeQueries(this));
+    sessions.lineageRecords = new MapperSessionLineageRecords(this);
+    lineages =
+        new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionLineageServiceImpl(
+            sessions.lineageRecords, scopeQueries);
+    sessions.lineageService = lineages;
     scopeRevocations =
         new io.github.lovexiaopeng.jimu.kernel.session.service.impl
             .SessionScopeRevocationServiceImpl(new MapperSessionScopeRevocations(this));
@@ -1180,6 +1352,19 @@ public final class JdbcLedger
             new MapperSessionTraces(this));
     sessions.scopes = sessionScopes;
     sessionScopes.invalidated = this::invalidateScopeAfterTransaction;
+    sessionScopes.terminalAccess =
+        task -> {
+          if (!sessionLineageEnabled || !sessionReadEnabled || !priorSessionSearchEnabled)
+            throw new TaskFailure(
+                403,
+                io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode.SESSION_LINEAGE_DISABLED);
+          if (epoch(new Identity(s(task, "tenant_id"), s(task, "owner_actor_id")), caps(task))
+              != n(task, "installation_epoch"))
+            throw new TaskFailure(
+                403,
+                io.github.lovexiaopeng.jimu.kernel.shared.api.CommonErrorCode.CAPABILITY_REVOKED);
+          sessionEligibility.access(new MapperSessionEligibility(this, task, true));
+        };
     imageRecords = new MapperImageRecords(this);
     imageService =
         new io.github.lovexiaopeng.jimu.kernel.media.service.impl.ImagePersistenceServiceImpl(
@@ -1330,6 +1515,7 @@ public final class JdbcLedger
       boolean sessionSearchEnabled,
       boolean sessionTraceEnabled,
       boolean priorSessionSearchEnabled,
+      boolean sessionLineageEnabled,
       JdbcSessionRecords.Configuration session,
       io.github.lovexiaopeng.jimu.adapters.runtime.mcp.McpSettings mcp) {
     static QueryViewConfiguration capture(JdbcLedger ledger) {
@@ -1344,6 +1530,7 @@ public final class JdbcLedger
           ledger.sessionSearchEnabled,
           ledger.sessionTraceEnabled,
           ledger.priorSessionSearchEnabled,
+          ledger.sessionLineageEnabled,
           ledger.sessions.configuration(),
           ledger.mcpRecords.configuration());
     }
@@ -1359,6 +1546,7 @@ public final class JdbcLedger
       ledger.sessionSearchEnabled = sessionSearchEnabled;
       ledger.sessionTraceEnabled = sessionTraceEnabled;
       ledger.priorSessionSearchEnabled = priorSessionSearchEnabled;
+      ledger.sessionLineageEnabled = sessionLineageEnabled;
       ledger.sessions.configure(session);
       ledger.mcpRecords.configure(mcp);
     }
@@ -1366,32 +1554,42 @@ public final class JdbcLedger
 
   private JdbcLedger queryView(Lease lease, boolean metered) {
     long now = System.nanoTime();
-    return queryView(
-        Math.min(
-            now + 2_000_000_000L,
-            now + java.time.Duration.between(Instant.now(), lease.deadline()).toNanos()),
-        metered ? new QueryResources(0, 0, 0) : null);
+    var scoped =
+        queryView(
+            Math.min(
+                now + 2_000_000_000L,
+                now + java.time.Duration.between(Instant.now(), lease.deadline()).toNanos()),
+            metered || lease.capabilities().contains(ToolCapability.SESSION_TRACE)
+                ? new QueryResources(0, 0, 0)
+                : null);
+    if (lease.capabilities().contains(ToolCapability.SESSION_TRACE)) scoped.query.restrictLineage();
+    return scoped;
   }
 
   <T> T tx(Supplier<T> work) {
+    Supplier<AdmissionResult<T>> body =
+        () -> {
+          try {
+            return new AdmissionResult<T>(work.get(), null);
+          } catch (TaskFailure failure) {
+            // 已发生的结算拒绝须先提交；查询超时和基础设施失败仍整笔回滚。
+            if (!List.of(
+                    "EVALUATION_SCOPE_MISMATCH",
+                    "MODEL_SETTLEMENT_PROOF_INVALID",
+                    "BUSINESS_POLICY_CONFLICT")
+                .contains(failure.code())) throw failure;
+            return new AdmissionResult<T>(null, failure);
+          }
+        };
     AdmissionResult<T> result =
-        unitOfWork.required(
-            () -> {
-              try {
-                return new AdmissionResult<T>(work.get(), null);
-              } catch (TaskFailure failure) {
-                // Scope checks run before admission writes. Only the deliberate persistent
-                // integrity rejection (or already admitted settlement) commits here.
-                if (!List.of(
-                        "EVALUATION_SCOPE_MISMATCH",
-                        "MODEL_SETTLEMENT_PROOF_INVALID",
-                        "BUSINESS_POLICY_CONFLICT")
-                    .contains(failure.code())) throw failure;
-                return new AdmissionResult<T>(null, failure);
-              }
-            });
+        query == null ? unitOfWork.required(body) : queryTransactions.required(query, body);
     if (result.rejection() != null) throw result.rejection();
     return result.value();
+  }
+
+  <T> T measured(String stage, Supplier<T> work) {
+    return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+        query, stage, work);
   }
 
   @Override
@@ -1459,6 +1657,8 @@ public final class JdbcLedger
   // Material checks precede quota/IO admission. Commit STOPPED with the rejection fact,
   // then throw outside the transaction; a process exit before task failure cannot undo it.
   <T> T leaseTx(Lease lease, Supplier<T> work) {
+    if (query != null && lease.capabilities().contains(ToolCapability.SESSION_TRACE))
+      return sessionTransaction(work, query.deadlineNanos());
     AdmissionResult<T> result =
         tx(
             () -> {
@@ -1667,14 +1867,35 @@ public final class JdbcLedger
   }
 
   void access(Map<String, Object> row) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (owner != null && !owner.lineage()) owner = null;
     try {
+      if (owner != null) {
+        if (query == null) throw new IllegalStateException("Missing query in session transaction");
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            query);
+        query.checkHealthy();
+      }
       baseAccess(row);
-      if (JdbcSessionScopes.task(row)) sessionScopes.require(row);
-    } catch (TaskFailure failure) {
-      if (JdbcSessionScopes.task(row) && failure.status() == 403) {
+      if (JdbcSessionScopes.task(row)) sessionScopes.ensure(row);
+    } catch (RuntimeException failure) {
+      if (failure instanceof TaskFailure denial
+          && JdbcSessionScopes.task(row)
+          && denial.status() == 403) {
+        // 只对健康、未发布、未保护写的owner保留原状态脱敏；首槽必须保留原403。
+        if (owner != null && !owner.scopeStatus(JdbcSessionScopes.unavailable()))
+          throw owner.poisonProof(failure);
         invalidateScopeAfterTransaction(row);
         throw JdbcSessionScopes.unavailable();
       }
+      if (owner == null) throw failure;
+      if (failure instanceof TaskFailure denial && owner.scopeStatus(denial)) throw failure;
+      throw owner.poisonProof(failure);
+    } catch (Error failure) {
+      if (owner != null)
+        owner.poisonProof(new IllegalStateException("Task access failed", failure));
       throw failure;
     }
   }
@@ -1955,7 +2176,29 @@ public final class JdbcLedger
         });
   }
 
+  void bindSessionQuery(Lease lease, String step, String response) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            query);
+    if (owner != null && query.lineage()) {
+      owner.leaseTask(lease.tenant(), lease.taskId());
+      owner.bind(
+          lease.tenant()
+              + ":"
+              + lease.taskId()
+              + ":"
+              + lease.attemptId()
+              + ":"
+              + lease.worker()
+              + ":"
+              + lease.fence(),
+          step,
+          response);
+    }
+  }
+
   Map<String, Object> fenced(Lease lease, boolean admission) {
+    bindSessionQuery(lease, null, null);
     // Hold through the committing transaction: STOPPED cannot race a cached admission,
     // publication or successful finish. Settlement of previously admitted effects stays allowed.
     var evaluation = evaluation(lease, admission);
@@ -1969,6 +2212,7 @@ public final class JdbcLedger
       throw new TaskFailure(409, CommonErrorCode.FENCE_REJECTED);
     if (admission)
       executionAdmission.lease(new MapperLeaseAdmission(this, task, evaluation), lease);
+    progressAttempt(task);
     if (mappers
             .tasks()
             .commitLiveFence(
@@ -1983,6 +2227,21 @@ public final class JdbcLedger
         && Long.toString(n(task, "revision")).length()
             != Long.toString(n(task, "revision") + 1).length()) sessions.account(task, false);
     return task;
+  }
+
+  void progressAttempt(Map<String, Object> task) {
+    if (query == null || !query.lineage() || task.get("current_attempt_id") == null) return;
+    if (mappers
+            .attempts()
+            .lockProgressAttempt(
+                query,
+                s(task, "tenant_id"),
+                s(task, "id"),
+                s(task, "current_attempt_id"),
+                s(task, "worker_id"),
+                n(task, "fence"))
+            .size()
+        != 1) throw new TaskFailure(409, CommonErrorCode.FENCE_REJECTED);
   }
 
   EvaluationMaterials.Material material(Map<String, Object> task) {
@@ -2035,6 +2294,8 @@ public final class JdbcLedger
 
   @Override
   public Optional<Step> checkpoint(Lease lease) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE))
+      return queryView(lease, true).checkpoint(lease);
     return executionService.checkpoint(lease);
   }
 
@@ -2055,6 +2316,8 @@ public final class JdbcLedger
 
   @Override
   public ModelSnapshot modelSnapshot(Lease lease) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE))
+      return queryView(lease, true).modelSnapshot(lease);
     return modelService.snapshot(lease);
   }
 
@@ -2074,6 +2337,8 @@ public final class JdbcLedger
 
   @Override
   public ToolSnapshot toolSnapshot(Lease lease) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE))
+      return queryView(lease, true).toolSnapshot(lease);
     return modelService.tools(lease);
   }
 
@@ -2125,11 +2390,15 @@ public final class JdbcLedger
 
   @Override
   public Step prepare(Lease lease, String request) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE))
+      return queryView(lease, true).prepare(lease, request);
     return executionService.prepare(lease, request);
   }
 
   @Override
   public String dispatchModel(Lease lease, String stepId) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE))
+      return queryView(lease, true).dispatchModel(lease, stepId);
     return modelService.dispatch(lease, stepId);
   }
 
@@ -2142,11 +2411,25 @@ public final class JdbcLedger
       List<Call> calls,
       Integer tokens,
       ModelUsage usage) {
-    modelService.responded(lease, stepId, dispatch, response, calls, tokens, usage);
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE)) {
+      queryView(lease, true)
+          .modelResponded(lease, stepId, dispatch, response, calls, tokens, usage);
+      return;
+    }
+    measured(
+        "M2.total",
+        () -> {
+          modelService.responded(lease, stepId, dispatch, response, calls, tokens, usage);
+          return null;
+        });
   }
 
   @Override
   public void modelFailed(Lease lease, String dispatch, String code, ModelUsage usage) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE)) {
+      queryView(lease, true).modelFailed(lease, dispatch, code, usage);
+      return;
+    }
     modelService.failed(lease, dispatch, code, usage);
   }
 
@@ -2316,12 +2599,20 @@ public final class JdbcLedger
 
   @Override
   public void finish(Lease lease, String summary) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE)) {
+      queryView(lease, true).finish(lease, summary);
+      return;
+    }
     if (executionService.finish(lease, summary))
       throw new io.github.lovexiaopeng.jimu.adapters.runtime.interaction.QuestionSuspended();
   }
 
   @Override
   public void stop(Lease lease, String code) {
+    if (query == null && lease.capabilities().contains(ToolCapability.SESSION_TRACE)) {
+      queryView(lease, true).stop(lease, code);
+      return;
+    }
     executionService.stop(lease, code);
   }
 
@@ -2407,13 +2698,13 @@ public final class JdbcLedger
       return;
     }
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22') AND success=TRUE",
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23') AND success=TRUE",
             Integer.class)
-        != 22) throw new IllegalStateException("Required migration unavailable");
+        != 23) throw new IllegalStateException("Required migration unavailable");
     if (db.queryForObject(
             "SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE",
             Integer.class)
-        != 22) throw new IllegalStateException("Unsupported schema version");
+        != 23) throw new IllegalStateException("Unsupported schema version");
   }
 
   @Override

@@ -24,7 +24,12 @@ final class JdbcSessionRecords {
   final SessionContracts v2 = new SessionContracts(2);
   final SessionContracts v3 = new SessionContracts(3);
   final SessionContracts v4 = new SessionContracts(4);
+  final SessionContracts v5;
+  final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionLineageContracts lineage =
+      new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionLineageContracts();
   JdbcSessionScopes scopes;
+  io.github.lovexiaopeng.jimu.kernel.session.port.SessionLineageRecords lineageRecords;
+  io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService lineageService;
   final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts searchV3 =
       new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts(3);
   final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTraceContracts trace =
@@ -45,10 +50,12 @@ final class JdbcSessionRecords {
     return name.equals(ToolCapability.SESSION_EVENT_READ)
         ? contract(task).descriptor()
         : name.equals(ToolCapability.SESSION_SEARCH)
-            ? scopes.contracts.descriptor()
+            ? scopes.contracts(task).descriptor()
             : name.equals(ToolCapability.SESSION_EVENT_SEARCH)
                 ? searchContract(task).descriptor()
-                : trace.descriptor();
+                : name.equals(ToolCapability.SESSION_TRACE)
+                    ? lineage.descriptor()
+                    : trace.descriptor();
   }
 
   final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionSearchContracts search =
@@ -136,13 +143,249 @@ final class JdbcSessionRecords {
   }
 
   int version(Map<String, Object> task) {
-    return JdbcSessionScopes.task(task) ? 4 : traceTask(task) ? 3 : searchTask(task) ? 2 : 1;
+    return JdbcSessionScopes.lineage(task)
+        ? 5
+        : JdbcSessionScopes.task(task) ? 4 : traceTask(task) ? 3 : searchTask(task) ? 2 : 1;
   }
 
   SessionContracts contract(Map<String, Object> task) {
-    return JdbcSessionScopes.task(task)
-        ? v4
-        : traceTask(task) ? v3 : searchTask(task) ? v2 : contracts;
+    return JdbcSessionScopes.lineage(task)
+        ? v5
+        : JdbcSessionScopes.task(task)
+            ? v4
+            : traceTask(task) ? v3 : searchTask(task) ? v2 : contracts;
+  }
+
+  /** 只共用当前Work内同一不可变本地策略；数据库副本仍独立encode/hash，不构成行证明。 */
+  String policyHash(Map<String, Object> task, String raw) {
+    if (query == null || !query.lineage()) return Payloads.hash(raw);
+    try {
+      query.operation(1);
+      var policy = contract(task);
+      if (samePolicyIdentity(raw, policy.binding())) {
+        var owner =
+            io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+                query);
+        if (owner != null) return owner.policyHash(raw, () -> localPolicyHash(policy, raw));
+      }
+      return policyHashRaw(raw);
+    } catch (RuntimeException failure) {
+      throw query.recordFailure(failure);
+    }
+  }
+
+  /** 只认本地v5不可变binding；foreign行无论内容相同与否均独立编码/散列。 */
+  String scopeHash(String raw) {
+    var current =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (current != null && current.lineage()) {
+      try {
+        if (query == null
+            || io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                    .current(query)
+                != current) throw new IllegalStateException("Different scope query owner");
+      } catch (RuntimeException failure) {
+        throw current.poisonProof(failure);
+      }
+    }
+    if (query == null || !query.lineage()) return Payloads.hash(raw);
+    try {
+      query.operation(1);
+      if (samePolicyIdentity(raw, v5.binding())) {
+        var owner =
+            io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+                query);
+        if (owner != null) return owner.policyHash(raw, () -> localPolicyHash(v5, raw));
+      }
+      return policyHashRaw(raw);
+    } catch (RuntimeException failure) {
+      throw query.recordFailure(failure);
+    }
+  }
+
+  /** scope原位置的真实UTF8编码；独立临时数组先预留、断引用后退款，不充当hash缓存。 */
+  static int scopeUtf8Bytes(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query, String raw) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (owner != null && owner.lineage()) {
+      try {
+        if (query == null
+            || io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                    .current(query)
+                != owner) throw new IllegalStateException("Different scope query owner");
+      } catch (RuntimeException failure) {
+        throw owner.poisonProof(failure);
+      }
+    }
+    if (query == null || !query.lineage())
+      return raw.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+    Object temporary = null;
+    byte[] encoded = null;
+    try {
+      query.checkHealthy();
+      // null保持旧getBytes的NPE；真实owner将它登记为首错。
+      query.operation(4);
+      long capacity = 4096L + 4L * raw.length();
+      query.retainScratch(query, 64); // 临时owner分配前的固定引用槽。
+      temporary = new Object();
+      query.retainScratch(temporary, capacity);
+      encoded =
+          query.primitive(
+              "scope.encode",
+              raw.length(),
+              () -> raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      query.operation(1);
+      return encoded.length;
+    } catch (RuntimeException failure) {
+      throw owner != null && owner.lineage()
+          ? owner.poisonProof(failure)
+          : query.recordFailure(failure);
+    } finally {
+      encoded = null;
+      if (temporary != null) query.releaseScratch(temporary);
+      query.releaseScratch(query);
+    }
+  }
+
+  /** One strict encoding feeds the local length and SHA-256 consumers. */
+  static <T> T withScopeRaw(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      String raw,
+      java.util.function.BiFunction<Integer, String, T> use) {
+    return withScopeRaw(query, raw, false, 0, use);
+  }
+
+  static <T> T withScopeRaw(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      String raw,
+      long expectedBytes,
+      java.util.function.BiFunction<Integer, String, T> use) {
+    return withScopeRaw(query, raw, true, expectedBytes, use);
+  }
+
+  private static <T> T withScopeRaw(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      String raw,
+      boolean checkLength,
+      long expectedBytes,
+      java.util.function.BiFunction<Integer, String, T> use) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    Object temporary = null;
+    boolean held = false;
+    java.nio.ByteBuffer encoded = null;
+    try {
+      if (owner != null
+          && owner.lineage()
+          && (query == null
+              || io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                      .current(query)
+                  != owner)) throw new IllegalStateException("Different scope query owner");
+      if (query == null || !query.lineage()) {
+        int bytes = raw.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+        return use.apply(bytes, !checkLength || bytes == expectedBytes ? Payloads.hash(raw) : null);
+      }
+      query.checkHealthy();
+      // Guard/owner, scalar handoff, callback fields/branches and cleanup.
+      // Units stay UTF16 chars for encode and UTF8 bytes for scope hashing.
+      query.operation(48);
+      query.retainScratch(query, 64);
+      held = true;
+      temporary = new Object();
+      query.retainScratch(temporary, 4096L + 8L * raw.length());
+      encoded = encodeScopeRaw(query, raw);
+      int bytes = encoded.remaining();
+      String digest = !checkLength || bytes == expectedBytes ? hashScopeRaw(query, encoded) : null;
+      encoded = null;
+      return use.apply(bytes, digest);
+    } catch (RuntimeException failure) {
+      if (owner != null && owner.lineage()) throw owner.poisonProof(failure);
+      if (query != null) throw query.recordFailure(failure);
+      throw failure;
+    } catch (Error failure) {
+      if (owner != null && owner.lineage()) owner.poisonLineageSource(failure);
+      throw failure;
+    } finally {
+      encoded = null;
+      if (query != null) {
+        if (temporary != null) query.releaseScratch(temporary);
+        if (held) query.releaseScratch(query);
+      }
+    }
+  }
+
+  private static java.nio.ByteBuffer encodeScopeRaw(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query, String raw) {
+    return query.primitive(
+        "scope.encode",
+        raw.length(),
+        () -> {
+          var encoder =
+              java.nio.charset.StandardCharsets.UTF_8
+                  .newEncoder()
+                  .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                  .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT);
+          try {
+            return encoder.encode(java.nio.CharBuffer.wrap(raw));
+          } catch (java.nio.charset.CharacterCodingException failure) {
+            throw corrupt();
+          }
+        });
+  }
+
+  private static String hashScopeRaw(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      java.nio.ByteBuffer encoded) {
+    return query.primitive(
+        "history.hash",
+        encoded.remaining(),
+        () -> {
+          try {
+            var digest = java.security.MessageDigest.getInstance("SHA-256");
+            digest.update(encoded);
+            return java.util.HexFormat.of().formatHex(digest.digest());
+          } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+          }
+        });
+  }
+
+  private static boolean samePolicyIdentity(Object left, Object right) {
+    return left == right;
+  }
+
+  private String localPolicyHash(SessionContracts contract, String raw) {
+    query.operation(2); // 版本身份分派、原资源摘要交接；Work原policyScratch持有引用与64字符摘要。
+    return contract == v5 ? contract.lineageBindingDigest() : policyHashRaw(raw);
+  }
+
+  private String policyHashRaw(String raw) {
+    Object temporary = null;
+    byte[] encoded = null;
+    try {
+      query.retainScratch(query, 64); // reserve the owner reference before constructing it
+      temporary = new Object();
+      query.retainScratch(temporary, 4096L + 4L * raw.length());
+      encoded =
+          query.primitive(
+              "history.encode",
+              raw.length(),
+              () -> raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      return hashEncoded(encoded);
+    } finally {
+      encoded = null;
+      if (temporary != null) query.releaseScratch(temporary);
+      query.releaseScratch(query);
+    }
+  }
+
+  // The primitive supplier and its byte[] alias expire before the caller clears and refunds it.
+  private String hashEncoded(byte[] encoded) {
+    return query.primitive("history.hash", encoded.length, () -> Payloads.hash(encoded));
   }
 
   private List<String> sensitive;
@@ -165,6 +408,9 @@ final class JdbcSessionRecords {
       JdbcTemplate db,
       io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
       org.mybatis.spring.SqlSessionTemplate mapperSession) {
+    // 原codec初始化仍在原位置；新增的pin引用存储先计费，不新建摘要或编码缓冲。
+    if (query != null) query.operation(1);
+    v5 = new SessionContracts(5);
     this.db = db;
     this.query = query;
     this.mapperSession = mapperSession;
@@ -213,9 +459,65 @@ final class JdbcSessionRecords {
               .SessionHistoryProofServiceImpl();
 
   Map<String, Object> history(Map<String, Object> task, boolean readable) {
-    var proof = new MapperSessionHistoryProofs(this, task, null);
-    historyProofs.history(proof, readable);
-    return proof.historyRow();
+    return history(task, readable, false);
+  }
+
+  Map<String, Object> acceptedEventHistory(Map<String, Object> task, boolean readable) {
+    return history(task, readable, version(task) == 5);
+  }
+
+  private Map<String, Object> history(
+      Map<String, Object> task, boolean readable, boolean acceptedEvent) {
+    var owner = historyOwner();
+    Object temporary = new Object();
+    if (owner != null) query.retainScratch(temporary, 4096);
+    try {
+      var proof = new MapperSessionHistoryProofs(this, task, null, acceptedEvent);
+      historyProofs.history(proof, readable);
+      if (readable && owner != null)
+        owner.checkedHistory(
+            MapperSessionScopeRecords.caller(task),
+            version(task),
+            contract(task).binding(),
+            proof.checkedRow(),
+            (java.time.LocalDateTime) proof.historyRow().get("retain_until"));
+      return proof.historyRow();
+    } catch (RuntimeException failure) {
+      if (owner != null) owner.poisonProof(failure);
+      throw failure;
+    } finally {
+      if (owner != null) query.releaseScratch(temporary);
+    }
+  }
+
+  private io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork historyOwner() {
+    return query != null && query.lineage()
+        ? io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            query)
+        : null;
+  }
+
+  private boolean checkedHistory(Map<String, Object> task) {
+    var owner = historyOwner();
+    if (owner == null) return false;
+    Object temporary = new Object();
+    query.retainScratch(temporary, 4096);
+    try {
+      return owner.checkedHistory(
+          MapperSessionScopeRecords.caller(task), version(task), contract(task).binding());
+    } finally {
+      query.releaseScratch(temporary);
+    }
+  }
+
+  void historyProof(Map<String, Object> task) {
+    if (!checkedHistory(task)) history(task, false);
+  }
+
+  boolean historyRetained(Map<String, Object> task) {
+    if (checkedHistory(task)) return true;
+    var h = history(task, false);
+    return n(h, "retained") == 1 && "PRESENT".equals(s(h, "content_state"));
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionHistoryStorageService
@@ -247,7 +549,38 @@ final class JdbcSessionRecords {
     return mapperSession;
   }
 
+  io.github.lovexiaopeng.jimu.kernel.session.port.SessionMetadataAccounting.Batch
+      historyMetadataBatch(Map<String, Object> task) {
+    // Added route is paid on fallback too; no catch-and-success after a resource refusal.
+    if (query != null) query.operation(16);
+    if (query != null
+        && query.lineage()
+        && searchBudget == null
+        && io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                .currentOwner()
+            != null)
+      return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistorySizedMetadataBatch
+          .load(mapperSession(), query, s(task, "tenant_id"), s(task, "id"));
+    return new SessionHistoryMetadataBatch(
+        query, () -> mapperRows("SessionHistoryRetentionMapper.metadataTaskSessionHistory", task));
+  }
+
+  List<Map<String, Object>> historyRows(Map<String, Object> task) {
+    // Prepay dispatch, guards, mapper/key lookups and handoff, including the fallback path.
+    if (query != null) query.operation(12);
+    if (query != null && query.lineage() && searchBudget == null)
+      return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistoryRows.load(
+          mapperSession(), query, s(task, "tenant_id"), s(task, "id"));
+    return mapperRows("SessionHistoryRetentionMapper.history", task);
+  }
+
   List<Map<String, Object>> mapperRows(String operation, Map<String, Object> task) {
+    if (operation.equals("SessionHistoryRetentionMapper.eventHistory")
+        && query != null
+        && query.lineage()
+        && searchBudget == null)
+      return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionEventHistoryRows.load(
+          mapperSession(), query, s(task, "tenant_id"), s(task, "id"));
     var args = new java.util.HashMap<String, Object>();
     args.put("query", query);
     args.put("tenant", s(task, "tenant_id"));
@@ -255,6 +588,19 @@ final class JdbcSessionRecords {
     try (var ignored = query == null ? null : query.meter(searchBudget)) {
       return mapperSession()
           .selectList(
+              "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper." + operation, args);
+    }
+  }
+
+  org.apache.ibatis.cursor.Cursor<Map<String, Object>> mapperCursor(
+      String operation, Map<String, Object> task) {
+    var args = new java.util.HashMap<String, Object>();
+    args.put("query", query);
+    args.put("tenant", s(task, "tenant_id"));
+    args.put("taskId", s(task, "id"));
+    try (var ignored = query == null ? null : query.meter(searchBudget)) {
+      return mapperSession()
+          .selectCursor(
               "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper." + operation, args);
     }
   }
@@ -269,12 +615,43 @@ final class JdbcSessionRecords {
               .SessionMetadataAccountingServiceImpl();
 
   long metadata(Map<String, Object> task, boolean closing, long planned) {
-    return metadataAccounting.metadata(
-        new MapperSessionMetadataAccounting(this, task), closing, planned);
+    return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+        query,
+        "metadata.preflight",
+        () ->
+            metadataAccounting.metadata(
+                new MapperSessionMetadataAccounting(this, task), closing, planned));
   }
 
   void account(Map<String, Object> task, boolean closing) {
-    metadataAccounting.account(new MapperSessionMetadataAccounting(this, task), closing);
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            query);
+    if (owner != null && query.lineage() && JdbcSessionScopes.lineage(task)) {
+      owner.account(
+          s(task, "tenant_id") + ":" + s(task, "id"),
+          closing,
+          finalClosing -> finalAccount(task, finalClosing));
+      return;
+    }
+    io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+        query,
+        "metadata.account",
+        () -> {
+          metadataAccounting.account(new MapperSessionMetadataAccounting(this, task), closing);
+          return null;
+        });
+  }
+
+  private void finalAccount(Map<String, Object> task, boolean closing) {
+    io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+        query,
+        "metadata.final",
+        () -> {
+          metadataAccounting.account(
+              new MapperSessionMetadataAccounting(this, task, true), closing);
+          return null;
+        });
   }
 
   Map<String, Object> source(String kind, String step, String invocation) {
@@ -345,15 +722,19 @@ final class JdbcSessionRecords {
         new MapperSessionCheckpointPreparation(this, task, step), request);
   }
 
-  void updatePreparedStep(Object wrapper) {
-    var args = new java.util.HashMap<String, Object>();
-    args.put("et", null);
-    args.put("ew", wrapper);
-    args.put("query", query);
-    mapperSession()
-        .update(
-            "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryStepReadMapper.update",
-            args);
+  void updatePreparedStep(
+      String tenant,
+      String task,
+      String step,
+      long upper,
+      String contextDigest,
+      String bindingDigest) {
+    if (mapperSession()
+            .getMapper(
+                io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper
+                    .ScopeQueryStepReadMapper.class)
+            .bindPrepared(query, tenant, task, step, upper, contextDigest, bindingDigest)
+        != 1) throw corrupt();
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionCallBindingService
@@ -362,7 +743,13 @@ final class JdbcSessionRecords {
               .SessionCallBindingServiceImpl();
 
   void bindCalls(Map<String, Object> task, String step) {
-    callBindings.bind(new MapperSessionCallBindings(this, task, step));
+    io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+        query,
+        "M2.bindCalls",
+        () -> {
+          callBindings.bind(new MapperSessionCallBindings(this, task, step));
+          return null;
+        });
   }
 
   void validateStep(Map<String, Object> task, Map<String, Object> st) {
@@ -483,7 +870,7 @@ final class JdbcSessionRecords {
     var meta = org.apache.ibatis.reflection.SystemMetaObject.forObject(entity);
     for (String field : meta.getGetterNames()) args.put(field, meta.getValue(field));
     args.put("query", query);
-    mapperSession().insert(mapper.getName() + ".insert", args);
+    if (mapperSession().insert(mapper.getName() + ".insert", args) != 1) throw corrupt();
   }
 
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionReadRelationProofService

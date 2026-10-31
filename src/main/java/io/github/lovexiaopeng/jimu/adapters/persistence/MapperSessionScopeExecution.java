@@ -162,7 +162,7 @@ final class MapperSessionScopeExecution {
       }
 
       public void validate(String output) {
-        records.scopes.contracts.output(output);
+        records.scopes.contracts(caller).output(output);
       }
 
       public String scanDigest(List<SessionScopeExecution.Ref> refs) {

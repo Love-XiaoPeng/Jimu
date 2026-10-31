@@ -44,6 +44,10 @@ public interface SessionResponsePreflight {
 
   boolean scopeTask();
 
+  default boolean lineageTask() {
+    return false;
+  }
+
   boolean searchTask();
 
   boolean traceTask();

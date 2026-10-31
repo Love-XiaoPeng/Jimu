@@ -35,7 +35,7 @@ final class StoredSessionScopeNormalization implements SessionScopeNormalization
   }
 
   public String searchQuery() {
-    return records.scopes.contracts.input(raw).query();
+    return records.scopes.contracts(task).input(raw).query();
   }
 
   public SessionScopeNormalization.SearchObject searchObject() {
@@ -54,7 +54,7 @@ final class StoredSessionScopeNormalization implements SessionScopeNormalization
   }
 
   public SessionScopeNormalization.Read read() {
-    var input = records.v4.input(raw);
+    var input = records.contract(task).input(raw);
     return new SessionScopeNormalization.Read(
         input.sessionId(), input.seq(), input.before(), input.after());
   }

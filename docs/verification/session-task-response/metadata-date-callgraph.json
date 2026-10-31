@@ -1,0 +1,57 @@
+{
+  "entry": "MapperSessionMetadataAccounting.batch",
+  "routes": [
+    {
+      "tables": "TASK",
+      "batch": "SessionCursorMetadataBatch(taskSized projection)",
+      "scalar": "SessionMetadataScalars.bytes unless SqlUtf8Length"
+    },
+    {
+      "tables": "15 normal projections",
+      "batch": "SessionCursorMetadataBatch(SessionMetadataProjection.forTable)",
+      "scalar": "SessionMetadataScalars.bytes unless SqlUtf8Length"
+    },
+    {
+      "tables": "TASK_SESSION_HISTORY",
+      "batch": "SessionHistoryMetadataBatch",
+      "scalar": "own scalarBytes"
+    },
+    {
+      "tables": "TASK_SESSION_LINEAGE",
+      "batch": "SessionLineageMetadataBatch",
+      "scalar": "unchanged independent three-column path"
+    }
+  ],
+  "outsideChange": [
+    "SessionQueryContext.scalarBytes",
+    "port default batch",
+    "nonlineage old rows",
+    "service fixed-point numbers",
+    "independent raw proof/digest/schema",
+    "wire dates"
+  ],
+  "dateGuard": {
+    "prepaid": 7,
+    "range": "0 <= LocalDateTime.year <= 9999; both comparisons execute",
+    "bytes": 27,
+    "fallback": "unchanged formatter/scan/2048 plus 7"
+  },
+  "historyBoundGuard": {
+    "prepaid": 5,
+    "sufficientCondition": "UTF16 units <= code point bound",
+    "fallback": "original codePointCount with original units plus 5 guard",
+    "noNewOwner": true
+  },
+  "productionCallsites": [
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/MapperSessionMetadataAccounting.java",
+      "line": 44,
+      "text": "return new SessionHistoryMetadataBatch("
+    },
+    {
+      "source": "src/main/java/io/github/lovexiaopeng/jimu/adapters/persistence/SessionCursorMetadataBatch.java",
+      "line": 261,
+      "text": "return SessionMetadataScalars.bytes(value, query);"
+    }
+  ]
+}

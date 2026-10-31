@@ -1,0 +1,9 @@
+{
+  "id": "jimu.lineage.graph.codecs.v1",
+  "version": 1,
+  "json_codec_version": 2,
+  "codec_id": "jimu.lineage.graph.refs.v2",
+  "schema_resource": "storage/lineage-graph-refs-v2.schema.json",
+  "schema_sha256": "de51a3b1d939e071df3a467b098f18d63e59a8104d50e9cd23956b8c623e6f70",
+  "semantics": "fresh-standalone-genesis-v1"
+}

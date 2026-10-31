@@ -207,7 +207,9 @@ class QueryViewAssemblyTest {
     var result = first.queryContext().result();
     result.row();
     result.column("x", "🙂");
-    assertEquals(new QueryResources(3, 25, 6), first.queryContext().resources());
+    // 原4 + row1 + column1 + label1 + UTF16字符2；补计label/value扫描不能沿旧漏计断言。
+    assertEquals(new QueryResources(3, 25, 9), first.queryContext().resources());
+    result.close();
     assertEquals(new QueryResources(2, 12, 4), second.queryContext().resources());
     unmetered.queryContext().result().column("x", "🙂");
     assertEquals(new QueryResources(0, 0, 0), unmetered.queryContext().resources());
@@ -238,6 +240,124 @@ class QueryViewAssemblyTest {
             assertThrows(TaskFailure.class, query.queryContext()::remainingMillis).code());
       assertEquals(new QueryResources(0, 0, 0), query.queryContext().resources());
     }
+  }
+
+  @Test
+  void queryCoreWorkUsesOriginalDeadlineWhileOrdinaryCoreWorkKeepsSuppliedBoundary()
+      throws Exception {
+    var calls = new java.util.concurrent.atomic.AtomicInteger();
+    LedgerUnitOfWork work =
+        new LedgerUnitOfWork() {
+          public <T> T required(Supplier<T> body) {
+            calls.incrementAndGet();
+            return body.get();
+          }
+        };
+    var root =
+        new JdbcLedger(
+            source,
+            models,
+            new DataSourceTransactionManager(source),
+            work,
+            () -> {},
+            LedgerMapperSessions.create(source));
+    assertEquals("ordinary", root.tx(() -> "ordinary"));
+    assertEquals(1, calls.get());
+    var query = view(root, System.nanoTime() - 1, new QueryResources(3, 12, 4));
+    assertEquals(
+        "SESSION_QUERY_TIMEOUT",
+        assertThrows(
+                TaskFailure.class,
+                () ->
+                    query.tx(
+                        () -> {
+                          throw new AssertionError("expired work");
+                        }))
+            .code());
+    assertEquals(1, calls.get());
+    assertEquals(new QueryResources(3, 12, 4), query.queryContext().resources());
+  }
+
+  @Test
+  void modelLineageViewEnforcesOneCumulative256ReadEnvelope() throws Exception {
+    var root = new JdbcLedger(source, models);
+    var lease =
+        new Lease(
+            "t",
+            "a",
+            "task",
+            "attempt",
+            1,
+            "worker",
+            Instant.now().plusSeconds(60),
+            "goal",
+            List.of("session_trace"),
+            1);
+    var query =
+        (JdbcLedger)
+            invoke(root, "queryView", new Class<?>[] {Lease.class, boolean.class}, lease, true);
+    long end = query.queryContext().deadlineNanos();
+    for (int i = 0; i < 256; i++) query.queryContext().result();
+    assertEquals(
+        "SESSION_HISTORY_LIMIT",
+        assertThrows(TaskFailure.class, query.queryContext()::result).code());
+    assertEquals(257, query.queryContext().resources().reads());
+    assertEquals(end, query.queryContext().deadlineNanos());
+  }
+
+  @Test
+  void lineageCannotSelectTheLegacyUnmeteredLeaseView() throws Exception {
+    var root = new JdbcLedger(source, models);
+    var lease =
+        new Lease(
+            "t",
+            "a",
+            "task",
+            "attempt",
+            1,
+            "worker",
+            Instant.now().plusSeconds(60),
+            "goal",
+            List.of("session_trace"),
+            1);
+    var view =
+        (JdbcLedger)
+            invoke(root, "queryView", new Class<?>[] {Lease.class, boolean.class}, lease, false);
+    assertEquals(
+        "SESSION_HISTORY_LIMIT",
+        assertThrows(TaskFailure.class, () -> view.queryContext().operation(65537)).code());
+    assertEquals(65537, view.queryContext().resources().operations());
+  }
+
+  @Test
+  void lineageRootsRejectExpiredLeaseBeforeAcquiringAnyConnection() {
+    var root = new JdbcLedger(source, models);
+    var lease =
+        new Lease(
+            "t",
+            "a",
+            "task",
+            "attempt",
+            1,
+            "worker",
+            Instant.now().minusSeconds(1),
+            "goal",
+            List.of("session_trace"),
+            1);
+    var calls =
+        List.<Runnable>of(
+            () -> root.sessionContext(lease),
+            () -> root.checkpoint(lease),
+            () -> root.modelSnapshot(lease),
+            () -> root.toolSnapshot(lease),
+            () -> root.finish(lease, "done"),
+            () -> root.modelFailed(lease, "dispatch", "failed", null),
+            () -> root.stop(lease, "failed"),
+            () -> root.readOrResult(lease, null, null, null, null),
+            () -> root.searchOrResult(lease, null, null, null, null),
+            () -> root.traceOrResult(lease, null, null, null, null));
+    for (var call : calls)
+      assertEquals("SESSION_QUERY_TIMEOUT", assertThrows(TaskFailure.class, call::run).code());
   }
 
   static JdbcLedger view(JdbcLedger root, long end, QueryResources prior) throws Exception {

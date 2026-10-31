@@ -1,0 +1,11 @@
+segment,before,after,payer,when,allocation_and_cleanup
+eight_column_dispatch,8,8,current query,each constructed nonempty row,original batch reservation
+short_string_guard,length scanned,7,current query,before units getter,primitive local and borrowed String only
+short_string_codepoint_walk,units,0,current query,units<=points,deleted walk; guard includes successful handoff
+wide_string_guard,existing bound comparison,7,current query,each String including invalid,paid before length reads
+wide_string_codepoint_walk,units paid after scan,units prepaid,current query,points<units<=2points,same full JDK codePointCount
+oversize_string,upper bound rejection,7 then reject,current query,units>2points,no scan performed
+saved_five_short_strings,179,35,current query,query1454499111/2011862543/190684958 separately,actual OP_ACCOUNT site SessionLineageMetadataBatch:53
+same_shape_constructor,187,43,current query,8 existing column steps plus five guards,no cross-query reuse or total-chain pass inference
+fallback_cost_delta,units,7+units,current query,every wide valid value,additional seven retained; no universal saving
+current_object_reservation,3440 bytes,3440 bytes,current query,before supplier and through rows=null close,no shrinking/rebasing/refund change

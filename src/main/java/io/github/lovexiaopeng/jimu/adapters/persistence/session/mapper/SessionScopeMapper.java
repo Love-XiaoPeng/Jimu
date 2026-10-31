@@ -32,6 +32,11 @@ public interface SessionScopeMapper {
       @Param("tenant") String tenant,
       @Param("caller") String caller);
 
+  List<Map<String, Object>> currentState(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("caller") String caller);
+
   List<Map<String, Object>> targets(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,

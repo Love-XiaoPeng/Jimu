@@ -50,6 +50,7 @@ final class JdbcExecutionRecords implements ExecutionRecords {
 
       public void terminal(String state, String code) {
         ledger.terminal(row, state, code);
+        new MapperCommitFence(ledger, lease).stopSettlement(state);
       }
     };
   }
@@ -58,6 +59,10 @@ final class JdbcExecutionRecords implements ExecutionRecords {
   public Admission lockAdmission(Lease lease) {
     var task = ledger.fenced(lease, true);
     return new Admission() {
+      public void checkpointFence() {
+        if (JdbcSessionScopes.lineage(task)) commitFence();
+      }
+
       public Optional<StoredStep> latest() {
         return ledger
             .mappers
@@ -213,6 +218,7 @@ final class JdbcExecutionRecords implements ExecutionRecords {
       }
 
       public void insertStep(String stepId, int ordinal, String request) {
+        ledger.bindSessionQuery(lease, stepId, null);
         ledger
             .mappers
             .steps()
@@ -312,6 +318,7 @@ final class JdbcExecutionRecords implements ExecutionRecords {
 
       public void terminal(String state, String code) {
         ledger.terminal(task, state, code);
+        if (JdbcSessionScopes.lineage(task)) new MapperCommitFence(ledger, lease).terminal(state);
       }
     };
   }

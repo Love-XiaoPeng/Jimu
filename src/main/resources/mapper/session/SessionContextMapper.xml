@@ -3,4 +3,5 @@
 <mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionContextMapper">
   <select id="metadataBytes" resultType="map">SELECT metadata_bytes FROM task_session_history WHERE tenant_id=#{tenant} AND task_id=#{taskId}</select>
   <update id="account">UPDATE task_session_history SET metadata_bytes=#{bytes},held_bytes=IF(content_state='PURGED',#{bytes},held_bytes) WHERE tenant_id=#{tenant} AND task_id=#{taskId}</update>
+  <select id="balance" resultType="map"><![CDATA[SELECT h.metadata_bytes,h.body_bytes,h.reserved_bytes,h.held_bytes,h.content_state,r.amount,r.actual,r.state AS reservation_state FROM task_session_history h JOIN reservation r ON r.tenant_id=h.tenant_id AND r.task_id=h.task_id AND r.id=CONCAT(h.task_id,':session-history') AND r.category='SESSION_HISTORY_STORAGE' WHERE h.tenant_id=#{tenant} AND h.task_id=#{taskId}]]></select>
 </mapper>

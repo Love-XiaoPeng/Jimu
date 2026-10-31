@@ -10,6 +10,36 @@ import org.apache.ibatis.annotations.Param;
 /** 清理锁、CAS及账目；列按冻结V22显式声明。 */
 @Mapper
 public interface SessionHistoryRetentionMapper {
+  org.apache.ibatis.cursor.Cursor<Map<String, Object>> metadataTaskSized(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  List<Map<String, Object>> lineageContents(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  List<Map<String, Object>> lineageTraceContents(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  List<Map<String, Object>> metadataTaskSessionLineage(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  List<Map<String, Object>> metadataInvocationSessionLineageTrace(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  int purgeLineageTrace(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
   List<Map<String, Object>> candidates(@Param("query") SessionQueryContext query);
 
   List<Map<String, Object>> activeInvocations(
@@ -28,6 +58,23 @@ public interface SessionHistoryRetentionMapper {
       @Param("taskId") String taskId);
 
   List<Map<String, Object>> history(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  /** 同锁单列长度能力来源；不提供历史行/权限证明。 */
+  List<Map<String, Object>> historyBindingSize(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  /** eventHistory八列路径保持独立槽。 */
+  List<Map<String, Object>> eventHistoryBindingSize(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  List<Map<String, Object>> eventHistory(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("taskId") String taskId);

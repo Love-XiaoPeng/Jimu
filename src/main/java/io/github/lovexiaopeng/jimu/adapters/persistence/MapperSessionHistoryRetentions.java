@@ -30,7 +30,9 @@ import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTa
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTaskSessionScopeReadMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.HistoryTaskSessionScopeTargetReadMapper;
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1;
 import io.github.lovexiaopeng.jimu.kernel.session.port.SessionHistoryRetentions;
+import io.github.lovexiaopeng.jimu.kernel.session.port.SessionMetadataAccounting;
 import io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure;
 import io.github.lovexiaopeng.jimu.plugin.api.SessionErrorCode;
 import java.time.LocalDateTime;
@@ -56,6 +58,67 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
     return sql.candidates(ledger.queryContext()).stream()
         .map(r -> new Candidate(s(r, "tenant_id"), s(r, "task_id")))
         .toList();
+  }
+
+  public CandidateBatch candidateBatch() {
+    if (ledger.queryContext() == null) return SessionHistoryRetentions.super.candidateBatch();
+    return new CandidateBatch() {
+      // LIMIT16，tenant VARCHAR64/task CHAR36；原Map与转换Candidate交接重叠一并预留。
+      private static final long BYTES = 1024 + 16L * 2048;
+      private final io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query =
+          ledger.queryContext();
+      private List<Candidate> values;
+      private boolean closed;
+
+      {
+        query.retainScratch(this, BYTES);
+        List<Map<String, Object>> raw = null;
+        try {
+          raw = sql.candidates(query);
+          if (raw.size() > 16) throw JdbcSessionRecords.corrupt();
+          values = new ArrayList<>();
+          for (var r : raw) {
+            String tenant = s(r, "tenant_id"), task = s(r, "task_id");
+            query.operation(1L + tenant.length() + task.length());
+            if (tenant.length() > 64 || task.length() > 36) throw JdbcSessionRecords.corrupt();
+            values.add(new Candidate(tenant, task));
+          }
+        } catch (RuntimeException | Error failure) {
+          raw = null;
+          close();
+          throw failure;
+        } finally {
+          // Mapper list is exclusively borrowed here; Candidates retain only their two strings.
+          raw = null;
+        }
+      }
+
+      public java.util.Iterator<Candidate> iterator() {
+        if (closed) throw new IllegalStateException("Closed retention candidates");
+        return new java.util.Iterator<>() {
+          private int index;
+
+          public boolean hasNext() {
+            if (closed) throw new IllegalStateException("Closed retention candidates");
+            return index < values.size();
+          }
+
+          public Candidate next() {
+            if (!hasNext()) throw new java.util.NoSuchElementException();
+            query.operation(1);
+            return values.get(index++);
+          }
+        };
+      }
+
+      public void close() {
+        if (closed) return;
+        closed = true;
+        // Iterators refer to this batch, never to backing collections; no user clear() callback.
+        values = null;
+        query.releaseScratch(this);
+      }
+    };
   }
 
   public void lockBudget(String tenant) {
@@ -145,6 +208,10 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
         return ledger.sessions.contract(task).binding();
       }
 
+      public boolean matchesSnapshot(String actual) {
+        return ledger.sessions.contract(task).historySnapshotMatches(actual, ledger.queryContext());
+      }
+
       public boolean scoped() {
         return JdbcSessionScopes.task(task);
       }
@@ -181,6 +248,21 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
 
       public List<ContentTable> contents() {
         var result = new ArrayList<ContentTable>();
+        if (JdbcSessionScopes.lineage(task)) {
+          result.add(
+              content(
+                  "task_session_lineage",
+                  "task_id",
+                  sql.lineageContents(ledger.queryContext(), tenant, taskId),
+                  "genesis_snapshot",
+                  "graph_snapshot"));
+          result.add(
+              content(
+                  "invocation_session_lineage_trace",
+                  "invocation_id",
+                  sql.lineageTraceContents(ledger.queryContext(), tenant, taskId),
+                  "normalized_snapshot"));
+        }
         var task =
             new LambdaQueryWrapper<HistoryTaskReadEntity>()
                 .eq(HistoryTaskReadEntity::getTenantId, tenant)
@@ -315,6 +397,18 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
         sql.purgeScopeQuery(ledger.queryContext(), tenant, taskId);
       }
 
+      public void purgeLineage() {
+        if (ledger
+                .mappers
+                .session()
+                .getMapper(
+                    io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper
+                        .SessionLineageMapper.class)
+                .purge(ledger.queryContext(), tenant, taskId)
+            != 1) throw JdbcSessionRecords.corrupt();
+        sql.purgeLineageTrace(ledger.queryContext(), tenant, taskId);
+      }
+
       public void purgeScopeStep() {
         sql.purgeScopeStep(ledger.queryContext(), tenant, taskId);
       }
@@ -379,8 +473,58 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
         ledger.event(task, "session-history-purged", "session_history.content_deleted", null);
       }
 
+      public void operation(long count) {
+        if (ledger.queryContext() != null) ledger.queryContext().operation(count);
+      }
+
+      public PurgeMetadata purgeMetadata() {
+        if (!JdbcSessionScopes.lineage(task)) return null;
+        var accounting = new MapperSessionMetadataAccounting(ledger.sessions, task, true);
+        long fixed = 0;
+        int histories = 0, reservations = 0;
+        for (var table : SessionMetadataAccounting.Table.values()) {
+          try (var batch = accounting.batch(table)) {
+            for (var row : batch) {
+              fixed = Math.addExact(fixed, SessionHistoryPolicyV1.ROW_HEADER_BYTES);
+              for (var value : row.values())
+                fixed =
+                    Math.addExact(
+                        fixed,
+                        SessionHistoryPolicyV1.FIELD_HEADER_BYTES + batch.scalarBytes(value));
+              if (table == SessionMetadataAccounting.Table.TASK_SESSION_HISTORY) {
+                histories++;
+                if (!"PURGED".equals(row.value("content_state"))
+                    || ((Number) row.value("body_bytes")).longValue() != 0
+                    || ((Number) row.value("reserved_bytes")).longValue()
+                        != SessionHistoryPolicyV1.TASK_RESERVE_BYTES)
+                  throw JdbcSessionRecords.corrupt();
+                fixed = Math.subtractExact(fixed, batch.scalarBytes(row.value("metadata_bytes")));
+                fixed = Math.subtractExact(fixed, batch.scalarBytes(row.value("held_bytes")));
+              }
+              if (table == SessionMetadataAccounting.Table.RESERVATION
+                  && "SESSION_HISTORY_STORAGE".equals(row.value("category"))) {
+                reservations++;
+                if (((Number) row.value("amount")).longValue()
+                        != SessionHistoryPolicyV1.TASK_RESERVE_BYTES
+                    || !"RESERVED".equals(row.value("state"))
+                    || row.value("actual") != null) throw JdbcSessionRecords.corrupt();
+                fixed = Math.subtractExact(fixed, batch.scalarBytes(row.value("actual")));
+                fixed = Math.subtractExact(fixed, batch.scalarBytes(row.value("state")));
+                fixed = Math.addExact(fixed, batch.scalarBytes("SETTLED"));
+              }
+            }
+          }
+        }
+        if (histories != 1 || reservations != 1) throw JdbcSessionRecords.corrupt();
+        return new PurgeMetadata(fixed);
+      }
+
       public List<MetadataRow> metadata() {
         var result = new ArrayList<MetadataRow>();
+        if (JdbcSessionScopes.lineage(task)) {
+          sql.metadataInvocationSessionLineageTrace(ledger.queryContext(), tenant, taskId)
+              .forEach(r -> result.add(metadataRow(r)));
+        }
         sql.metadataTask(ledger.queryContext(), tenant, taskId)
             .forEach(r -> result.add(metadataRow(r)));
         sql.metadataTaskSessionHistory(ledger.queryContext(), tenant, taskId)
@@ -414,6 +558,22 @@ final class MapperSessionHistoryRetentions implements SessionHistoryRetentions {
         sql.metadataEvent(ledger.queryContext(), tenant, taskId)
             .forEach(r -> result.add(metadataRow(r)));
         return result;
+      }
+
+      public long lineageMetadataBytes() {
+        if (!JdbcSessionScopes.lineage(task)) return 0;
+        long bytes = 0;
+        try (var batch =
+            new SessionLineageMetadataBatch(
+                ledger.queryContext(),
+                () -> sql.metadataTaskSessionLineage(ledger.queryContext(), tenant, taskId))) {
+          for (var row : batch) {
+            bytes = Math.addExact(bytes, 32);
+            for (var value : row.values())
+              bytes = Math.addExact(bytes, 8 + batch.scalarBytes(value));
+          }
+        }
+        return bytes;
       }
     };
   }

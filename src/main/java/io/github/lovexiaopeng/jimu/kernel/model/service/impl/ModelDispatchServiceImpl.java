@@ -148,20 +148,30 @@ public final class ModelDispatchServiceImpl implements ModelDispatchService {
           if (!row.originalDispatch()) throw new TaskFailure(409, ModelErrorCode.DISPATCH_REJECTED);
           if (ModelCostSettlement.settle(row.costs(), usage)) {
             String code = row.costRejection();
+            row.settlementOnly();
             row.rejectStep();
             row.rejected(code);
             return null;
           }
-          if (row.constrained())
-            try {
-              row.validatePayload(response, calls);
-            } catch (TaskFailure rejected) {
-              settle(row, tokens, row.rejectedPayloadUpper());
-              row.rejectStep();
-              row.recordRejection(rejected.code());
-              row.rejected(rejected.code());
-              return null;
-            }
+          try {
+            String rejection = row.modelRejection();
+            if (rejection == null) rejection = row.runRejection();
+            if (rejection != null) throw new TaskFailure(409, rejection);
+            row.requireScope();
+            for (var call : calls)
+              if (call.input().getBytes(StandardCharsets.UTF_8).length
+                  > ModelResponseLimitsV1.TOOL_INPUT_BYTES)
+                throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
+            if (row.constrained()) row.validatePayload(response, calls);
+          } catch (TaskFailure rejected) {
+            if (!row.ordinaryRejection(rejected)) throw rejected;
+            row.settlementOnly();
+            settle(row, tokens, row.rejectedPayloadUpper());
+            row.rejectStep();
+            row.recordRejection(rejected.code());
+            row.rejected(rejected.code());
+            return null;
+          }
           if (row.question()
               && (response.getBytes(StandardCharsets.UTF_8).length
                       > ModelResponseLimitsV1.RESPONSE_BYTES
@@ -172,21 +182,6 @@ public final class ModelDispatchServiceImpl implements ModelDispatchService {
           row.reserveQuestionStorage(response.getBytes(StandardCharsets.UTF_8).length * 2L);
           row.storeResponse(response);
           settle(row, tokens, row.reservedTokens());
-          try {
-            String rejection = row.modelRejection();
-            if (rejection == null) rejection = row.runRejection();
-            if (rejection != null) throw new TaskFailure(409, rejection);
-            row.requireScope();
-            for (var call : calls)
-              if (call.input().getBytes(StandardCharsets.UTF_8).length
-                  > ModelResponseLimitsV1.TOOL_INPUT_BYTES)
-                throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
-          } catch (TaskFailure rejected) {
-            row.rejectStep();
-            row.recordRejection(rejected.code());
-            row.rejected(rejected.code());
-            return null;
-          }
           int ordinal = row.invocationCount();
           long revision = row.todoRevision();
           for (var call : calls) {

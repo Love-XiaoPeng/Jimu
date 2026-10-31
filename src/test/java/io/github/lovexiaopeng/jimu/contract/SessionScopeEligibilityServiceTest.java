@@ -121,10 +121,14 @@ class SessionScopeEligibilityServiceTest {
                 getClass().getClassLoader(),
                 new Class<?>[] {SessionScopeRecords.class},
                 (proxy, method, args) -> {
+                  if (method.getName().equals("utf8Bytes") || method.getName().equals("matchesRaw"))
+                    return java.lang.reflect.InvocationHandler.invokeDefault(proxy, method, args);
                   calls.add(method.getName());
                   return switch (method.getName()) {
                     case "scope" -> ((Caller) args[0]).id().equals("caller") ? scope : own;
                     case "expectedBinding" -> "expected";
+                    case "authority" -> authority(args[1].equals("raw"));
+                    case "validatedAuthority", "stagedSource", "stageSource" -> null;
                     case "decodeAuthority" -> authority(args[0].equals("raw"));
                     case "targets" -> List.of(targetRow);
                     case "history" -> new History(1, "binding", retain);

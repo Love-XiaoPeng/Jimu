@@ -6,6 +6,11 @@ import java.util.List;
 
 /** 普通与历史会话受理共用的原子用例；历史来源仅由既有受信端口提供。 */
 public interface TaskAdmissionService {
+  Tasks.View submitLineage(
+      Tasks.Identity identity,
+      String key,
+      io.github.lovexiaopeng.jimu.kernel.task.api.TaskLineageSubmission submission);
+
   Tasks.View submit(
       Tasks.Identity identity,
       String key,

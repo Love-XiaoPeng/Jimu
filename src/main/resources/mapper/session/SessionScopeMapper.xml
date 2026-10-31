@@ -14,4 +14,21 @@
   <update id="invalidateAndSchedule"><![CDATA[UPDATE task_session_scope SET invalidated_at=COALESCE(invalidated_at,CURRENT_TIMESTAMP(6)),next_validation_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND caller_task_id=#{caller} AND content_state='PRESENT']]></update>
 <insert id="insertAuthority"><![CDATA[INSERT INTO task_session_scope(tenant_id,caller_task_id,owner_actor_id,caller_binding_digest,caller_tools_digest,authority_snapshot,authority_digest,authority_bytes,candidate_count,created_at,retain_until,next_validation_at) VALUES(#{tenant},#{id},#{owner},#{binding},#{tools},#{raw},#{digest},#{bytes},#{count},#{created},#{retain},#{validation})]]></insert>
 <insert id="insertAuthorityTarget"><![CDATA[INSERT INTO task_session_scope_target(tenant_id,caller_task_id,ordinal,source_task_id,target_snapshot,target_digest,target_bytes) VALUES(#{tenant},#{id},#{ordinal},#{source},#{raw},#{digest},#{bytes})]]></insert>
+  <select id="currentState" resultType="map"><![CDATA[
+    SELECT t.tenant_id,t.id,t.owner_actor_id,t.capabilities,t.tools_digest,t.installation_epoch,t.state,t.created_at,t.request_digest,
+      s.authority_digest,s.caller_binding_digest,s.caller_tools_digest,s.owner_actor_id AS scope_owner,
+      s.record_version,s.authority_version,s.candidate_count,h.next_seq,h.binding_digest,
+      h.retain_until AS history_retain,s.retain_until AS scope_retain,CURRENT_TIMESTAMP(6) AS database_time,
+      (h.content_state='PRESENT' AND s.content_state='PRESENT') AS present,
+      (s.grant_state='ACTIVE' AND s.revoked_at IS NULL AND s.invalidated_at IS NULL) AS active,
+      (t.state IN ('SUCCEEDED','FAILED','CANCELLED')
+        AND NOT EXISTS(SELECT 1 FROM native_search_run n WHERE n.tenant_id=t.tenant_id AND n.task_id=t.id AND n.phase<>'STOPPED')
+        AND NOT EXISTS(SELECT 1 FROM task_attempt a LEFT JOIN worker_process w ON w.id=a.worker_id WHERE a.tenant_id=t.tenant_id AND a.task_id=t.id AND a.quiescent=FALSE AND (w.id IS NULL OR w.stopped=FALSE))
+        AND NOT EXISTS(SELECT 1 FROM invocation i WHERE i.tenant_id=t.tenant_id AND i.task_id=t.id AND i.state IN ('RUNNING','OUTCOME_UNKNOWN'))
+        AND NOT EXISTS(SELECT 1 FROM reservation r WHERE r.tenant_id=t.tenant_id AND r.task_id=t.id AND (r.state='HELD_UNKNOWN' OR r.usage_quality='UNKNOWN' OR (r.state='RESERVED' AND r.category<>'SESSION_HISTORY_STORAGE')))
+        AND NOT EXISTS(SELECT 1 FROM model_dispatch d WHERE d.tenant_id=t.tenant_id AND d.task_id=t.id AND d.state IN ('DISPATCHED','USAGE_UNKNOWN','BOUND_EXCEEDED'))) AS quiet
+    FROM task t JOIN task_session_history h ON h.tenant_id=t.tenant_id AND h.task_id=t.id
+      JOIN task_session_scope s ON s.tenant_id=t.tenant_id AND s.caller_task_id=t.id
+    WHERE t.tenant_id=#{tenant} AND t.id=#{caller}
+  ]]></select>
 </mapper>

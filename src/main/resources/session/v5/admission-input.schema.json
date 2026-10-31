@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session:v5:lineage-admission:0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["goal", "history_session_ids"],
+  "properties": {
+    "goal": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "history_session_ids": {
+      "type": "array", "maxItems": 8, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/uuid"}
+    },
+    "parent_session_id": {"$ref": "#/$defs/uuid"}
+  },
+  "$defs": {
+    "uuid": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"}
+  },
+  "$comment": "Host also enforces UTF8 body<=16384, goal<=8192 UTF8 bytes and nonblank; parent must be in history_session_ids; caller authority and complete explicit dependency closure are checked in the admission transaction. Duplicate keys and malformed UTF8 must be rejected before JSON Schema."
+}

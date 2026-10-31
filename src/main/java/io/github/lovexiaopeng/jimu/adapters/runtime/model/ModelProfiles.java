@@ -203,6 +203,14 @@ public final class ModelProfiles {
     }
   }
 
+  public void requireSessionLineage(ModelSnapshot model) {
+    try {
+      requireSessionRead(model);
+    } catch (TaskFailure failure) {
+      throw new TaskFailure(403, SessionErrorCode.SESSION_LINEAGE_DISABLED);
+    }
+  }
+
   public void requireSessionSearch(ModelSnapshot model) {
     try {
       requireSessionRead(model);

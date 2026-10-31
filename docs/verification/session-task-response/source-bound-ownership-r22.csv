@@ -1,0 +1,7 @@
+object_or_alias,owner,preallocation_or_charge,end_of_lifetime,scope
+Fields/MetaObject/parameter aliases,existing4096 extraction owner,reserved before original allocation,original stack returns before before/observed finally refund,no new field or heap object
+sourceCount local int,same4096 owner,8 operations before compute,keys frame only,cannot retain a Map or authority
+boundedKey int parameter,same4096 owner,2 operations before call,boundedKey frame only,existing varargs array replaces old same-size array
+actual scalar references and Dependency,original proof owners,unchanged,unchanged,all original conflicts and invalidators retained
+failure and refusal,same owners,prepay before new guard/handoff,existing finally; first error preserved,scripted SpringWork confirms one rollback and cleanup
+A12 limitations,not closed,not asserted,external aliases/framework/JVM/native/socket gaps remain,local delta is not whole heap proof

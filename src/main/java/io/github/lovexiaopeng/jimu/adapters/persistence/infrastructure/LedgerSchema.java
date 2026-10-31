@@ -2,7 +2,7 @@ package io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure;
 
 import io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure.mapper.SchemaVersionMapper;
 
-/** 与旧制品相同的精确 schema22 门禁，经真实 MyBatis 调用链执行。 */
+/** 精确schema23门禁；旧22制品必须在readiness前拒绝新库。 */
 public final class LedgerSchema {
   private final SchemaVersionMapper mapper;
 
@@ -11,9 +11,9 @@ public final class LedgerSchema {
   }
 
   public void check() {
-    if (mapper.requiredMigrations() != 22)
+    if (mapper.requiredMigrations() != 23)
       throw new IllegalStateException("Required migration unavailable");
-    if (mapper.successfulMigrations() != 22)
+    if (mapper.successfulMigrations() != 23)
       throw new IllegalStateException("Unsupported schema version");
   }
 }

@@ -30,6 +30,41 @@ public interface TaskAdmissionMapper {
       @Param("actor") String actor,
       @Param("key") String key);
 
+  /** 仅已持锁v5受理的event后View；动态字段重新读取，授权仍消费原tools/MCP列。 */
+  List<Map<String, Object>> lockAcceptedView(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  /** 同锁实际文本长度，先预留driver/Map及尾部借用owner，再物化原文。 */
+  List<Map<String, Object>> lockAcceptedSizes(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  /** accepted-user事实的十一列闭包；不得交给View/MCP或工具核权。 */
+  List<Map<String, Object>> lockAcceptedEvent(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  /** accepted-event仅物化goal/capabilities，原文分配前读取同锁实际UTF8长度。 */
+  List<Map<String, Object>> lockAcceptedEventSizes(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  /** 第二次createLineage核权专用；完整Caller和末端tools/pin，不替代View/MCP核权。 */
+  List<Map<String, Object>> lockLineageScope(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  List<Map<String, Object>> lockLineageScopeSizes(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
   long maxPacket(@Param("query") SessionQueryContext query);
 
   List<Map<String, Object>> sampleBound(

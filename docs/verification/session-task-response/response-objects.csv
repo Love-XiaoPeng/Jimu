@@ -1,0 +1,18 @@
+reservation,objects,bytes,boundary
+prebind-scaffold,carrier+pump fields and lifecycle monitor,512,before carrier construction; one request
+prebind-scaffold,DeferredResult and completion/timeout/error handlers,1024,includes afterRelease closure and terminal Throwable alias; no body[] capture
+prebind-scaffold,WebAsyncManager gate/interceptor chain and AsyncWebRequest delegate,2048,one manager cycle; no producer-ready dispatch
+prebind-scaffold,Servlet listener/timer/request callback references,2048,Reader arrays have separate input envelope below; original timer
+prebind-scaffold,request adapter overlap model,2560,sum8192; framework transitive heap not proven
+input-envelope,fixed max16384 accumulator byte[] including header/alignment,16408,prepareInput before Reader/new BAOS; max+1 refused before write; no growth
+input-envelope,at-most16384 delivered copy byte[] including header/alignment,16408,toByteArray overlaps accumulator once; accumulator detached before callback
+input-envelope,Reader/BAOS/InputLease/SearchBody+producer supplier references,512,one serialized reader; no duplicated body allocation for aliases; sum33328
+consumer-workspace,cursor fields and token/scalar stages,384,consume before cursor allocation; no chunk byte[]
+consumer-workspace,current View/artifact/text and paused pending int aliases,64,existing View separately retained by response; no text copy
+consumer-workspace,simultaneous primitive suppliers and boxed byte/scalars,512,one active callback; int store/read/reset requested separately
+consumer-workspace,requested/completed diagnostic nodes and current/replaced Long overlap,1536,five response currency groups; old Long remains during put; map roots in query baseline
+consumer-workspace,Location concatenation and header String/array overlap,1024,task UUID plus prefix; native transitive header buffers not proven
+consumer-workspace,framework adapter/native sink bookkeeping model,4096,external Servlet/socket buffers remain unproved; no A12 heap claim
+consumer-workspace,unused reserved headroom including removed1048-byte chunk,4672,sum12288 unchanged; never used to cover input or claim measured allocations
+consumer-lease,one ConsumerLease,128,separate consume reservation; return once after clearing cursor/View
+parser-scratch,decode/strict JSON/admission workspace,65536,existing JdbcLedger inputScratch only; raw byte[] now input-envelope; not a full transitive Jackson heap proof

@@ -63,6 +63,8 @@ class SessionHistoryProofServiceTest {
             type.getClassLoader(),
             new Class<?>[] {type},
             (proxy, method, args) -> {
+              if (method.isDefault())
+                return java.lang.reflect.InvocationHandler.invokeDefault(proxy, method, args);
               String name = method.getName();
               calls.add(name);
               if (name.equals(failureAt)) throw timeout;

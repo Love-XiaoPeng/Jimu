@@ -14,13 +14,24 @@ final class MapperSessionHistoryProofs
   private final JdbcSessionRecords records;
   private final Map<String, Object> task, step;
   private Map<String, Object> history;
+  private SessionHistoryProofs.HistoryRow checkedRow;
   private DurableAgent.Checkpoint checkpoint;
+  private final boolean acceptedEvent;
 
   MapperSessionHistoryProofs(
       JdbcSessionRecords records, Map<String, Object> task, Map<String, Object> step) {
+    this(records, task, step, false);
+  }
+
+  MapperSessionHistoryProofs(
+      JdbcSessionRecords records,
+      Map<String, Object> task,
+      Map<String, Object> step,
+      boolean acceptedEvent) {
     this.records = records;
     this.task = task;
     this.step = step;
+    this.acceptedEvent = acceptedEvent;
   }
 
   private static Long number(Map<String, Object> row, String key) {
@@ -28,16 +39,25 @@ final class MapperSessionHistoryProofs
   }
 
   public SessionHistoryProofs.HistoryRow load() {
-    var rows = records.mapperRows("SessionHistoryRetentionMapper.history", task);
+    var rows =
+        acceptedEvent
+            ? records.mapperRows("SessionHistoryRetentionMapper.eventHistory", task)
+            : records.historyRows(task);
     if (rows.isEmpty()) return null;
     history = rows.getFirst();
-    return new SessionHistoryProofs.HistoryRow(
-        number(history, "record_version"),
-        number(history, "history_version"),
-        s(history, "binding_snapshot"),
-        s(history, "binding_digest"),
-        s(history, "content_state"),
-        number(history, "retained"));
+    checkedRow =
+        new SessionHistoryProofs.HistoryRow(
+            number(history, "record_version"),
+            number(history, "history_version"),
+            s(history, "binding_snapshot"),
+            s(history, "binding_digest"),
+            s(history, "content_state"),
+            number(history, "retained"));
+    return checkedRow;
+  }
+
+  SessionHistoryProofs.HistoryRow checkedRow() {
+    return checkedRow;
   }
 
   Map<String, Object> historyRow() {
@@ -48,12 +68,24 @@ final class MapperSessionHistoryProofs
     return records.version(task);
   }
 
+  public boolean matches(String expected, String actual) {
+    var query = records.appendQuery();
+    if (query == null || !query.lineage()) return expected.equals(actual);
+    return query.primitive("history.compare", expected.length(), () -> expected.equals(actual));
+  }
+
+  public boolean matchesSnapshot(String actual) {
+    return records.version(task) == 5
+        ? records.contract(task).historySnapshotMatches(actual, records.appendQuery())
+        : SessionHistoryProofs.History.super.matchesSnapshot(actual);
+  }
+
   public String binding() {
     return records.contract(task).binding();
   }
 
   public String hash(String raw) {
-    return Payloads.hash(raw);
+    return records.policyHash(task, raw);
   }
 
   public SessionHistoryProofs.StepRow step() {

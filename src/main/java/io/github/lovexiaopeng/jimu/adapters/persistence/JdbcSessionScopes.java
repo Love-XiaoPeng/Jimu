@@ -3,7 +3,6 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcSessionRecords.s;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionContracts;
 import io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeEligibilityService;
 import io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionScopeEligibilityServiceImpl;
@@ -21,19 +20,33 @@ final class JdbcSessionScopes {
   private final io.github.lovexiaopeng.jimu.kernel.session.service.SessionScopeCreationService
       creation;
   java.util.function.Consumer<Map<String, Object>> invalidated;
+  java.util.function.Consumer<Map<String, Object>> terminalAccess;
   final PriorSessionContracts contracts = new PriorSessionContracts();
+  final PriorSessionContracts v5 = new PriorSessionContracts(5);
+
+  PriorSessionContracts contracts(Map<String, Object> task) {
+    return lineage(task) ? v5 : contracts;
+  }
+
+  static boolean lineage(Map<String, Object> task) {
+    return io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+        .equals(s(task, "capabilities"));
+  }
 
   JdbcSessionScopes(JdbcLedger ledger, JdbcTemplate db, JdbcSessionRecords sessions) {
     this.sessions = sessions;
     records = new MapperSessionScopeRecords(ledger);
-    eligibility = new SessionScopeEligibilityServiceImpl(records, Payloads::hash);
+    eligibility = new SessionScopeEligibilityServiceImpl(records, sessions::scopeHash);
     creation =
         new io.github.lovexiaopeng.jimu.kernel.session.service.impl.SessionScopeCreationServiceImpl(
             new MapperSessionScopeCreationRecords(ledger, this, sessions));
   }
 
   static boolean task(Map<String, Object> task) {
-    return "session_event_read,session_search".equals(s(task, "capabilities"));
+    String capabilities = s(task, "capabilities");
+    return io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+            .equals(capabilities)
+        || "session_event_read,session_search".equals(capabilities);
   }
 
   static TaskFailure unavailable() {
@@ -61,13 +74,141 @@ final class JdbcSessionScopes {
 
   record Scope(Map<String, Object> row, JsonNode authority, List<Map<String, Object>> sources) {}
 
+  private io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork checkedOwner(
+      io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork owner) {
+    if (owner == null || !owner.lineage()) return null;
+    if (sessions.appendQuery() == null)
+      throw new IllegalStateException("Missing query in session transaction");
+    io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+        sessions.appendQuery());
+    sessions.appendQuery().checkHealthy();
+    return owner;
+  }
+
+  void ensure(Map<String, Object> task) {
+    requireProof(task);
+  }
+
+  io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Validated requireProof(
+      Map<String, Object> task) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (owner != null && !owner.lineage()) owner = null;
+    try {
+      owner = checkedOwner(owner);
+      var c = MapperSessionScopeRecords.caller(task);
+      var proof = prove(task, c, owner);
+      if (owner == null) facade(c, proof, null);
+      return proof;
+    } catch (RuntimeException failure) {
+      if (owner == null) throw failure;
+      if (failure instanceof TaskFailure denial && owner.scopeStatus(denial)) throw failure;
+      throw owner.poisonProof(failure);
+    } catch (Error failure) {
+      if (owner != null) owner.poisonLineageSource(failure);
+      throw failure;
+    }
+  }
+
   Scope require(Map<String, Object> task) {
-    var c = MapperSessionScopeRecords.caller(task);
-    var found = eligibility.require(c);
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (owner != null && !owner.lineage()) owner = null;
+    try {
+      owner = checkedOwner(owner);
+      var c = MapperSessionScopeRecords.caller(task);
+      var proof = prove(task, c, owner);
+      return facade(c, proof, owner);
+    } catch (RuntimeException failure) {
+      if (owner == null) throw failure;
+      if (failure instanceof TaskFailure denial && owner.scopeStatus(denial)) throw failure;
+      throw owner.poisonProof(failure);
+    } catch (Error failure) {
+      if (owner != null) owner.poisonLineageSource(failure);
+      throw failure;
+    }
+  }
+
+  private io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Validated prove(
+      Map<String, Object> task,
+      io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Caller c,
+      io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork owner) {
+    var found = owner == null ? null : owner.scope(c);
+    if (found == null) {
+      found = ledgerMeasure(c);
+      if (owner != null) {
+        var proof = found;
+        var work = owner;
+        owner.holdScope(proof);
+        io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
+            graph;
+        graph = owner.stagedGraph(c.tenant(), c.id());
+        if (graph == null) {
+          owner.prepareLineageScope();
+          graph =
+              owner.withLineageScope(
+                  sessions.appendQuery(),
+                  c,
+                  proof,
+                  () -> sessions.lineageService.verify(c.tenant(), c.id()));
+        }
+        owner.scope(
+            c,
+            proof,
+            () -> {
+              long expires =
+                  io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics
+                      .measure(
+                          sessions.appendQuery(),
+                          "scope.live",
+                          () -> {
+                            long end = eligibility.live(c, proof);
+                            terminalAccess.accept(task);
+                            return end;
+                          });
+              work.expiry(
+                  () -> {
+                    if (System.nanoTime() >= expires) {
+                      records.invalidateAfterTransaction(c);
+                      throw unavailable();
+                    }
+                  });
+            });
+        owner.graph(c.tenant(), c.id(), graph);
+      }
+    }
+    return found;
+  }
+
+  private Scope facade(
+      io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Caller c,
+      io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Validated proof,
+      io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork owner) {
+    java.util.function.Supplier<JsonNode> parse =
+        () -> {
+          if (sessions.appendQuery() != null
+              && io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+                  .equals(c.capabilities()))
+            sessions.appendQuery().operation(proof.scope().raw().length());
+          return sessions.contracts.json(proof.scope().raw(), 4096);
+        };
+    if (sessions.appendQuery() != null
+        && io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+            .equals(c.capabilities()))
+      sessions.appendQuery().operation(1L + proof.sources().size());
     return new Scope(
-        MapperSessionScopeRecords.row(c, found.scope()),
-        sessions.contracts.json(found.scope().raw(), 4096),
-        found.sources().stream().map(MapperSessionScopeRecords::row).toList());
+        MapperSessionScopeRecords.row(c, proof.scope()),
+        owner == null ? parse.get() : owner.authority(parse),
+        proof.sources().stream().map(MapperSessionScopeRecords::row).toList());
+  }
+
+  private io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Validated
+      ledgerMeasure(
+          io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Caller caller) {
+    return io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+        sessions.appendQuery(), "scope.current", () -> eligibility.require(caller));
   }
 
   Map<String, Object> source(Map<String, Object> caller, String id, boolean admission) {

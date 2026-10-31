@@ -2,6 +2,9 @@ package io.github.lovexiaopeng.jimu.plugin.api;
 
 /** 既有公开失败码的语义归属；保持原字符值、HTTP 映射和失败次序。 */
 public final class SessionErrorCode {
+  public static final String SESSION_LINEAGE_UNAVAILABLE = "SESSION_LINEAGE_UNAVAILABLE";
+  public static final String SESSION_LINEAGE_DISABLED = "SESSION_LINEAGE_DISABLED";
+  public static final String SESSION_LINEAGE_SCOPE_INVALID = "SESSION_LINEAGE_SCOPE_INVALID";
   public static final String SESSION_BOUNDARY_CONFLICT = "SESSION_BOUNDARY_CONFLICT";
   public static final String SESSION_EVENT_NOT_FOUND = "SESSION_EVENT_NOT_FOUND";
   public static final String SESSION_EVENT_UNSAFE = "SESSION_EVENT_UNSAFE";

@@ -100,6 +100,13 @@ public interface ModelWorkflowRecords {
   interface Response {
     boolean originalDispatch();
 
+    default boolean ordinaryRejection(
+        io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure failure) {
+      return true;
+    }
+
+    default void settlementOnly() {}
+
     ModelCostRecords costs();
 
     String costRejection();

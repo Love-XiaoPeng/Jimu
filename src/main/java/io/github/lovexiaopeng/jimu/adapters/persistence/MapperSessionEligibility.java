@@ -17,8 +17,14 @@ import java.util.Map;
 final class MapperSessionEligibility implements SessionEligibility.Access {
   private final JdbcLedger ledger;
   private final Map<String, Object> task;
+  private final boolean terminal;
 
   MapperSessionEligibility(JdbcLedger ledger, Map<String, Object> task) {
+    this(ledger, task, false);
+  }
+
+  MapperSessionEligibility(JdbcLedger ledger, Map<String, Object> task, boolean terminal) {
+    this.terminal = terminal;
     this.ledger = ledger;
     this.task = task;
   }
@@ -28,7 +34,7 @@ final class MapperSessionEligibility implements SessionEligibility.Access {
   }
 
   public void history() {
-    ledger.sessions.history(task, false);
+    if (!terminal) ledger.sessions.historyProof(task); // 末端history由逐节点currentState精确核验。
   }
 
   public List<String> capabilities() {
@@ -69,6 +75,18 @@ final class MapperSessionEligibility implements SessionEligibility.Access {
 
   SessionEligibility.Admission admission() {
     return new SessionEligibility.Admission() {
+      public boolean lineage() {
+        return JdbcSessionScopes.lineage(task);
+      }
+
+      public boolean lineageEnabled() {
+        return ledger.sessionLineageEnabled;
+      }
+
+      public void requireLineage(ModelSnapshot snapshot) {
+        ledger.models.requireSessionLineage(snapshot);
+      }
+
       public boolean readEnabled() {
         return ledger.sessionReadEnabled;
       }

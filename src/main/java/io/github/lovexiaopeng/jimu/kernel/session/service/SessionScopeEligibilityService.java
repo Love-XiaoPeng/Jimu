@@ -15,7 +15,12 @@ public interface SessionScopeEligibilityService {
 
   Validated require(Caller caller);
 
+  long live(Caller caller, Validated proof);
+
   Caller source(Caller caller, String id, boolean admission);
+
+  io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.SourceFact sourceFacts(
+      Caller caller, String id, boolean admission);
 
   boolean cleanupSafe(Caller caller);
 }

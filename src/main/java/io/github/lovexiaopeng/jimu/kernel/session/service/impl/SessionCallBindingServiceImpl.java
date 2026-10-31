@@ -15,11 +15,14 @@ public final class SessionCallBindingServiceImpl implements SessionCallBindingSe
     for (var call : b.invocations()) {
       if (b.scopeTask()) {
         call.requireScope();
-        call.normalizeScope();
+        boolean lineage = ToolCapability.SESSION_TRACE.equals(call.tool()) && b.lineageTask();
+        if (lineage) call.normalizeLineage();
+        else call.normalizeScope();
         call.loadCut();
         if (!call.authority().equals(call.cutAuthority())
             || !call.stepContext().equals(call.cutContext())) throw corrupt();
-        call.insertScope();
+        if (lineage) call.insertLineage();
+        else call.insertScope();
         call.chargeScope();
         continue;
       }

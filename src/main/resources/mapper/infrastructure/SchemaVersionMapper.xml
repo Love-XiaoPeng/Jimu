@@ -3,7 +3,7 @@
 <mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure.mapper.SchemaVersionMapper">
   <select id="requiredMigrations" resultType="int">
     SELECT COUNT(*) FROM flyway_schema_history
-    WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22') AND success=TRUE
+    WHERE version IN ('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23') AND success=TRUE
   </select>
   <select id="successfulMigrations" resultType="int">
     SELECT COUNT(*) FROM flyway_schema_history WHERE version IS NOT NULL AND success=TRUE

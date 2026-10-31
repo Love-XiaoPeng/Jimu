@@ -99,6 +99,11 @@ public interface ExecutionRecords {
 
     void commitFence();
 
+    /**
+     * Optional retained-session tail guard; legacy checkpoint reads keep their original behavior.
+     */
+    default void checkpointFence() {}
+
     boolean pendingQuestions();
 
     String latestStepId();

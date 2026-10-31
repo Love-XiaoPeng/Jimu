@@ -35,6 +35,7 @@ public final class SessionContracts {
   private final String schema, description, binding;
   private final ToolDescriptor descriptor;
   private final int version;
+  private final HistoryPolicyCodec historyPolicy;
 
   private static JsonMapper mapper(int depth) {
     return JsonMapper.builder(
@@ -63,7 +64,11 @@ public final class SessionContracts {
       String root =
           prefix
               + "session_event_read-"
-              + (version == 1 ? "0.1.0" : version == 2 ? "0.2.0" : version == 3 ? "0.3.0" : "0.4.0")
+              + (version == 1
+                  ? "0.1.0"
+                  : version == 2
+                      ? "0.2.0"
+                      : version == 3 ? "0.3.0" : version == 4 ? "0.4.0" : "0.5.0")
               + "/";
       byte[] in = checked(root + "input.schema.json", entry.path("inputSha256").asText());
       byte[] out = checked(root + "output.schema.json", entry.path("outputSha256").asText());
@@ -98,11 +103,16 @@ public final class SessionContracts {
       if (!Payloads.hash(catalogBytes).equals(template.path("catalogDigest").asText()))
         throw new IllegalArgumentException("Session catalog pin");
       binding = Payloads.json(template);
+      historyPolicy = version == 5 ? new HistoryPolicyCodec(this) : null;
       schema = new String(in, StandardCharsets.UTF_8);
       descriptor =
           new ToolDescriptor(
               "jimu.session.event_read",
-              version == 1 ? "0.1.0" : version == 2 ? "0.2.0" : version == 3 ? "0.3.0" : "0.4.0",
+              version == 1
+                  ? "0.1.0"
+                  : version == 2
+                      ? "0.2.0"
+                      : version == 3 ? "0.3.0" : version == 4 ? "0.4.0" : "0.5.0",
               NAME,
               "session/" + root + "input.schema.json",
               "session/" + root + "output.schema.json",
@@ -144,13 +154,35 @@ public final class SessionContracts {
     return binding;
   }
 
+  /** 仅v5本地不可变逻辑策略的初始化证明；不证明任何数据库副本或当前权限。 */
+  public String lineageBindingDigest() {
+    return historyPolicy.policyDigest();
+  }
+
+  /** Database representation only; binding() remains the exact full logical policy. */
+  public String historySnapshot(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    return historyPolicy == null ? binding : historyPolicy.wire(query);
+  }
+
+  public boolean historySnapshotMatches(
+      String raw, io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    return historyPolicy == null ? binding.equals(raw) : historyPolicy.matches(raw, query);
+  }
+
   public static int bytes(String value) {
     return value.getBytes(StandardCharsets.UTF_8).length;
   }
 
   public static void unicode(String value) {
-    if (!StandardCharsets.UTF_8.newEncoder().canEncode(value))
-      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      if (Character.isHighSurrogate(c)) {
+        if (++i < value.length() && Character.isLowSurrogate(value.charAt(i))) continue;
+        throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
+      }
+      if (Character.isLowSurrogate(c)) throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
+    }
   }
 
   private static void unicode(JsonNode node) {
@@ -168,6 +200,19 @@ public final class SessionContracts {
       unicode(node);
       return node;
     } catch (IOException | IllegalArgumentException e) {
+      throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
+    }
+  }
+
+  /** 仅消费已REPORT编码的本次原串，不重复getBytes或编码整份原文。 */
+  public JsonNode json(LineageRawView raw, int max) {
+    try {
+      if (raw.bytes() > max) throw new IllegalArgumentException("Bytes");
+      var node = JSON.readTree(raw.raw());
+      if (node == null) throw new IllegalArgumentException("Missing JSON");
+      unicode(node);
+      return node;
+    } catch (IOException | IllegalArgumentException failure) {
       throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);
     }
   }
@@ -211,7 +256,7 @@ public final class SessionContracts {
         if (node.has(key) && !node.path(key).isIntegralNumber())
           throw new IllegalArgumentException("Integer token");
       input.validate(node);
-      if (version == 4) PriorSessionContracts.decimals(raw);
+      if (version >= 4) PriorSessionContracts.decimals(raw);
       return new SessionEventPort.Input(
           node.path("seq").longValue(),
           node.has("session_id") ? node.path("session_id").textValue() : null,

@@ -30,6 +30,18 @@ public interface SessionEligibility {
   }
 
   interface Admission {
+    default boolean lineage() {
+      return false;
+    }
+
+    default boolean lineageEnabled() {
+      return false;
+    }
+
+    default void requireLineage(ModelSnapshot snapshot) {
+      throw new UnsupportedOperationException("v5 model required");
+    }
+
     boolean readEnabled();
 
     boolean scope();

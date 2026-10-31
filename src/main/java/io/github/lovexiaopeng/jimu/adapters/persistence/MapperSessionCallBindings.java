@@ -32,6 +32,12 @@ final class MapperSessionCallBindings implements SessionCallBindings {
   private final Map<String, Object> task;
   private final String stepId;
   private Map<String, Object> history, step;
+  // 此对象仅归属一次bind调用；调用者已按排序锁住caller及全部来源直到M2提交。
+  // 复用同一批次的逐节点核权和不可变图证明，不跨事务/响应/原槽执行缓存。
+  private JdbcSessionScopes.Scope batchScope;
+  private Map<String, Object> batchCut;
+  private io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
+      batchGraph;
 
   MapperSessionCallBindings(JdbcSessionRecords records, Map<String, Object> task, String stepId) {
     this.records = records;
@@ -40,6 +46,10 @@ final class MapperSessionCallBindings implements SessionCallBindings {
   }
 
   public void lockHistory() {
+    if (lineageTask()
+        && !org.springframework.transaction.support.TransactionSynchronizationManager
+            .isActualTransactionActive())
+      throw new IllegalStateException("Lineage response binding requires its owning transaction");
     history = records.history(task, true);
   }
 
@@ -77,6 +87,10 @@ final class MapperSessionCallBindings implements SessionCallBindings {
 
   public boolean scopeTask() {
     return JdbcSessionScopes.task(task);
+  }
+
+  public boolean lineageTask() {
+    return JdbcSessionScopes.lineage(task);
   }
 
   public boolean traceTask() {
@@ -158,6 +172,47 @@ final class MapperSessionCallBindings implements SessionCallBindings {
       return s(invocation, "tool");
     }
 
+    public void normalizeLineage() {
+      String requested = records.lineage.input(s(invocation, "input_snapshot"));
+      String target = requested == null ? s(task, "id") : requested;
+      if (!target.equals(s(task, "id"))
+          && scope.sources().stream().noneMatch(t -> target.equals(s(t, "id"))))
+        throw JdbcSessionScopes.unavailable();
+      normalized = Payloads.json(Map.of("version", 1, "target_session_id", target));
+    }
+
+    public void insertLineage() {
+      if (batchGraph == null) {
+        batchGraph =
+            io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+                records.appendQuery(),
+                "M2.binding.graph",
+                () -> records.lineageService.verify(s(task, "tenant_id"), s(task, "id")));
+      }
+      var graph = batchGraph;
+      var context = records.v5.json(s(cut, "context_snapshot"), 4096);
+      if (!graph.graphDigest().equals(context.path("graph_sha256").asText())
+          || !graph.genesisDigest().equals(context.path("genesis_sha256").asText()))
+        throw JdbcSessionRecords.corrupt();
+      records.insertBinding(
+          io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionLineageTraceMapper
+              .class,
+          new io.github.lovexiaopeng.jimu.adapters.persistence.session.entity
+              .SessionLineageTraceEntity(
+              s(task, "tenant_id"),
+              s(invocation, "id"),
+              s(task, "id"),
+              stepId,
+              s(history, "binding_digest"),
+              s(invocation, "input_digest"),
+              s(scope.row(), "authority_digest"),
+              graph.graphDigest(),
+              s(cut, "context_digest"),
+              normalized,
+              Payloads.hash(normalized),
+              (long) SessionContracts.bytes(normalized)));
+    }
+
     public void parseTrace() {
       trace = records.trace.input(s(invocation, "input_snapshot"));
     }
@@ -229,7 +284,13 @@ final class MapperSessionCallBindings implements SessionCallBindings {
     }
 
     public void requireScope() {
-      scope = records.scopes.require(task);
+      if (!lineageTask()) {
+        scope = records.scopes.require(task);
+        return;
+      }
+      records.appendQuery().remainingMillis();
+      if (batchScope == null) batchScope = records.scopes.require(task);
+      scope = batchScope;
     }
 
     public void normalizeScope() {
@@ -239,6 +300,10 @@ final class MapperSessionCallBindings implements SessionCallBindings {
     }
 
     public void loadCut() {
+      if (lineageTask() && batchCut != null) {
+        cut = batchCut;
+        return;
+      }
       cut =
           bindingRow(
               ScopeQueryCutReadMapper.class,
@@ -247,6 +312,7 @@ final class MapperSessionCallBindings implements SessionCallBindings {
                   .eq("tenant_id", s(task, "tenant_id"))
                   .eq("step_id", s(step, "id"))
                   .eq("caller_task_id", s(task, "id")));
+      if (lineageTask()) batchCut = cut;
     }
 
     public String authority() {

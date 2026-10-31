@@ -16,6 +16,8 @@ final class MapperModelDispatchRecords implements ModelDispatchRecords {
 
     var evaluation = ledger.evaluation(lease, false);
     var task = ledger.fenced(lease, false);
+    // 已发生usage的结算只核原dispatch/attempt/lease/fence，不重新授予读取scope。
+    new MapperCommitFence(ledger, lease).settlement(dispatch);
 
     return new ModelDispatchRecords.Dispatch() {
       @Override

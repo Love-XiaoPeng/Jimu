@@ -81,6 +81,10 @@ final class StoredSessionResponsePreflight implements SessionResponsePreflight {
     return JdbcSessionScopes.task(task);
   }
 
+  public boolean lineageTask() {
+    return JdbcSessionScopes.lineage(task);
+  }
+
   public boolean searchTask() {
     return JdbcSessionRecords.searchTask(task);
   }

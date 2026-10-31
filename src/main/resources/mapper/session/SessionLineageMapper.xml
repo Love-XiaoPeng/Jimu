@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionLineageMapper">
+  <select id="fact" resultType="map">
+    SELECT t.tenant_id,t.id,t.created_at,t.request_snapshot,t.request_digest,t.capabilities,
+      s.authority_snapshot,s.authority_digest,s.authority_bytes,s.content_state AS scope_content,
+      h.binding_digest,h.history_version
+    FROM task t
+    JOIN task_session_scope s ON s.tenant_id=t.tenant_id AND s.caller_task_id=t.id
+    JOIN task_session_history h ON h.tenant_id=t.tenant_id AND h.task_id=t.id
+    WHERE t.tenant_id=#{tenant} AND t.id=#{id}
+  </select>
+  <select id="nodeInputSizes" resultType="map">
+    SELECT OCTET_LENGTH(t.request_snapshot) AS request_bytes,
+      OCTET_LENGTH(l.genesis_snapshot) AS genesis_bytes,OCTET_LENGTH(l.graph_snapshot) AS graph_bytes
+    FROM task t
+    JOIN task_session_lineage l ON l.tenant_id=t.tenant_id AND l.task_id=t.id
+    WHERE t.tenant_id=#{tenant} AND t.id=#{id}
+  </select>
+  <select id="nodeInput" resultType="map">
+    SELECT t.tenant_id,t.id,t.request_digest,t.request_snapshot,
+      l.tenant_id AS lineage_tenant,l.task_id AS lineage_task,l.record_version,
+      l.genesis_snapshot,l.genesis_digest,l.genesis_bytes,
+      l.graph_snapshot,l.graph_digest,l.graph_bytes,l.content_state
+    FROM task t
+    JOIN task_session_lineage l ON l.tenant_id=t.tenant_id AND l.task_id=t.id
+    WHERE t.tenant_id=#{tenant} AND t.id=#{id}
+  </select>
+  <update id="purge">
+    UPDATE task_session_lineage SET genesis_snapshot=NULL,graph_snapshot=NULL,content_state='PURGED'
+    WHERE tenant_id=#{tenant} AND task_id=#{id} AND content_state='PRESENT'
+  </update>
+</mapper>
