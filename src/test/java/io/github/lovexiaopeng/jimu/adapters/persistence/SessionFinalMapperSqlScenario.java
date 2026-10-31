@@ -138,7 +138,8 @@ public final class SessionFinalMapperSqlScenario {
                       totals)));
       System.out.flush();
     }
-    if (!args[2].equals("seed") && !args[2].equals("cost-only") && !sourceOnly)
+    if (args[2].equals("task-check")) SessionFinalMapperFailures.verify(source, true);
+    else if (!args[2].equals("seed") && !args[2].equals("cost-only") && !sourceOnly)
       SessionFinalMapperFailures.verify(source);
   }
 

@@ -205,7 +205,7 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
       throws java.sql.SQLException {
     var projection = SessionMetadataProjection.forFinalTable(table);
     query.operation(16); // projection/metadata/results/locals and cleanup stores
-    if (projection == null || projection.taskSized) throw JdbcSessionRecords.corrupt();
+    if (projection == null) throw JdbcSessionRecords.corrupt();
     // Preserve the same conservative two-row workspace, before any scalar/getter allocation.
     // The original finalization owner already holds the summary/outer aliases.
     query.retainScratch(source, projection.retainedBytes);
@@ -245,21 +245,58 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
           var column = projection.columns.get(i);
           Object value = source.getObject(i + 1);
           if (value instanceof java.sql.Timestamp time) value = time.toLocalDateTime();
-          boolean valid =
-              value == null
-                  ? column.nullable()
-                  : switch (column.kind()) {
-                    case 'S' ->
-                        value instanceof String text && boundedFinal(text, column.points(), query);
-                    case 'I' -> value instanceof Integer;
-                    case 'L' -> value instanceof Long;
-                    case 'B' -> value instanceof Boolean;
-                    case 'D' -> value instanceof java.time.LocalDateTime;
-                    default -> false;
-                  };
-          if (!valid) throw JdbcSessionRecords.corrupt();
-          // One strict scalar traversal supplies SQL transport and business metadata.
-          long scalar = result.metadataColumn(column, value);
+          long scalar;
+          if (value == null) {
+            if (!column.nullable()) throw JdbcSessionRecords.corrupt();
+            scalar = result.metadataColumn(column, null);
+          } else {
+            // Each original type dispatch also consumes its scalar. Length columns use the
+            // numeric value for SQL transport and the distinct body length for business bytes.
+            // Ordinary FINAL columns gain no second length-kind dispatch.
+            scalar =
+                switch (column.kind()) {
+                  case 'S' -> {
+                    if (!(value instanceof String text)
+                        || !boundedFinal(text, column.points(), query))
+                      throw JdbcSessionRecords.corrupt();
+                    yield result.metadataColumn(column, value);
+                  }
+                  case 'I' -> {
+                    if (!(value instanceof Integer)) throw JdbcSessionRecords.corrupt();
+                    yield result.metadataColumn(column, value);
+                  }
+                  case 'L' -> {
+                    if (!(value instanceof Long)) throw JdbcSessionRecords.corrupt();
+                    yield result.metadataColumn(column, value);
+                  }
+                  case 'B' -> {
+                    if (!(value instanceof Boolean)) throw JdbcSessionRecords.corrupt();
+                    yield result.metadataColumn(column, value);
+                  }
+                  case 'D' -> {
+                    if (!(value instanceof java.time.LocalDateTime))
+                      throw JdbcSessionRecords.corrupt();
+                    yield result.metadataColumn(column, value);
+                  }
+                  case 'T', 'M', 'X' -> {
+                    query.operation(
+                        9); // unbox, range dispatch/comparisons, two accounting handoffs
+                    if (!(value instanceof Integer || value instanceof Long))
+                      throw JdbcSessionRecords.corrupt();
+                    long length = ((Number) value).longValue();
+                    long maximum =
+                        switch (column.kind()) {
+                          case 'T' -> 65535L;
+                          case 'M' -> 16777215L;
+                          default -> 4294967295L;
+                        };
+                    if (length < 0 || length > maximum) throw JdbcSessionRecords.corrupt();
+                    result.metadataColumn(column, value);
+                    yield length;
+                  }
+                  default -> throw JdbcSessionRecords.corrupt();
+                };
+          }
           query.operation(4); // NULL presence semantics and exact header/byte additions
           if (value != null || nullsPresent)
             rowBytes =
@@ -314,6 +351,7 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
               || type == java.sql.Types.LONGVARCHAR;
       case 'I' -> type == java.sql.Types.INTEGER;
       case 'L' -> type == java.sql.Types.BIGINT;
+      case 'T', 'M', 'X' -> type == java.sql.Types.BIGINT || type == java.sql.Types.INTEGER;
       case 'B' ->
           type == java.sql.Types.BIT
               || type == java.sql.Types.BOOLEAN

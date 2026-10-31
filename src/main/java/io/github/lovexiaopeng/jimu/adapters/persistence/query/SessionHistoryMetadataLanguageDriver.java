@@ -24,8 +24,43 @@ public final class SessionHistoryMetadataLanguageDriver extends XMLLanguageDrive
     var source = super.createSqlSource(configuration, script, type);
     if (source.getClass() != RawSqlSource.class) return source;
     var bound = source.getBoundSql(null);
+    if (matchesTask(bound)) return new TaskSource(configuration, bound, type);
     if (!matches(bound)) return source;
     return new HistorySource(configuration, bound, type);
+  }
+
+  /** 原 TASK 具名长度投影；只在 Mapper 初始化固定 SQL，绝不保存行资格。 */
+  public static final String TASK_SQL =
+      "SELECT tenant_id,id,owner_actor_id,idempotency_key,request_digest,OCTET_LENGTH(CONVERT(capabilities USING utf8mb4)) AS capabilities,installation_epoch,policy_version,record_version,state,revision,created_at,updated_at,deadline,ready_at,cancel_requested_at,current_attempt_id,worker_id,fence,lease_until,next_event_seq,max_models,max_tools,models_used,tools_used,token_held,max_tokens,code,OCTET_LENGTH(CONVERT(model_snapshot USING utf8mb4)) AS model_snapshot,model_digest,evaluation_run_id,cost_held,max_cost_micros,OCTET_LENGTH(CONVERT(tools_snapshot USING utf8mb4)) AS tools_snapshot,tools_digest,report_time,OCTET_LENGTH(CONVERT(evaluation_snapshot USING utf8mb4)) AS evaluation_snapshot,evaluation_digest,evaluation_phase,evaluation_sample,evaluation_model,OCTET_LENGTH(CONVERT(material_snapshot USING utf8mb4)) AS material_snapshot,material_digest,material_system_digest,OCTET_LENGTH(CONVERT(material_file_snapshot USING utf8mb4)) AS material_file_snapshot,material_file_digest,execution_scope_digest,OCTET_LENGTH(CONVERT(business_policy_snapshot USING utf8mb4)) AS business_policy_snapshot,business_policy_digest,OCTET_LENGTH(CONVERT(media_snapshot USING utf8mb4)) AS media_snapshot,media_digest,media_cleanup_state,OCTET_LENGTH(CONVERT(mcp_snapshot USING utf8mb4)) AS mcp_snapshot,mcp_digest,OCTET_LENGTH(CONVERT(question_binding USING utf8mb4)) AS question_binding,question_binding_digest,waiting_question_id,question_continuation_step_id,question_cleanup_state,OCTET_LENGTH(CONVERT(question_retained_digests USING utf8mb4)) AS question_retained_digests FROM task WHERE tenant_id=? AND id=?";
+
+  public static boolean ownsTask(SqlSource source) {
+    return source instanceof TaskSource;
+  }
+
+  private static boolean matchesTask(BoundSql bound) {
+    var mappings = bound.getParameterMappings();
+    return TASK_SQL.equals(bound.getSql())
+        && mappings.size() == 2
+        && "tenant".equals(mappings.get(0).getProperty())
+        && "taskId".equals(mappings.get(1).getProperty())
+        && mappings.get(0).getMode() == ParameterMode.IN
+        && mappings.get(1).getMode() == ParameterMode.IN;
+  }
+
+  private static final class TaskSource extends RawSqlSource {
+    private final Configuration configuration;
+    private final List<ParameterMapping> mappings;
+
+    private TaskSource(Configuration configuration, BoundSql bound, Class<?> type) {
+      super(configuration, bound.getSql(), type);
+      this.configuration = configuration;
+      mappings = List.copyOf(bound.getParameterMappings());
+    }
+
+    @Override
+    public BoundSql getBoundSql(Object parameter) {
+      return new BoundSql(configuration, TASK_SQL, mappings, parameter);
+    }
   }
 
   private static boolean matches(BoundSql bound) {
