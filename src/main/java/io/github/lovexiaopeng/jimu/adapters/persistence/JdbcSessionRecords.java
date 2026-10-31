@@ -249,6 +249,110 @@ final class JdbcSessionRecords {
     }
   }
 
+  /** One strict encoding feeds the local length and SHA-256 consumers. */
+  static <T> T withScopeRaw(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      String raw,
+      java.util.function.BiFunction<Integer, String, T> use) {
+    return withScopeRaw(query, raw, false, 0, use);
+  }
+
+  static <T> T withScopeRaw(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      String raw,
+      long expectedBytes,
+      java.util.function.BiFunction<Integer, String, T> use) {
+    return withScopeRaw(query, raw, true, expectedBytes, use);
+  }
+
+  private static <T> T withScopeRaw(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      String raw,
+      boolean checkLength,
+      long expectedBytes,
+      java.util.function.BiFunction<Integer, String, T> use) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    Object temporary = null;
+    boolean held = false;
+    java.nio.ByteBuffer encoded = null;
+    try {
+      if (owner != null
+          && owner.lineage()
+          && (query == null
+              || io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                      .current(query)
+                  != owner)) throw new IllegalStateException("Different scope query owner");
+      if (query == null || !query.lineage()) {
+        int bytes = raw.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+        return use.apply(bytes, !checkLength || bytes == expectedBytes ? Payloads.hash(raw) : null);
+      }
+      query.checkHealthy();
+      // Guard/owner, scalar handoff, callback fields/branches and cleanup.
+      // Units stay UTF16 chars for encode and UTF8 bytes for scope hashing.
+      query.operation(48);
+      query.retainScratch(query, 64);
+      held = true;
+      temporary = new Object();
+      query.retainScratch(temporary, 4096L + 8L * raw.length());
+      encoded = encodeScopeRaw(query, raw);
+      int bytes = encoded.remaining();
+      String digest = !checkLength || bytes == expectedBytes ? hashScopeRaw(query, encoded) : null;
+      encoded = null;
+      return use.apply(bytes, digest);
+    } catch (RuntimeException failure) {
+      if (owner != null && owner.lineage()) throw owner.poisonProof(failure);
+      if (query != null) throw query.recordFailure(failure);
+      throw failure;
+    } catch (Error failure) {
+      if (owner != null && owner.lineage()) owner.poisonLineageSource(failure);
+      throw failure;
+    } finally {
+      encoded = null;
+      if (query != null) {
+        if (temporary != null) query.releaseScratch(temporary);
+        if (held) query.releaseScratch(query);
+      }
+    }
+  }
+
+  private static java.nio.ByteBuffer encodeScopeRaw(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query, String raw) {
+    return query.primitive(
+        "scope.encode",
+        raw.length(),
+        () -> {
+          var encoder =
+              java.nio.charset.StandardCharsets.UTF_8
+                  .newEncoder()
+                  .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                  .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT);
+          try {
+            return encoder.encode(java.nio.CharBuffer.wrap(raw));
+          } catch (java.nio.charset.CharacterCodingException failure) {
+            throw corrupt();
+          }
+        });
+  }
+
+  private static String hashScopeRaw(
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      java.nio.ByteBuffer encoded) {
+    return query.primitive(
+        "history.hash",
+        encoded.remaining(),
+        () -> {
+          try {
+            var digest = java.security.MessageDigest.getInstance("SHA-256");
+            digest.update(encoded);
+            return java.util.HexFormat.of().formatHex(digest.digest());
+          } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+          }
+        });
+  }
+
   private static boolean samePolicyIdentity(Object left, Object right) {
     return left == right;
   }

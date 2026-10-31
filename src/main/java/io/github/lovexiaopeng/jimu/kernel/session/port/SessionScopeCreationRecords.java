@@ -9,6 +9,11 @@ public interface SessionScopeCreationRecords {
     return raw.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
   }
 
+  /** One local raw consumption; encoded workspace remains owned through use. */
+  default <T> T withRaw(String raw, java.util.function.BiFunction<Integer, String, T> use) {
+    return use.apply(utf8Bytes(raw), hash(raw));
+  }
+
   interface Row {
     String tenant();
 

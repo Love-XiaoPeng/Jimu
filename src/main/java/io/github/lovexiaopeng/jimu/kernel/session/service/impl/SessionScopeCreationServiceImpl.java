@@ -68,32 +68,40 @@ public final class SessionScopeCreationServiceImpl implements SessionScopeCreati
     authority.put("targets", targets);
     String raw = records.json(authority);
     records.validateAuthority(caller, raw);
-    records.insertAuthority(
-        tenant,
-        id,
-        caller.owner(),
-        records.hash(records.binding(caller)),
-        caller.tools(),
-        raw,
-        records.hash(raw),
-        bytes(raw),
-        targets.size(),
-        created,
-        retain,
-        created);
-    long bytes = bytes(raw);
+    String binding = records.hash(records.binding(caller));
+    LocalDateTime retainedUntil = retain;
+    long bytes =
+        records.withRaw(
+            raw,
+            (size, digest) -> {
+              records.insertAuthority(
+                  tenant,
+                  id,
+                  caller.owner(),
+                  binding,
+                  caller.tools(),
+                  raw,
+                  digest,
+                  size,
+                  targets.size(),
+                  created,
+                  retainedUntil,
+                  created);
+              return size;
+            });
     for (int ordinal = 0; ordinal < targets.size(); ordinal++) {
       var target = targets.get(ordinal);
       String targetRaw = records.json(target);
-      records.insertAuthorityTarget(
-          tenant,
-          id,
-          ordinal,
-          target.get("session_id"),
-          targetRaw,
-          records.hash(targetRaw),
-          bytes(targetRaw));
-      bytes += bytes(targetRaw) + bytes(target.get("session_id").toString());
+      int index = ordinal;
+      int targetBytes =
+          records.withRaw(
+              targetRaw,
+              (size, digest) -> {
+                records.insertAuthorityTarget(
+                    tenant, id, index, target.get("session_id"), targetRaw, digest, size);
+                return size;
+              });
+      bytes += targetBytes + bytes(target.get("session_id").toString());
     }
     records.retainAuthorityHistory(retain, tenant, id);
     records.body(caller, bytes);

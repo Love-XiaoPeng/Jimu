@@ -44,10 +44,6 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
     return UTC.format(value);
   }
 
-  private long bytes(String raw) {
-    return records.utf8Bytes(raw);
-  }
-
   public void lock(String tenant, String caller) {
     var found = records.callerCapabilities(tenant, caller);
     if (found.size() != 1
@@ -85,7 +81,7 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
         || !SessionContentState.PRESENT.equals(s.content())
         || !s.retained()) throw unavailable();
     var a = records.authority(c, s.raw());
-    if (bytes(s.raw()) != s.bytes() || !digest.hash(s.raw()).equals(s.digest())) throw corrupt();
+    if (!records.matchesRaw(s.raw(), s.bytes(), s.digest(), digest)) throw corrupt();
 
     if (!c.tenant().equals(a.tenant())
         || !c.id().equals(a.caller())
@@ -131,8 +127,7 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
           || !source.equals(target.source())
           || raw == null
           || !raw.equals(expected.canonical())
-          || !digest.hash(raw).equals(target.digest())
-          || bytes(raw) != target.bytes()) throw corrupt();
+          || !records.matchesRaw(raw, target.bytes(), target.digest(), digest)) throw corrupt();
       previous = source;
       try {
         var check = lineage(c) ? sourceFacts(c, source, false) : null;
@@ -250,8 +245,7 @@ public final class SessionScopeEligibilityServiceImpl implements SessionScopeEli
             || r.ordinal() != i
             || !expected.id().equals(r.source())
             || !expected.canonical().equals(r.raw())
-            || !digest.hash(r.raw()).equals(r.digest())
-            || bytes(r.raw()) != r.bytes()
+            || !records.matchesRaw(r.raw(), r.bytes(), r.digest(), digest)
             || !SessionContentState.PRESENT.equals(r.content())) throw corrupt();
         previous = expected.id();
       }

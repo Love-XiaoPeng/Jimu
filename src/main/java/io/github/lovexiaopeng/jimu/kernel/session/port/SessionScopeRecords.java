@@ -10,6 +10,15 @@ public interface SessionScopeRecords {
     return raw.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
   }
 
+  /** Checks this raw only; never imports a row proof from another consumption. */
+  default boolean matchesRaw(
+      String raw,
+      long bytes,
+      String expected,
+      io.github.lovexiaopeng.jimu.kernel.snapshot.api.SnapshotDigest digest) {
+    return utf8Bytes(raw) == bytes && digest.hash(raw).equals(expected);
+  }
+
   record Caller(
       String tenant,
       String id,

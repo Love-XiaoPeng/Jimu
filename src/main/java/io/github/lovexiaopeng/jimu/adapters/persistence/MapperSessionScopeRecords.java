@@ -30,6 +30,19 @@ final class MapperSessionScopeRecords implements SessionScopeRecords {
     return JdbcSessionRecords.scopeUtf8Bytes(ledger.queryContext(), raw);
   }
 
+  @Override
+  public boolean matchesRaw(
+      String raw,
+      long bytes,
+      String expected,
+      io.github.lovexiaopeng.jimu.kernel.snapshot.api.SnapshotDigest digest) {
+    return JdbcSessionRecords.withScopeRaw(
+        ledger.queryContext(),
+        raw,
+        bytes,
+        (actual, hash) -> actual == bytes && hash.equals(expected));
+  }
+
   private final JdbcLedger ledger;
   final SessionScopeMapper sql;
   private final SessionHistoryRetentionMapper safety;

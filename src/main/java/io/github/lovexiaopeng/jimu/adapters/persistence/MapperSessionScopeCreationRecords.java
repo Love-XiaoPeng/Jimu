@@ -14,6 +14,11 @@ final class MapperSessionScopeCreationRecords implements SessionScopeCreationRec
     return JdbcSessionRecords.scopeUtf8Bytes(sessions.appendQuery(), raw);
   }
 
+  @Override
+  public <T> T withRaw(String raw, java.util.function.BiFunction<Integer, String, T> use) {
+    return JdbcSessionRecords.withScopeRaw(sessions.appendQuery(), raw, use);
+  }
+
   private final JdbcLedger ledger;
   private final JdbcSessionScopes scopes;
   private final JdbcSessionRecords sessions;
