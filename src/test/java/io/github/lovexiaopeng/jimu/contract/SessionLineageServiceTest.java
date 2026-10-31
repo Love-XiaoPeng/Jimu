@@ -84,13 +84,13 @@ class SessionLineageServiceTest {
 
         public String graph(SessionLineage.Graph value) {
           return referenceWrites
-              ? contracts.storageGraph(value, query(), raw -> {}).raw()
+              ? contracts.storageGraphForValidation(value, query(), raw -> {}).raw()
               : contracts.graph(value);
         }
 
         public boolean matchGraph(SessionLineage.Stored stored, SessionLineage.Graph expected) {
           var query = query();
-          contracts.matchGraph(
+          contracts.matchGraphAfterGeneses(
               new io.github.lovexiaopeng.jimu.adapters.runtime.session.LineageRawView(
                   stored.graph(), query),
               expected,
@@ -133,6 +133,39 @@ class SessionLineageServiceTest {
         "SESSION_HISTORY_CORRUPT",
         assertThrows(TaskFailure.class, () -> add(3, List.of(root), root)).code());
     assertTrue(reads.contains("row:00000000-0000-0000-0000-000000000003"));
+  }
+
+  @Test
+  void candidateCannotReachInsertBeforeFreshGenesisSchemaAndGraphPins() {
+    referenceWrites = true;
+    String root = add(1, List.of(), null);
+    var original = rows.get(root);
+    for (String field : List.of("session_id", "authority_sha256", "created_at", "codec_id")) {
+      boolean graph = field.equals("codec_id");
+      var value =
+          (com.fasterxml.jackson.databind.node.ObjectNode)
+              json.json(graph ? original.graph() : original.genesis(), 16384);
+      value.put(field, "invalid");
+      String raw = Payloads.json(value);
+      rows.put(
+          root,
+          new SessionLineage.Stored(
+              graph ? original.genesis() : raw,
+              graph ? original.genesisDigest() : Payloads.hash(raw),
+              graph ? original.genesisBytes() : SessionContracts.bytes(raw),
+              graph ? raw : original.graph(),
+              graph ? Payloads.hash(raw) : original.graphDigest(),
+              graph ? SessionContracts.bytes(raw) : original.graphBytes(),
+              "PRESENT",
+              1));
+      inserted = null;
+      assertEquals(
+          "SESSION_HISTORY_CORRUPT",
+          assertThrows(TaskFailure.class, () -> add(2, List.of(root), root)).code(),
+          field);
+      org.junit.jupiter.api.Assertions.assertNull(inserted, field + " must fail before insert");
+      rows.put(root, original);
+    }
   }
 
   @Test

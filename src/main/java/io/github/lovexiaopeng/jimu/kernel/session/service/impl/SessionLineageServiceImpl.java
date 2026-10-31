@@ -110,6 +110,9 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
             1);
     inputs.put(caller, stored);
     var created = validate(tenant, caller, facts, inputs, new Created(stored, genesis));
+    // The graph candidate uses fixed host keys/pins and a sorted nodes map. validate's first
+    // pass checks every standalone genesis (including generated caller), byte length, digest,
+    // UUID/authority binding and <=9 membership before this first persistence operation.
     // These lengths belong to the generated, validated immutable Stored, not a SQL row proof.
     // Capture the body charge before insert invalidates the input owner; fresh readback below
     // still independently validates the new database raw values.

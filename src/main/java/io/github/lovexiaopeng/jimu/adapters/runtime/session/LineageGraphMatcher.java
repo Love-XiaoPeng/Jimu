@@ -211,10 +211,16 @@ final class LineageGraphMatcher {
   }
 
   void match(SessionLineage.Graph expected) {
+    query.operation(3);
+    match(expected, true);
+  }
+
+  void match(SessionLineage.Graph expected, boolean checkExpected) {
     Object workspace = new Object();
     query.retainScratch(workspace, 4096);
     try {
-      validateExpected(expected, query);
+      query.operation(1);
+      if (checkExpected) validateExpected(expected, query);
       token('{');
       int seen = 0;
       if (end('}')) throw corrupt();

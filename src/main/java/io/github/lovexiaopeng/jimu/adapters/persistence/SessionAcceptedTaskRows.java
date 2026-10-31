@@ -115,7 +115,7 @@ final class SessionAcceptedTaskRows {
       for (String key :
           switch (role) {
             case LINEAGE_SCOPE -> List.of("capabilities", "tools_snapshot");
-            case ACCEPTED_EVENT -> List.of("goal", "capabilities");
+            case ACCEPTED_EVENT -> List.of("goal", "capabilities", "tools_snapshot");
             case ACCEPTED_VIEW ->
                 List.of("goal", "capabilities", "summary", "tools_snapshot", "mcp_snapshot");
           }) {

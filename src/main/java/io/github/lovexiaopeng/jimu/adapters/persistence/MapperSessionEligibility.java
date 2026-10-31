@@ -50,12 +50,14 @@ final class MapperSessionEligibility implements SessionEligibility.Access {
   }
 
   public SessionEligibility.Installation installation(String name) {
+    var query = ledger.queryContext();
+    boolean projected = query != null && query.lineage();
+    if (projected) query.operation(8); // current route, mapper and row consumer handoff
+    var sql = ledger.mappers.session().getMapper(SessionEligibilityMapper.class);
     var rows =
-        ledger
-            .mappers
-            .session()
-            .getMapper(SessionEligibilityMapper.class)
-            .lockInstallation(ledger.queryContext(), s(task, "tenant_id"), name);
+        projected
+            ? sql.lockPin(query, s(task, "tenant_id"), name)
+            : sql.lockInstallation(query, s(task, "tenant_id"), name);
     if (rows.isEmpty()) throw new TaskFailure(404, CommonErrorCode.NOT_FOUND);
     var row = rows.getFirst();
     return new SessionEligibility.Installation() {

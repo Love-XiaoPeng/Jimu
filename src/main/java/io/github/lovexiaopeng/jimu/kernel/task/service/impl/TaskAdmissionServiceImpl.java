@@ -474,7 +474,6 @@ public final class TaskAdmissionServiceImpl implements TaskAdmissionService {
           admission.bindSnapshots(task, model, taskCost, toolSnapshot, scopeDigest);
           if (sessionRead) {
             admission.createSession(task, historySources);
-            if (lineageTask) admission.createLineage(task, parent);
             admission.reserve(
                 task,
                 ":session-history",
@@ -518,6 +517,9 @@ public final class TaskAdmissionServiceImpl implements TaskAdmissionService {
           if (evaluationBinding != null)
             admission.bindEvaluation(task, request, model, evaluationBinding, material);
           admission.reserve(task, ":queue", ReservationCategory.QUEUE, 1);
+          // Publish the lineage and scope together immediately before the accepted event. No
+          // intervening reservation write can invalidate the newly built caller graph.
+          if (lineageTask) admission.createLineage(task, parent);
           return admission.accepted(task);
         });
   }

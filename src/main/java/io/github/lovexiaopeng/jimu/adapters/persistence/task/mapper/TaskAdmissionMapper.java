@@ -19,6 +19,16 @@ public interface TaskAdmissionMapper {
       @Param("tenant") String tenant,
       @Param("plugin") String plugin);
 
+  /** v5 identity/epoch consumes no installation snapshot or pin columns. */
+  List<Map<String, Object>> lockInstallationEpoch(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("plugin") String plugin);
+
+  /** Same tenant budget lock, containing all fields consumed by Admission.room(). */
+  List<Map<String, Object>> lockAdmissionRoom(
+      @Param("query") SessionQueryContext query, @Param("tenant") String tenant);
+
   List<Map<String, Object>> selectScopeTargets(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
@@ -42,13 +52,13 @@ public interface TaskAdmissionMapper {
       @Param("tenant") String tenant,
       @Param("task") String task);
 
-  /** accepted-user事实的十一列闭包；不得交给View/MCP或工具核权。 */
+  /** accepted-user及同次scope核权的十二列闭包；不替代事件后的View/MCP新读。 */
   List<Map<String, Object>> lockAcceptedEvent(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
       @Param("task") String task);
 
-  /** accepted-event仅物化goal/capabilities，原文分配前读取同锁实际UTF8长度。 */
+  /** accepted-event和scope实际文本长度；先保留持续到事务尾部的owner再物化。 */
   List<Map<String, Object>> lockAcceptedEventSizes(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,

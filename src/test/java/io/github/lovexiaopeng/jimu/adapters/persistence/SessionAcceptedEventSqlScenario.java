@@ -14,7 +14,7 @@ import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-/** 实际MyBatis同锁十一列/长度/完整Caller，和物化之前拒绝的22表回滚。 */
+/** 实际MyBatis同锁十二列/长度/完整Caller，和物化之前拒绝的22表回滚。 */
 public final class SessionAcceptedEventSqlScenario {
   private SessionAcceptedEventSqlScenario() {}
 
@@ -66,19 +66,22 @@ public final class SessionAcceptedEventSqlScenario {
               var sql = v.mappers.session().getMapper(TaskAdmissionMapper.class);
               var sizes = sql.lockAcceptedEventSizes(q, "tenant-a", id).getFirst();
               check(
-                  sizes.size() == 2
+                  sizes.size() == 3
                       && (sizes.get("goal") instanceof Integer || sizes.get("goal") instanceof Long)
                       && ((Number) sizes.get("goal")).longValue()
                           == goal.getBytes(java.nio.charset.StandardCharsets.UTF_8).length,
                   "real UTF8 OCTET_LENGTH Integer/Long incl NUL Unicode trailing spaces: " + sizes);
               held[0] = SessionAcceptedTaskRows.load(sql, q, "tenant-a", id, true);
               check(
-                  held[0].size() == 11 && held[0].get("goal").equals(goal),
-                  "actual event11 exact goal");
+                  held[0].size() == 12 && held[0].get("goal").equals(goal),
+                  "actual event12 exact goal");
+              check(
+                  held[0].get("tools_snapshot").equals(full.get("tools_snapshot")),
+                  "same raw tools snapshot for scope terminal access");
               check(
                   MapperSessionScopeRecords.caller(full)
                       .equals(MapperSessionScopeRecords.caller(held[0])),
-                  "event11 actual full Caller unchanged");
+                  "event12 actual full Caller unchanged");
               check(
                   held[0].get("record_version") instanceof Integer
                       && held[0].get("installation_epoch") instanceof Long
@@ -93,22 +96,21 @@ public final class SessionAcceptedEventSqlScenario {
                       "code",
                       "summary",
                       "next_event_seq",
-                      "tools_snapshot",
                       "mcp_snapshot",
                       "mcp_digest"))
-                check(!held[0].containsKey(key), "event11 does not expose " + key);
-              throw new IllegalStateException("event11-fixture-rollback");
+                check(!held[0].containsKey(key), "event12 does not expose " + key);
+              throw new IllegalStateException("event12-fixture-rollback");
             },
             q.deadlineNanos());
       } catch (IllegalStateException expected) {
         check(
-            expected.getMessage().equals("event11-fixture-rollback"),
+            expected.getMessage().equals("event12-fixture-rollback"),
             "only explicit fixture rollback");
       }
-      check(held[0].isEmpty() && q.scratchLive() == 65536, "event11 clear before refund");
+      check(held[0].isEmpty() && q.scratchLive() == 65536, "event12 clear before refund");
       check(
           baseline.equals(SessionDependencyScenario.snapshot(db)),
-          "event11 every actual variant22 rollback");
+          "event12 every actual variant22 rollback");
     }
     var v = view(root);
     var q = v.queryContext();

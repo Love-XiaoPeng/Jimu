@@ -315,6 +315,9 @@ public final class SessionJointProjectionScenario {
     var before = SessionDependencyScenario.snapshot(db);
     var v = view();
     var q = v.queryContext();
+    // This direct persistence probe must select the same v5 profile as the public entry before
+    // opening its new Work. The generic queryView starts with the legacy 1MiB scratch reserve.
+    q.restrictLineage();
     try {
       v.sessionTransaction(
           () -> {

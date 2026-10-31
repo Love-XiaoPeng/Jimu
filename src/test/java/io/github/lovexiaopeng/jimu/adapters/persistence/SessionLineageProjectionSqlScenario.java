@@ -129,11 +129,12 @@ final class SessionLineageProjectionSqlScenario {
           check(true, "actual terminalAccess tools/schema/pins/epoch accepts full and ten columns");
           held[1] = SessionAcceptedTaskRows.load(sql, query, "tenant-a", task, true);
           check(
-              held[1].size() == 11
+              held[1].size() == 12
                   && held[1].get("goal").equals(full.get("goal"))
                   && MapperSessionScopeRecords.caller(full)
                       .equals(MapperSessionScopeRecords.caller(held[1])),
-              "event11 retains goal and complete Caller");
+              "event12 retains goal and complete Caller");
+          v.sessionScopes.terminalAccess.accept(held[1]);
           db.update(
               "UPDATE task SET revision=revision+1,next_event_seq=next_event_seq+1 WHERE tenant_id='tenant-a' AND id=?",
               task);

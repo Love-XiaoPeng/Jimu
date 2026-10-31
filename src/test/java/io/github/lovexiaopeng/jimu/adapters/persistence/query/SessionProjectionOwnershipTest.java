@@ -49,6 +49,7 @@ class SessionProjectionOwnershipTest {
         () -> {
           var owner = SessionQueryTransaction.current(query);
           owner.locked("t", "c");
+          long lockedBytes = query.scratchLive();
           for (var role : ProjectionRole.values()) {
             var projection = owner.reserveProjection(role, "t", "c", 8192);
             var row =
@@ -57,13 +58,7 @@ class SessionProjectionOwnershipTest {
             assertSame(row, projection.loaded(row));
             rows.add(row);
           }
-          assertEquals(
-              65536
-                  + SessionQueryWork.RELATION_ROOT_BYTES
-                  + SessionQueryTransaction.METADATA_BINDING_BYTES
-                  + 1024
-                  + 3 * 8192,
-              query.scratchLive());
+          assertEquals(lockedBytes + 1024 + 3 * 8192, query.scratchLive());
           rows.forEach(row -> assertEquals("borrowed", row.get("summary")));
           return null;
         });

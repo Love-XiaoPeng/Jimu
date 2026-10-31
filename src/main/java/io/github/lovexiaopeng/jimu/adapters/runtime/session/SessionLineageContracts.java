@@ -222,6 +222,24 @@ public final class SessionLineageContracts {
       LineageRawView raw,
       SessionLineage.Graph expected,
       io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    query.operation(3); // original entry now forwards one explicit validation-mode argument
+    matchGraph(raw, expected, query, true);
+  }
+
+  /** Service first pass has checked every standalone genesis, digest and caller binding. */
+  public void matchGraphAfterGeneses(
+      LineageRawView raw,
+      SessionLineage.Graph expected,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {
+    query.operation(3); // internal entry/arguments; raw parsing and pins are unchanged
+    matchGraph(raw, expected, query, false);
+  }
+
+  private void matchGraph(
+      LineageRawView raw,
+      SessionLineage.Graph expected,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      boolean checkExpected) {
     if (raw.bytes() > 16384) throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
     new LineageGraphMatcher(
             raw.raw(),
@@ -240,7 +258,7 @@ public final class SessionLineageContracts {
               return value.intValue();
             },
             codecs.schemaSha256)
-        .match(expected);
+        .match(expected, checkExpected);
   }
 
   public String genesis(SessionLineage.Genesis g) {
@@ -370,6 +388,27 @@ public final class SessionLineageContracts {
       SessionLineage.Graph g,
       io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
       java.util.function.Consumer<LineageRawView> handoff) {
+    query.operation(4); // original entry and explicit validation-mode forwarding
+    return storageGraph(g, query, handoff, true);
+  }
+
+  /**
+   * Transaction-local candidate only. The service validates all standalone geneses and graph
+   * membership before insert; no SQL write or published graph may consume this candidate first.
+   */
+  public LineageRawView storageGraphForValidation(
+      SessionLineage.Graph g,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      java.util.function.Consumer<LineageRawView> handoff) {
+    query.operation(4); // internal route and deferred scalar-validation handoff
+    return storageGraph(g, query, handoff, false);
+  }
+
+  private LineageRawView storageGraph(
+      SessionLineage.Graph g,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
+      java.util.function.Consumer<LineageRawView> handoff,
+      boolean checkExpected) {
     Object owner = new Object();
     query.retainScratch(owner, 32768L + 4096L + 512L * g.nodes().size());
     Map<String, Object> wire = null;
@@ -396,7 +435,8 @@ public final class SessionLineageContracts {
       var raw = LineageJsonWriter.encode(wire, 16384, query);
       // Fixed keys/pins came from the host mapping. Check typed scalar/count/order
       // constraints after the original size refusal, without reparsing the writer output.
-      LineageGraphMatcher.validateExpected(g, query);
+      query.operation(1);
+      if (checkExpected) LineageGraphMatcher.validateExpected(g, query);
       query.operation(3);
       handoff.accept(raw);
       return raw;

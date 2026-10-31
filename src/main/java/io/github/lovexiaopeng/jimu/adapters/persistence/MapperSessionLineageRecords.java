@@ -491,7 +491,9 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
   }
 
   public boolean matchGraph(SessionLineage.Stored stored, SessionLineage.Graph expected) {
-    contracts.matchGraph(raw(stored.graph()), expected, ledger.queryContext());
+    // Called only by validate's second pass: expected UUIDs, hashes and authority came from
+    // freshly schema-checked standalone genesis. The actual graph is still independently parsed.
+    contracts.matchGraphAfterGeneses(raw(stored.graph()), expected, ledger.queryContext());
     return true;
   }
 
@@ -499,7 +501,7 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
     if (rawViews == null)
       throw new IllegalStateException("Storage graph requires the original proof owner");
     var encoded =
-        contracts.storageGraph(
+        contracts.storageGraphForValidation(
             value,
             ledger.queryContext(),
             raw -> {
