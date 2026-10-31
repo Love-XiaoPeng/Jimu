@@ -147,20 +147,6 @@ public final class SessionQueryInterceptor implements Interceptor {
   private static Object results(
       Invocation invocation, SessionQueryContext context, Object parameter) throws Throwable {
     var original = (Statement) invocation.getArgs()[0];
-    context.operation(3); // existing result-handler lookup and FINAL dispatch
-    var meta = SystemMetaObject.forObject(invocation.getTarget());
-    if (meta.getValue("resultHandler") instanceof QueryResults.FinalMetadata finalMetadata) {
-      context.operation(5); // command/result lookup, close and empty-result handoff
-      var command = (org.apache.ibatis.mapping.MappedStatement) meta.getValue("mappedStatement");
-      var rows = original.getResultSet();
-      try (rows) {
-        if (rows == null) throw new IllegalStateException("Missing FINAL ResultSet");
-        finalMetadata.read(rows, context, command);
-      } finally {
-        context.releaseScratch(rows); // actual provider close precedes workspace refund
-      }
-      return java.util.List.of();
-    }
     var results = new java.util.IdentityHashMap<java.sql.ResultSet, java.sql.ResultSet>();
     invocation.getArgs()[0] =
         Proxy.newProxyInstance(

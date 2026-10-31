@@ -6,39 +6,7 @@ import java.util.List;
 
 /** 原V1–V23 SELECT的列型；静态描述不读取行内bytes，不为无业务上界的表虚构行数。 */
 final class SessionMetadataProjection {
-  static final class Column
-      extends io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.MetadataLabel {
-    private final char kind;
-    private final int points;
-    private final boolean nullable;
-
-    Column(String name, char kind, int points, boolean nullable) {
-      super(paidName(name));
-      this.kind = kind;
-      this.points = points;
-      this.nullable = nullable;
-    }
-
-    private static String paidName(String name) {
-      var owner =
-          io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
-              .currentOwner();
-      if (owner != null) owner.inspect(4L + name.length());
-      return name;
-    }
-
-    char kind() {
-      return kind;
-    }
-
-    int points() {
-      return points;
-    }
-
-    boolean nullable() {
-      return nullable;
-    }
-
+  record Column(String name, char kind, int points, boolean nullable) {
     long retainedBytes() {
       // Map entry/label/value header plus worst UTF16 string or boxed scalar/date.
       return 256L + (kind == 'S' ? 64L + 4L * points : 128L);
@@ -87,15 +55,6 @@ final class SessionMetadataProjection {
 
   static SessionMetadataProjection taskSized() {
     return TASK_SIZED;
-  }
-
-  private static final SessionMetadataProjection LINEAGE =
-      new SessionMetadataProjection(
-          "tenant_id:S64,task_id:S36,record_version:I,genesis_digest:S64,genesis_bytes:I,graph_digest:S64,graph_bytes:I,content_state:S16",
-          1);
-
-  static SessionMetadataProjection forFinalTable(Table table) {
-    return table == Table.TASK_SESSION_LINEAGE ? LINEAGE : forTable(table);
   }
 
   static SessionMetadataProjection forTable(Table table) {

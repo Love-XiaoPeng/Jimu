@@ -793,7 +793,7 @@ public final class SessionQueryWork {
     else context.releaseScratch(extractionScratch);
   }
 
-  public void inspect(long operations) {
+  void inspect(long operations) {
     context.operation(operations);
   }
 
@@ -972,13 +972,6 @@ public final class SessionQueryWork {
 
   private void active() {
     if (completed) throw new IllegalStateException("Completed session transaction");
-  }
-
-  public long metadataReadVersion(SessionQueryContext query) {
-    context.operation(3);
-    active();
-    if (query != context) throw poisonProof(new IllegalStateException("Foreign metadata query"));
-    return generation;
   }
 
   public void mutation() {
