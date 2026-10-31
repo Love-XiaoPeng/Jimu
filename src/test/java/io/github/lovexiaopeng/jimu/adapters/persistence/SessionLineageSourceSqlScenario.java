@@ -18,6 +18,34 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 /** 新切片的独立MySQL夹具；不执行原受理/finish/response业务probe。 */
 public final class SessionLineageSourceSqlScenario {
+  private static final java.util.ArrayList<java.util.Map<String, Object>> TIMELINE =
+      new java.util.ArrayList<>();
+  private static long origin;
+
+  private static void event(String name, long start, Object detail) {
+    TIMELINE.add(
+        java.util.Map.of(
+            "name",
+            name,
+            "startMicros",
+            (start - origin) / 1000,
+            "elapsedMicros",
+            (System.nanoTime() - start) / 1000,
+            "detail",
+            String.valueOf(detail)));
+  }
+
+  private static java.util.Map<String, Object> fingerprint(Object value) {
+    String wire = Payloads.json(value);
+    return java.util.Map.of(
+        "bytes",
+        wire.getBytes(java.nio.charset.StandardCharsets.UTF_8).length,
+        "sha256",
+        Payloads.hash(wire),
+        "value",
+        wire);
+  }
+
   @org.apache.ibatis.plugin.Intercepts({
     @org.apache.ibatis.plugin.Signature(
         type = org.apache.ibatis.executor.statement.StatementHandler.class,
@@ -37,6 +65,16 @@ public final class SessionLineageSourceSqlScenario {
     String mode;
 
     public Object intercept(org.apache.ibatis.plugin.Invocation invocation) throws Throwable {
+      long start = System.nanoTime();
+      String label = invocation.getMethod().getName();
+      try {
+        return invoke(invocation);
+      } finally {
+        event("mybatis." + label, start, mode);
+      }
+    }
+
+    private Object invoke(org.apache.ibatis.plugin.Invocation invocation) throws Throwable {
       if (invocation.getTarget()
           instanceof org.apache.ibatis.executor.statement.StatementHandler handler) {
         var bound = handler.getBoundSql();
@@ -57,6 +95,7 @@ public final class SessionLineageSourceSqlScenario {
               };
           org.apache.ibatis.reflection.SystemMetaObject.forObject(bound).setValue("sql", sql);
         }
+        event("sql.prepare", System.nanoTime(), fingerprint(sql));
         return invocation.proceed();
       }
       String id = ((org.apache.ibatis.mapping.MappedStatement) invocation.getArgs()[0]).getId();
@@ -67,17 +106,38 @@ public final class SessionLineageSourceSqlScenario {
         if ("error".equals(mode)) throw new AssertionError("injected source Error");
       }
       Object result = invocation.proceed();
-      if (id.endsWith("SessionLineageMapper.sourceFact") && mode.startsWith("column:")) {
+      if (id.endsWith("SessionLineageMapper.sourceFact")) {
         @SuppressWarnings("unchecked")
         var rows = (List<java.util.Map<String, Object>>) result;
-        String key = mode.substring(7);
-        var row = rows.getFirst();
-        Object value = row.get(key);
-        row.put(
-            key,
-            value instanceof Number n
-                ? n.longValue() + 1
-                : value instanceof LocalDateTime date ? date.plusSeconds(1) : "!" + value);
+        var values = new java.util.ArrayList<java.util.Map<String, String>>();
+        for (var row : rows) {
+          var fields = new java.util.TreeMap<String, String>();
+          row.forEach((key, value) -> fields.put(key, String.valueOf(value)));
+          values.add(fields);
+        }
+        event("sql.sourceFact.result", System.nanoTime(), fingerprint(values));
+        if (mode.startsWith("column:")) {
+          String key = mode.substring(7);
+          var row = rows.getFirst();
+          Object value = row.get(key);
+          Object changed =
+              value instanceof Number n
+                  ? n.longValue() + 1
+                  : value instanceof LocalDateTime date ? date.plusSeconds(1) : "!" + value;
+          // 在实际SQL/Connector完整返回后注入原有单字段故障；不以手工Map替代SQL。
+          row.put(key, changed);
+          event(
+              "fixture.resultMutation",
+              System.nanoTime(),
+              fingerprint(
+                  java.util.Map.of(
+                      "key",
+                      key,
+                      "before",
+                      String.valueOf(value),
+                      "after",
+                      String.valueOf(changed))));
+        }
       }
       return result;
     }
@@ -94,10 +154,12 @@ public final class SessionLineageSourceSqlScenario {
   private static JdbcLedger view(JdbcLedger root) throws Exception {
     var method = JdbcLedger.class.getDeclaredMethod("queryView", long.class, QueryResources.class);
     method.setAccessible(true);
+    long start = System.nanoTime();
     var v =
         (JdbcLedger)
             method.invoke(root, System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
     v.queryContext().restrictLineage();
+    event("queryView", start, v.queryContext().deadlineNanos());
     return v;
   }
 
@@ -201,6 +263,7 @@ public final class SessionLineageSourceSqlScenario {
           Payloads.hash(graph),
           graph.length());
     }
+    boolean negatives = args.length > 1 && args[1].equals("negatives");
     var modes =
         args.length > 1
             ? new java.util.ArrayList<String>(
@@ -238,18 +301,28 @@ public final class SessionLineageSourceSqlScenario {
               "scope_created",
               "scope_retain",
               "history_retain")) modes.add("column:" + key);
+    if (negatives) modes.remove("graph");
+    if (args.length > 1 && args[1].equals("graph-once")) modes.retainAll(List.of("graph"));
+    int failures = 0;
     for (String mode : modes) {
+      TIMELINE.clear();
+      origin = System.nanoTime();
       fault.mode = mode;
       var v = view(root);
       var q = v.queryContext();
       var marker = new IllegalStateException("deliberate fixture rollback");
       Throwable failure = null;
+      Throwable assertion = null;
       try {
+        long transactionStart = System.nanoTime();
         v.sessionTransaction(
             () -> {
+              event("transaction.begin", transactionStart, "callback entered");
               var o = SessionQueryTransaction.current(q);
               o.admission();
+              long lockStart = System.nanoTime();
               v.sessionScopes.lock("tenant", List.of(ID, CALLER));
+              event("locks", lockStart, q.resources());
               var caller =
                   new SessionScopeRecords.Caller(
                       "tenant",
@@ -261,7 +334,9 @@ public final class SessionLineageSourceSqlScenario {
                       "SUCCEEDED",
                       created,
                       Payloads.hash(request));
+              long sourceStart = System.nanoTime();
               var source = v.sessionScopes.eligibility.sourceFacts(caller, ID, true);
+              event("sourceFacts", sourceStart, q.resources());
               check(o.stagedSource(caller, ID) == source, "genuine sourceFacts staged " + mode);
               if (mode.equals("request"))
                 db.update(
@@ -336,17 +411,50 @@ public final class SessionLineageSourceSqlScenario {
       } catch (Throwable e) {
         failure = e;
       }
-      if (mode.equals("valid") || mode.equals("fallback") || mode.equals("graph"))
-        check(failure == marker, "new SQL/old SQL completed before fixture rollback " + mode);
-      else {
-        check(failure != null && failure != marker, "fresh field mismatch rejected " + mode);
-        check(q.recordedFailure() != null, "failed read poisons Work " + mode);
-        check(
-            q.statements().keySet().stream()
-                .noneMatch(s -> s.endsWith("SessionLineageMapper.fact")),
-            "no full-reader fallback after new SQL " + mode);
+      try {
+        if (mode.equals("valid") || mode.equals("fallback") || mode.equals("graph"))
+          check(failure == marker, "new SQL/old SQL completed before fixture rollback " + mode);
+        else {
+          check(failure != null && failure != marker, "fresh field mismatch rejected " + mode);
+          check(q.recordedFailure() != null, "failed read poisons Work " + mode);
+          check(
+              !"SESSION_QUERY_TIMEOUT"
+                  .equals(
+                      q.recordedFailure()
+                              instanceof
+                              io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure task
+                          ? task.code()
+                          : null),
+              "expected fault rather than timeout " + mode);
+          check(
+              q.statements().keySet().stream()
+                  .anyMatch(s -> s.endsWith("SessionLineageMapper.sourceFactSizes")),
+              "new source SQL reached " + mode);
+          check(
+              q.statements().keySet().stream()
+                  .noneMatch(s -> s.endsWith("SessionLineageMapper.fact")),
+              "no full-reader fallback after new SQL " + mode);
+        }
+        check(q.scratchLive() == 65536, "all owners released " + mode);
+      } catch (Throwable e) {
+        assertion = e;
+        failures++;
       }
-      check(q.scratchLive() == 65536, "all owners released " + mode);
+      var receipt = new java.util.LinkedHashMap<String, Object>();
+      receipt.put("mode", mode);
+      receipt.put("success", assertion == null);
+      receipt.put("elapsedMicros", (System.nanoTime() - origin) / 1000);
+      receipt.put("deadlineNanos", q.deadlineNanos());
+      receipt.put("resources", q.resources().toString());
+      receipt.put("scratchLive", q.scratchLive());
+      receipt.put("firstError", String.valueOf(q.recordedFailure()));
+      receipt.put("caught", String.valueOf(failure));
+      receipt.put("assertion", String.valueOf(assertion));
+      receipt.put("statements", q.statements());
+      receipt.put("timeline", List.copyOf(TIMELINE));
+      System.out.println("SOURCE_CASE " + Payloads.json(receipt));
+      if (failure != null) failure.printStackTrace(System.out);
+      if (assertion != null) assertion.printStackTrace(System.out);
       System.out.println(
           "SOURCE_QUERY "
               + mode
@@ -355,6 +463,7 @@ public final class SessionLineageSourceSqlScenario {
               + " failure="
               + (failure == null ? "none" : failure.getClass().getSimpleName()));
     }
+    if (failures != 0) throw new AssertionError("independent scenario failures: " + failures);
     System.out.println("SOURCE_SQL_COMPLETE scoped fixture only; no whole business acceptance");
   }
 }
