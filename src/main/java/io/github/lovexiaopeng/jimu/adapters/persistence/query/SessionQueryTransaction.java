@@ -58,7 +58,8 @@ public final class SessionQueryTransaction {
     return null;
   }
 
-  static java.sql.Connection connection(SessionQueryContext context) {
+  /** 当前 Settings 的物理连接，只供同步持久化来源核验。 */
+  public static java.sql.Connection connection(SessionQueryContext context) {
     if (!TransactionSynchronizationManager.isSynchronizationActive()) return null;
     for (var sync : TransactionSynchronizationManager.getSynchronizations())
       if (sync instanceof ConnectionSettings settings && settings.context == context)

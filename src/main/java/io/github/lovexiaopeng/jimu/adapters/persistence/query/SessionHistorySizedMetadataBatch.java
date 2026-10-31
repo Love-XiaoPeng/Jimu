@@ -141,6 +141,12 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
   }
 
   private void connection(org.apache.ibatis.session.SqlSession session) {
+    verifyConnection(session, query);
+  }
+
+  /** 同一 MyBatis/Settings/Connector 来源；供内部同步 FINAL 消费复用。 */
+  public static void verifyConnection(
+      org.apache.ibatis.session.SqlSession session, SessionQueryContext query) {
     ops(query, 14); // configuration/environment/DS/resource/holder/connection and identity guards.
     var config = session.getConfiguration();
     var ds = config.getEnvironment().getDataSource();
