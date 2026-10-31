@@ -185,62 +185,6 @@ public final class SessionQueryInterceptor implements Interceptor {
                 throw failure.getCause();
               }
             });
-    Object result = invocation.proceed();
-    if (!context.metadataMeasuring()) return result;
-    try {
-      var command =
-          (org.apache.ibatis.mapping.MappedStatement)
-              SystemMetaObject.forObject(invocation.getTarget()).getValue("mappedStatement");
-      context.operation(18); // mapping guards, cursor wrapper/fields and cleanup stores
-      if (!(result instanceof org.apache.ibatis.cursor.Cursor<?> cursor)
-          || command.getResultMaps().size() != 1
-          || command.getResultMaps().getFirst().getType() != Map.class
-          || !command.getResultMaps().getFirst().getResultMappings().isEmpty())
-        throw new IllegalStateException("Unexpected metadata mapping");
-      return new org.apache.ibatis.cursor.Cursor<Object>() {
-        public boolean isOpen() {
-          return cursor.isOpen();
-        }
-
-        public boolean isConsumed() {
-          return cursor.isConsumed();
-        }
-
-        public int getCurrentIndex() {
-          return cursor.getCurrentIndex();
-        }
-
-        public void close() throws java.io.IOException {
-          cursor.close();
-        }
-
-        public java.util.Iterator<Object> iterator() {
-          context.operation(4);
-          var iterator = cursor.iterator();
-          return new java.util.Iterator<>() {
-            public boolean hasNext() {
-              context.operation(1);
-              return iterator.hasNext();
-            }
-
-            public Object next() {
-              context.operation(2);
-              Object row = iterator.next();
-              context.metadataMapped(row);
-              return row;
-            }
-          };
-        }
-      };
-    } catch (Throwable failure) {
-      if (result instanceof org.apache.ibatis.cursor.Cursor<?> cursor) {
-        try {
-          cursor.close();
-        } catch (Throwable cleanup) {
-          if (cleanup != failure) failure.addSuppressed(cleanup);
-        }
-      }
-      throw failure;
-    }
+    return invocation.proceed();
   }
 }

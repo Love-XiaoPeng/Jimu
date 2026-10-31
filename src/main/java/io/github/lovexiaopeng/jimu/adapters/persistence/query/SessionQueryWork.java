@@ -976,7 +976,6 @@ public final class SessionQueryWork {
 
   public void mutation() {
     active();
-    context.invalidateMetadata();
     invalidateEventHistoryLength();
     invalidateHistoryLength();
     if (sealed) throw new IllegalStateException("Session write after seal");
@@ -1275,7 +1274,6 @@ public final class SessionQueryWork {
   }
 
   void complete() {
-    context.invalidateMetadata();
     releaseLineageSource();
     lineageScope = null;
     lineageCaller = null;

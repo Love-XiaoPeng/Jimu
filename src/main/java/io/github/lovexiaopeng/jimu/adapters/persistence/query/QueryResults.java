@@ -44,39 +44,6 @@ public final class QueryResults {
                   if (state.delegate == null) throw new SQLException("ResultSet closed");
                   if (method.getName().equals("getMetaData") && state.owner != null)
                     return metadataView(state, context);
-                  if (state.result.metadataMeasuring()) {
-                    String name = method.getName();
-                    if (name.equals("wasNull")) {
-                      context.operation(1);
-                      return state.result.metadataNull();
-                    }
-                    if (name.equals("getObject")
-                        || name.equals("getString")
-                        || name.equals("getInt")
-                        || name.equals("getLong")
-                        || name.equals("getBoolean")) {
-                      context.operation(
-                          8); // getter dispatch, type/null guards, return and null flag
-                      Object scalar = state.result.metadataValue(args[0]);
-                      if (name.equals("getObject")) {
-                        if (args.length == 2
-                            && (!(args[1] instanceof Class<?> type)
-                                || (scalar != null && !type.isInstance(scalar))))
-                          throw new IllegalStateException("Changed metadata getter type");
-                        return scalar;
-                      }
-                      if (name.equals("getString") && (scalar == null || scalar instanceof String))
-                        return scalar;
-                      if (name.equals("getInt") && (scalar == null || scalar instanceof Integer))
-                        return scalar == null ? 0 : scalar;
-                      if (name.equals("getLong") && (scalar == null || scalar instanceof Long))
-                        return scalar == null ? 0L : scalar;
-                      if (name.equals("getBoolean")
-                          && (scalar == null || scalar instanceof Boolean))
-                        return scalar == null ? false : scalar;
-                      throw new IllegalStateException("Changed metadata getter");
-                    }
-                  }
                   Object value = method.invoke(state.delegate, args);
                   if (method.getName().equals("next")) {
                     context.remainingMillis();
@@ -96,7 +63,7 @@ public final class QueryResults {
                   return value;
                 } catch (InvocationTargetException failure) {
                   throw state.failure(failure.getCause());
-                } catch (SQLException | RuntimeException | Error failure) {
+                } catch (SQLException | RuntimeException failure) {
                   throw state.failure(failure);
                 }
               });
@@ -172,11 +139,7 @@ public final class QueryResults {
     }
 
     Throwable failure(Throwable failure) {
-      if (owner == null) return failure;
-      if (failure instanceof Error error) {
-        owner.poisonLineageSource(error);
-        return error;
-      }
+      if (owner == null || failure instanceof Error) return failure;
       var adapted =
           failure instanceof RuntimeException runtime
               ? runtime

@@ -152,52 +152,6 @@ public final class SessionQueryContext {
     void column(String label, Object value);
   }
 
-  /** 仅同步 metadata 游标共享同一新行的严格标量消费；不接收数值 hint。 */
-  public interface MetadataColumns {
-    void row();
-
-    void column(String label, Object value, long scalarBytes);
-
-    void mapped(Object row);
-
-    Object getter(Object column);
-
-    void invalidate();
-  }
-
-  public interface MetadataMeter {
-    MetadataColumns begin(String statement);
-  }
-
-  private MetadataMeter metadataMeter;
-
-  public MeterScope metadataMeter(MetadataMeter next) {
-    checkHealthy();
-    operation(4);
-    if (metadataMeter != null)
-      throw recordFailure(new IllegalStateException("Nested metadata cursor"));
-    metadataMeter = java.util.Objects.requireNonNull(next);
-    return () -> metadataMeter = null;
-  }
-
-  public boolean metadataMeasuring() {
-    return metadataMeter != null;
-  }
-
-  // 仅原 MyBatis cursor 的 next 返回值可在适配器内交接，数字/Map 字段不是长度来源。
-  public void metadataMapped(Object row) {
-    operation(2);
-    if (metadataResult == null)
-      throw recordFailure(new IllegalStateException("Missing metadata result"));
-    metadataResult.mapped(row);
-  }
-
-  private MetadataColumns metadataResult;
-
-  public void invalidateMetadata() {
-    if (metadataResult != null) metadataResult.invalidate();
-  }
-
   public interface MeterScope extends AutoCloseable {
     @Override
     void close();
@@ -444,45 +398,17 @@ public final class SessionQueryContext {
     }
 
     private final ColumnMeter additional = meter == null ? null : meter.begin();
-    private MetadataColumns metadata;
-    private boolean metadataNull;
-
-    public boolean metadataMeasuring() {
-      return metadata != null;
-    }
-
-    public Object metadataValue(Object column) {
-      if (metadata == null) throw recordFailure(new IllegalStateException("Missing metadata row"));
-      Object value = metadata.getter(column);
-      metadataNull = value == null;
-      return value;
-    }
-
-    public boolean metadataNull() {
-      return metadataNull;
-    }
 
     private Result(String statement) {
       this.statement = statement;
-      if (metadataMeter != null) {
-        operation(3);
-        metadata = metadataMeter.begin(statement);
-        metadataResult = metadata;
-      }
     }
 
     public void close() {
-      if (metadata != null) {
-        metadata.invalidate();
-        if (metadataResult == metadata) metadataResult = null;
-        metadata = null;
-      }
       releaseScratch(this);
     }
 
     public void row() {
       operation(1);
-      if (metadata != null) metadata.row();
     }
 
     public void column(String label, Object value) {
@@ -498,19 +424,7 @@ public final class SessionQueryContext {
     }
 
     private void columnMeasured(String label, Object value) {
-      if (metadata != null) {
-        long scalar = metadataScalarBytes(value);
-        if (metered) {
-          operation(1L + label.length());
-          long size = 8L + utf8(label) + scalar;
-          bytes = Math.addExact(bytes, size);
-          groupCounters()[1] = Math.addExact(groupCounters()[1], size);
-          batch = Math.addExact(batch, size);
-          retainScratch(this, Math.multiplyExact(batch, 3));
-          if (bytes > byteLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
-        }
-        metadata.column(label, value, scalar);
-      } else if (metered) {
+      if (metered) {
         operation(1);
         operation(label.length());
         if (value instanceof String text) operation(text.length());
@@ -526,7 +440,7 @@ public final class SessionQueryContext {
     }
   }
 
-  /** 原单列 SQL 长度资格；未启用 metadata scope 时保持原计量路径。 */
+  /** 只有此单列结果收集长度；普通Result无新增逐行/逐列条件或遍历。 */
   private final class SqlLengthResult extends Result {
     private final String rawStatement;
     private int rows, columns;
@@ -573,58 +487,6 @@ public final class SessionQueryContext {
       size = null;
       super.close();
     }
-  }
-
-  private long metadataScalarBytes(Object value) {
-    if (value == null) {
-      operation(1);
-      return 1;
-    }
-    if (value instanceof String text) {
-      long size = 0;
-      for (int i = 0; i < text.length(); i++) {
-        operation(1);
-        char c = text.charAt(i);
-        if (c < 128) size++;
-        else if (c < 2048) size += 2;
-        else if (Character.isHighSurrogate(c)) {
-          if (++i >= text.length() || !Character.isLowSurrogate(text.charAt(i)))
-            throw recordFailure(new TaskFailure(409, "SESSION_HISTORY_CORRUPT"));
-          operation(1);
-          size += 4;
-        } else if (Character.isLowSurrogate(c))
-          throw recordFailure(new TaskFailure(409, "SESSION_HISTORY_CORRUPT"));
-        else size += 3;
-      }
-      return size;
-    }
-    if (value instanceof Boolean flag) {
-      operation(1);
-      return flag ? 4 : 5;
-    }
-    if (value instanceof java.time.LocalDateTime time) {
-      operation(7);
-      int year = time.getYear();
-      if ((year >= 0) & (year <= 9999)) return 27;
-      Object temporary = new Object();
-      retainScratch(temporary, 2048);
-      try {
-        operation(27);
-        return metadataScalarBytes(UTC.format(time));
-      } finally {
-        releaseScratch(temporary);
-      }
-    }
-    if (!(value instanceof Integer) && !(value instanceof Long))
-      throw recordFailure(new TaskFailure(409, "SESSION_HISTORY_CORRUPT"));
-    long number = ((Number) value).longValue(), size = number < 0 ? 1 : 0;
-    if (number > 0) number = -number;
-    do {
-      operation(1);
-      size++;
-      number /= 10;
-    } while (number != 0);
-    return size;
   }
 
   private static int utf8(String value) {

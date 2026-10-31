@@ -22,8 +22,6 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
   private final Object slotsOwner = new Object();
   private final boolean finalMode;
   private final io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork finalOwner;
-  private SessionQueryContext.MeterScope scalarScope;
-  private FinalColumns measured;
   private boolean closed, iterated, delivered, ended;
   private int count, generation, valueCount;
 
@@ -31,15 +29,14 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
       SessionQueryContext query,
       SessionMetadataProjection projection,
       Supplier<Cursor<Map<String, Object>>> load) {
-    this(query, projection, load, false, null);
+    this(query, projection, load, false);
   }
 
   private SessionCursorMetadataBatch(
       SessionQueryContext query,
       SessionMetadataProjection projection,
       Supplier<Cursor<Map<String, Object>>> load,
-      boolean finalMode,
-      SessionMetadataAccounting.Table finalTable) {
+      boolean finalMode) {
     this.query = query;
     this.projection = projection;
     this.finalMode = finalMode;
@@ -50,20 +47,7 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
             : null;
     try {
       if (finalMode) checkFinal();
-      if (query != null)
-        query.retainScratch(
-            this,
-            projection.retainedBytes
-                + (finalMode && finalOwner != null ? 1024L + 24L * projection.columns.size() : 0));
-      if (finalMode && finalOwner != null) {
-        query.operation(
-            28L
-                + 5L
-                    * projection.columns
-                        .size()); // collector/three arrays, zeroing, cleanup, fields and scope
-        measured = new FinalColumns(finalTable);
-        scalarScope = query.metadataMeter(measured);
-      }
+      if (query != null) query.retainScratch(this, projection.retainedBytes);
       if (query != null && !finalMode)
         query.retainScratch(slotsOwner, 256L + 16L * projection.columns.size());
       cursor = load.get();
@@ -101,7 +85,7 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
             ? SessionMetadataProjection.taskSized()
             : SessionMetadataProjection.forTable(table)))
       throw new IllegalArgumentException("Different metadata projection");
-    try (var batch = new SessionCursorMetadataBatch(query, projection, load, true, table)) {
+    try (var batch = new SessionCursorMetadataBatch(query, projection, load, true)) {
       return batch.measure(table);
     }
   }
@@ -119,7 +103,6 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
         if (!next) break;
         current = source.next();
         checkFinal();
-        if (measured != null) measured.consume(current);
         SessionMetadataScalars.operation(query, 5);
         rows = Math.addExact(rows, 1);
         if (projection.maximumRows > 0 && rows > projection.maximumRows)
@@ -130,11 +113,9 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
         String category = null, state = null;
         long amount = 0;
         Long actual = null;
-        int scalarIndex = 0;
         for (var column : projection.columns) {
-          int measuredIndex = scalarIndex++;
           SessionMetadataScalars.operation(
-              query, measured == null ? 2 : 4); // lookup/presence and measured index handoff.
+              query, 2); // lookup and presence local; no slots/index/write.
           var value = current.get(column.name());
           boolean present;
           if (value == null) {
@@ -144,14 +125,10 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
           SessionMetadataScalars.operation(query, 3);
           if (present) recognized++;
           long scalar;
-          if (measured != null) measured.verify(measuredIndex, value);
           if (value == null) {
             if (!column.nullable()) throw JdbcSessionRecords.corrupt();
             if (!present) continue;
-            scalar =
-                measured == null
-                    ? SessionMetadataScalars.bytes(null, query)
-                    : measured.bytes(measuredIndex);
+            scalar = SessionMetadataScalars.bytes(null, query);
           } else if (column.kind() == 'T' || column.kind() == 'M' || column.kind() == 'X') {
             SessionMetadataScalars.operation(query, 8);
             if (!projection.taskSized || !(value instanceof Long || value instanceof Integer))
@@ -175,10 +152,7 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
                   default -> false;
                 };
             if (!valid) throw JdbcSessionRecords.corrupt();
-            scalar =
-                measured == null
-                    ? SessionMetadataScalars.bytes(value, query)
-                    : measured.bytes(measuredIndex);
+            scalar = SessionMetadataScalars.bytes(value, query);
           }
           SessionMetadataScalars.operation(query, 3); // two exact additions and store.
           rowBytes =
@@ -212,153 +186,12 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
         current = null;
       }
       checkFinal();
-      if (measured != null) measured.completed();
       SessionMetadataScalars.operation(query, 9); // scalar receiver, six fields, return and clear.
       return new SessionMetadataAccounting.FinalTable(
           rows, bytes, 0, null, reservations, reservation);
     } catch (RuntimeException | Error failure) {
       fail(failure);
       throw failure;
-    }
-  }
-
-  /** 只在本 FINAL 游标内保留一行长度；原 mapper 交接精确行引用，不从 Map 取长度。 */
-  private final class FinalColumns
-      implements SessionQueryContext.MetadataMeter, SessionQueryContext.MetadataColumns {
-    private final SessionMetadataAccounting.Table finalTable;
-
-    FinalColumns(SessionMetadataAccounting.Table table) {
-      this.finalTable = table;
-    }
-
-    private final long[] sizes = new long[projection.columns.size()];
-    private final Object[] values = new Object[projection.columns.size()];
-    private final String[] labels = new String[projection.columns.size()];
-    private int getters;
-    private Object mapped;
-    private int columns;
-    private boolean begun, active, consumed, invalidated;
-
-    public SessionQueryContext.MetadataColumns begin(String statement) {
-      checkFinal();
-      String prefix =
-          "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.metadata";
-      String name = finalTable.name();
-      query.operation(12L + prefix.length() + 6L * name.length());
-      if (begun || !statement.startsWith(prefix)) throw JdbcSessionRecords.corrupt();
-      int at = prefix.length();
-      if (projection.taskSized) {
-        query.operation(12);
-        if (!statement.regionMatches(at, "TaskSized", 0, 9) || statement.length() != at + 9)
-          throw JdbcSessionRecords.corrupt();
-      } else {
-        boolean capital = true;
-        for (int i = 0; i < name.length(); i++) {
-          char c = name.charAt(i);
-          if (c == '_') {
-            capital = true;
-            continue;
-          }
-          if (at >= statement.length()
-              || statement.charAt(at++) != (capital ? c : Character.toLowerCase(c)))
-            throw JdbcSessionRecords.corrupt();
-          capital = false;
-        }
-        if (at != statement.length()) throw JdbcSessionRecords.corrupt();
-      }
-      begun = true;
-      return this;
-    }
-
-    public void row() {
-      checkFinal();
-      query.operation(5);
-      if (invalidated || (active && !consumed)) throw JdbcSessionRecords.corrupt();
-      query.operation(values.length + 2L);
-      java.util.Arrays.fill(values, null);
-      mapped = null;
-      columns = 0;
-      getters = 0;
-      active = true;
-      consumed = false;
-    }
-
-    public void column(String label, Object value, long bytes) {
-      query.operation(5L + label.length());
-      if (!active
-          || columns >= sizes.length
-          || !projection.columns.get(columns).name().equals(label))
-        throw JdbcSessionRecords.corrupt();
-      query.operation(3);
-      sizes[columns] = bytes;
-      values[columns] = value;
-      labels[columns++] = label;
-    }
-
-    public Object getter(Object column) {
-      query.operation(6);
-      if (!active || consumed || getters >= columns) throw JdbcSessionRecords.corrupt();
-      boolean match;
-      if (column instanceof Integer index) match = index == getters + 1;
-      else if (column == labels[getters]) match = true;
-      else if (column instanceof String label) {
-        query.operation(label.length());
-        match = labels[getters].equals(label);
-      } else match = false;
-      if (!match) throw JdbcSessionRecords.corrupt();
-      return values[getters++];
-    }
-
-    void verify(int index, Object value) {
-      query.operation(4);
-      var original = values[index];
-      if (value == original) return;
-      query.operation(4);
-      if (value instanceof Long number
-          && original instanceof Long old
-          && number.longValue() == old.longValue()) return;
-      if (value instanceof Integer number
-          && original instanceof Integer old
-          && number.intValue() == old.intValue()) return;
-      throw JdbcSessionRecords.corrupt();
-    }
-
-    public void mapped(Object row) {
-      checkFinal();
-      query.operation(5);
-      if (!active || mapped != null || columns != sizes.length || getters != columns)
-        throw JdbcSessionRecords.corrupt();
-      mapped = row;
-    }
-
-    void consume(Object row) {
-      checkFinal();
-      query.operation(6);
-      if (!active || consumed || mapped != row || columns != sizes.length)
-        throw JdbcSessionRecords.corrupt();
-      consumed = true;
-      mapped = null;
-    }
-
-    void completed() {
-      query.operation(5);
-      if (!begun || !invalidated || (columns != 0 && !consumed)) throw JdbcSessionRecords.corrupt();
-    }
-
-    long bytes(int index) {
-      query.operation(2);
-      if (!active || !consumed) throw JdbcSessionRecords.corrupt();
-      return sizes[index];
-    }
-
-    public void invalidate() {
-      // Repeated close must not repeat prepaid array clearing or leave row/label aliases resident.
-      if (invalidated) return;
-      java.util.Arrays.fill(values, null);
-      java.util.Arrays.fill(labels, null);
-      active = false;
-      invalidated = true;
-      mapped = null;
     }
   }
 
@@ -609,10 +442,6 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     current = null;
     slots = null;
     source = null;
-    if (measured != null) measured.invalidate();
-    measured = null;
-    if (scalarScope != null) scalarScope.close();
-    scalarScope = null;
     var prior = cursor;
     cursor = null;
     try {
