@@ -57,6 +57,7 @@ final class MapperSessionMetadataAccounting
       finalLock;
   private String finalTenant, finalTask;
   private Object finalOwner;
+  private Map<String, Object> finalParameters;
   private boolean finalActive, finalClosed;
 
   private void finalCheck() {
@@ -127,27 +128,28 @@ final class MapperSessionMetadataAccounting
   private long readingVersion;
 
   private FinalTable readFinal(Table table) {
-    finalQuery.operation(23); // args/command/handler dispatch, fields/version and finally clears
+    // 原逐表参数构造/两次Map取身份改为作用域内一次；保留命令查找、分派及finally清理。
+    finalQuery.operation(16);
     if (readingTable != null) throw new IllegalStateException("Nested FINAL result");
     finalQuery.operation(6); // current task Map still holds the identities bound at finalization
     if (s(task, "tenant_id") != finalTenant || s(task, "id") != finalTask)
       throw new IllegalStateException("Changed FINAL task identity");
     finalWork.requireProjectionLocks(finalQuery, finalLock);
+    if (finalParameters == null) {
+      // 外层owner已保留Map及三条引用；初始化及close/失败断引用全部在当前Work预付。
+      finalQuery.operation(22);
+      finalParameters = Map.of("query", finalQuery, "tenant", finalTenant, "taskId", finalTask);
+    }
     var session = records.mapperSession();
     var command =
         session
             .getConfiguration()
-            .getMappedStatement(
-                "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper."
-                    + operation(table));
+            .getMappedStatement(SessionMetadataProjection.forFinalTable(table).statement);
     readingTable = table;
     readingCommand = command;
     try {
       readingVersion = finalWork.metadataReadVersion(finalQuery);
-      session.select(
-          command.getId(),
-          Map.of("query", finalQuery, "tenant", s(task, "tenant_id"), "taskId", s(task, "id")),
-          this);
+      session.select(command.getId(), finalParameters, this);
       if (readingVersion != finalWork.metadataReadVersion(finalQuery))
         throw new IllegalStateException("Write before FINAL result closed");
       if (readingSummary == null) throw new IllegalStateException("Missing FINAL summary");
@@ -277,7 +279,8 @@ final class MapperSessionMetadataAccounting
       // summary512 + balance/row overlap1024 + fixed-point/formatter2048 + closure/locals512.
       if (finalQuery != null) {
         finalQuery.operation(22);
-        finalQuery.retainScratch(finalOwner, 4120); // original key and both task identity aliases
+        // 原4120 + 不可变三参数Map/entry保守128 + 字段及query/tenant/task别名32。
+        finalQuery.retainScratch(finalOwner, 4280);
         if (finalWork != null && JdbcSessionScopes.lineage(task)) {
           finalTenant = s(task, "tenant_id");
           finalTask = s(task, "id");
@@ -293,6 +296,7 @@ final class MapperSessionMetadataAccounting
         finalActive = false;
         finalClosed = true;
         finalOwner = null;
+        finalParameters = null;
         finalQuery = null;
         finalWork = null;
         finalLock = null;
@@ -304,6 +308,7 @@ final class MapperSessionMetadataAccounting
       finalFailure(failure);
       if (finalQuery != null && finalOwner != null) finalQuery.releaseScratch(finalOwner);
       finalOwner = null;
+      finalParameters = null;
       finalQuery = null;
       finalWork = null;
       finalLock = null;

@@ -50,7 +50,8 @@ public final class SessionFinalMapperSqlScenario {
     var mappers = LedgerMapperSessions.create(source);
     var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
     // The first call deliberately starts static initialization inside its actual Work.
-    boolean slots = args.length > 3 && args[3].equals("slot-source");
+    boolean allTables = args.length > 3 && args[3].equals("all-final-source");
+    boolean slots = allTables || (args.length > 3 && args[3].equals("slot-source"));
     boolean sourceOnly = args.length > 3 && args[3].equals("source-only");
     for (String population :
         slots
@@ -111,7 +112,8 @@ public final class SessionFinalMapperSqlScenario {
             var accounting = new MapperSessionMetadataAccounting(records, task, true);
             try (var scope = accounting.finalization()) {
               for (var table : Table.values()) {
-                if (table == Table.TASK || table == Table.TASK_SESSION_HISTORY) continue;
+                if (!allTables && (table == Table.TASK || table == Table.TASK_SESSION_HISTORY))
+                  continue;
                 totals.put(table.name(), accounting.finalTable(table));
               }
             }
