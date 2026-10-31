@@ -25,6 +25,156 @@ import org.apache.ibatis.session.SqlSession;
 import org.junit.jupiter.api.Test;
 
 public class SessionHistorySizedMetadataBatchTest {
+  private static final String LANGUAGE =
+      " lang=\"io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistoryMetadataLanguageDriver\"";
+
+  @Test
+  void frozenSecondFinalHistoryKeepsSummaryAndRemovesStaticScan() throws Exception {
+    // R37 原 observer ordinal=2 的完整 history 行；无 SQL/provider/权限缓存。
+    String tenant = "tenant-a", task = "0ccef5d9-1380-420d-be9a-7d23d7e495cb";
+    long[] costs = new long[2];
+    SessionMetadataAccounting.FinalTable expected = null;
+    for (int pinned = 0; pinned < 2; pinned++) {
+      var f = new Fixture();
+      var query = q();
+      var configuration = config(f, pinned == 0 ? xml().replace(LANGUAGE, "") : xml());
+      var values = row(304L);
+      values.put("tenant_id", tenant);
+      values.put("task_id", task);
+      values.put("history_version", 5);
+      values.put(
+          "binding_digest", "8f1637c630973253968efee96cbf8640de5f12c836ad8a1e2bfc86d34134f3d9");
+      values.put("next_seq", 1L);
+      values.put("body_bytes", 2923L);
+      values.put("metadata_bytes", 0L);
+      values.put("reserved_bytes", 8388608L);
+      values.put("held_bytes", 8388608L);
+      values.put("retain_until", java.time.LocalDateTime.parse("2026-11-07T14:25:27.752398"));
+      var result =
+          f.transaction.required(
+              query,
+              () -> {
+                SessionQueryTransaction.current(query).locked(tenant, task);
+                return SessionHistorySizedMetadataBatch.measureFinal(
+                    session(f, query, configuration, List.of(values), tenant), query, tenant, task);
+              });
+      if (expected != null) assertEquals(expected, result);
+      expected = result;
+      costs[pinned] = query.resources().operations();
+      assertEquals(65536, query.scratchLive());
+      assertEquals(1, f.base.commits);
+    }
+    assertEquals(SessionHistorySizedMetadataBatch.SQL.length() + 28L, costs[0] - costs[1]);
+    System.out.println(
+        "HISTORY_FINAL_FROZEN ordinary="
+            + costs[0]
+            + " initialized="
+            + costs[1]
+            + " saved="
+            + (costs[0] - costs[1]));
+  }
+
+  @Test
+  void initializedSourceRemovesOnlyStaticWorkForEmptyAndPopulatedFinalHistory() throws Exception {
+    for (boolean populated : List.of(false, true)) {
+      long[] costs = new long[2];
+      SessionMetadataAccounting.FinalTable prior = null;
+      for (int pinned = 0; pinned < 2; pinned++) {
+        var f = new Fixture();
+        var query = q();
+        var configuration = config(f, pinned == 0 ? xml().replace(LANGUAGE, "") : xml());
+        var source =
+            configuration
+                .getMappedStatement(SessionHistorySizedMetadataBatch.STATEMENT)
+                .getSqlSource();
+        assertEquals(pinned == 1, SessionHistoryMetadataLanguageDriver.owns(source));
+        var result =
+            owned(
+                f,
+                query,
+                () ->
+                    SessionHistorySizedMetadataBatch.measureFinal(
+                        session(f, query, configuration, populated ? List.of(row(27L)) : List.of()),
+                        query,
+                        TENANT,
+                        TASK));
+        if (prior != null) assertEquals(prior, result);
+        prior = result;
+        costs[pinned] = query.resources().operations();
+        assertEquals(65536, query.scratchLive());
+        assertEquals(1, f.base.commits);
+      }
+      assertEquals(SessionHistorySizedMetadataBatch.SQL.length() + 28L, costs[0] - costs[1]);
+      System.out.println(
+          "HISTORY_FINAL_SOURCE populated="
+              + populated
+              + " ordinary="
+              + costs[0]
+              + " initialized="
+              + costs[1]
+              + " saved="
+              + (costs[0] - costs[1]));
+    }
+  }
+
+  @Test
+  void initializedSourceKeepsParametersImmutableAndRejectsChangedMapping() throws Exception {
+    var f = new Fixture();
+    var configuration = config(f, xml());
+    var source =
+        configuration.getMappedStatement(SessionHistorySizedMetadataBatch.STATEMENT).getSqlSource();
+    var firstArgs = Map.of("tenant", TENANT, "taskId", TASK);
+    var secondArgs = Map.of("tenant", "another", "taskId", "new-task");
+    assertSame(firstArgs, source.getBoundSql(firstArgs).getParameterObject());
+    assertSame(secondArgs, source.getBoundSql(secondArgs).getParameterObject());
+    assertThrows(
+        UnsupportedOperationException.class,
+        () -> source.getBoundSql(firstArgs).getParameterMappings().clear());
+    var changed = config(f, xml().replace("tenant_id=#{tenant}", "tenant_id=#{foreign}"));
+    assertFalse(
+        SessionHistoryMetadataLanguageDriver.owns(
+            changed.getMappedStatement(SessionHistorySizedMetadataBatch.STATEMENT).getSqlSource()));
+    var query = q();
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            owned(
+                f,
+                query,
+                () ->
+                    SessionHistorySizedMetadataBatch.measureFinal(
+                        session(f, query, changed, List.of(row(27L))), query, TENANT, TASK)));
+    assertEquals(0, f.base.commits);
+    assertEquals(1, f.base.rollbacks);
+    assertEquals(65536, query.scratchLive());
+  }
+
+  @Test
+  void mapperParsedInsideWorkKeepsOriginalValidationAndPaysDispatch() throws Exception {
+    var f = new Fixture();
+    var query = q();
+    owned(
+        f,
+        query,
+        () -> {
+          Configuration configuration;
+          try {
+            configuration = config(f, xml());
+          } catch (Exception failure) {
+            throw new IllegalStateException(failure);
+          }
+          assertFalse(
+              SessionHistoryMetadataLanguageDriver.owns(
+                  configuration
+                      .getMappedStatement(SessionHistorySizedMetadataBatch.STATEMENT)
+                      .getSqlSource()));
+          return SessionHistorySizedMetadataBatch.measureFinal(
+              session(f, query, configuration, List.of(row(27L))), query, TENANT, TASK);
+        });
+    assertEquals(1, f.base.commits);
+    assertEquals(65536, query.scratchLive());
+  }
+
   private static final class Fixture {
     final SessionQueryTransactionTest.Fixture base = new SessionQueryTransactionTest.Fixture();
     String charset = "utf8mb4";
@@ -135,6 +285,15 @@ public class SessionHistorySizedMetadataBatchTest {
 
   private SqlSession session(
       Fixture f, SessionQueryContext q, Configuration c, List<Map<String, Object>> inputs) {
+    return session(f, q, c, inputs, TENANT);
+  }
+
+  private SqlSession session(
+      Fixture f,
+      SessionQueryContext q,
+      Configuration c,
+      List<Map<String, Object>> inputs,
+      String expectedTenant) {
     return proxy(
         SqlSession.class,
         (p, m, a) ->
@@ -144,7 +303,7 @@ public class SessionHistorySizedMetadataBatchTest {
               case "selectList" -> {
                 assertEquals(SessionHistorySizedMetadataBatch.STATEMENT, a[0]);
                 assertSame(q, ((Map<?, ?>) a[1]).get("query"));
-                assertEquals(TENANT, ((Map<?, ?>) a[1]).get("tenant"));
+                assertEquals(expectedTenant, ((Map<?, ?>) a[1]).get("tenant"));
                 var keys =
                     inputs.isEmpty()
                         ? List.<String>of()

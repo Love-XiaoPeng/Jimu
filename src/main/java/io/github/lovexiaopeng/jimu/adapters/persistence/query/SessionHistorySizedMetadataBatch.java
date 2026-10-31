@@ -206,17 +206,20 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
         || !command.getResultMaps().getFirst().getResultMappings().isEmpty()
         || !(command.getSqlSource() instanceof org.apache.ibatis.scripting.defaults.RawSqlSource))
       throw corrupt();
-    ops(query, 4); // BoundSql production and getter/size before SQL comparison.
-    var bound = command.getBoundSql(args);
-    ops(query, 2L + SQL.length());
-    if (!SQL.equals(bound.getSql()) || bound.getParameterMappings().size() != 2) throw corrupt();
-    ops(query, 10 + "tenant".length() + "taskId".length());
-    if (!"tenant".equals(bound.getParameterMappings().get(0).getProperty())
-        || !"taskId".equals(bound.getParameterMappings().get(1).getProperty())
-        || bound.getParameterMappings().get(0).getMode()
-            != org.apache.ibatis.mapping.ParameterMode.IN
-        || bound.getParameterMappings().get(1).getMode()
-            != org.apache.ibatis.mapping.ParameterMode.IN) throw corrupt();
+    ops(query, 3); // actual command's source lookup and private immutable-source identity.
+    if (!SessionHistoryMetadataLanguageDriver.owns(command.getSqlSource())) {
+      ops(query, 4); // BoundSql production and getter/size before SQL comparison.
+      var bound = command.getBoundSql(args);
+      ops(query, 2L + SQL.length());
+      if (!SQL.equals(bound.getSql()) || bound.getParameterMappings().size() != 2) throw corrupt();
+      ops(query, 10 + "tenant".length() + "taskId".length());
+      if (!"tenant".equals(bound.getParameterMappings().get(0).getProperty())
+          || !"taskId".equals(bound.getParameterMappings().get(1).getProperty())
+          || bound.getParameterMappings().get(0).getMode()
+              != org.apache.ibatis.mapping.ParameterMode.IN
+          || bound.getParameterMappings().get(1).getMode()
+              != org.apache.ibatis.mapping.ParameterMode.IN) throw corrupt();
+    }
     ops(query, 3); // select handoff, row reference assignment, row-count guard.
     rows = session.selectList(STATEMENT, args); // normal interceptor/Result metering remains.
     connection(session);
