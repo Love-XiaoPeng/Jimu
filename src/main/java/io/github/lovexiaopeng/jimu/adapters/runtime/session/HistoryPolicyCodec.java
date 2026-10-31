@@ -12,7 +12,7 @@ final class HistoryPolicyCodec {
       "45785fbe6fce0cd72d532ace9b3b1ef59231ac61e3e46884ee2a9b4aa96c76ff";
   private final SessionContracts contracts;
   private final SchemaContract schema;
-  private final String wire, rawDigest;
+  private final String wire, rawDigest, policyDigest;
 
   HistoryPolicyCodec(SessionContracts contracts) throws IOException {
     this.contracts = contracts;
@@ -32,9 +32,8 @@ final class HistoryPolicyCodec {
         new SchemaContract(
             SessionContracts.checked(
                 "storage/history-policy-refs-v2.schema.json", d.path("schema_sha256").asText()));
-    byte[] policy =
-        SessionContracts.checked(
-            "storage/history-policy-v5.json", d.path("policy_sha256").asText());
+    policyDigest = d.path("policy_sha256").asText();
+    byte[] policy = SessionContracts.checked("storage/history-policy-v5.json", policyDigest);
     if (!java.util.Arrays.equals(policy, contracts.binding().getBytes(StandardCharsets.UTF_8)))
       throw new IllegalArgumentException("History logical policy bytes");
     rawDigest = d.path("wire_sha256").asText();
@@ -45,12 +44,17 @@ final class HistoryPolicyCodec {
     var parsed = contracts.json(wire, 4096);
     schema.validate(parsed);
     if (!parsed.path("schema_sha256").asText().equals(d.path("schema_sha256").asText())
-        || !parsed.path("policy_sha256").asText().equals(d.path("policy_sha256").asText())
+        || !parsed.path("policy_sha256").asText().equals(policyDigest)
         || !parsed
             .path("catalog_digest")
             .asText()
             .equals(contracts.json(contracts.binding(), 8192).path("catalogDigest").asText()))
       throw new IllegalArgumentException("History policy wire pins");
+  }
+
+  /** 原资源已逐字节对齐逻辑binding；只保留已核验的pin，不新增编码或散列。 */
+  String policyDigest() {
+    return policyDigest;
   }
 
   String wire(SessionQueryContext query) {

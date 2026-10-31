@@ -24,7 +24,7 @@ final class JdbcSessionRecords {
   final SessionContracts v2 = new SessionContracts(2);
   final SessionContracts v3 = new SessionContracts(3);
   final SessionContracts v4 = new SessionContracts(4);
-  final SessionContracts v5 = new SessionContracts(5);
+  final SessionContracts v5;
   final io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionLineageContracts lineage =
       new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionLineageContracts();
   JdbcSessionScopes scopes;
@@ -161,11 +161,12 @@ final class JdbcSessionRecords {
     if (query == null || !query.lineage()) return Payloads.hash(raw);
     try {
       query.operation(1);
-      if (samePolicyIdentity(raw, contract(task).binding())) {
+      var policy = contract(task);
+      if (samePolicyIdentity(raw, policy.binding())) {
         var owner =
             io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
                 query);
-        if (owner != null) return owner.policyHash(raw, () -> policyHashRaw(raw));
+        if (owner != null) return owner.policyHash(raw, () -> localPolicyHash(policy, raw));
       }
       return policyHashRaw(raw);
     } catch (RuntimeException failure) {
@@ -195,7 +196,7 @@ final class JdbcSessionRecords {
         var owner =
             io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
                 query);
-        if (owner != null) return owner.policyHash(raw, () -> policyHashRaw(raw));
+        if (owner != null) return owner.policyHash(raw, () -> localPolicyHash(v5, raw));
       }
       return policyHashRaw(raw);
     } catch (RuntimeException failure) {
@@ -357,6 +358,11 @@ final class JdbcSessionRecords {
     return left == right;
   }
 
+  private String localPolicyHash(SessionContracts contract, String raw) {
+    query.operation(2); // 版本身份分派、原资源摘要交接；Work原policyScratch持有引用与64字符摘要。
+    return contract == v5 ? contract.lineageBindingDigest() : policyHashRaw(raw);
+  }
+
   private String policyHashRaw(String raw) {
     Object temporary = null;
     byte[] encoded = null;
@@ -402,6 +408,9 @@ final class JdbcSessionRecords {
       JdbcTemplate db,
       io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query,
       org.mybatis.spring.SqlSessionTemplate mapperSession) {
+    // 原codec初始化仍在原位置；新增的pin引用存储先计费，不新建摘要或编码缓冲。
+    if (query != null) query.operation(1);
+    v5 = new SessionContracts(5);
     this.db = db;
     this.query = query;
     this.mapperSession = mapperSession;

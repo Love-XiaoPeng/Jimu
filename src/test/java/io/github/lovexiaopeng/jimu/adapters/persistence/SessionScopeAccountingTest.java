@@ -30,15 +30,17 @@ class SessionScopeAccountingTest {
     var f = new SessionQueryTransactionTest.Fixture();
     String local = r.v5.binding();
     long full = 1L + local.length() + local.getBytes(StandardCharsets.UTF_8).length;
+    long initialized = q.resources().operations();
+    assertEquals(1, initialized);
     assertEquals(Payloads.hash(local), r.scopeHash(local));
-    assertEquals(full, q.resources().operations());
+    assertEquals(full, q.resources().operations() - initialized);
     for (int i = 0; i < 2; i++)
       f.transaction.required(
           q,
           () -> {
             long start = q.resources().operations();
             assertEquals(Payloads.hash(local), r.scopeHash(local));
-            assertEquals(full + 1, q.resources().operations() - start);
+            assertEquals(4, q.resources().operations() - start);
             start = q.resources().operations();
             r.scopeHash(local);
             assertEquals(2, q.resources().operations() - start);
@@ -56,7 +58,7 @@ class SessionScopeAccountingTest {
           for (int i = 0; i < 2; i++) {
             long before = q.resources().operations();
             r.scopeHash(local);
-            assertEquals(full + 1, q.resources().operations() - before);
+            assertEquals(4, q.resources().operations() - before);
           }
           return null;
         });

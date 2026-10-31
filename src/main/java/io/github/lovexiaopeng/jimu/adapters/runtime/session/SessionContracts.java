@@ -154,6 +154,11 @@ public final class SessionContracts {
     return binding;
   }
 
+  /** 仅v5本地不可变逻辑策略的初始化证明；不证明任何数据库副本或当前权限。 */
+  public String lineageBindingDigest() {
+    return historyPolicy.policyDigest();
+  }
+
   /** Database representation only; binding() remains the exact full logical policy. */
   public String historySnapshot(
       io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext query) {

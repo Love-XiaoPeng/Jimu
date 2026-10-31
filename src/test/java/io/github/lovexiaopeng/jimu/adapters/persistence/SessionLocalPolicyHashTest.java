@@ -34,21 +34,67 @@ class SessionLocalPolicyHashTest {
             long start = q.resources().operations();
             assertEquals(expected, records.policyHash(TASK, local));
             long creation = q.resources().operations() - start;
-            assertEquals(
-                local.length() + local.getBytes(java.nio.charset.StandardCharsets.UTF_8).length + 2,
-                creation);
+            assertEquals(4, creation);
             long live = q.scratchLive();
             assertEquals(expected, proof.hash(proof.binding()));
             assertEquals(start + creation + 2, q.resources().operations());
             assertEquals(live, q.scratchLive());
             long beforeForeign = q.resources().operations();
             assertEquals(expected, proof.hash(new String(local)));
-            assertEquals(creation - 1, q.resources().operations() - beforeForeign);
+            assertEquals(
+                local.length() + local.getBytes(java.nio.charset.StandardCharsets.UTF_8).length + 1,
+                q.resources().operations() - beforeForeign);
             return null;
           });
       assertEquals(65536, q.scratchLive());
     }
     assertEquals(2, f.commits);
+  }
+
+  @Test
+  void constructionInsideWorkPaysForRetainingTheAlreadyVerifiedResourcePin() {
+    var q = query();
+    var f = new SessionQueryTransactionTest.Fixture();
+    f.transaction.required(
+        q,
+        () -> {
+          long start = q.resources().operations();
+          var records = new JdbcSessionRecords(new JdbcTemplate(), q);
+          assertEquals(1, q.resources().operations() - start);
+          String raw = records.v5.binding();
+          assertEquals(Payloads.hash(raw), records.v5.lineageBindingDigest());
+          assertEquals(records.v5.lineageBindingDigest(), records.policyHash(TASK, raw));
+          assertTrue(q.completedWork().isEmpty()); // no new encoding/hash at initialization or use
+          assertTrue(q.scratchLive() > 65536); // existing policy owner holds the borrowed digest
+          return null;
+        });
+    assertEquals(65536, q.scratchLive());
+  }
+
+  @Test
+  void eachNewSqlSnapshotKeepsIndependentProofAndRejectsChangedPins() {
+    var q = query();
+    var records = new JdbcSessionRecords(new JdbcTemplate(), q);
+    var f = new SessionQueryTransactionTest.Fixture();
+    f.transaction.required(
+        q,
+        () -> {
+          records.policyHash(TASK, records.v5.binding());
+          String wire = records.v5.historySnapshot(null);
+          long start = q.resources().operations();
+          assertTrue(records.v5.historySnapshotMatches(new String(wire), q));
+          long proof = q.resources().operations() - start;
+          assertTrue(records.v5.historySnapshotMatches(new String(wire), q));
+          assertEquals(2 * proof, q.resources().operations() - start);
+          assertEquals(2L * wire.length(), q.completedWork().get("encode"));
+          assertEquals(2L * wire.length(), q.completedWork().get("hash"));
+          org.junit.jupiter.api.Assertions.assertFalse(
+              records.v5.historySnapshotMatches(wire.replace("refs.v2", "refs.v1"), q));
+          org.junit.jupiter.api.Assertions.assertFalse(
+              records.v5.historySnapshotMatches(wire + " ", q));
+          return null;
+        });
+    assertEquals(65536, q.scratchLive());
   }
 
   @Test
