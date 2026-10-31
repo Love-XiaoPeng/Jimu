@@ -195,6 +195,132 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     }
   }
 
+  /** Fold the original SELECT while its sole Result owner and current row are live. */
+  static SessionMetadataAccounting.FinalTable measureResultSet(
+      SessionQueryContext query,
+      SessionMetadataAccounting.Table table,
+      java.sql.ResultSet source,
+      org.apache.ibatis.mapping.MappedStatement command,
+      boolean nullsPresent)
+      throws java.sql.SQLException {
+    var projection = SessionMetadataProjection.forFinalTable(table);
+    query.operation(16); // projection/metadata/results/locals and cleanup stores
+    if (projection == null || projection.taskSized) throw JdbcSessionRecords.corrupt();
+    // Preserve the same conservative two-row workspace, before any scalar/getter allocation.
+    // The original finalization owner already holds the summary/outer aliases.
+    query.retainScratch(source, projection.retainedBytes);
+    try (var result = query.result(command.getId())) {
+      var metadata = source.getMetaData();
+      query.operation(3);
+      if (metadata.getColumnCount() != projection.columns.size())
+        throw JdbcSessionRecords.corrupt();
+      for (int i = 0; i < projection.columns.size(); i++) {
+        var column = projection.columns.get(i);
+        query.operation(
+            9L + column.name().length()); // ordinal/label/type read and exact label comparison
+        if (!column.name().equals(metadata.getColumnLabel(i + 1))
+            || !jdbcType(column.kind(), metadata.getColumnType(i + 1)))
+          throw JdbcSessionRecords.corrupt();
+      }
+      long rows = 0, bytes = 0, reservations = 0;
+      SessionMetadataAccounting.HistoryReservation reservation = null;
+      while (true) {
+        query.operation(2); // remaining/next; no row getter until the actual next succeeds
+        query.remainingMillis();
+        if (!source.next()) break;
+        result.row();
+        query.operation(8); // row count/bound, byte header, four reservation locals
+        rows = Math.addExact(rows, 1);
+        if (projection.maximumRows > 0 && rows > projection.maximumRows)
+          throw JdbcSessionRecords.corrupt();
+        long rowBytes =
+            io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1.ROW_HEADER_BYTES;
+        String category = null, state = null;
+        long amount = 0;
+        Long actual = null;
+        for (int i = 0; i < projection.columns.size(); i++) {
+          query.operation(8); // descriptor/ordinal/getter/normalization/type dispatch
+          var column = projection.columns.get(i);
+          Object value = source.getObject(i + 1);
+          if (value instanceof java.sql.Timestamp time) value = time.toLocalDateTime();
+          boolean valid =
+              value == null
+                  ? column.nullable()
+                  : switch (column.kind()) {
+                    case 'S' ->
+                        value instanceof String text && boundedFinal(text, column.points(), query);
+                    case 'I' -> value instanceof Integer;
+                    case 'L' -> value instanceof Long;
+                    case 'B' -> value instanceof Boolean;
+                    case 'D' -> value instanceof java.time.LocalDateTime;
+                    default -> false;
+                  };
+          if (!valid) throw JdbcSessionRecords.corrupt();
+          // One strict scalar traversal supplies SQL transport and business metadata.
+          long scalar = result.metadataColumn(column, value);
+          query.operation(4); // NULL presence semantics and exact header/byte additions
+          if (value != null || nullsPresent)
+            rowBytes =
+                Math.addExact(
+                    rowBytes,
+                    Math.addExact(
+                        io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
+                            .FIELD_HEADER_BYTES,
+                        scalar));
+          if (table == SessionMetadataAccounting.Table.RESERVATION) {
+            query.operation(2); // fixed ordinal switch; no repeated label dispatch
+            switch (i) {
+              case 4 -> category = (String) value;
+              case 5 -> amount = ((Number) value).longValue();
+              case 6 -> actual = (Long) value;
+              case 9 -> state = (String) value;
+              default -> {}
+            }
+          }
+        }
+        query.operation(3);
+        bytes = Math.addExact(bytes, rowBytes);
+        if (table == SessionMetadataAccounting.Table.RESERVATION) {
+          query.operation(8L + "SESSION_HISTORY_STORAGE".length());
+          if ("SESSION_HISTORY_STORAGE".equals(category)) {
+            reservations = Math.addExact(reservations, 1);
+            reservation = new SessionMetadataAccounting.HistoryReservation(amount, actual, state);
+          }
+        }
+      }
+      query.checkHealthy();
+      query.operation(9); // summary and return; result releases only after row locals are dead
+      return new SessionMetadataAccounting.FinalTable(
+          rows, bytes, 0, null, reservations, reservation);
+    }
+  }
+
+  private static boolean boundedFinal(String text, int points, SessionQueryContext query) {
+    query.operation(4);
+    int units = text.length();
+    if (units <= points) return true;
+    if (units > 2 * points) return false;
+    query.operation(units);
+    return text.codePointCount(0, units) <= points;
+  }
+
+  private static boolean jdbcType(char kind, int type) {
+    return switch (kind) {
+      case 'S' ->
+          type == java.sql.Types.VARCHAR
+              || type == java.sql.Types.CHAR
+              || type == java.sql.Types.LONGVARCHAR;
+      case 'I' -> type == java.sql.Types.INTEGER;
+      case 'L' -> type == java.sql.Types.BIGINT;
+      case 'B' ->
+          type == java.sql.Types.BIT
+              || type == java.sql.Types.BOOLEAN
+              || type == java.sql.Types.TINYINT;
+      case 'D' -> type == java.sql.Types.TIMESTAMP;
+      default -> false;
+    };
+  }
+
   private void fail(Throwable failure) {
     poison(failure);
     try {

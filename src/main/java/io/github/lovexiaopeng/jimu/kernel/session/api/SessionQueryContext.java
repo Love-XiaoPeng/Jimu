@@ -339,6 +339,21 @@ public final class SessionQueryContext {
     return new SqlLengthResult(statement, rawStatement);
   }
 
+  /** Immutable column name data; contains no row length, owner, or reusable proof. */
+  public abstract static class MetadataLabel {
+    private final String name;
+    private final int bytes;
+
+    protected MetadataLabel(String name) {
+      this.name = java.util.Objects.requireNonNull(name);
+      bytes = utf8(name);
+    }
+
+    public final String name() {
+      return name;
+    }
+  }
+
   /** 仅内部子类可扩展；私有构造器保持普通调用方无法构造/派生Result。 */
   public class Result implements AutoCloseable {
     private final String statement;
@@ -423,6 +438,34 @@ public final class SessionQueryContext {
       }
     }
 
+    /** 同步 FINAL 当前列：一次严格标量消费，同时计 SQL 传输字节并返回业务标量长度。 */
+    public long metadataColumn(MetadataLabel descriptor, Object value) {
+      String label = descriptor.name;
+      String priorStatement = activeStatement, priorColumn = activeColumn;
+      activeStatement = statement;
+      activeColumn = label;
+      try {
+        operation(6); // dispatch, strict scalar result and both accounting handoffs
+        long scalar = metadataScalarBytes(value);
+        if (metered) {
+          operation(2); // immutable descriptor lookup; no repeated label encoding
+          long size = Math.addExact(8L + descriptor.bytes, scalar);
+          bytes = Math.addExact(bytes, size);
+          groupCounters()[1] = Math.addExact(groupCounters()[1], size);
+          batch = Math.addExact(batch, size);
+          retainScratch(this, Math.multiplyExact(batch, 3));
+          if (bytes > byteLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
+        }
+        if (additional != null) additional.column(label, value);
+        return scalar;
+      } catch (RuntimeException failure) {
+        throw recordFailure(failure);
+      } finally {
+        activeStatement = priorStatement;
+        activeColumn = priorColumn;
+      }
+    }
+
     private void columnMeasured(String label, Object value) {
       if (metered) {
         operation(1);
@@ -487,6 +530,58 @@ public final class SessionQueryContext {
       size = null;
       super.close();
     }
+  }
+
+  private long metadataScalarBytes(Object value) {
+    if (value == null) {
+      operation(1);
+      return 1;
+    }
+    if (value instanceof String text) {
+      long size = 0;
+      for (int i = 0; i < text.length(); i++) {
+        operation(1);
+        char c = text.charAt(i);
+        if (c < 128) size++;
+        else if (c < 2048) size += 2;
+        else if (Character.isHighSurrogate(c)) {
+          if (++i >= text.length() || !Character.isLowSurrogate(text.charAt(i)))
+            throw recordFailure(new TaskFailure(409, "SESSION_HISTORY_CORRUPT"));
+          operation(1);
+          size += 4;
+        } else if (Character.isLowSurrogate(c))
+          throw recordFailure(new TaskFailure(409, "SESSION_HISTORY_CORRUPT"));
+        else size += 3;
+      }
+      return size;
+    }
+    if (value instanceof Boolean flag) {
+      operation(1);
+      return flag ? 4 : 5;
+    }
+    if (value instanceof java.time.LocalDateTime time) {
+      operation(7);
+      int year = time.getYear();
+      if ((year >= 0) & (year <= 9999)) return 27;
+      Object temporary = new Object();
+      retainScratch(temporary, 2048);
+      try {
+        operation(27);
+        return metadataScalarBytes(UTC.format(time));
+      } finally {
+        releaseScratch(temporary);
+      }
+    }
+    if (!(value instanceof Integer) && !(value instanceof Long))
+      throw recordFailure(new TaskFailure(409, "SESSION_HISTORY_CORRUPT"));
+    long number = ((Number) value).longValue(), size = number < 0 ? 1 : 0;
+    if (number > 0) number = -number;
+    do {
+      operation(1);
+      size++;
+      number /= 10;
+    } while (number != 0);
+    return size;
   }
 
   private static int utf8(String value) {
