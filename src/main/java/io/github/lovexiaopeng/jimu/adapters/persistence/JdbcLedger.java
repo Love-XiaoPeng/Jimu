@@ -335,7 +335,7 @@ public final class JdbcLedger
           var task = lineageOwner(identity, caller);
           String target = sessions.lineage.input(body.read(end));
           String output = lineages.trace(identity.tenant(), caller, target);
-          sessionScopes.require(task);
+          sessionScopes.ensure(task);
           query.remainingMillis();
           return output;
         },
@@ -449,7 +449,7 @@ public final class JdbcLedger
           var input = sessionScopes.contracts(task).input(body.read(deadlineNanos));
           sessionRemainingMillis();
           var found = sessions.priorSearch(task, input, this::sessionRemainingMillis);
-          sessionScopes.require(task);
+          sessionScopes.ensure(task);
           sessionRemainingMillis();
           return found.output();
         },
@@ -1879,7 +1879,7 @@ public final class JdbcLedger
         query.checkHealthy();
       }
       baseAccess(row);
-      if (JdbcSessionScopes.task(row)) sessionScopes.require(row);
+      if (JdbcSessionScopes.task(row)) sessionScopes.ensure(row);
     } catch (RuntimeException failure) {
       if (failure instanceof TaskFailure denial
           && JdbcSessionScopes.task(row)

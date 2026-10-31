@@ -148,7 +148,7 @@ final class MapperSessionScopeReadProofs implements SessionScopeReadProofs.Proof
   }
 
   public String authority() {
-    return s(records.scopes.require(task).row(), "authority_digest");
+    return records.scopes.requireProof(task).scope().digest();
   }
 
   public SessionScopeReadProofs.Cut cut() {

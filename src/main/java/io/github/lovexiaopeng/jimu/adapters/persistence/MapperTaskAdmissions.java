@@ -400,7 +400,7 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
 
     public void createLineage(String task, String parent) {
       ledger.lineages.create(identity.tenant(), task, parent);
-      ledger.sessionScopes.require(
+      ledger.sessionScopes.ensure(
           SessionAcceptedTaskRows.lineage(sql, ledger.queryContext(), identity.tenant(), task));
     }
 

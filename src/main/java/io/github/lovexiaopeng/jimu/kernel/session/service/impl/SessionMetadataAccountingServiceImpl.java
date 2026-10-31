@@ -87,6 +87,32 @@ public final class SessionMetadataAccountingServiceImpl
     String content = null;
     int histories = 0, reservations = 0;
     for (var table : SessionMetadataAccounting.Table.values()) {
+      var summary = records.finalTable(table);
+      if (summary != null) {
+        headroom = Math.addExact(headroom, Math.multiplyExact(summary.rows(), cleanupBytes(table)));
+        total = Math.addExact(total, summary.bytes());
+        histories = Math.addExact(histories, Math.toIntExact(summary.histories()));
+        reservations = Math.addExact(reservations, Math.toIntExact(summary.reservations()));
+        if (summary.history() != null) {
+          var history = summary.history();
+          content = history.content();
+          if (!java.util.List.of("PRESENT", "PURGED").contains(content)) throw corrupt();
+          old = history.metadata();
+          body = history.body();
+          reserved = history.reserved();
+          held = history.held();
+          if ("PRESENT".equals(content))
+            total = Math.subtractExact(total, history.metadataScalarBytes());
+        }
+        if (summary.reservation() != null) {
+          var reservation = summary.reservation();
+          amount = reservation.amount();
+          actual = reservation.actual();
+          reservationState = reservation.state();
+        }
+        summary = null;
+        continue;
+      }
       try (var batch = records.batch(table)) {
         for (var row : batch) {
           headroom =
@@ -147,7 +173,7 @@ public final class SessionMetadataAccountingServiceImpl
           || actual != total
           || reserved != SessionHistoryPolicyV1.TASK_RESERVE_BYTES
           || !"SETTLED".equals(reservationState)) throw corrupt();
-      var check = records.readBack();
+      var check = records.accountAndReadBack(old, total);
       if (check.metadata() != total
           || check.body() != 0
           || check.reserved() != reserved
@@ -176,8 +202,7 @@ public final class SessionMetadataAccountingServiceImpl
               : SessionHistoryPolicyV1.OPEN_METADATA_BYTES;
       if (next > cap || (!closing && Math.addExact(next, headroom) > cap)) throw limit();
       if (next == value) {
-        if (old != value) records.account(value);
-        var check = records.readBack();
+        var check = records.accountAndReadBack(old, value);
         if (check.metadata() != value
             || check.body() != body
             || check.reserved() != reserved
@@ -191,6 +216,20 @@ public final class SessionMetadataAccountingServiceImpl
       value = next;
     }
     throw corrupt();
+  }
+
+  private static long cleanupBytes(SessionMetadataAccounting.Table table) {
+    return switch (table) {
+      case TASK -> SessionHistoryPolicyV1.TASK_CLEANUP_BYTES;
+      case STEP,
+              INVOCATION,
+              INVOCATION_SESSION_SEARCH,
+              INVOCATION_SESSION_LINEAGE_TRACE,
+              TASK_SESSION_LINEAGE ->
+          SessionHistoryPolicyV1.STEP_CLEANUP_BYTES;
+      case MODEL_DISPATCH, SESSION_PUBLIC_EVENT -> SessionHistoryPolicyV1.DISPATCH_CLEANUP_BYTES;
+      default -> 0;
+    };
   }
 
   private static long number(Object value) {

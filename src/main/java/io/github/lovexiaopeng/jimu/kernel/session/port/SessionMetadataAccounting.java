@@ -65,6 +65,34 @@ public interface SessionMetadataAccounting {
     };
   }
 
+  record HistoryScalars(
+      long metadata,
+      long metadataScalarBytes,
+      long body,
+      long reserved,
+      long held,
+      String content) {}
+
+  record HistoryReservation(long amount, Long actual, String state) {}
+
+  record FinalTable(
+      long rows,
+      long bytes,
+      long histories,
+      HistoryScalars history,
+      long reservations,
+      HistoryReservation reservation) {}
+
+  /** Optional synchronous scalar consumption; null leaves the legacy batch entirely unread. */
+  default FinalTable finalTable(Table table) {
+    return null;
+  }
+
+  default Balance accountAndReadBack(long observed, long desired) {
+    if (observed != desired) account(desired);
+    return readBack();
+  }
+
   record Balance(
       long metadata,
       long body,

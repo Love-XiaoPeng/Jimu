@@ -320,7 +320,7 @@ public final class SessionJointProjectionScenario {
           () -> {
             v.sessionScopes.lock("tenant-a", id);
             var task = v.locked("tenant-a", id);
-            v.sessionScopes.require(task);
+            v.sessionScopes.ensure(task);
             var full = v.sessions.history(task, true);
             var narrow = v.sessions.acceptedEventHistory(task, true);
             check(
@@ -349,7 +349,7 @@ public final class SessionJointProjectionScenario {
     v.sessionTransaction(
         () -> {
           var task = v.fenced(lease, true);
-          v.sessionScopes.require(task);
+          v.sessionScopes.ensure(task);
           // 实际commit fence更新和末端retained fence；不注入合成scope或空回调。
           v.todoCommitFence(lease);
           v.sessions.history(task, true);

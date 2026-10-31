@@ -18,11 +18,11 @@ class SessionFinalAccountingTest {
   private final SessionMetadataAccountingServiceImpl service =
       new SessionMetadataAccountingServiceImpl();
 
-  static final class Records implements SessionMetadataAccounting {
+  static class Records implements SessionMetadataAccounting {
     final EnumMap<Table, List<Map<String, Object>>> tables = new EnumMap<>(Table.class);
     final EnumMap<Table, Integer> scans = new EnumMap<>(Table.class);
     final Map<String, Object> history = new LinkedHashMap<>();
-    boolean optimized = true, badRead, purged;
+    boolean optimized = true, badRead, purged, summarized;
     int updates, readbacks;
 
     Records(long old, int padding) {
@@ -68,6 +68,42 @@ class SessionFinalAccountingTest {
                     }
                   })
           .toList();
+    }
+
+    public FinalTable finalTable(Table table) {
+      if (!summarized) return null;
+      scans.merge(table, 1, Integer::sum);
+      var rows = tables.getOrDefault(table, List.of());
+      long bytes = 0, histories = 0, reservations = 0;
+      HistoryScalars history = null;
+      HistoryReservation reservation = null;
+      for (var row : rows) {
+        bytes += 32;
+        for (var value : row.values())
+          bytes +=
+              8
+                  + io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.scalarBytes(
+                      value);
+        if (table == Table.TASK_SESSION_HISTORY) {
+          histories++;
+          history =
+              new HistoryScalars(
+                  (Long) row.get("metadata_bytes"),
+                  io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.scalarBytes(
+                      row.get("metadata_bytes")),
+                  (Long) row.get("body_bytes"),
+                  (Long) row.get("reserved_bytes"),
+                  (Long) row.get("held_bytes"),
+                  (String) row.get("content_state"));
+        }
+        if (table == Table.RESERVATION && "SESSION_HISTORY_STORAGE".equals(row.get("category"))) {
+          reservations++;
+          reservation =
+              new HistoryReservation(
+                  (Long) row.get("amount"), (Long) row.get("actual"), (String) row.get("state"));
+        }
+      }
+      return new FinalTable(rows.size(), bytes, histories, history, reservations, reservation);
     }
 
     public long metadataBytes() {
@@ -142,5 +178,95 @@ class SessionFinalAccountingTest {
           "SESSION_HISTORY_CORRUPT",
           assertThrows(TaskFailure.class, () -> service.account(bad, true)).code());
     }
+  }
+
+  @Test
+  void finalSummariesMatchFallbackAndRetainCapacityCardinalityAndFreshReadback() {
+    for (long old : List.of(0L, 9L, 9999L, 65536L)) {
+      for (int padding : List.of(0, 900, 9950, 58000)) {
+        var fallback = new Records(old, padding);
+        var summary = new Records(old, padding);
+        summary.summarized = true;
+        service.account(fallback, true);
+        service.account(summary, true);
+        assertEquals(fallback.metadataBytes(), summary.metadataBytes());
+        assertEquals(1, summary.updates);
+        assertEquals(1, summary.readbacks);
+        summary.updates = 0;
+        service.account(summary, true);
+        assertEquals(0, summary.updates);
+        assertEquals(2, summary.readbacks);
+      }
+    }
+    for (String mode :
+        List.of("capacity", "readback", "duplicate-history", "duplicate-reservation")) {
+      var summary = new Records(9, mode.equals("capacity") ? 65536 : 0);
+      summary.summarized = true;
+      if (mode.equals("readback")) summary.badRead = true;
+      if (mode.equals("duplicate-history"))
+        summary.tables.put(
+            SessionMetadataAccounting.Table.TASK_SESSION_HISTORY,
+            List.of(summary.history, summary.history));
+      if (mode.equals("duplicate-reservation")) {
+        var row = summary.tables.get(SessionMetadataAccounting.Table.RESERVATION).getFirst();
+        summary.tables.put(SessionMetadataAccounting.Table.RESERVATION, List.of(row, row));
+      }
+      assertThrows(TaskFailure.class, () -> service.account(summary, true));
+    }
+  }
+
+  @Test
+  void summarizedPurgedBalancesAndEveryReadbackFieldRemainMandatory() {
+    for (int mismatch = 0; mismatch < 8; mismatch++) {
+      final int field = mismatch;
+      var records =
+          new Records(9, 0) {
+            @Override
+            public Balance readBack() {
+              var b = super.readBack();
+              return new Balance(
+                  b.metadata() + (field == 0 ? 1 : 0),
+                  b.body() + (field == 1 ? 1 : 0),
+                  b.reserved() + (field == 2 ? 1 : 0),
+                  b.held() + (field == 3 ? 1 : 0),
+                  b.amount() + (field == 4 ? 1 : 0),
+                  field == 5 ? Long.valueOf(1) : b.actual(),
+                  field == 6 ? "SETTLED" : b.reservationState(),
+                  field == 7 ? "PURGED" : b.content());
+            }
+          };
+      records.summarized = true;
+      assertThrows(TaskFailure.class, () -> service.account(records, true));
+    }
+    var records =
+        new Records(0, 0) {
+          @Override
+          public Balance readBack() {
+            readbacks++;
+            return new Balance(
+                metadataBytes(),
+                0,
+                8388608,
+                metadataBytes(),
+                8388608,
+                metadataBytes(),
+                "SETTLED",
+                "PURGED");
+          }
+        };
+    records.summarized = true;
+    records.history.put("content_state", "PURGED");
+    records.history.put("body_bytes", 0L);
+    var reservation = records.tables.get(SessionMetadataAccounting.Table.RESERVATION).getFirst();
+    reservation.put("state", "SETTLED");
+    for (int i = 0; i < 4; i++) {
+      long value = service.metadata(records, true, 0);
+      records.history.put("metadata_bytes", value);
+      records.history.put("held_bytes", value);
+      reservation.put("actual", value);
+    }
+    service.account(records, true);
+    assertEquals(0, records.updates);
+    assertEquals(1, records.readbacks);
   }
 }

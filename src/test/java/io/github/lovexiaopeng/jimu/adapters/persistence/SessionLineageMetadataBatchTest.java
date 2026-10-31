@@ -150,4 +150,31 @@ class SessionLineageMetadataBatchTest {
       assertEquals(20, SessionQueryContext.scalarBytes(Long.MIN_VALUE));
     }
   }
+
+  @Test
+  void finalLineageHasExactEightScalarsAndReleasesOnWrongShapeOrError() {
+    var q = query();
+    var result = SessionLineageMetadataBatch.measureFinal(q, this::rows);
+    long expected = 32;
+    try (var batch = new SessionLineageMetadataBatch(query(), this::rows)) {
+      for (var v : batch.iterator().next().values()) expected += 8 + batch.scalarBytes(v);
+    }
+    assertEquals(expected, result.bytes());
+    assertEquals(1, result.rows());
+    assertEquals(65536, q.scratchLive());
+    for (String mode : List.of("extra", "missing", "type", "surrogate")) {
+      var values = rows();
+      switch (mode) {
+        case "extra" -> values.getFirst().put("unknown", null);
+        case "missing" -> values.getFirst().remove("task_id");
+        case "type" -> values.getFirst().put("graph_bytes", 1L);
+        default -> values.getFirst().put("tenant_id", "\ud800");
+      }
+      var bad = query();
+      assertThrows(
+          RuntimeException.class,
+          () -> SessionLineageMetadataBatch.measureFinal(bad, () -> values));
+      assertEquals(65536, bad.scratchLive());
+    }
+  }
 }

@@ -178,4 +178,51 @@ class SessionTaskSizedMetadataTest {
     }
     assertTrue(rows.closed);
   }
+
+  @Test
+  void finalTaskUsesOnlyNamedLengthsAndDoesNotRewriteDriverMap() {
+    var p = SessionMetadataProjection.taskSized();
+    for (String mode : List.of("full", "absent", "null", "maximum")) {
+      var values = row();
+      for (var c : p.columns) {
+        if (mode.equals("absent") && c.nullable()) values.remove(c.name());
+        else if (mode.equals("null") && c.nullable()) values.put(c.name(), null);
+        else if (mode.equals("maximum") && length(c))
+          values.put(
+              c.name(), c.kind() == 'T' ? 65535L : c.kind() == 'M' ? 16777215L : 4294967295L);
+      }
+      var before = new LinkedHashMap<>(values);
+      long expected = 32;
+      try (var batch =
+          new SessionCursorMetadataBatch(
+              query(), p, () -> new Rows(List.of(new LinkedHashMap<>(values))))) {
+        for (var v : batch.iterator().next().values()) expected += 8 + batch.scalarBytes(v);
+      }
+      var q = query();
+      var result =
+          SessionCursorMetadataBatch.measureFinal(
+              q,
+              io.github.lovexiaopeng.jimu.kernel.session.port.SessionMetadataAccounting.Table.TASK,
+              p,
+              () -> new Rows(List.of(values)));
+      assertEquals(expected, result.bytes());
+      assertEquals(before, values);
+      assertEquals(65536, q.scratchLive());
+    }
+    for (Object bad : new Object[] {-1L, 4294967296L, "4", 4.0}) {
+      var values = row();
+      values.put("material_snapshot", bad);
+      var q = query();
+      assertThrows(
+          RuntimeException.class,
+          () ->
+              SessionCursorMetadataBatch.measureFinal(
+                  q,
+                  io.github.lovexiaopeng.jimu.kernel.session.port.SessionMetadataAccounting.Table
+                      .TASK,
+                  p,
+                  () -> new Rows(List.of(values))));
+      assertEquals(65536, q.scratchLive());
+    }
+  }
 }

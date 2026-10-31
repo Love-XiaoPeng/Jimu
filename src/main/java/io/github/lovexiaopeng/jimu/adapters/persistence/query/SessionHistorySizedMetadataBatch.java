@@ -78,6 +78,31 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
       SessionQueryContext query,
       String tenant,
       String task) {
+    return load(session, query, tenant, task, false);
+  }
+
+  private SessionMetadataAccounting.FinalTable summary;
+
+  public static SessionMetadataAccounting.FinalTable measureFinal(
+      org.apache.ibatis.session.SqlSession session,
+      SessionQueryContext query,
+      String tenant,
+      String task) {
+    try (var batch = load(session, query, tenant, task, true)) {
+      batch.open();
+      ops(query, 3);
+      var result = batch.summary;
+      batch.summary = null;
+      return result;
+    }
+  }
+
+  private static SessionHistorySizedMetadataBatch load(
+      org.apache.ibatis.session.SqlSession session,
+      SessionQueryContext query,
+      String tenant,
+      String task,
+      boolean finalMode) {
     // The lookup itself is new work: pay before consulting the transaction owner.
     ops(query, 10);
     var owner = SessionQueryTransaction.currentOwner();
@@ -100,7 +125,8 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
       query.retainScratch(batch, RETAINED_BYTES + EXTRA_BYTES);
       query.releaseScratch(BOOTSTRAP);
       bootstrap = false;
-      batch.read(session, tenant, task);
+      if (finalMode) batch.open();
+      batch.read(session, tenant, task, finalMode);
       return batch;
     } catch (RuntimeException failure) {
       if (batch != null) throw batch.fail(failure);
@@ -160,7 +186,8 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
         || (results != null && !"utf8mb4".equalsIgnoreCase(results))) throw corrupt();
   }
 
-  private void read(org.apache.ibatis.session.SqlSession session, String tenant, String task) {
+  private void read(
+      org.apache.ibatis.session.SqlSession session, String tenant, String task, boolean finalMode) {
     connection(session);
     ops(query, 26); // map/entries/config/statement/cache/command/result-map/static-source guards.
     var args = new java.util.HashMap<String, Object>();
@@ -195,6 +222,10 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
     connection(session);
     ops(query, 4); // current owner, query identity, dispatch and row-count comparison.
     if (SessionQueryTransaction.current(query) != owner || rows.size() > 1) throw corrupt();
+    if (finalMode) {
+      measureRows(tenant, task);
+      return;
+    }
     for (var row : rows) {
       ops(query, 3L + tenant.length() + task.length());
       if (!tenant.equals(row.get("tenant_id")) || !task.equals(row.get("task_id"))) throw corrupt();
@@ -238,6 +269,90 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
           row.containsKey("cleanup_receipt") ? COLUMNS.size() : COLUMNS.size() - 1;
       if (row.size() != expectedColumns) throw corrupt();
     }
+  }
+
+  private void measureRows(String tenant, String task) {
+    ops(query, 9);
+    long bytes = 0, metadata = 0, metadataSize = 0, body = 0, reserved = 0, held = 0;
+    String content = null;
+    for (var row : rows) {
+      ops(query, 3L + tenant.length() + task.length());
+      if (!tenant.equals(row.get("tenant_id")) || !task.equals(row.get("task_id"))) throw corrupt();
+      bytes =
+          Math.addExact(
+              bytes,
+              io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
+                  .ROW_HEADER_BYTES);
+      int recognized = 0;
+      for (int i = 0; i < COLUMNS.size(); i++) {
+        ops(query, 5);
+        Object value = row.get(COLUMNS.get(i));
+        boolean present = value != null;
+        if (i == 13 && value == null) {
+          ops(query, 15L + 2L * "cleanup_receipt".length());
+          present = row.containsKey("cleanup_receipt");
+        }
+        if (present) recognized++;
+        long scalar;
+        if (i == 4) {
+          ops(query, 10);
+          if (!(value instanceof Integer || value instanceof Long)) throw corrupt();
+          scalar = ((Number) value).longValue();
+          if (scalar < 0 || scalar > 65535) throw corrupt();
+        } else {
+          boolean valid =
+              switch (i) {
+                case 0 -> bounded(value, 64);
+                case 1 -> bounded(value, 36);
+                case 2, 3 -> value instanceof Integer;
+                case 5 -> bounded(value, 64);
+                case 6 -> bounded(value, 16);
+                case 7, 8, 9, 10, 11 -> value instanceof Long;
+                case 12 -> value instanceof java.time.LocalDateTime;
+                case 13 -> value == null || value instanceof String text && text.length() <= 65535;
+                default -> false;
+              };
+          if (!valid) throw corrupt();
+          if (!present) continue;
+          scalar = scalarValue(value, true);
+        }
+        ops(query, 3);
+        bytes =
+            Math.addExact(
+                bytes,
+                Math.addExact(
+                    io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
+                        .FIELD_HEADER_BYTES,
+                    scalar));
+        ops(query, 2); // private selector and primitive/string handoff, no second Map read.
+        switch (i) {
+          case 6 -> content = (String) value;
+          case 8 -> body = (Long) value;
+          case 9 -> {
+            metadata = (Long) value;
+            metadataSize = scalar;
+          }
+          case 10 -> reserved = (Long) value;
+          case 11 -> held = (Long) value;
+          default -> {}
+        }
+      }
+      ops(query, 3);
+      if (recognized != row.size()) throw corrupt();
+    }
+    ops(query, 18);
+    summary =
+        new SessionMetadataAccounting.FinalTable(
+            rows.size(),
+            bytes,
+            rows.size(),
+            rows.isEmpty()
+                ? null
+                : new SessionMetadataAccounting.HistoryScalars(
+                    metadata, metadataSize, body, reserved, held, content),
+            0,
+            null);
+    rows = null; // finalization's scalar owner has received it before the raw batch is refunded.
   }
 
   private void open() {
@@ -351,6 +466,10 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
       if (length.owner() != this) throw corrupt();
       return length.bytes();
     }
+    return scalarValue(value, false);
+  }
+
+  private long scalarValue(Object value, boolean finalScan) {
     if (value instanceof String s) {
       long size = 0;
       for (int i = 0; i < s.length(); i++) {
@@ -382,9 +501,11 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
       if (query != null) query.retainScratch(temporary, 2048);
       try {
         if (query != null) query.operation(27);
-        return scalarBytes(
+        ops(query, 2);
+        var formatted =
             java.time.format.DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSS'Z'")
-                .format(time));
+                .format(time);
+        return finalScan ? scalarValue(formatted, true) : scalarBytes(formatted);
       } finally {
         if (query != null) query.releaseScratch(temporary);
       }
@@ -405,6 +526,7 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
     if (closed) return;
     closed = true;
     rows = null;
+    summary = null;
     if (query != null) query.releaseScratch(this);
   }
 }

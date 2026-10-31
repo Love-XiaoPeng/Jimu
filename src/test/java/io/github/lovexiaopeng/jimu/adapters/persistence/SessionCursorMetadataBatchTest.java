@@ -465,4 +465,81 @@ class SessionCursorMetadataBatchTest {
     assertEquals(65536, q.scratchLive());
     assertThrows(RuntimeException.class, () -> SessionMetadataScalars.bytes("\ud800", q));
   }
+
+  @Test
+  void finalFoldMatchesEveryOrdinaryProjectionWithoutRetainingSlotsOrRows() {
+    for (var table : Table.values()) {
+      var p = SessionMetadataProjection.forTable(table);
+      if (p == null) continue;
+      for (String mode : List.of("full", "null", "absent", "wide")) {
+        var values = row(p);
+        if (mode.equals("null"))
+          for (var c : p.columns) if (c.nullable()) values.put(c.name(), null);
+        if (mode.equals("absent"))
+          for (var c : p.columns) if (c.nullable()) values.remove(c.name());
+        if (mode.equals("wide")) {
+          for (var c : p.columns) {
+            if (c.kind() == 'L') values.put(c.name(), Long.MIN_VALUE);
+            if (c.kind() == 'I') values.put(c.name(), Integer.MIN_VALUE);
+            if (c.kind() == 'D') values.put(c.name(), LocalDateTime.of(-1, 1, 1, 0, 0));
+            if (c.kind() == 'S' && c.points() >= 2) values.put(c.name(), "🧱");
+          }
+        }
+        long expected = 32;
+        var old = query();
+        try (var batch =
+            new SessionCursorMetadataBatch(
+                old, p, () -> new Rows(List.of(new LinkedHashMap<>(values))))) {
+          for (var value : batch.iterator().next().values())
+            expected += 8 + batch.scalarBytes(value);
+        }
+        var q = query();
+        var cursor = new Rows(List.of(values));
+        var result = SessionCursorMetadataBatch.measureFinal(q, table, p, () -> cursor);
+        assertEquals(expected, result.bytes(), table + ":" + mode);
+        assertEquals(1, result.rows());
+        assertTrue(cursor.closed);
+        assertEquals(65536, q.scratchLive());
+      }
+    }
+  }
+
+  @Test
+  void finalFoldRejectsMalformedRowsAndPreservesErrorWithCloseSuppressed() {
+    var p = SessionMetadataProjection.forTable(Table.TASK_ATTEMPT);
+    for (String mode : List.of("extra", "missing", "type", "surrogate")) {
+      var values = row(p);
+      switch (mode) {
+        case "extra" -> values.put("unknown", null);
+        case "missing" -> values.remove("tenant_id");
+        case "type" -> values.put("fence", 1);
+        default -> values.put("tenant_id", "\ud800");
+      }
+      var q = query();
+      var cursor = new Rows(List.of(values));
+      assertThrows(
+          RuntimeException.class,
+          () -> SessionCursorMetadataBatch.measureFinal(q, Table.TASK_ATTEMPT, p, () -> cursor));
+      assertTrue(cursor.closed);
+      assertEquals(65536, q.scratchLive());
+    }
+    var error = new AssertionError("final fold");
+    var values =
+        new LinkedHashMap<String, Object>(row(p)) {
+          @Override
+          public Object get(Object key) {
+            throw error;
+          }
+        };
+    var cursor = new Rows(List.of(values));
+    cursor.throwClose = true;
+    var q = query();
+    org.junit.jupiter.api.Assertions.assertSame(
+        error,
+        assertThrows(
+            AssertionError.class,
+            () -> SessionCursorMetadataBatch.measureFinal(q, Table.TASK_ATTEMPT, p, () -> cursor)));
+    assertEquals(1, error.getSuppressed().length);
+    assertEquals(65536, q.scratchLive());
+  }
 }

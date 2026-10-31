@@ -20,6 +20,8 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
   private Map<String, Object> current;
   private Object[] slots;
   private final Object slotsOwner = new Object();
+  private final boolean finalMode;
+  private final io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork finalOwner;
   private boolean closed, iterated, delivered, ended;
   private int count, generation, valueCount;
 
@@ -27,13 +29,166 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
       SessionQueryContext query,
       SessionMetadataProjection projection,
       Supplier<Cursor<Map<String, Object>>> load) {
+    this(query, projection, load, false);
+  }
+
+  private SessionCursorMetadataBatch(
+      SessionQueryContext query,
+      SessionMetadataProjection projection,
+      Supplier<Cursor<Map<String, Object>>> load,
+      boolean finalMode) {
     this.query = query;
     this.projection = projection;
+    this.finalMode = finalMode;
+    this.finalOwner =
+        finalMode
+            ? io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                .currentOwner()
+            : null;
     try {
+      if (finalMode) checkFinal();
       if (query != null) query.retainScratch(this, projection.retainedBytes);
-      if (query != null) query.retainScratch(slotsOwner, 256L + 16L * projection.columns.size());
+      if (query != null && !finalMode)
+        query.retainScratch(slotsOwner, 256L + 16L * projection.columns.size());
       cursor = load.get();
+      if (finalMode) checkFinal();
       source = cursor.iterator();
+      if (finalMode) checkFinal();
+    } catch (RuntimeException | Error failure) {
+      fail(failure);
+      throw failure;
+    }
+  }
+
+  private void checkFinal() {
+    SessionMetadataScalars.operation(query, 12);
+    var actual =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (closed
+        || actual != finalOwner
+        || (actual != null
+            && io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                    .current(query)
+                != actual))
+      throw new IllegalStateException("Foreign or closed final metadata batch");
+    if (query != null) query.checkHealthy();
+  }
+
+  static SessionMetadataAccounting.FinalTable measureFinal(
+      SessionQueryContext query,
+      SessionMetadataAccounting.Table table,
+      SessionMetadataProjection projection,
+      Supplier<Cursor<Map<String, Object>>> load) {
+    if (projection
+        != (table == SessionMetadataAccounting.Table.TASK
+            ? SessionMetadataProjection.taskSized()
+            : SessionMetadataProjection.forTable(table)))
+      throw new IllegalArgumentException("Different metadata projection");
+    try (var batch = new SessionCursorMetadataBatch(query, projection, load, true)) {
+      return batch.measure(table);
+    }
+  }
+
+  private SessionMetadataAccounting.FinalTable measure(SessionMetadataAccounting.Table table) {
+    try {
+      checkFinal();
+      SessionMetadataScalars.operation(query, 5);
+      long rows = 0, bytes = 0, reservations = 0;
+      SessionMetadataAccounting.HistoryReservation reservation = null;
+      while (true) {
+        SessionMetadataScalars.operation(query, 1);
+        boolean next = source.hasNext();
+        checkFinal();
+        if (!next) break;
+        current = source.next();
+        checkFinal();
+        SessionMetadataScalars.operation(query, 5);
+        rows = Math.addExact(rows, 1);
+        if (projection.maximumRows > 0 && rows > projection.maximumRows)
+          throw JdbcSessionRecords.corrupt();
+        long rowBytes =
+            io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1.ROW_HEADER_BYTES;
+        int recognized = 0;
+        String category = null, state = null;
+        long amount = 0;
+        Long actual = null;
+        for (var column : projection.columns) {
+          SessionMetadataScalars.operation(
+              query, 2); // lookup and presence local; no slots/index/write.
+          var value = current.get(column.name());
+          boolean present;
+          if (value == null) {
+            SessionMetadataScalars.operation(query, 2L + column.name().length());
+            present = current.containsKey(column.name());
+          } else present = true;
+          SessionMetadataScalars.operation(query, 3);
+          if (present) recognized++;
+          long scalar;
+          if (value == null) {
+            if (!column.nullable()) throw JdbcSessionRecords.corrupt();
+            if (!present) continue;
+            scalar = SessionMetadataScalars.bytes(null, query);
+          } else if (column.kind() == 'T' || column.kind() == 'M' || column.kind() == 'X') {
+            SessionMetadataScalars.operation(query, 8);
+            if (!projection.taskSized || !(value instanceof Long || value instanceof Integer))
+              throw JdbcSessionRecords.corrupt();
+            scalar = ((Number) value).longValue();
+            long maximum =
+                switch (column.kind()) {
+                  case 'T' -> 65535L;
+                  case 'M' -> 16777215L;
+                  default -> 4294967295L;
+                };
+            if (scalar < 0 || scalar > maximum) throw JdbcSessionRecords.corrupt();
+          } else {
+            boolean valid =
+                switch (column.kind()) {
+                  case 'S' -> value instanceof String s && bounded(s, column.points());
+                  case 'I' -> value instanceof Integer;
+                  case 'L' -> value instanceof Long;
+                  case 'B' -> value instanceof Boolean;
+                  case 'D' -> value instanceof java.time.LocalDateTime;
+                  default -> false;
+                };
+            if (!valid) throw JdbcSessionRecords.corrupt();
+            scalar = SessionMetadataScalars.bytes(value, query);
+          }
+          SessionMetadataScalars.operation(query, 3); // two exact additions and store.
+          rowBytes =
+              Math.addExact(
+                  rowBytes,
+                  Math.addExact(
+                      io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
+                          .FIELD_HEADER_BYTES,
+                      scalar));
+          if (table == SessionMetadataAccounting.Table.RESERVATION) {
+            SessionMetadataScalars.operation(query, 2L + column.name().length());
+            switch (column.name()) {
+              case "category" -> category = (String) value;
+              case "amount" -> amount = ((Number) value).longValue();
+              case "actual" -> actual = (Long) value;
+              case "state" -> state = (String) value;
+              default -> {}
+            }
+          }
+        }
+        SessionMetadataScalars.operation(query, 4);
+        if (recognized != current.size()) throw JdbcSessionRecords.corrupt();
+        bytes = Math.addExact(bytes, rowBytes);
+        if (table == SessionMetadataAccounting.Table.RESERVATION) {
+          SessionMetadataScalars.operation(query, 8L + "SESSION_HISTORY_STORAGE".length());
+          if ("SESSION_HISTORY_STORAGE".equals(category)) {
+            reservations = Math.addExact(reservations, 1);
+            reservation = new SessionMetadataAccounting.HistoryReservation(amount, actual, state);
+          }
+        }
+        current = null;
+      }
+      checkFinal();
+      SessionMetadataScalars.operation(query, 9); // scalar receiver, six fields, return and clear.
+      return new SessionMetadataAccounting.FinalTable(
+          rows, bytes, 0, null, reservations, reservation);
     } catch (RuntimeException | Error failure) {
       fail(failure);
       throw failure;
@@ -50,10 +205,25 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
   }
 
   private void poison(Throwable failure) {
+    if (finalMode) {
+      var actual =
+          io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+              .currentOwner();
+      if (finalOwner != null) {
+        if (failure instanceof Error error) finalOwner.poisonLineageSource(error);
+        else finalOwner.poisonProof((RuntimeException) failure);
+      }
+      if (actual != null && actual != finalOwner) {
+        if (failure instanceof Error error) actual.poisonLineageSource(error);
+        else actual.poisonProof((RuntimeException) failure);
+      }
+      return;
+    }
     var owner =
         io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
             query);
-    if (owner != null)
+    if (owner != null && failure instanceof Error error) owner.poisonLineageSource(error);
+    else if (owner != null)
       owner.poisonProof(
           failure instanceof RuntimeException runtime
               ? runtime
@@ -176,6 +346,7 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
 
   public Iterator<SessionMetadataAccounting.Row> iterator() {
     open();
+    if (finalMode) throw new IllegalStateException("Final metadata has no row facade");
     if (iterated) throw new IllegalStateException("Metadata cursor already consumed");
     iterated = true;
     return new Iterator<>() {

@@ -74,31 +74,70 @@ final class JdbcSessionScopes {
 
   record Scope(Map<String, Object> row, JsonNode authority, List<Map<String, Object>> sources) {}
 
+  private io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork checkedOwner() {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (owner == null || !owner.lineage()) return null;
+    if (sessions.appendQuery() == null)
+      throw new IllegalStateException("Missing query in session transaction");
+    if (io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            sessions.appendQuery())
+        != owner) throw new IllegalStateException("Foreign session query");
+    sessions.appendQuery().checkHealthy();
+    return owner;
+  }
+
+  void ensure(Map<String, Object> task) {
+    requireProof(task);
+  }
+
+  io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Validated requireProof(
+      Map<String, Object> task) {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (owner != null && !owner.lineage()) owner = null;
+    try {
+      owner = checkedOwner();
+      var c = MapperSessionScopeRecords.caller(task);
+      var proof = prove(task, c, owner);
+      if (owner == null) facade(c, proof, null);
+      return proof;
+    } catch (RuntimeException failure) {
+      if (owner == null) throw failure;
+      if (failure instanceof TaskFailure denial && owner.scopeStatus(denial)) throw failure;
+      throw owner.poisonProof(failure);
+    } catch (Error failure) {
+      if (owner != null) owner.poisonLineageSource(failure);
+      throw failure;
+    }
+  }
+
   Scope require(Map<String, Object> task) {
     var owner =
         io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
             .currentOwner();
     if (owner != null && !owner.lineage()) owner = null;
     try {
-      if (owner != null) {
-        if (sessions.appendQuery() == null)
-          throw new IllegalStateException("Missing query in session transaction");
-        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
-            sessions.appendQuery());
-        sessions.appendQuery().checkHealthy();
-      }
-      return require(task, owner);
+      owner = checkedOwner();
+      var c = MapperSessionScopeRecords.caller(task);
+      var proof = prove(task, c, owner);
+      return facade(c, proof, owner);
     } catch (RuntimeException failure) {
       if (owner == null) throw failure;
       if (failure instanceof TaskFailure denial && owner.scopeStatus(denial)) throw failure;
       throw owner.poisonProof(failure);
+    } catch (Error failure) {
+      if (owner != null) owner.poisonLineageSource(failure);
+      throw failure;
     }
   }
 
-  private Scope require(
+  private io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Validated prove(
       Map<String, Object> task,
+      io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Caller c,
       io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork owner) {
-    var c = MapperSessionScopeRecords.caller(task);
     var found = owner == null ? null : owner.scope(c);
     if (found == null) {
       found = ledgerMeasure(c);
@@ -143,19 +182,29 @@ final class JdbcSessionScopes {
         owner.graph(c.tenant(), c.id(), graph);
       }
     }
-    var proof = found;
+    return found;
+  }
+
+  private Scope facade(
+      io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Caller c,
+      io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Validated proof,
+      io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork owner) {
     java.util.function.Supplier<JsonNode> parse =
         () -> {
-          if (sessions.appendQuery() != null && lineage(task))
+          if (sessions.appendQuery() != null
+              && io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+                  .equals(c.capabilities()))
             sessions.appendQuery().operation(proof.scope().raw().length());
           return sessions.contracts.json(proof.scope().raw(), 4096);
         };
-    if (sessions.appendQuery() != null && lineage(task))
+    if (sessions.appendQuery() != null
+        && io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+            .equals(c.capabilities()))
       sessions.appendQuery().operation(1L + proof.sources().size());
     return new Scope(
-        MapperSessionScopeRecords.row(c, found.scope()),
+        MapperSessionScopeRecords.row(c, proof.scope()),
         owner == null ? parse.get() : owner.authority(parse),
-        found.sources().stream().map(MapperSessionScopeRecords::row).toList());
+        proof.sources().stream().map(MapperSessionScopeRecords::row).toList());
   }
 
   private io.github.lovexiaopeng.jimu.kernel.session.port.SessionScopeRecords.Validated

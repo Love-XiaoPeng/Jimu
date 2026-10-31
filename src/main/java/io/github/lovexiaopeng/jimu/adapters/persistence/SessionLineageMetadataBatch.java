@@ -24,15 +24,29 @@ final class SessionLineageMetadataBatch implements SessionMetadataAccounting.Bat
   // Strings (244*4+5*64), numbers 3*32, eight entries incl labels 8*128, facades/table/list 1024.
   static final long RETAINED_BYTES = 244L * 4 + 5L * 64 + 3L * 32 + 8L * 128 + 1024;
   private final SessionQueryContext query;
+  private final io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork finalOwner;
   private List<Map<String, Object>> rows;
   private boolean closed;
 
   SessionLineageMetadataBatch(SessionQueryContext query, Supplier<List<Map<String, Object>>> load) {
+    this(query, load, false);
+  }
+
+  private SessionLineageMetadataBatch(
+      SessionQueryContext query, Supplier<List<Map<String, Object>>> load, boolean finalMode) {
     this.query = query;
-    if (query != null) query.retainScratch(this, RETAINED_BYTES);
+    this.finalOwner =
+        finalMode
+            ? io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                .currentOwner()
+            : null;
     try {
+      if (finalMode) finalCheck();
+      if (query != null) query.retainScratch(this, RETAINED_BYTES);
       rows = load.get();
+      if (finalMode) finalCheck();
       if (rows.size() > 1) throw JdbcSessionRecords.corrupt();
+      if (finalMode) return;
       for (var row : rows) {
         if (!row.keySet().equals(java.util.Set.copyOf(COLUMNS))) throw JdbcSessionRecords.corrupt();
         for (int i = 0; i < COLUMNS.size(); i++) {
@@ -50,8 +64,84 @@ final class SessionLineageMetadataBatch implements SessionMetadataAccounting.Bat
         }
       }
     } catch (RuntimeException | Error failure) {
+      poison(failure);
       close();
       throw failure;
+    }
+  }
+
+  private void poison(Throwable failure) {
+    var work =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (finalOwner != null && finalOwner != work) {
+      if (failure instanceof Error error) finalOwner.poisonLineageSource(error);
+      else finalOwner.poisonProof((RuntimeException) failure);
+    }
+    if (work != null) {
+      if (failure instanceof Error error) work.poisonLineageSource(error);
+      else work.poisonProof((RuntimeException) failure);
+    }
+  }
+
+  private void finalCheck() {
+    SessionMetadataScalars.operation(query, 12);
+    var actual =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (closed
+        || actual != finalOwner
+        || (actual != null
+            && io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                    .current(query)
+                != actual)) throw new IllegalStateException("Foreign final metadata");
+    if (query != null) query.checkHealthy();
+  }
+
+  static SessionMetadataAccounting.FinalTable measureFinal(
+      SessionQueryContext query, Supplier<List<Map<String, Object>>> load) {
+    try (var batch = new SessionLineageMetadataBatch(query, load, true)) {
+      try {
+        batch.finalCheck();
+        long bytes = 0;
+        for (var row : batch.rows) {
+          SessionMetadataScalars.operation(query, 4);
+          if (row.size() != COLUMNS.size()) throw JdbcSessionRecords.corrupt();
+          bytes =
+              Math.addExact(
+                  bytes,
+                  io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
+                      .ROW_HEADER_BYTES);
+          for (int i = 0; i < COLUMNS.size(); i++) {
+            SessionMetadataScalars.operation(query, 4);
+            Object value = row.get(COLUMNS.get(i));
+            int max =
+                switch (i) {
+                  case 0, 3, 5 -> 64;
+                  case 1 -> 36;
+                  case 7 -> 16;
+                  default -> 0;
+                };
+            if (max == 0 ? !(value instanceof Integer) : !batch.bounded(value, max))
+              throw JdbcSessionRecords.corrupt();
+            long scalar = batch.scalar(value);
+            SessionMetadataScalars.operation(query, 3);
+            bytes =
+                Math.addExact(
+                    bytes,
+                    Math.addExact(
+                        io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
+                            .FIELD_HEADER_BYTES,
+                        scalar));
+          }
+        }
+        SessionMetadataScalars.operation(query, 9);
+        batch.finalCheck();
+        return new SessionMetadataAccounting.FinalTable(batch.rows.size(), bytes, 0, null, 0, null);
+      } catch (RuntimeException | Error failure) {
+        batch.poison(failure);
+        throw failure;
+      }
     }
   }
 
@@ -123,6 +213,10 @@ final class SessionLineageMetadataBatch implements SessionMetadataAccounting.Bat
 
   public long scalarBytes(Object value) {
     open();
+    return scalar(value);
+  }
+
+  private long scalar(Object value) {
     if (value instanceof String s) {
       long size = 0;
       for (int i = 0; i < s.length(); i++) {

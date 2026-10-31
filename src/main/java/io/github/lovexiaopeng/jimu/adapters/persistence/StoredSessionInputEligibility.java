@@ -68,6 +68,21 @@ final class StoredSessionInputEligibility implements SessionInputEligibility {
   }
 
   public Scope requireScope() {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (owner != null && owner.lineage()) {
+      records.scopes.ensure(task);
+      records.appendQuery().operation(4);
+      return id -> {
+        var proof = records.scopes.requireProof(task);
+        for (var source : proof.sources()) {
+          records.appendQuery().operation(3L + id.length());
+          if (id.equals(source.id())) return true;
+        }
+        return false;
+      };
+    }
     var scope = records.scopes.require(task);
     return id -> scope.sources().stream().anyMatch(t -> id.equals(s(t, "id")));
   }

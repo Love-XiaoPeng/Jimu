@@ -778,4 +778,102 @@ public class SessionHistorySizedMetadataBatchTest {
     assertEquals(1, f.base.rollbacks);
     assertEquals(65536, q.scratchLive());
   }
+
+  @Test
+  void finalHistoryMeasuresOriginalValuesAndDynamicCountersWithoutPublicFacades() throws Exception {
+    for (String mode : List.of("full", "absent", "null", "wide")) {
+      var f = new Fixture();
+      var q = q();
+      var c = config(f, xml());
+      var values = row(65535L);
+      values.put("reserved_bytes", 123456L);
+      values.put("held_bytes", 987654L);
+      if (mode.equals("absent")) values.remove("cleanup_receipt");
+      if (mode.equals("wide")) {
+        values.put("cleanup_receipt", "积木🧱");
+        values.put("metadata_bytes", Long.MIN_VALUE);
+        values.put("body_bytes", Long.MAX_VALUE);
+        values.put("retain_until", java.time.LocalDateTime.of(-1, 1, 1, 0, 0));
+      }
+      long expected = 32;
+      for (var e : values.entrySet())
+        expected +=
+            8
+                + (e.getKey().equals("binding_snapshot")
+                    ? 65535
+                    : SessionQueryContext.scalarBytes(e.getValue()));
+      var result =
+          owned(
+              f,
+              q,
+              () ->
+                  SessionHistorySizedMetadataBatch.measureFinal(
+                      session(f, q, c, List.of(values)), q, TENANT, TASK));
+      assertEquals(expected, result.bytes());
+      assertEquals(1, result.histories());
+      assertEquals(values.get("metadata_bytes"), result.history().metadata());
+      assertEquals(values.get("body_bytes"), result.history().body());
+      assertEquals(123456L, result.history().reserved());
+      assertEquals(987654L, result.history().held());
+      assertEquals(65536, q.scratchLive());
+    }
+  }
+
+  @Test
+  void finalHistoryFailureAndProviderErrorPoisonCaughtWorkAndReleaseBootstrap() throws Exception {
+    for (String mode :
+        List.of("length", "extra", "missing", "type", "receipt", "error", "foreign")) {
+      var f = new Fixture();
+      var q = q();
+      var c = config(f, xml());
+      var values = row(27L);
+      switch (mode) {
+        case "length" -> values.put("binding_snapshot", 65536L);
+        case "extra" -> values.put("unknown", null);
+        case "missing" -> values.remove("held_bytes");
+        case "type" -> values.put("metadata_bytes", 1);
+        case "receipt" -> values.put("cleanup_receipt", "\ud800");
+        default -> {}
+      }
+      var delegate = session(f, q, c, List.of(values));
+      var error = new AssertionError("final metadata provider");
+      var source =
+          proxy(
+              SqlSession.class,
+              (p, m, a) -> {
+                if (mode.equals("error") && m.getName().equals("selectList")) throw error;
+                try {
+                  return m.invoke(delegate, a);
+                } catch (java.lang.reflect.InvocationTargetException failure) {
+                  throw failure.getCause();
+                }
+              });
+      assertThrows(
+          RuntimeException.class,
+          () ->
+              owned(
+                  f,
+                  q,
+                  () -> {
+                    if (mode.equals("error"))
+                      assertSame(
+                          error,
+                          assertThrows(
+                              AssertionError.class,
+                              () ->
+                                  SessionHistorySizedMetadataBatch.measureFinal(
+                                      source, q, TENANT, TASK)));
+                    else
+                      assertThrows(
+                          RuntimeException.class,
+                          () ->
+                              SessionHistorySizedMetadataBatch.measureFinal(
+                                  source, mode.equals("foreign") ? q() : q, TENANT, TASK));
+                    return null;
+                  }));
+      assertEquals(0, f.base.commits);
+      assertEquals(1, f.base.rollbacks);
+      assertEquals(65536, q.scratchLive());
+    }
+  }
 }
