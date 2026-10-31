@@ -303,21 +303,33 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
           scalar = ((Number) value).longValue();
           if (scalar < 0 || scalar > 65535) throw corrupt();
         } else {
-          boolean valid =
+          if (!present && i == 13) continue;
+          scalar =
               switch (i) {
-                case 0 -> bounded(value, 64);
-                case 1 -> bounded(value, 36);
-                case 2, 3 -> value instanceof Integer;
-                case 5 -> bounded(value, 64);
-                case 6 -> bounded(value, 16);
-                case 7, 8, 9, 10, 11 -> value instanceof Long;
-                case 12 -> value instanceof java.time.LocalDateTime;
-                case 13 -> value == null || value instanceof String text && text.length() <= 65535;
-                default -> false;
+                case 0, 5 -> finalText(value, 64, 128);
+                case 1 -> finalText(value, 36, 72);
+                case 6 -> finalText(value, 16, 32);
+                case 2, 3 -> {
+                  if (!(value instanceof Integer number)) throw corrupt();
+                  yield numberBytes(number);
+                }
+                case 7, 8, 9, 10, 11 -> {
+                  if (!(value instanceof Long number)) throw corrupt();
+                  yield numberBytes(number);
+                }
+                case 12 -> {
+                  if (!(value instanceof java.time.LocalDateTime time)) throw corrupt();
+                  yield timeBytes(time, true);
+                }
+                case 13 -> {
+                  if (value == null) {
+                    ops(query, 1);
+                    yield 1;
+                  }
+                  yield finalText(value, 65535, 65535);
+                }
+                default -> throw corrupt();
               };
-          if (!valid) throw corrupt();
-          if (!present) continue;
-          scalar = scalarValue(value, true);
         }
         ops(query, 3);
         bytes =
@@ -494,27 +506,61 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
       return 1;
     }
     if (value instanceof java.time.LocalDateTime time) {
-      // The frozen six-digit fraction truncates; years 0000..9999 always use 27 ASCII bytes.
-      if (query != null) query.operation(7);
-      int year = time.getYear();
-      if ((year >= 0) & (year <= 9999)) return 27;
-      // Frozen UTC metadata encoding; formatter and its temporary text are covered before
-      // allocation.
-      Object temporary = new Object();
-      if (query != null) query.retainScratch(temporary, 2048);
-      try {
-        if (query != null) query.operation(27);
-        ops(query, 2);
-        var formatted =
-            java.time.format.DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSS'Z'")
-                .format(time);
-        return finalScan ? scalarValue(formatted, true) : scalarBytes(formatted);
-      } finally {
-        if (query != null) query.releaseScratch(temporary);
-      }
+      ops(query, 1); // extracted typed helper call on the public scalar path.
+      return timeBytes(time, finalScan);
     }
     if (!(value instanceof Integer) && !(value instanceof Long)) throw corrupt();
-    long n = ((Number) value).longValue();
+    ops(query, 1); // extracted typed helper call on the public scalar path.
+    return numberBytes(((Number) value).longValue());
+  }
+
+  private long finalText(Object value, int maximumPoints, int maximumUnits) {
+    if (!(value instanceof String text)) throw corrupt();
+    ops(query, 3); // one length read, UTF16 bound, and code-point counter initialization.
+    int units = text.length(), points = units;
+    if (units > maximumUnits) throw corrupt();
+    long size = 0;
+    for (int i = 0; i < units; i++) {
+      ops(query, 1);
+      char c = text.charAt(i);
+      if (c < 128) size++;
+      else if (c < 2048) size += 2;
+      else if (Character.isHighSurrogate(c)) {
+        if (++i >= units || !Character.isLowSurrogate(text.charAt(i))) throw corrupt();
+        ops(query, 1);
+        size += 4;
+        ops(query, 1); // this same pair consumes one code point; no second traversal.
+        points--;
+      } else if (Character.isLowSurrogate(c)) throw corrupt();
+      else size += 3;
+    }
+    ops(query, 1); // final code-point bound, including BMP-only strings.
+    if (points > maximumPoints) throw corrupt();
+    return size;
+  }
+
+  private long timeBytes(java.time.LocalDateTime time, boolean finalScan) {
+    // The frozen six-digit fraction truncates; years 0000..9999 always use 27 ASCII bytes.
+    if (query != null) query.operation(7);
+    int year = time.getYear();
+    if ((year >= 0) & (year <= 9999)) return 27;
+    // Frozen UTC metadata encoding; formatter and its temporary text are covered before
+    // allocation.
+    Object temporary = new Object();
+    if (query != null) query.retainScratch(temporary, 2048);
+    try {
+      if (query != null) query.operation(27);
+      ops(query, 2);
+      var formatted =
+          java.time.format.DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSS'Z'")
+              .format(time);
+      return finalScan ? scalarValue(formatted, true) : scalarBytes(formatted);
+    } finally {
+      if (query != null) query.releaseScratch(temporary);
+    }
+  }
+
+  private long numberBytes(long n) {
     long size = n < 0 ? 1 : 0;
     if (n > 0) n = -n;
     do {

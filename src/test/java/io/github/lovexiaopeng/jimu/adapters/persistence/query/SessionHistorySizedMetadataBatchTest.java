@@ -29,6 +29,185 @@ public class SessionHistorySizedMetadataBatchTest {
       " lang=\"io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistoryMetadataLanguageDriver\"";
 
   @Test
+  void finalJointConsumptionKeepsStrictColumnTypesAndPresence() throws Exception {
+    var valid = row(0L);
+    for (var column : valid.keySet()) {
+      if (column.equals("cleanup_receipt")) continue;
+      for (String mode : List.of("absent", "null", "wrong")) {
+        var values = row(0L);
+        if (mode.equals("absent")) values.remove(column);
+        else if (mode.equals("null")) values.put(column, null);
+        else {
+          Object before = values.get(column);
+          Object wrong = Integer.valueOf(1);
+          // No ternary numeric promotion: Integer and Long remain distinct objects.
+          if (before instanceof Integer) wrong = Long.valueOf(1);
+          if (column.equals("binding_snapshot")) wrong = "0";
+          values.put(column, wrong);
+        }
+        assertFinalRejected(values);
+      }
+    }
+    assertFinalRejected(row(-1L));
+    assertFinalRejected(row(65536L));
+    var extra = row(1L);
+    extra.put("unexpected", null);
+    assertFinalRejected(extra);
+  }
+
+  private void assertFinalRejected(Map<String, Object> values) throws Exception {
+    var f = new Fixture();
+    var query = q();
+    var configuration = config(f, xml());
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            owned(
+                f,
+                query,
+                () ->
+                    SessionHistorySizedMetadataBatch.measureFinal(
+                        session(f, query, configuration, List.of(values)), query, TENANT, TASK)));
+    assertEquals(0, f.base.commits);
+    assertEquals(1, f.base.rollbacks);
+    assertEquals(65536, query.scratchLive());
+  }
+
+  @Test
+  void finalJointConsumptionKeepsUnicodeAndUtf16Bounds() throws Exception {
+    for (String text : List.of("", "汉\u0000  ", "😀".repeat(64), "x".repeat(64))) {
+      var f = new Fixture();
+      var query = q();
+      var configuration = config(f, xml());
+      var values = row(0);
+      values.put("binding_digest", text);
+      var actual =
+          owned(
+              f,
+              query,
+              () ->
+                  SessionHistorySizedMetadataBatch.measureFinal(
+                      session(f, query, configuration, List.of(values)), query, TENANT, TASK));
+      long expected = 32;
+      for (var e : values.entrySet())
+        expected +=
+            8
+                + (e.getKey().equals("binding_snapshot")
+                    ? 0
+                    : SessionQueryContext.scalarBytes(e.getValue()));
+      assertEquals(expected, actual.bytes());
+      assertEquals(65536, query.scratchLive());
+    }
+    for (String text :
+        List.of("x".repeat(65), "😀".repeat(63) + "xx", "\ud800", "\udc00", "a\ud800x")) {
+      var values = row(0L);
+      values.put("binding_digest", text);
+      assertFinalRejected(values);
+    }
+    // The complete SQL/FINAL path rejects these large texts at its operation limit first.
+    // Exercise the independent UTF16 cap directly, without widening that Work's budget.
+    var constructor = SessionHistorySizedMetadataBatch.class.getDeclaredConstructors()[0];
+    constructor.setAccessible(true);
+    var batch = constructor.newInstance(null, null);
+    var scalar =
+        SessionHistorySizedMetadataBatch.class.getDeclaredMethod(
+            "finalText", Object.class, int.class, int.class);
+    scalar.setAccessible(true);
+    assertEquals(131069L, scalar.invoke(batch, "😀".repeat(32767) + "x", 65535, 65535));
+    var rejected =
+        assertThrows(
+            java.lang.reflect.InvocationTargetException.class,
+            () -> scalar.invoke(batch, "😀".repeat(32768), 65535, 65535));
+    assertEquals(
+        "SESSION_HISTORY_CORRUPT",
+        ((io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure) rejected.getCause()).code());
+  }
+
+  @Test
+  void finalJointConsumptionKeepsExtremeScalarsAndFreshReads() throws Exception {
+    var f = new Fixture();
+    var query = q();
+    var configuration = config(f, xml());
+    var values = row(65535L);
+    values.put("record_version", Integer.MIN_VALUE);
+    values.put("history_version", Integer.MAX_VALUE);
+    values.put("metadata_bytes", Long.MIN_VALUE);
+    values.put("body_bytes", Long.MAX_VALUE);
+    owned(
+        f,
+        query,
+        () -> {
+          for (int year : List.of(-1, 0, 9999, 10000)) {
+            values.put("retain_until", java.time.LocalDateTime.of(year, 1, 1, 0, 0, 0, 123456789));
+            var actual =
+                SessionHistorySizedMetadataBatch.measureFinal(
+                    session(f, query, configuration, List.of(values)), query, TENANT, TASK);
+            long expected = 32;
+            for (var e : values.entrySet())
+              expected +=
+                  8
+                      + (e.getKey().equals("binding_snapshot")
+                          ? ((Number) e.getValue()).longValue()
+                          : SessionQueryContext.scalarBytes(e.getValue()));
+            assertEquals(expected, actual.bytes());
+            assertEquals(Long.MIN_VALUE, actual.history().metadata());
+            assertEquals(20, actual.history().metadataScalarBytes());
+            values.put("binding_snapshot", 123L);
+            values.put("reserved_bytes", (long) year);
+          }
+          return null;
+        });
+    assertEquals(65536, query.scratchLive());
+  }
+
+  @Test
+  void finalJointConsumptionErrorKeepsFirstFailureAndReleasesRows() throws Exception {
+    var f = new Fixture();
+    var query = q();
+    var configuration = config(f, xml());
+    var error = new AssertionError("history fold getter");
+    error.addSuppressed(new IllegalStateException("original suppressed"));
+    var delegate = session(f, query, configuration, List.of(row(1L)));
+    var exploding =
+        new LinkedHashMap<String, Object>(row(1L)) {
+          @Override
+          public Object get(Object key) {
+            if (key.equals("metadata_bytes")) throw error;
+            return super.get(key);
+          }
+        };
+    var source =
+        proxy(
+            SqlSession.class,
+            (p, method, args) -> {
+              Object result = method.invoke(delegate, args);
+              return method.getName().equals("selectList") ? List.of(exploding) : result;
+            });
+    var first =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                owned(
+                    f,
+                    query,
+                    () -> {
+                      assertSame(
+                          error,
+                          assertThrows(
+                              AssertionError.class,
+                              () ->
+                                  SessionHistorySizedMetadataBatch.measureFinal(
+                                      source, query, TENANT, TASK)));
+                      return null;
+                    }));
+    assertSame(error, first.getCause());
+    assertEquals(1, error.getSuppressed().length);
+    assertEquals(0, f.base.commits);
+    assertEquals(1, f.base.rollbacks);
+    assertEquals(65536, query.scratchLive());
+  }
+
+  @Test
   void frozenSecondFinalHistoryKeepsSummaryAndRemovesStaticScan() throws Exception {
     // R37 原 observer ordinal=2 的完整 history 行；无 SQL/provider/权限缓存。
     String tenant = "tenant-a", task = "0ccef5d9-1380-420d-be9a-7d23d7e495cb";
