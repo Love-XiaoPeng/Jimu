@@ -67,18 +67,19 @@ public final class SessionQueryWork {
     invalidators.remove(key);
   }
 
-  private final Map<String, ProjectionLock> locks = new java.util.HashMap<>();
-  private final Object lockScratch = new Object(), lockLookupScratch = new Object();
+  private final java.util.List<ProjectionLock> locks = new java.util.ArrayList<>();
+  private final Object lockScratch = new Object();
   private long lockBytes = 128;
 
   /** 原真实持锁登记的不可变键；只是地址交接，每次消费仍查询当前锁集合。 */
   public static final class ProjectionLock {
     private final SessionQueryWork owner;
-    private final String key;
+    private final String tenant, task;
 
-    private ProjectionLock(SessionQueryWork owner, String key) {
+    private ProjectionLock(SessionQueryWork owner, String tenant, String task) {
       this.owner = owner;
-      this.key = key;
+      this.tenant = tenant;
+      this.task = task;
     }
   }
 
@@ -86,11 +87,10 @@ public final class SessionQueryWork {
     try {
       active();
       context.checkHealthy();
-      context.operation(14L + 3L * (tenant.length() + task.length() + 1));
+      context.operation(6); // query/Work identity, lookup result and original-key handoff
       if (query != context || SessionQueryTransaction.current(query) != this)
         throw new IllegalStateException("Foreign projection lock owner");
-      context.retainScratch(lockLookupScratch, 64L + 2L * (tenant.length() + task.length() + 1));
-      var registered = locks.get(tenant + ":" + task);
+      var registered = findLock(tenant, task);
       if (registered == null)
         throw new IllegalStateException("Task locks required before projection");
       return registered;
@@ -99,8 +99,6 @@ public final class SessionQueryWork {
     } catch (Error failure) {
       recordMetadataError(failure);
       throw failure;
-    } finally {
-      context.releaseScratch(lockLookupScratch);
     }
   }
 
@@ -109,11 +107,11 @@ public final class SessionQueryWork {
     try {
       active();
       context.checkHealthy();
-      context.operation(7); // identity, cached String hash, current membership and handoff
+      context.operation(5); // query/owner/null checks and handoff; membership is metered below
       if (query != context
           || registered == null
           || registered.owner != this
-          || locks.get(registered.key) != registered)
+          || !containsLock(registered))
         throw new IllegalStateException("Foreign or missing projection lock");
       requireSourceLocks();
     } catch (RuntimeException failure) {
@@ -126,10 +124,31 @@ public final class SessionQueryWork {
 
   private void requireSourceLocks() {
     for (var source : stagedSources.values()) {
-      context.operation(6); // next/current source, original key and current membership
-      if (locks.get(source.lock().key) != source.lock())
+      context.operation(4); // next/current source and original key handoff
+      if (!containsLock(source.lock()))
         throw poisonProof(new IllegalStateException("Full sorted task locks required"));
     }
+  }
+
+  private ProjectionLock findLock(String tenant, String task) {
+    context.operation(2); // loop initialization and terminal test
+    for (int i = 0; i < locks.size(); i++) {
+      context.operation(4); // test, get, current key and increment
+      var registered = locks.get(i);
+      if (relationEqual(registered.tenant, tenant) && relationEqual(registered.task, task))
+        return registered;
+    }
+    return null;
+  }
+
+  private boolean containsLock(ProjectionLock expected) {
+    context.operation(2); // loop initialization and terminal test
+    for (int i = 0; i < locks.size(); i++) {
+      context.operation(4); // test, get, identity comparison and increment
+      var registered = locks.get(i);
+      if (registered == expected) return true;
+    }
+    return false;
   }
 
   private final Object scopeScratch = new Object(), graphScratch = new Object();
@@ -256,8 +275,8 @@ public final class SessionQueryWork {
   public void requireProjectionLocks(String tenant, String task) {
     active();
     context.checkHealthy();
-    context.operation(1L + tenant.length() + task.length());
-    if (!locks.containsKey(tenant + ":" + task))
+    context.operation(2);
+    if (findLock(tenant, task) == null)
       throw poisonProof(new IllegalStateException("Task locks required before projection"));
     requireSourceLocks();
   }
@@ -306,7 +325,7 @@ public final class SessionQueryWork {
       java.time.LocalDateTime retain) {
     active();
     context.checkHealthy();
-    if (!locks.containsKey(identity.tenant() + ":" + identity.id())) return;
+    if (findLock(identity.tenant(), identity.id()) == null) return;
     if (histories == null) histories = new SessionCheckedHistories(context, token);
     histories.remember(identity, version, binding, row, retain);
   }
@@ -448,8 +467,7 @@ public final class SessionQueryWork {
       requireProjectionLocks(key.tenant(), key.id());
       for (var source : proof.sources()) {
         context.operation(2L + source.tenant().length() + source.id().length());
-        if (!key.tenant().equals(source.tenant())
-            || !locks.containsKey(source.tenant() + ":" + source.id()))
+        if (!key.tenant().equals(source.tenant()) || findLock(source.tenant(), source.id()) == null)
           throw new IllegalStateException("Full sorted source locks required");
       }
       context.retainScratch(lineageScopeScratch, 512);
@@ -802,19 +820,14 @@ public final class SessionQueryWork {
 
   public void locked(String tenant, String task) {
     active();
-    long size = 128L + 2L * (tenant.length() + task.length() + 1);
-    context.operation(16L + 3L * (tenant.length() + task.length() + 1));
-    context.retainScratch(lockLookupScratch, size);
-    try {
-      var key = tenant + ":" + task;
-      if (!locks.containsKey(key)) {
-        context.retainScratch(lockScratch, Math.addExact(lockBytes, size));
-        locks.put(key, new ProjectionLock(this, key));
-        lockBytes += size;
-      }
-    } finally {
-      context.releaseScratch(lockLookupScratch);
-    }
+    context.operation(2); // current lookup and branch; no temporary key allocation
+    if (findLock(tenant, task) != null) return;
+    long size = 128L + 2L * (tenant.length() + task.length());
+    // Reserve the identity, retained strings and ArrayList capacity before allocation.
+    context.operation(8L + locks.size()); // setup/append plus a possible backing-array copy
+    context.retainScratch(lockScratch, Math.addExact(lockBytes, size));
+    locks.add(new ProjectionLock(this, tenant, task));
+    lockBytes += size;
   }
 
   public SessionScopeRecords.Validated proof() {
@@ -833,7 +846,7 @@ public final class SessionQueryWork {
 
   SessionQueryWork(SessionQueryContext context) {
     this.context = context;
-    context.operation(18); // failures plus original-lock registry/lookup owner and final cleanup
+    context.operation(17); // failures plus original-lock registry owner and final cleanup
     context.retainScratch(lockScratch, lockBytes);
     context.retainScratch(relationScratch, RELATION_ROOT_BYTES);
     metadataClosed = new MetadataClosedFailure();
@@ -1284,8 +1297,8 @@ public final class SessionQueryWork {
     if (lineageScope != null || lineageSource != null || lineageNode)
       throw poisonProof(
           new IllegalStateException("Scope publication during lineage structure borrow"));
-    if (!locks.containsKey(key.tenant() + ":" + key.id())
-        || proof.sources().stream().anyMatch(s -> !locks.containsKey(s.tenant() + ":" + s.id())))
+    if (findLock(key.tenant(), key.id()) == null
+        || proof.sources().stream().anyMatch(s -> findLock(s.tenant(), s.id()) == null))
       throw new IllegalStateException("Full sorted task locks required before proof publication");
     caller = key;
     scope = proof;
