@@ -12,6 +12,15 @@ import org.springframework.dao.DataAccessResourceFailureException;
 public final class QueryResults {
   private QueryResults() {}
 
+  /** Internal synchronous FINAL handler; the actual SQL result never leaves read(). */
+  public interface FinalMetadata extends org.apache.ibatis.session.ResultHandler<Object> {
+    void read(
+        ResultSet rows,
+        SessionQueryContext context,
+        org.apache.ibatis.mapping.MappedStatement command)
+        throws SQLException;
+  }
+
   public static ResultSet meter(ResultSet delegate, SessionQueryContext context)
       throws SQLException {
     return meter(delegate, context, "JDBC");

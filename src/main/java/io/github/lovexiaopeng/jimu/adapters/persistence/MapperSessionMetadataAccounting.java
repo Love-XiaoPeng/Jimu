@@ -10,7 +10,9 @@ import java.util.Locale;
 import java.util.Map;
 
 /** Original Mapper statements and raw row values, read one table/row at a time. */
-final class MapperSessionMetadataAccounting implements SessionMetadataAccounting {
+final class MapperSessionMetadataAccounting
+    implements SessionMetadataAccounting,
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryResults.FinalMetadata {
   private final JdbcSessionRecords records;
   private final Map<String, Object> task;
   private final boolean finalPresent;
@@ -93,7 +95,9 @@ final class MapperSessionMetadataAccounting implements SessionMetadataAccounting
       // Route plus service's summary fold, headroom, special-field handoff and temporary clear.
       finalQuery.operation(32);
       FinalTable result;
-      if (table == Table.TASK)
+      if (table != Table.TASK && table != Table.TASK_SESSION_HISTORY) {
+        result = readFinal(table);
+      } else if (table == Table.TASK)
         result =
             SessionCursorMetadataBatch.measureFinal(
                 finalQuery,
@@ -101,30 +105,91 @@ final class MapperSessionMetadataAccounting implements SessionMetadataAccounting
                 SessionMetadataProjection.taskSized(),
                 () ->
                     records.mapperCursor("SessionHistoryRetentionMapper.metadataTaskSized", task));
-      else if (table == Table.TASK_SESSION_HISTORY)
+      else
         result =
             io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistorySizedMetadataBatch
                 .measureFinal(
                     records.mapperSession(), finalQuery, s(task, "tenant_id"), s(task, "id"));
-      else if (table == Table.TASK_SESSION_LINEAGE)
-        result =
-            SessionLineageMetadataBatch.measureFinal(
-                finalQuery,
-                () ->
-                    records.mapperRows(
-                        "SessionHistoryRetentionMapper.metadataTaskSessionLineage", task));
-      else {
-        var projection = SessionMetadataProjection.forTable(table);
-        if (projection == null)
-          throw new IllegalStateException("Missing final metadata projection");
-        result =
-            SessionCursorMetadataBatch.measureFinal(
-                finalQuery, table, projection, () -> records.mapperCursor(operation(table), task));
-      }
       finalCheck();
       return result;
     } catch (RuntimeException | Error failure) {
       finalFailure(failure);
+      throw failure;
+    }
+  }
+
+  private Table readingTable;
+  private org.apache.ibatis.mapping.MappedStatement readingCommand;
+  private FinalTable readingSummary;
+  private long readingVersion;
+
+  private FinalTable readFinal(Table table) {
+    finalQuery.operation(23); // args/command/handler dispatch, fields/version and finally clears
+    if (readingTable != null) throw new IllegalStateException("Nested FINAL result");
+    finalWork.requireProjectionLocks(s(task, "tenant_id"), s(task, "id"));
+    var session = records.mapperSession();
+    var command =
+        session
+            .getConfiguration()
+            .getMappedStatement(
+                "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper."
+                    + operation(table));
+    readingTable = table;
+    readingCommand = command;
+    try {
+      readingVersion = finalWork.metadataReadVersion(finalQuery);
+      session.select(
+          command.getId(),
+          Map.of("query", finalQuery, "tenant", s(task, "tenant_id"), "taskId", s(task, "id")),
+          this);
+      if (readingVersion != finalWork.metadataReadVersion(finalQuery))
+        throw new IllegalStateException("Write before FINAL result closed");
+      if (readingSummary == null) throw new IllegalStateException("Missing FINAL summary");
+      return readingSummary;
+    } finally {
+      readingTable = null;
+      readingCommand = null;
+      readingSummary = null;
+      readingVersion = 0;
+    }
+  }
+
+  @Override
+  public void handleResult(org.apache.ibatis.session.ResultContext<?> ignored) {
+    throw new IllegalStateException("FINAL result must use its actual ResultSet");
+  }
+
+  @Override
+  public void read(
+      java.sql.ResultSet rows,
+      io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext context,
+      org.apache.ibatis.mapping.MappedStatement command)
+      throws java.sql.SQLException {
+    try {
+      finalCheck();
+      finalQuery.operation(8); // command/query identity, single read and receiver store
+      if (context != finalQuery
+          || command != readingCommand
+          || readingTable == null
+          || readingSummary != null) throw new IllegalStateException("Foreign FINAL result");
+      if (readingVersion != finalWork.metadataReadVersion(finalQuery))
+        throw new IllegalStateException("Write before FINAL result consumption");
+      readingSummary =
+          SessionCursorMetadataBatch.measureResultSet(
+              finalQuery,
+              readingTable,
+              rows,
+              command,
+              records.mapperSession().getConfiguration().isCallSettersOnNulls());
+      if (readingVersion != finalWork.metadataReadVersion(finalQuery))
+        throw new IllegalStateException("Write during FINAL result consumption");
+    } catch (RuntimeException | Error failure) {
+      finalFailure(failure);
+      throw failure;
+    } catch (java.sql.SQLException failure) {
+      finalFailure(
+          new org.springframework.dao.DataAccessResourceFailureException(
+              "FINAL metadata unavailable", failure));
       throw failure;
     }
   }
