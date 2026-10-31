@@ -109,7 +109,15 @@ final class JdbcSessionScopes {
         io.github.lovexiaopeng.jimu.kernel.session.service.SessionLineageService.VerifiedGraph
             graph;
         graph = owner.stagedGraph(c.tenant(), c.id());
-        if (graph == null) graph = sessions.lineageService.verify(c.tenant(), c.id());
+        if (graph == null) {
+          owner.prepareLineageScope();
+          graph =
+              owner.withLineageScope(
+                  sessions.appendQuery(),
+                  c,
+                  proof,
+                  () -> sessions.lineageService.verify(c.tenant(), c.id()));
+        }
         owner.scope(
             c,
             proof,

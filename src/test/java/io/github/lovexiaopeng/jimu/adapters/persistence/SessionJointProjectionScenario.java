@@ -310,6 +310,37 @@ public final class SessionJointProjectionScenario {
     }
   }
 
+  /** 第二确认提交后才开始的新query；真实require/graph/history/current-live完整保留。 */
+  private static void secondEventProof(String id) throws Exception {
+    var before = SessionDependencyScenario.snapshot(db);
+    var v = view();
+    var q = v.queryContext();
+    try {
+      v.sessionTransaction(
+          () -> {
+            v.sessionScopes.lock("tenant-a", id);
+            var task = v.locked("tenant-a", id);
+            v.sessionScopes.require(task);
+            var full = v.sessions.history(task, true);
+            var narrow = v.sessions.acceptedEventHistory(task, true);
+            check(
+                full.size() == 15
+                    && narrow.size() == 8
+                    && full.entrySet().containsAll(narrow.entrySet()),
+                "independent second full15/event8 after fresh scope graph");
+            return null;
+          },
+          q.deadlineNanos());
+      phase("independent-second-eventHistory-committed", q);
+    } finally {
+      phase("independent-second-eventHistory-returned", q);
+      check(
+          before.equals(SessionDependencyScenario.snapshot(db)),
+          "independent second proof all22 unchanged");
+      check(q.scratchLive() == 65536, "independent second owners released");
+    }
+  }
+
   private static void historyWitness(
       io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease lease) throws Exception {
     var v = view();
@@ -500,8 +531,11 @@ public final class SessionJointProjectionScenario {
           independentAccounting(nodes.getLast(), "after-submit-" + i);
         if (args.length > 1
             && args[1].contains("event-history")
-            && (!args[1].contains("second-event-history") || i == 1))
-          SessionEventHistorySqlScenario.verify(root, db, nodes.getLast());
+            && (!args[1].contains("second-event-history") || i == 1)) {
+          if (args[1].contains("r31")) secondEventProof(nodes.getLast());
+          else SessionEventHistorySqlScenario.verify(root, db, nodes.getLast());
+        }
+        if (i == 1 && args.length > 1 && args[1].contains("r31")) return;
         if (args.length > 1 && args[1].contains("append-failure"))
           SessionAppendFailureSqlScenario.verify(root, db, nodes.getLast());
         if (args.length > 1 && args[1].contains("event11"))

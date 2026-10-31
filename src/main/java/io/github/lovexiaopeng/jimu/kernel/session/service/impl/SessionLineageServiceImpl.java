@@ -69,8 +69,9 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
         || (parent != null && !fact.sources().contains(parent))) throw invalidScope();
     var nodes = new HashMap<String, Node>();
     for (var id : fact.sources()) {
-      var stored = records.load(tenant, id);
-      facts.put(id, records.fact(tenant, id));
+      var input = records.input(tenant, id);
+      var stored = input.stored();
+      facts.put(id, input.fact());
       inputs.put(id, stored);
       nodes.put(id, new Node(id, stored.genesis(), stored.genesisDigest()));
     }
@@ -146,8 +147,12 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
 
   private VerifiedGraph loadUncached(String tenant, String caller) {
     var facts = new HashMap<String, Fact>();
-    facts.put(caller, records.fact(tenant, caller));
-    return validate(tenant, caller, facts, new HashMap<>());
+    var input = records.input(tenant, caller);
+    facts.put(caller, input.fact());
+    var stored = new HashMap<String, Stored>();
+    stored.put(caller, input.stored());
+    input = null;
+    return validate(tenant, caller, facts, stored);
   }
 
   private VerifiedGraph validate(
@@ -174,10 +179,15 @@ public final class SessionLineageServiceImpl implements SessionLineageService {
     var nodes = new HashMap<String, Node>();
     var genesis = new HashMap<String, Genesis>();
     for (var id : ids) {
-      var f = facts.computeIfAbsent(id, key -> records.fact(tenant, key));
+      if (!facts.containsKey(id) || !stored.containsKey(id)) {
+        var input = records.input(tenant, id);
+        facts.put(id, input.fact());
+        stored.put(id, input.stored());
+      }
+      var f = facts.get(id);
       if (f == null || !tenant.equals(f.tenant())) throw corrupt();
       if (!ids.containsAll(f.sources())) throw invalidScope();
-      var s = stored.computeIfAbsent(id, key -> records.load(tenant, key));
+      var s = stored.get(id);
       raw(s);
       scratch =
           Math.addExact(

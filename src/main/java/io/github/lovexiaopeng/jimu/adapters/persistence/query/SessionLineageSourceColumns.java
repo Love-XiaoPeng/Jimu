@@ -16,56 +16,36 @@ final class SessionLineageSourceColumns {
   private static final Column[] COLUMNS = {
     new Column("task", "tenant_id", "tenant_id", com.mysql.cj.MysqlType.VARCHAR),
     new Column("task", "id", "id", com.mysql.cj.MysqlType.CHAR),
-    new Column("task", "created_at", "created_at", com.mysql.cj.MysqlType.DATETIME),
-    new Column("task", "request_snapshot", "request_snapshot", com.mysql.cj.MysqlType.MEDIUMTEXT),
     new Column("task", "request_digest", "request_digest", com.mysql.cj.MysqlType.CHAR),
-    new Column("task", "capabilities", "capabilities", com.mysql.cj.MysqlType.TEXT),
-    new Column("task", "owner_actor_id", "owner_actor_id", com.mysql.cj.MysqlType.VARCHAR),
-    new Column("task", "tools_digest", "tools_digest", com.mysql.cj.MysqlType.CHAR),
-    new Column("task", "installation_epoch", "installation_epoch", com.mysql.cj.MysqlType.BIGINT),
-    new Column("task", "state", "state", com.mysql.cj.MysqlType.VARCHAR),
+    new Column("task", "request_snapshot", "request_snapshot", com.mysql.cj.MysqlType.MEDIUMTEXT),
     new Column(
-        "task_session_scope", "authority_digest", "authority_digest", com.mysql.cj.MysqlType.CHAR),
+        "task_session_lineage", "tenant_id", "lineage_tenant", com.mysql.cj.MysqlType.VARCHAR),
+    new Column("task_session_lineage", "task_id", "lineage_task", com.mysql.cj.MysqlType.CHAR),
     new Column(
-        "task_session_scope", "authority_bytes", "authority_bytes", com.mysql.cj.MysqlType.INT),
+        "task_session_lineage", "record_version", "record_version", com.mysql.cj.MysqlType.INT),
     new Column(
-        "task_session_scope", "content_state", "scope_content", com.mysql.cj.MysqlType.VARCHAR),
+        "task_session_lineage",
+        "genesis_snapshot",
+        "genesis_snapshot",
+        com.mysql.cj.MysqlType.TEXT),
     new Column(
-        "task_session_scope", "record_version", "record_version", com.mysql.cj.MysqlType.INT),
+        "task_session_lineage", "genesis_digest", "genesis_digest", com.mysql.cj.MysqlType.CHAR),
     new Column(
-        "task_session_scope", "authority_version", "authority_version", com.mysql.cj.MysqlType.INT),
+        "task_session_lineage", "genesis_bytes", "genesis_bytes", com.mysql.cj.MysqlType.INT),
     new Column(
-        "task_session_scope", "owner_actor_id", "scope_owner", com.mysql.cj.MysqlType.VARCHAR),
+        "task_session_lineage", "graph_snapshot", "graph_snapshot", com.mysql.cj.MysqlType.TEXT),
+    new Column("task_session_lineage", "graph_digest", "graph_digest", com.mysql.cj.MysqlType.CHAR),
+    new Column("task_session_lineage", "graph_bytes", "graph_bytes", com.mysql.cj.MysqlType.INT),
     new Column(
-        "task_session_scope",
-        "caller_tools_digest",
-        "caller_tools_digest",
-        com.mysql.cj.MysqlType.CHAR),
-    new Column(
-        "task_session_scope",
-        "caller_binding_digest",
-        "caller_binding_digest",
-        com.mysql.cj.MysqlType.CHAR),
-    new Column(
-        "task_session_scope", "candidate_count", "candidate_count", com.mysql.cj.MysqlType.INT),
-    new Column(
-        "task_session_scope", "created_at", "scope_created", com.mysql.cj.MysqlType.DATETIME),
-    new Column(
-        "task_session_scope", "retain_until", "scope_retain", com.mysql.cj.MysqlType.DATETIME),
-    new Column(
-        "task_session_history", "binding_digest", "binding_digest", com.mysql.cj.MysqlType.CHAR),
-    new Column(
-        "task_session_history", "history_version", "history_version", com.mysql.cj.MysqlType.INT),
-    new Column(
-        "task_session_history", "retain_until", "history_retain", com.mysql.cj.MysqlType.DATETIME)
+        "task_session_lineage", "content_state", "content_state", com.mysql.cj.MysqlType.VARCHAR)
   };
 
   static void verify(
       ResultSet rows, SessionQueryContext query, String statement, SessionQueryWork owner)
       throws SQLException {
     query.operation(8L + statement.length());
-    boolean size = (PREFIX + "sourceFactSizes").equals(statement);
-    if (!size && !(PREFIX + "sourceFact").equals(statement))
+    boolean size = (PREFIX + "nodeInputSizes").equals(statement);
+    if (!size && !(PREFIX + "nodeInput").equals(statement))
       throw new IllegalStateException("Unexpected SQL during source borrow");
     if (SessionQueryTransaction.metadataOwner(query) != owner)
       throw new IllegalStateException("Foreign source projection");
@@ -76,14 +56,17 @@ final class SessionLineageSourceColumns {
     if (!(metadata instanceof com.mysql.cj.jdbc.result.ResultSetMetaData mysql))
       throw new IllegalStateException("Source projection metadata unavailable");
     query.operation(5);
-    if (mysql.getColumnCount() != (size ? 1 : COLUMNS.length))
+    if (mysql.getColumnCount() != (size ? 3 : COLUMNS.length))
       throw new IllegalStateException("Source projection shape");
     if (size) {
-      query.operation(24);
-      int type = mysql.getColumnType(1);
-      if (!"request_bytes".equals(mysql.getColumnLabel(1))
-          || (type != java.sql.Types.BIGINT && type != java.sql.Types.INTEGER))
-        throw new IllegalStateException("Source length projection");
+      String[] labels = {"request_bytes", "genesis_bytes", "graph_bytes"};
+      for (int i = 0; i < labels.length; i++) {
+        query.operation(24L + labels[i].length());
+        int type = mysql.getColumnType(i + 1);
+        if (!labels[i].equals(mysql.getColumnLabel(i + 1))
+            || (type != java.sql.Types.BIGINT && type != java.sql.Types.INTEGER))
+          throw new IllegalStateException("Source length projection");
+      }
       return;
     }
     var fields = mysql.getFields();

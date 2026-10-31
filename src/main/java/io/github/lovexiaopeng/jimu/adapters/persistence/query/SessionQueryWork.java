@@ -351,6 +351,147 @@ public final class SessionQueryWork {
   }
 
   private SessionScopeRecords.SourceFact lineageSource;
+  private SessionScopeRecords.Caller lineageCaller;
+  private SessionScopeRecords.Validated lineageScope;
+  private boolean lineageInputs, lineageIssued, lineageNode;
+  private final Object lineageScopeScratch = new Object();
+
+  /** 在调用方构造同步verify闭包前，先预留其捕获引用及借用字段。 */
+  public void prepareLineageScope() {
+    active();
+    context.checkHealthy();
+    context.operation(4);
+    context.retainScratch(lineageScopeScratch, 512);
+  }
+
+  /** 原require已完整验证且holdScope的proof；仅同步借引用，不发布scope或免除live。 */
+  public <T> T withLineageScope(
+      SessionQueryContext query,
+      SessionScopeRecords.Caller key,
+      SessionScopeRecords.Validated proof,
+      java.util.function.Supplier<T> verify) {
+    boolean borrowed = false;
+    try {
+      active();
+      context.checkHealthy();
+      context.operation(18L + key.tenant().length() + key.id().length());
+      if (query != context || SessionQueryTransaction.metadataOwner(query) != this)
+        throw new IllegalStateException("Foreign lineage scope owner");
+      context.checkHealthy();
+      if (scope != null || lineageScope != null || lineageInputs)
+        throw new IllegalStateException("Lineage scope already borrowed or published");
+      requireProjectionLocks(key.tenant(), key.id());
+      for (var source : proof.sources()) {
+        context.operation(2L + source.tenant().length() + source.id().length());
+        if (!key.tenant().equals(source.tenant())
+            || !locks.contains(source.tenant() + ":" + source.id()))
+          throw new IllegalStateException("Full sorted source locks required");
+      }
+      context.retainScratch(lineageScopeScratch, 512);
+      lineageCaller = key;
+      lineageScope = proof;
+      borrowed = true;
+      return verify.get();
+    } catch (RuntimeException failure) {
+      throw poisonProof(failure);
+    } catch (Error failure) {
+      recordMetadataError(failure);
+      throw failure;
+    } finally {
+      if (borrowed) {
+        lineageCaller = null;
+        lineageScope = null;
+        context.releaseScratch(lineageScopeScratch);
+      }
+    }
+  }
+
+  public void beginLineageInputs() {
+    active();
+    context.checkHealthy();
+    context.operation(3);
+    if (lineageInputs) throw poisonProof(new IllegalStateException("Nested lineage inputs"));
+    lineageInputs = true;
+    lineageIssued = false;
+  }
+
+  public void endLineageInputs() {
+    lineageInputs = false;
+    lineageIssued = false;
+  }
+
+  /** 仅本次query/连接/锁中的已核结构；包装由借用owner先行预留。 */
+  public record LineageBasis(
+      SessionScopeRecords.Caller caller,
+      SessionScopeRecords.Scope scope,
+      SessionScopeRecords.Authority authority,
+      String binding) {}
+
+  public LineageBasis borrowLineageNode(SessionQueryContext query, String tenant, String id) {
+    try {
+      var source = borrowLineageSource(query, tenant, id);
+      if (source != null) {
+        lineageNode = true;
+        lineageIssued = true;
+        return new LineageBasis(
+            source.caller(), source.scope(), source.authority(), source.history().binding());
+      }
+      if (lineageScope == null || !tenant.equals(lineageCaller.tenant())) return null;
+      context.operation(8L + id.length());
+      SessionScopeRecords.Caller node = null;
+      SessionScopeRecords.Scope structure = null;
+      SessionScopeRecords.Authority authority = null;
+      if (id.equals(lineageCaller.id())) {
+        node = lineageCaller;
+        structure = lineageScope.scope();
+        authority = lineageScope.authority();
+      } else {
+        for (var candidate : lineageScope.sources()) {
+          context.operation(2L + id.length());
+          if (id.equals(candidate.id())) {
+            node = candidate;
+            break;
+          }
+        }
+        context.operation(4L + id.length());
+        structure = lineageScope.sourceScopes().get(id);
+        if (structure != null) {
+          context.operation(
+              12L
+                  + tenant.length()
+                  + id.length()
+                  + structure.raw().length()
+                  + structure.digest().length());
+          authority = validatedAuthority(tenant, id, structure.raw(), structure.digest());
+        }
+      }
+      if (node == null
+          || structure == null
+          || authority == null
+          || structure.recordVersion() != 1
+          || structure.authorityVersion() != 1) return null;
+      context.operation(
+          8L
+              + tenant.length()
+              + id.length()
+              + io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+                  .length());
+      if (!tenant.equals(node.tenant())
+          || !id.equals(node.id())
+          || !io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES
+              .equals(node.capabilities())) return null;
+      requireProjectionLocks(tenant, id);
+      context.retainScratch(token, 512);
+      lineageNode = true;
+      lineageIssued = true;
+      return new LineageBasis(node, structure, authority, authority.binding());
+    } catch (RuntimeException failure) {
+      throw poisonProof(failure);
+    } catch (Error failure) {
+      recordMetadataError(failure);
+      throw failure;
+    }
+  }
 
   /** 同步Fact读取期间借原staging；不返回权限token，不允许借用中写入或发布后退款。 */
   public SessionScopeRecords.SourceFact borrowLineageSource(
@@ -396,11 +537,12 @@ public final class SessionQueryWork {
 
   public void releaseLineageSource() {
     lineageSource = null;
+    lineageNode = false;
     context.releaseScratch(token);
   }
 
   boolean lineageSourceActive() {
-    return lineageSource != null;
+    return lineageSource != null || lineageNode;
   }
 
   /** Error仍原样抛出，记录cause以禁止被上层捕获后提交。 */
@@ -430,6 +572,8 @@ public final class SessionQueryWork {
 
   public void stageGraph(String tenant, String id, VerifiedGraph proof) {
     active();
+    if (lineageSource != null || lineageNode || lineageScope != null)
+      throw poisonProof(new IllegalStateException("Stage during lineage structure borrow"));
     stagedGraphKey = tenant + ":" + id;
     stagedGraphTenant = tenant;
     holdGraph(proof);
@@ -856,8 +1000,13 @@ public final class SessionQueryWork {
 
   private void mutateDependencies(java.util.Set<Dependency> writes) {
     context.operation(1);
-    if (lineageSource != null)
-      throw poisonProof(new IllegalStateException("Write during lineage source borrow"));
+    if (lineageSource != null || lineageNode || lineageScope != null)
+      throw poisonProof(new IllegalStateException("Write during lineage structure borrow"));
+    if (lineageInputs && lineageIssued)
+      for (var fact : stagedSources.values()) {
+        if (lineageInputChanged(fact, writes))
+          throw poisonProof(new IllegalStateException("Write while lineage inputs remain live"));
+      }
     mutation();
     if (histories != null) histories.invalidate(writes);
     // Invalidate before SQL, including staging/unknown writes; fresh SELECT/INSERT must reprove.
@@ -867,6 +1016,31 @@ public final class SessionQueryWork {
     releaseCreated();
     for (var invalidate : invalidators.values()) invalidate.accept(writes);
     invalidateProof(writes);
+  }
+
+  /** 输入仍在Service局部Map中：直接比较已有引用，新增遍历及字符比较逐项先付。 */
+  private boolean lineageInputChanged(
+      SessionScopeRecords.SourceFact fact, java.util.Set<Dependency> writes) {
+    context.operation(3);
+    if (writes == null) return true;
+    for (var write : writes) {
+      context.operation(6L + Math.max(fact.caller().tenant().length(), write.tenant().length()));
+      if (!fact.caller().tenant().equals(write.tenant())) continue;
+      if (write.task() == null) {
+        context.operation(3);
+        if (write.plugin() != null || write.actor() == null) return true;
+        context.operation(2L + Math.max(fact.authority().owner().length(), write.actor().length()));
+        if (fact.authority().owner().equals(write.actor())) return true;
+      } else {
+        context.operation(3L + Math.max(fact.caller().id().length(), write.task().length()));
+        if (fact.caller().id().equals(write.task())) return true;
+        for (var target : fact.authority().targets()) {
+          context.operation(3L + Math.max(target.id().length(), write.task().length()));
+          if (target.id().equals(write.task())) return true;
+        }
+      }
+    }
+    return false;
   }
 
   private void invalidateRelations(java.util.Set<Dependency> writes) {
@@ -1003,6 +1177,9 @@ public final class SessionQueryWork {
       SessionScopeRecords.Caller key, SessionScopeRecords.Validated proof, Runnable terminal) {
     active();
     if (scope != null) throw new IllegalStateException("Session proof already published");
+    if (lineageScope != null || lineageSource != null || lineageNode)
+      throw poisonProof(
+          new IllegalStateException("Scope publication during lineage structure borrow"));
     if (!locks.contains(key.tenant() + ":" + key.id())
         || proof.sources().stream().anyMatch(s -> !locks.contains(s.tenant() + ":" + s.id())))
       throw new IllegalStateException("Full sorted task locks required before proof publication");
@@ -1022,8 +1199,18 @@ public final class SessionQueryWork {
   public void graph(String tenant, String id, VerifiedGraph proof) {
     active();
     context.operation(1);
-    if (lineageSource != null)
+    if (lineageSource != null || lineageNode)
       throw poisonProof(new IllegalStateException("Publish during lineage source borrow"));
+    if (lineageScope != null
+        && lineageCaller.tenant().equals(tenant)
+        && lineageCaller.id().equals(id)) {
+      holdGraph(proof); // 返回graph先由原owner承接，再释放输入，最后由require发布。
+      return;
+    }
+    if (caller == null && lineageInputs) {
+      holdGraph(proof);
+      return;
+    }
     if (caller == null || !caller.tenant().equals(tenant) || !caller.id().equals(id)) return;
     holdGraph(proof);
     graph = proof;
@@ -1088,6 +1275,10 @@ public final class SessionQueryWork {
 
   void complete() {
     releaseLineageSource();
+    lineageScope = null;
+    lineageCaller = null;
+    endLineageInputs();
+    context.releaseScratch(lineageScopeScratch);
     policyRaw = null;
     policyHash = null;
     context.releaseScratch(policyScratch);

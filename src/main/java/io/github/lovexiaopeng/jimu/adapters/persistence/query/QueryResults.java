@@ -67,14 +67,17 @@ public final class QueryResults {
                   throw state.failure(failure);
                 }
               });
-    } catch (SQLException | RuntimeException failure) {
+    } catch (SQLException | RuntimeException | Error failure) {
+      if (failure instanceof Error fatal && state.owner != null)
+        state.owner.poisonLineageSource(fatal);
       Throwable primary = state.failure(failure);
       try {
         state.close();
-      } catch (SQLException | RuntimeException cleanup) {
+      } catch (SQLException | RuntimeException | Error cleanup) {
         suppress(primary, cleanup);
       }
       if (primary instanceof SQLException sql) throw sql;
+      if (primary instanceof Error fatal) throw fatal;
       throw (RuntimeException) primary;
     }
   }

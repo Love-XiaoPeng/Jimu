@@ -64,6 +64,13 @@ public interface SessionLineageRecords {
 
   Fact fact(String tenant, String id);
 
+  /** 已有显式节点的一次输入；新caller仍用fact及fresh createdReadback。 */
+  record Input(Fact fact, Stored stored) {}
+
+  default Input input(String tenant, String id) {
+    return new Input(fact(tenant, id), load(tenant, id));
+  }
+
   Stored load(String tenant, String id);
 
   void insert(String tenant, String id, Stored stored);
