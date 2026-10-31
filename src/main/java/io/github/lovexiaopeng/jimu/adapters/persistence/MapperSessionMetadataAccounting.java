@@ -60,22 +60,17 @@ final class MapperSessionMetadataAccounting
   private Map<String, Object> finalParameters;
   private boolean finalActive, finalClosed;
 
-  private void finalCheck() {
+  private long finalCheck() {
     var query = records.appendQuery();
-    if (query != null) query.operation(12);
-    var actual =
-        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
-            .currentOwner();
-    if (!finalActive
-        || finalClosed
-        || query != finalQuery
-        || actual != finalWork
-        || (actual != null
-            && io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
-                    .current(query)
-                != actual))
+    if (query != null) query.operation(7); // query/scope fields, comparisons and version handoff
+    if (!finalActive || finalClosed || query != finalQuery)
       throw new IllegalStateException("Inactive or foreign metadata finalization");
+    if (finalWork != null) return finalWork.metadataFinalVersion(query);
+    if (io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner()
+        != null) throw new IllegalStateException("Foreign metadata finalization");
     if (query != null) query.checkHealthy();
+    return 0;
   }
 
   private void finalFailure(Throwable failure) {
@@ -100,7 +95,7 @@ final class MapperSessionMetadataAccounting
       finalQuery.operation(32);
       FinalTable result;
       if (table != Table.TASK && table != Table.TASK_SESSION_HISTORY) {
-        result = readFinal(table);
+        return readFinal(table); // readFinal checks the closed Result and return at one instant.
       } else if (table == Table.TASK)
         result =
             SessionCursorMetadataBatch.measureFinal(
@@ -150,7 +145,7 @@ final class MapperSessionMetadataAccounting
     try {
       readingVersion = finalWork.metadataReadVersion(finalQuery);
       session.select(command.getId(), finalParameters, this);
-      if (readingVersion != finalWork.metadataReadVersion(finalQuery))
+      if (readingVersion != finalCheck())
         throw new IllegalStateException("Write before FINAL result closed");
       if (readingSummary == null) throw new IllegalStateException("Missing FINAL summary");
       return readingSummary;
@@ -174,13 +169,13 @@ final class MapperSessionMetadataAccounting
       org.apache.ibatis.mapping.MappedStatement command)
       throws java.sql.SQLException {
     try {
-      finalCheck();
+      long version = finalCheck();
       finalQuery.operation(8); // command/query identity, single read and receiver store
       if (context != finalQuery
           || command != readingCommand
           || readingTable == null
           || readingSummary != null) throw new IllegalStateException("Foreign FINAL result");
-      if (readingVersion != finalWork.metadataReadVersion(finalQuery))
+      if (readingVersion != version)
         throw new IllegalStateException("Write before FINAL result consumption");
       readingSummary =
           SessionCursorMetadataBatch.measureResultSet(

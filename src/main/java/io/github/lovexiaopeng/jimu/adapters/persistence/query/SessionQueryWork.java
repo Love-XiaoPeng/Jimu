@@ -1077,6 +1077,16 @@ public final class SessionQueryWork {
     return generation;
   }
 
+  /** Same-instant FINAL identity, health and version read; never retained across callbacks. */
+  public long metadataFinalVersion(SessionQueryContext query) {
+    context.operation(5); // active, context/current Work identity, health and generation return
+    active();
+    if (query != context || SessionQueryTransaction.currentOwner() != this)
+      throw poisonProof(new IllegalStateException("Inactive or foreign metadata finalization"));
+    context.checkHealthy();
+    return generation;
+  }
+
   public void mutation() {
     active();
     invalidateEventHistoryLength();

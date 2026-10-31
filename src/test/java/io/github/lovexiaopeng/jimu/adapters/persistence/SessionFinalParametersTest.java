@@ -55,6 +55,7 @@ class SessionFinalParametersTest {
     final Configuration configuration = new Configuration();
     final List<Map<?, ?>> parameters = new ArrayList<>();
     String fault = "";
+    boolean populated;
     Runnable before = () -> {}, closing = () -> {};
 
     Session() {
@@ -87,7 +88,8 @@ class SessionFinalParametersTest {
       assertEquals(SessionMetadataProjection.forFinalTable(table).statement, name);
       var driver =
           new SessionFinalResultFoldTest.Driver(
-              SessionMetadataProjection.forFinalTable(table), List.of());
+              SessionMetadataProjection.forFinalTable(table),
+              populated ? List.of(row(table)) : List.of());
       var q = (SessionQueryContext) values.get("query");
       try (var rows = driver.result) {
         ((QueryResults.FinalMetadata) handler)
@@ -99,15 +101,160 @@ class SessionFinalParametersTest {
       } catch (java.sql.SQLException failure) {
         throw new IllegalStateException(failure);
       } finally {
-        closing.run();
-        q.releaseScratch(driver.result);
+        try {
+          closing.run();
+        } finally {
+          q.releaseScratch(driver.result);
+        }
       }
+    }
+  }
+
+  private static Map<String, Object> row(Table table) {
+    var row = new HashMap<String, Object>();
+    for (var column : SessionMetadataProjection.forFinalTable(table).columns)
+      row.put(
+          column.name(),
+          switch (column.kind()) {
+            case 'S' -> "x";
+            case 'I' -> 1;
+            case 'L' -> 1L;
+            case 'B' -> true;
+            case 'D' -> java.time.LocalDateTime.of(2026, 1, 1, 0, 0);
+            default -> throw new AssertionError();
+          });
+    return row;
+  }
+
+  @Test
+  void combinedVersionRejectsForeignQueryCompletedWorkAndUnhealthyOwner() throws Exception {
+    for (String fault : List.of("query", "completed", "health")) {
+      var fixture = new SessionQueryTransactionTest.Fixture();
+      var q = query();
+      var primary = new IllegalStateException("first health failure");
+      var caught =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  fixture.transaction.required(
+                      q,
+                      () -> {
+                        var work = SessionQueryTransaction.current(q);
+                        assertEquals(work.metadataReadVersion(q), work.metadataFinalVersion(q));
+                        if (fault.equals("completed")) {
+                          try {
+                            var field = work.getClass().getDeclaredField("completed");
+                            field.setAccessible(true);
+                            field.setBoolean(work, true);
+                            try {
+                              return work.metadataFinalVersion(q);
+                            } finally {
+                              field.setBoolean(work, false);
+                            }
+                          } catch (ReflectiveOperationException failure) {
+                            throw new AssertionError(failure);
+                          }
+                        } else if (fault.equals("query")) {
+                          return work.metadataFinalVersion(query());
+                        } else {
+                          q.recordFailure(primary);
+                          return work.metadataFinalVersion(q);
+                        }
+                      }));
+      if (fault.equals("health")) assertSame(primary, caught);
+      assertEquals(65536, q.scratchLive());
+    }
+  }
+
+  @Test
+  void extraMeterWriteAndErrorCannotPassPostConsumptionOrLoseOwner() throws Exception {
+    for (String fault : List.of("write", "error")) {
+      var fixture = new SessionQueryTransactionTest.Fixture();
+      var session = new Session();
+      session.populated = true;
+      var q = query();
+      var accounting =
+          new MapperSessionMetadataAccounting(
+              new JdbcSessionRecords(null, q, session), task(), true);
+      var primary = new AssertionError("meter primary");
+      Class<? extends Throwable> expected =
+          fault.equals("error") ? AssertionError.class : IllegalStateException.class;
+      var caught =
+          assertThrows(
+              expected,
+              () ->
+                  fixture.transaction.required(
+                      q,
+                      () -> {
+                        var work = SessionQueryTransaction.current(q);
+                        work.locked("t", "c");
+                        try (var scope = accounting.finalization();
+                            var meter =
+                                q.meter(
+                                    () ->
+                                        (label, value) -> {
+                                          if (fault.equals("error")) throw primary;
+                                          work.mutation();
+                                        })) {
+                          return accounting.finalTable(Table.TASK_ATTEMPT);
+                        }
+                      }));
+      if (fault.equals("error")) assertSame(primary, caught);
+      assertEquals(65536, q.scratchLive());
+      assertNull(field(accounting, "finalWork"));
+      assertNull(field(accounting, "readingCommand"));
     }
   }
 
   private static Map<String, Object> task() {
     return new HashMap<>(
         Map.of("tenant_id", "t", "id", "c", "capabilities", SessionLineagePolicyV5.CAPABILITIES));
+  }
+
+  @Test
+  void foreignWorkAtSelectAndCloseCallbacksPoisonsBothOwners() throws Exception {
+    for (String boundary : List.of("select", "close")) {
+      var fixture = new SessionQueryTransactionTest.Fixture();
+      var session = new Session();
+      var q = query();
+      var foreign = query();
+      var accounting =
+          new MapperSessionMetadataAccounting(
+              new JdbcSessionRecords(null, q, session), task(), true);
+      Runnable switchOwner =
+          () ->
+              fixture.transaction.requiresNew(
+                  foreign,
+                  () -> {
+                    try {
+                      accounting.read(
+                          null,
+                          q,
+                          session.configuration.getMappedStatement(statement(Table.TASK_ATTEMPT)));
+                    } catch (java.sql.SQLException failure) {
+                      throw new AssertionError(failure);
+                    }
+                    return null;
+                  });
+      if (boundary.equals("select")) session.before = switchOwner;
+      else session.closing = switchOwner;
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              fixture.transaction.required(
+                  q,
+                  () -> {
+                    SessionQueryTransaction.current(q).locked("t", "c");
+                    try (var scope = accounting.finalization()) {
+                      return accounting.finalTable(Table.TASK_ATTEMPT);
+                    }
+                  }));
+      org.junit.jupiter.api.Assertions.assertNotNull(q.recordedFailure());
+      assertSame(q.recordedFailure(), foreign.recordedFailure());
+      assertEquals(65536, q.scratchLive());
+      assertEquals(65536, foreign.scratchLive());
+      assertNull(field(accounting, "finalWork"));
+    }
   }
 
   @Test
