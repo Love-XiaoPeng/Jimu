@@ -318,6 +318,96 @@ class SessionFinalResultFoldTest {
   }
 
   @Test
+  void joinedScalarRejectsEachWrongTypeAndNonNullableNullAndPoisons() throws Exception {
+    var p = SessionMetadataProjection.forFinalTable(Table.TASK_ATTEMPT);
+    for (var column : p.columns) {
+      var invalid = new ArrayList<Object>();
+      invalid.add(
+          switch (column.kind()) {
+            case 'S' -> 1;
+            case 'I' -> 1L;
+            case 'L' -> 1;
+            case 'B' -> 1;
+            case 'D' -> "2026-01-01T00:00:00";
+            default -> throw new AssertionError();
+          });
+      if (!column.nullable()) invalid.add(null);
+      for (var value : invalid) {
+        var values = row(p);
+        values.put(column.name(), value);
+        var now = q();
+        var driver = new Driver(p, List.of(values));
+        var first =
+            assertThrows(
+                RuntimeException.class,
+                () -> direct(now, Table.TASK_ATTEMPT, driver, true),
+                column.name());
+        assertSame(first, now.recordedFailure(), column.name());
+        assertSame(first, assertThrows(RuntimeException.class, now::checkHealthy));
+        assertTrue(driver.closed);
+        assertEquals(65536, now.scratchLive());
+      }
+    }
+  }
+
+  @Test
+  void joinedStringChecksCodePointBoundaryAndMalformedPairsInSameConsumption() throws Exception {
+    var p = SessionMetadataProjection.forFinalTable(Table.TASK_ATTEMPT);
+    for (String text : List.of("a".repeat(64), "🧱".repeat(64), "a".repeat(63) + "🧱")) {
+      var values = row(p);
+      values.put("tenant_id", text);
+      var before = q();
+      var now = q();
+      assertEquals(
+          legacy(before, Table.TASK_ATTEMPT, List.of(values)),
+          direct(now, Table.TASK_ATTEMPT, new Driver(p, List.of(values)), true));
+      assertEquals(before.resources().bytes(), now.resources().bytes());
+      assertEquals(65536, now.scratchLive());
+    }
+    for (String text :
+        List.of(
+            "a".repeat(65),
+            "🧱".repeat(65),
+            "a".repeat(64) + "🧱",
+            "\ud800",
+            "\udc00",
+            "x\ud800y",
+            "🧱\udc00",
+            "a".repeat(63) + "\ud800")) {
+      var values = row(p);
+      values.put("tenant_id", text);
+      var now = q();
+      var driver = new Driver(p, List.of(values));
+      var first =
+          assertThrows(RuntimeException.class, () -> direct(now, Table.TASK_ATTEMPT, driver, true));
+      assertSame(first, now.recordedFailure());
+      assertTrue(driver.closed);
+      assertEquals(65536, now.scratchLive());
+    }
+  }
+
+  @Test
+  void originalResultMetadataColumnKeepsUntypedSemantics() {
+    var label = new SessionQueryContext.MetadataLabel("value") {};
+    var query = q();
+    try (var result = query.result("original")) {
+      for (Object value :
+          java.util.Arrays.asList(
+              null,
+              true,
+              false,
+              Integer.MIN_VALUE,
+              Long.MIN_VALUE,
+              -1L,
+              "🧱",
+              LocalDateTime.of(10000, 1, 1, 0, 0, 0, 999999999)))
+        assertEquals(
+            SessionMetadataScalars.bytes(value, null), result.metadataColumn(label, value));
+    }
+    assertEquals(65536, query.scratchLive());
+  }
+
+  @Test
   void additionalMeterKeepsOriginalValuesAndFirstRefusal() throws Exception {
     var p = SessionMetadataProjection.forFinalTable(Table.TASK_ATTEMPT);
     var q = q();

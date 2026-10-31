@@ -241,25 +241,12 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
         long amount = 0;
         Long actual = null;
         for (int i = 0; i < projection.columns.size(); i++) {
-          query.operation(8); // descriptor/ordinal/getter/normalization/type dispatch
+          query.operation(
+              5); // descriptor/ordinal/getter/normalization; scalar dispatch belongs to Result
           var column = projection.columns.get(i);
           Object value = source.getObject(i + 1);
           if (value instanceof java.sql.Timestamp time) value = time.toLocalDateTime();
-          boolean valid =
-              value == null
-                  ? column.nullable()
-                  : switch (column.kind()) {
-                    case 'S' ->
-                        value instanceof String text && boundedFinal(text, column.points(), query);
-                    case 'I' -> value instanceof Integer;
-                    case 'L' -> value instanceof Long;
-                    case 'B' -> value instanceof Boolean;
-                    case 'D' -> value instanceof java.time.LocalDateTime;
-                    default -> false;
-                  };
-          if (!valid) throw JdbcSessionRecords.corrupt();
-          // One strict scalar traversal supplies SQL transport and business metadata.
-          long scalar = result.metadataColumn(column, value);
+          long scalar = result.metadataColumnChecked(column, value);
           query.operation(4); // NULL presence semantics and exact header/byte additions
           if (value != null || nullsPresent)
             rowBytes =
@@ -295,15 +282,6 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
       return new SessionMetadataAccounting.FinalTable(
           rows, bytes, 0, null, reservations, reservation);
     }
-  }
-
-  private static boolean boundedFinal(String text, int points, SessionQueryContext query) {
-    query.operation(4);
-    int units = text.length();
-    if (units <= points) return true;
-    if (units > 2 * points) return false;
-    query.operation(units);
-    return text.codePointCount(0, units) <= points;
   }
 
   private static boolean jdbcType(char kind, int type) {

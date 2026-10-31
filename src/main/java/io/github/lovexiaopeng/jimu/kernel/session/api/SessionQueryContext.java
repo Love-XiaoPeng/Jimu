@@ -339,14 +339,24 @@ public final class SessionQueryContext {
     return new SqlLengthResult(statement, rawStatement);
   }
 
-  /** Immutable column name data; contains no row length, owner, or reusable proof. */
+  /** Immutable column description; contains no row length, owner, or reusable proof. */
   public abstract static class MetadataLabel {
     private final String name;
     private final int bytes;
+    protected final char kind;
+    protected final int points;
+    protected final boolean nullable;
 
     protected MetadataLabel(String name) {
+      this(name, '\0', 0, true);
+    }
+
+    protected MetadataLabel(String name, char kind, int points, boolean nullable) {
       this.name = java.util.Objects.requireNonNull(name);
       bytes = utf8(name);
+      this.kind = kind;
+      this.points = points;
+      this.nullable = nullable;
     }
 
     public final String name() {
@@ -466,6 +476,34 @@ public final class SessionQueryContext {
       }
     }
 
+    /** 当前普通 FINAL 列：描述类型/NULL/代码点上限与严格长度在同一次标量消费完成。 */
+    public long metadataColumnChecked(MetadataLabel descriptor, Object value) {
+      String label = descriptor.name;
+      String priorStatement = activeStatement, priorColumn = activeColumn;
+      activeStatement = statement;
+      activeColumn = label;
+      try {
+        operation(8); // descriptor kind/NULL/type dispatch, scalar result and accounting handoffs
+        long scalar = metadataScalarBytes(descriptor, value);
+        if (metered) {
+          operation(2); // immutable descriptor lookup; no repeated label encoding
+          long size = Math.addExact(8L + descriptor.bytes, scalar);
+          bytes = Math.addExact(bytes, size);
+          groupCounters()[1] = Math.addExact(groupCounters()[1], size);
+          batch = Math.addExact(batch, size);
+          retainScratch(this, Math.multiplyExact(batch, 3));
+          if (bytes > byteLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
+        }
+        if (additional != null) additional.column(label, value);
+        return scalar;
+      } catch (RuntimeException failure) {
+        throw recordFailure(failure);
+      } finally {
+        activeStatement = priorStatement;
+        activeColumn = priorColumn;
+      }
+    }
+
     private void columnMeasured(String label, Object value) {
       if (metered) {
         operation(1);
@@ -532,6 +570,89 @@ public final class SessionQueryContext {
     }
   }
 
+  private long metadataScalarBytes(MetadataLabel descriptor, Object value) {
+    if (value == null) {
+      if (!descriptor.nullable) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+      operation(1);
+      return 1;
+    }
+    return switch (descriptor.kind) {
+      case 'S' -> {
+        if (!(value instanceof String text)) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+        yield metadataTextBytes(text, descriptor.points);
+      }
+      case 'I' -> {
+        if (!(value instanceof Integer)) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+        yield metadataNumberBytes((Integer) value);
+      }
+      case 'L' -> {
+        if (!(value instanceof Long)) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+        yield metadataNumberBytes((Long) value);
+      }
+      case 'B' -> {
+        if (!(value instanceof Boolean flag)) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+        operation(1);
+        yield flag ? 4 : 5;
+      }
+      case 'D' -> {
+        if (!(value instanceof java.time.LocalDateTime time))
+          throw refuse(409, "SESSION_HISTORY_CORRUPT");
+        yield metadataTimeBytes(time);
+      }
+      default -> throw refuse(409, "SESSION_HISTORY_CORRUPT");
+    };
+  }
+
+  private long metadataTextBytes(String text, int maximumPoints) {
+    operation(4); // length, bound, and code-point counter; no separate codePointCount traversal
+    int units = text.length(), points = units;
+    if (units > 2L * maximumPoints) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+    long size = 0;
+    for (int i = 0; i < units; i++) {
+      operation(1);
+      char c = text.charAt(i);
+      if (c < 128) size++;
+      else if (c < 2048) size += 2;
+      else if (Character.isHighSurrogate(c)) {
+        if (++i >= units || !Character.isLowSurrogate(text.charAt(i)))
+          throw refuse(409, "SESSION_HISTORY_CORRUPT");
+        operation(1);
+        size += 4;
+        operation(1); // this same UTF8 pair consumes one code point, without another traversal
+        points--;
+      } else if (Character.isLowSurrogate(c)) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+      else size += 3;
+    }
+    operation(1); // final code-point bound, including BMP strings whose UTF16 length exceeded it
+    if (points > maximumPoints) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+    return size;
+  }
+
+  private long metadataNumberBytes(long number) {
+    long size = number < 0 ? 1 : 0;
+    if (number > 0) number = -number;
+    do {
+      operation(1);
+      size++;
+      number /= 10;
+    } while (number != 0);
+    return size;
+  }
+
+  private long metadataTimeBytes(java.time.LocalDateTime time) {
+    operation(7);
+    int year = time.getYear();
+    if ((year >= 0) & (year <= 9999)) return 27;
+    Object temporary = new Object();
+    retainScratch(temporary, 2048);
+    try {
+      operation(27);
+      return metadataScalarBytes(UTC.format(time));
+    } finally {
+      releaseScratch(temporary);
+    }
+  }
+
   private long metadataScalarBytes(Object value) {
     if (value == null) {
       operation(1);
@@ -560,28 +681,11 @@ public final class SessionQueryContext {
       return flag ? 4 : 5;
     }
     if (value instanceof java.time.LocalDateTime time) {
-      operation(7);
-      int year = time.getYear();
-      if ((year >= 0) & (year <= 9999)) return 27;
-      Object temporary = new Object();
-      retainScratch(temporary, 2048);
-      try {
-        operation(27);
-        return metadataScalarBytes(UTC.format(time));
-      } finally {
-        releaseScratch(temporary);
-      }
+      return metadataTimeBytes(time);
     }
     if (!(value instanceof Integer) && !(value instanceof Long))
       throw recordFailure(new TaskFailure(409, "SESSION_HISTORY_CORRUPT"));
-    long number = ((Number) value).longValue(), size = number < 0 ? 1 : 0;
-    if (number > 0) number = -number;
-    do {
-      operation(1);
-      size++;
-      number /= 10;
-    } while (number != 0);
-    return size;
+    return metadataNumberBytes(((Number) value).longValue());
   }
 
   private static int utf8(String value) {

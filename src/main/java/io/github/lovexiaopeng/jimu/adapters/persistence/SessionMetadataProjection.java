@@ -8,15 +8,8 @@ import java.util.List;
 final class SessionMetadataProjection {
   static final class Column
       extends io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.MetadataLabel {
-    private final char kind;
-    private final int points;
-    private final boolean nullable;
-
     Column(String name, char kind, int points, boolean nullable) {
-      super(paidName(name));
-      this.kind = kind;
-      this.points = points;
-      this.nullable = nullable;
+      super(paidName(name), kind, points, nullable);
     }
 
     private static String paidName(String name) {
