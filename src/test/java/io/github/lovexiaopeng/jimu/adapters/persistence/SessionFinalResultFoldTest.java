@@ -48,7 +48,7 @@ class SessionFinalResultFoldTest {
           switch (c.kind()) {
             case 'S' -> "x".repeat(c.points());
             case 'I' -> 1;
-            case 'L', 'T', 'M', 'X' -> 1L;
+            case 'L' -> 1L;
             case 'B' -> true;
             case 'D' -> LocalDateTime.of(2026, 1, 1, 0, 0, 0, 123456789);
             default -> throw new AssertionError();
@@ -60,7 +60,7 @@ class SessionFinalResultFoldTest {
     return switch (kind) {
       case 'S' -> Types.VARCHAR;
       case 'I' -> Types.INTEGER;
-      case 'L', 'T', 'M', 'X' -> Types.BIGINT;
+      case 'L' -> Types.BIGINT;
       case 'B' -> Types.BIT;
       case 'D' -> Types.TIMESTAMP;
       default -> throw new AssertionError();
@@ -175,94 +175,18 @@ class SessionFinalResultFoldTest {
   }
 
   @Test
-  void taskLengthsFoldOnceWithIndependentTransportAndBusinessFormulas() throws Exception {
-    var p = SessionMetadataProjection.taskSized();
-    for (boolean nulls : new boolean[] {false, true}) {
-      var values = row(p);
-      for (var c : p.columns) {
-        if (c.nullable()) values.put(c.name(), null);
-        else if (c.kind() == 'S') values.put(c.name(), "🧱");
-        else if (c.kind() == 'L') values.put(c.name(), Long.MIN_VALUE);
-        else if (c.kind() == 'D')
-          values.put(c.name(), LocalDateTime.of(-10000, 1, 1, 0, 0, 0, 999999999));
-      }
-      values.put("capabilities", 65535L);
-      values.put("model_snapshot", 16777215L);
-      values.put("material_snapshot", 4294967295L);
-      if (!nulls) values.values().removeIf(java.util.Objects::isNull);
-      var old = q();
-      var expected = legacy(old, Table.TASK, List.of(values));
-      var now = q();
-      var driver = new Driver(p, List.of(values));
-      assertEquals(expected, direct(now, Table.TASK, driver, nulls));
-      assertEquals(old.resources().bytes(), now.resources().bytes());
-      assertEquals(60, driver.getters);
-      assertEquals(60, driver.labels);
-      assertEquals(60, driver.types);
-      assertEquals(65536, now.scratchLive());
-      assertTrue(driver.closed);
-    }
-  }
-
-  @Test
-  void taskRejectsEachLengthBoundAndOrdinaryWrongScalar() throws Exception {
-    var p = SessionMetadataProjection.taskSized();
-    for (var c : p.columns) {
-      if (c.kind() != 'T' && c.kind() != 'M' && c.kind() != 'X') continue;
-      long maximum = c.kind() == 'T' ? 65535L : c.kind() == 'M' ? 16777215L : 4294967295L;
-      for (Object invalid :
-          new Object[] {-1L, maximum + 1, "12", 1.0, new java.math.BigDecimal(1)}) {
-        var values = row(p);
-        values.put(c.name(), invalid);
-        var query = q();
-        var driver = new Driver(p, List.of(values));
-        assertThrows(RuntimeException.class, () -> direct(query, Table.TASK, driver, true));
-        assertTrue(driver.closed);
-        assertEquals(65536, query.scratchLive());
-      }
-    }
-    var values = row(p);
-    values.put("owner_actor_id", "\ud800");
-    var query = q();
-    var driver = new Driver(p, List.of(values));
-    assertThrows(RuntimeException.class, () -> direct(query, Table.TASK, driver, true));
-    assertEquals(65536, query.scratchLive());
-  }
-
-  @Test
-  void taskEmptyDoesNotReadMetadataAndEachNewResultValidatesBeforeGetters() throws Exception {
-    var p = SessionMetadataProjection.taskSized();
-    var empty = new Driver(p, List.of());
-    assertEquals(0, direct(q(), Table.TASK, empty, false).rows());
-    assertEquals(0, empty.metadataReads);
-    for (String fault : List.of("extra", "missing", "label", "jdbc")) {
-      var driver = new Driver(p, List.of(row(p)));
-      driver.fault = fault;
-      var query = q();
-      assertThrows(RuntimeException.class, () -> direct(query, Table.TASK, driver, false));
-      assertEquals(0, driver.getters);
-      assertEquals(65536, query.scratchLive());
-    }
-    var driver = new Driver(p, List.of(row(p), row(p)));
-    var query = q();
-    assertThrows(RuntimeException.class, () -> direct(query, Table.TASK, driver, false));
-    assertEquals(60, driver.getters);
-    assertEquals(65536, query.scratchLive());
-  }
-
-  @Test
   void everyFinalScalarProjectionPreservesSummarySqlBytesAndSingleGetter() throws Exception {
     int samples = 0;
     for (var t : Table.values()) {
       var p = SessionMetadataProjection.forFinalTable(t);
-      if (p == null || p.taskSized) continue;
+      if (p == null) continue;
       for (String shape : List.of("full", "null", "absent", "unicode", "wide")) {
         var values = row(p);
         for (var c : p.columns) {
           if (c.nullable() && shape.equals("null")) values.put(c.name(), null);
           if (c.nullable() && shape.equals("absent")) values.remove(c.name());
           if (shape.equals("unicode") && c.kind() == 'S')
-            values.put(c.name(), "馃П".repeat(c.points()));
+            values.put(c.name(), "🧱".repeat(c.points()));
           if (shape.equals("wide")) {
             if (c.kind() == 'L') values.put(c.name(), Long.MIN_VALUE);
             if (c.kind() == 'I') values.put(c.name(), Integer.MIN_VALUE);
@@ -298,7 +222,7 @@ class SessionFinalResultFoldTest {
       long before = 0, after = 0;
       for (var t : Table.values()) {
         var p = SessionMetadataProjection.forFinalTable(t);
-        if (p == null || p.taskSized) continue;
+        if (p == null) continue;
         var rows = new ArrayList<Map<String, Object>>();
         if (population.equals("full")) rows.add(row(p));
         if (population.equals("frozen"))

@@ -98,8 +98,7 @@ final class SessionMetadataProjection {
       new SessionMetadataProjection(
           "tenant_id:S64,id:S36,owner_actor_id:S64,idempotency_key:S128,request_digest:S64,capabilities:T,installation_epoch:L,policy_version:I,record_version:I,state:S32,revision:L,created_at:D,updated_at:D,deadline:D,ready_at:D,cancel_requested_at:D?,current_attempt_id:S36?,worker_id:S36?,fence:L,lease_until:D?,next_event_seq:L,max_models:I,max_tools:I,models_used:I,tools_used:I,token_held:L,max_tokens:L,code:S64?,model_snapshot:M?,model_digest:S64?,evaluation_run_id:S64?,cost_held:L,max_cost_micros:L,tools_snapshot:M?,tools_digest:S64?,report_time:D?,evaluation_snapshot:M?,evaluation_digest:S64?,evaluation_phase:S1?,evaluation_sample:S8?,evaluation_model:S160?,material_snapshot:X?,material_digest:S64?,material_system_digest:S64?,material_file_snapshot:X?,material_file_digest:S64?,execution_scope_digest:S64?,business_policy_snapshot:X?,business_policy_digest:S64?,media_snapshot:M?,media_digest:S64?,media_cleanup_state:S24?,mcp_snapshot:M?,mcp_digest:S64?,question_binding:T?,question_binding_digest:S64?,waiting_question_id:S36?,question_continuation_step_id:S36?,question_cleanup_state:S24?,question_retained_digests:T?",
           1,
-          true,
-          MAPPER + "metadataTaskSized");
+          true);
 
   static SessionMetadataProjection taskSized() {
     return TASK_SIZED;
@@ -112,9 +111,7 @@ final class SessionMetadataProjection {
           MAPPER + "metadataTaskSessionLineage");
 
   static SessionMetadataProjection forFinalTable(Table table) {
-    return table == Table.TASK
-        ? TASK_SIZED
-        : table == Table.TASK_SESSION_LINEAGE ? LINEAGE : forTable(table);
+    return table == Table.TASK_SESSION_LINEAGE ? LINEAGE : forTable(table);
   }
 
   static SessionMetadataProjection forTable(Table table) {

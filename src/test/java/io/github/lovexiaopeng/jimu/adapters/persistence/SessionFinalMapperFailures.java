@@ -40,7 +40,6 @@ final class SessionFinalMapperFailures {
 
   private static final class FaultSource extends DelegatingDataSource {
     String fault;
-    boolean taskSized;
     Runnable write;
     boolean changed, closed;
     int getters, statements;
@@ -60,8 +59,7 @@ final class SessionFinalMapperFailures {
             Object value = invoke(connection, m, a);
             if (!m.getName().equals("prepareStatement")
                 || !(value instanceof PreparedStatement statement)
-                || !a[0].toString().contains(taskSized ? "FROM task WHERE" : "FROM task_attempt"))
-              return value;
+                || !a[0].toString().contains("FROM task_attempt")) return value;
             statements++;
             return proxy(
                 PreparedStatement.class,
@@ -113,12 +111,7 @@ final class SessionFinalMapperFailures {
   }
 
   static void verify(DataSource plain) {
-    verify(plain, false);
-  }
-
-  static void verify(DataSource plain, boolean taskSized) {
     var source = new FaultSource(plain);
-    source.taskSized = taskSized;
     var db = new JdbcTemplate(source);
     var mappers = LedgerMapperSessions.create(source);
     var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
@@ -179,7 +172,7 @@ final class SessionFinalMapperFailures {
                       "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.metadataTaskAttempt",
                       Map.of("query", foreign, "tenant", "tenant-a", "taskId", ID),
                       accounting);
-                else accounting.finalTable(taskSized ? Table.TASK : Table.TASK_ATTEMPT);
+                else accounting.finalTable(Table.TASK_ATTEMPT);
               }
               return null;
             });
@@ -208,7 +201,7 @@ final class SessionFinalMapperFailures {
               Long.class,
               ID)) throw new AssertionError("Write not rolled back " + fault);
       System.out.println(
-          (taskSized ? "PASS TASK_FINAL_REAL_FAULT " : "PASS FINAL_REAL_FAULT ")
+          "PASS FINAL_REAL_FAULT "
               + fault
               + " getters="
               + source.getters

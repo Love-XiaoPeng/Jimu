@@ -99,9 +99,17 @@ final class MapperSessionMetadataAccounting
       // Route plus service's summary fold, headroom, special-field handoff and temporary clear.
       finalQuery.operation(32);
       FinalTable result;
-      if (table != Table.TASK_SESSION_HISTORY) {
+      if (table != Table.TASK && table != Table.TASK_SESSION_HISTORY) {
         result = readFinal(table);
-      } else
+      } else if (table == Table.TASK)
+        result =
+            SessionCursorMetadataBatch.measureFinal(
+                finalQuery,
+                table,
+                SessionMetadataProjection.taskSized(),
+                () ->
+                    records.mapperCursor("SessionHistoryRetentionMapper.metadataTaskSized", task));
+      else
         result =
             io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistorySizedMetadataBatch
                 .measureFinal(
@@ -137,23 +145,6 @@ final class MapperSessionMetadataAccounting
         session
             .getConfiguration()
             .getMappedStatement(SessionMetadataProjection.forFinalTable(table).statement);
-    if (table == Table.TASK) {
-      finalQuery.operation(17); // cache/command/result-map/source guards before SELECT
-      var config = session.getConfiguration();
-      if (config.isCacheEnabled()
-          || config.getLocalCacheScope() != org.apache.ibatis.session.LocalCacheScope.STATEMENT
-          || command.getSqlCommandType() != org.apache.ibatis.mapping.SqlCommandType.SELECT
-          || command.isUseCache()
-          || !command.isFlushCacheRequired()
-          || command.getResultMaps().size() != 1
-          || command.getResultMaps().getFirst().getType() != Map.class
-          || !command.getResultMaps().getFirst().getResultMappings().isEmpty()
-          || !io.github.lovexiaopeng.jimu.adapters.persistence.query
-              .SessionHistoryMetadataLanguageDriver.ownsTask(command.getSqlSource()))
-        throw JdbcSessionRecords.corrupt();
-      io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistorySizedMetadataBatch
-          .requireConnection(session, finalQuery);
-    }
     readingTable = table;
     readingCommand = command;
     try {
@@ -161,9 +152,6 @@ final class MapperSessionMetadataAccounting
       session.select(command.getId(), finalParameters, this);
       if (readingVersion != finalWork.metadataReadVersion(finalQuery))
         throw new IllegalStateException("Write before FINAL result closed");
-      if (table == Table.TASK)
-        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistorySizedMetadataBatch
-            .requireConnection(session, finalQuery);
       if (readingSummary == null) throw new IllegalStateException("Missing FINAL summary");
       return readingSummary;
     } finally {

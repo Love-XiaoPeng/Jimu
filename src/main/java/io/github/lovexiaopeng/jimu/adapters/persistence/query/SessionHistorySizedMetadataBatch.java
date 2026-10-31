@@ -141,12 +141,6 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
   }
 
   private void connection(org.apache.ibatis.session.SqlSession session) {
-    requireConnection(session, query);
-  }
-
-  /** 当前事务实际连接及 UTF8 来源；TASK 同步长度读者复用原校验。 */
-  public static void requireConnection(
-      org.apache.ibatis.session.SqlSession session, SessionQueryContext query) {
     ops(query, 14); // configuration/environment/DS/resource/holder/connection and identity guards.
     var config = session.getConfiguration();
     var ds = config.getEnvironment().getDataSource();
