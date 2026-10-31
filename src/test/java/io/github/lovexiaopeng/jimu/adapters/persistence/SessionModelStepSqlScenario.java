@@ -4,6 +4,7 @@ import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure.LedgerMapperSessions;
 import io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryResults;
 import io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction;
+import io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5;
 import io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext;
 import io.github.lovexiaopeng.jimu.kernel.task.api.SessionSearchScopeLedger.QueryResources;
 import java.util.List;
@@ -181,6 +182,42 @@ final class SessionModelStepSqlScenario {
             SessionFinalMapperFailures.contains(caught, faultSource.primary)
                 && SessionFinalMapperFailures.contains(faultSource.primary, faultSource.secondary),
             "original Error and suppressed close survive step cleanup");
+    }
+    for (String changed : List.of(raw + "changed", new String(raw))) {
+      db.update(
+          "UPDATE step SET request_snapshot=?,request_digest=?,session_upper_seq=0 WHERE id=?",
+          changed,
+          "0".repeat(64),
+          STEP);
+      var corrupted = SessionDependencyScenario.snapshot(db);
+      var q = query();
+      io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure refusal = null;
+      try {
+        tx.required(
+            q,
+            () -> {
+              SessionQueryTransaction.current(q).locked("tenant-a", task);
+              new JdbcSessionRecords(db, q, mappers)
+                  .modelStep(
+                      Map.of("id", task, "capabilities", SessionLineagePolicyV5.CAPABILITIES),
+                      "tenant-a",
+                      STEP,
+                      task);
+              return null;
+            });
+      } catch (io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure failure) {
+        refusal = failure;
+      }
+      check(
+          refusal != null && refusal.code().equals("SESSION_HISTORY_CORRUPT"),
+          "fresh step raw with mismatched digest is rejected");
+      check(
+          q.completedWork().get("history.encode") == changed.length(),
+          "fresh corrupt raw is independently encoded");
+      check(
+          corrupted.equals(SessionDependencyScenario.snapshot(db)),
+          "corrupt step 22-table rollback");
+      check(q.scratchLive() == 65536, "corrupt step owners released");
     }
   }
 }
