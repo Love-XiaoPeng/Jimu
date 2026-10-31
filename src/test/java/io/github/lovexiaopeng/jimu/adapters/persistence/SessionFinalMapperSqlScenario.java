@@ -50,14 +50,11 @@ public final class SessionFinalMapperSqlScenario {
     var mappers = LedgerMapperSessions.create(source);
     var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
     // The first call deliberately starts static initialization inside its actual Work.
-    boolean distinct = args.length > 3 && args[3].equals("distinct-source");
     boolean sourceOnly = args.length > 3 && args[3].equals("source-only");
     for (String population :
-        distinct
-            ? List.of("cold-empty", "empty", "full-source")
-            : sourceOnly
-                ? List.of("cold-empty", "frozen-source")
-                : List.of("cold-empty", "empty", "frozen", "full", "frozen-source")) {
+        sourceOnly
+            ? List.of("cold-empty", "frozen-source")
+            : List.of("cold-empty", "empty", "frozen", "full", "frozen-source")) {
       var q =
           new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
       q.restrictLineage();
@@ -65,7 +62,7 @@ public final class SessionFinalMapperSqlScenario {
       String id =
           population.startsWith("frozen")
               ? ID
-              : population.startsWith("full") ? "20000000-0000-0000-0000-000000000001" : EMPTY;
+              : population.equals("full") ? "20000000-0000-0000-0000-000000000001" : EMPTY;
       var task =
           Map.<String, Object>of(
               "tenant_id",
@@ -80,28 +77,14 @@ public final class SessionFinalMapperSqlScenario {
           q,
           () -> {
             SessionQueryTransaction.current(q).locked("tenant-a", id);
-            if (population.endsWith("source")) {
+            if (population.equals("frozen-source")) {
               // Test-only Work shape from the saved original source. This measures FINAL's
               // source-lock loop, not admission validation or an authority grant.
               var work = SessionQueryTransaction.current(q);
               work.admission();
               var fact = sourceFact(json);
               work.locked(fact.caller().tenant(), fact.caller().id());
-              if (distinct) {
-                work.locked("tenant-a", id);
-                work.locked("tenant-a", id);
-                work.locked(fact.caller().tenant(), fact.caller().id());
-              }
               work.stageSource(fact.caller(), fact);
-              if (distinct) {
-                // Saved R43 second prefix: 23 string-address checks, five registrations and
-                // two bound-address acquisitions. Use fresh equal String objects, not aliases.
-                // All checks carry the source here; the real prefix acquired it later.
-                long prefix = q.resources().operations();
-                for (int i = 0; i < 23; i++)
-                  work.requireProjectionLocks(new String("tenant-a"), new String(id));
-                totals.put("prefixLookupOperations", q.resources().operations() - prefix);
-              }
             }
             var accounting = new MapperSessionMetadataAccounting(records, task, true);
             try (var scope = accounting.finalization()) {

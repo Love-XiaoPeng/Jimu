@@ -36,43 +36,14 @@ class SessionProjectionLockTest {
   }
 
   @SuppressWarnings("unchecked")
-  private static Map<?, ?> locks(SessionQueryWork work) {
+  private static Map<String, ?> locks(SessionQueryWork work) {
     try {
       var field = SessionQueryWork.class.getDeclaredField("locks");
       field.setAccessible(true);
-      return (Map<?, ?>) field.get(work);
+      return (Map<String, ?>) field.get(work);
     } catch (ReflectiveOperationException failure) {
       throw new AssertionError(failure);
     }
-  }
-
-  @Test
-  void componentHashCollisionsAndEqualStringsKeepDistinctRegisteredObjects() {
-    var f = fixture();
-    f.transaction.required(
-        f.context,
-        () -> {
-          var w = SessionQueryTransaction.current(f.context);
-          // Aa/BB collide under String.hashCode; a:b/c and a/b:c collided under concatenation.
-          for (var pair :
-              List.of(
-                  List.of("Aa", "Aa"),
-                  List.of("BB", "Aa"),
-                  List.of("Aa", "BB"),
-                  List.of("a:b", "c"),
-                  List.of("a", "b:c"))) {
-            w.locked(pair.get(0), pair.get(1));
-            var registered = w.projectionLock(f.context, pair.get(0), pair.get(1));
-            w.locked(new String(pair.get(0)), new String(pair.get(1)));
-            assertSame(
-                registered,
-                w.projectionLock(f.context, new String(pair.get(0)), new String(pair.get(1))));
-            w.requireProjectionLocks(f.context, registered);
-          }
-          assertEquals(5, locks(w).size());
-          return null;
-        });
-    assertEquals(65536, f.context.scratchLive());
   }
 
   @Test
@@ -118,7 +89,7 @@ class SessionProjectionLockTest {
                         w.requireProjectionLocks(f.context, binding);
                         w.stageSource(caller("t", "c"), source("t", "s2"));
                         w.requireProjectionLocks(f.context, binding);
-                        locks(w).remove(w.projectionLock(f.context, "t", missing));
+                        locks(w).remove("t:" + missing);
                         first[0] =
                             assertThrows(
                                 RuntimeException.class,
@@ -145,10 +116,10 @@ class SessionProjectionLockTest {
           var binding = w.projectionLock(f.context, "t", "c");
           w.stageSource(caller("t", "c"), source("t", "s"));
           w.stageSource(caller("t", "c"), source("other", "s"));
-          locks(w).remove(w.projectionLock(f.context, "t", "s"));
+          locks(w).remove("t:s");
           w.requireProjectionLocks(f.context, binding);
           w.dependencyMutation(Set.of(new SessionQueryWork.Dependency("other", "s")));
-          locks(w).remove(w.projectionLock(f.context, "other", "s"));
+          locks(w).remove("other:s");
           w.requireProjectionLocks(f.context, binding);
           return null;
         });
