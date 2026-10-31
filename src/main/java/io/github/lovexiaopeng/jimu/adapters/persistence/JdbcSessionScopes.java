@@ -74,16 +74,13 @@ final class JdbcSessionScopes {
 
   record Scope(Map<String, Object> row, JsonNode authority, List<Map<String, Object>> sources) {}
 
-  private io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork checkedOwner() {
-    var owner =
-        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
-            .currentOwner();
+  private io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork checkedOwner(
+      io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork owner) {
     if (owner == null || !owner.lineage()) return null;
     if (sessions.appendQuery() == null)
       throw new IllegalStateException("Missing query in session transaction");
-    if (io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
-            sessions.appendQuery())
-        != owner) throw new IllegalStateException("Foreign session query");
+    io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+        sessions.appendQuery());
     sessions.appendQuery().checkHealthy();
     return owner;
   }
@@ -99,7 +96,7 @@ final class JdbcSessionScopes {
             .currentOwner();
     if (owner != null && !owner.lineage()) owner = null;
     try {
-      owner = checkedOwner();
+      owner = checkedOwner(owner);
       var c = MapperSessionScopeRecords.caller(task);
       var proof = prove(task, c, owner);
       if (owner == null) facade(c, proof, null);
@@ -120,7 +117,7 @@ final class JdbcSessionScopes {
             .currentOwner();
     if (owner != null && !owner.lineage()) owner = null;
     try {
-      owner = checkedOwner();
+      owner = checkedOwner(owner);
       var c = MapperSessionScopeRecords.caller(task);
       var proof = prove(task, c, owner);
       return facade(c, proof, owner);
