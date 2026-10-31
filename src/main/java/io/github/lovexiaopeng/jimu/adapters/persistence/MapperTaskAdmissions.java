@@ -392,10 +392,25 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     }
 
     public void createSession(String task, List<String> historySources) {
-      var accepted = ledger.locked(identity.tenant(), task);
-      ledger.sessions.create(accepted);
-      if (historySources != null) ledger.sessionScopes.create(accepted, historySources);
-      sql.holdHistory(ledger.queryContext(), identity.tenant());
+      var query = ledger.queryContext();
+      if (query != null && query.lineage()) {
+        query.operation(6); // route, captures and original initialization callback
+        ledger.sessionScopes.lock(identity.tenant(), task);
+        SessionAcceptedTaskRows.creation(
+            sql,
+            query,
+            identity.tenant(),
+            task,
+            accepted -> {
+              ledger.sessions.create(accepted);
+              if (historySources != null) ledger.sessionScopes.create(accepted, historySources);
+            });
+      } else {
+        var accepted = ledger.locked(identity.tenant(), task);
+        ledger.sessions.create(accepted);
+        if (historySources != null) ledger.sessionScopes.create(accepted, historySources);
+      }
+      sql.holdHistory(query, identity.tenant());
     }
 
     public void createLineage(String task, String parent) {

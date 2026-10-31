@@ -65,6 +65,17 @@ public interface TaskAdmissionMapper {
       @Param("tenant") String tenant,
       @Param("task") String task);
 
+  /** Session initialization consumes only its goal/request and the complete current Caller. */
+  List<Map<String, Object>> lockSessionCreation(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  List<Map<String, Object>> lockSessionCreationSizes(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
   long maxPacket(@Param("query") SessionQueryContext query);
 
   List<Map<String, Object>> sampleBound(

@@ -77,14 +77,16 @@ final class MapperSessionHistoryViews implements SessionHistoryViews.Projection 
   }
 
   public SessionHistoryViews.Scope requireScope() {
-    var scope = records.scopes.require(task);
+    if (records.appendQuery() != null && records.appendQuery().lineage())
+      records.appendQuery().operation(3); // typed scope reference and two accessor consumptions
+    var scope = records.scopes.requireProof(task).scope();
     return new SessionHistoryViews.Scope() {
       public String digest() {
-        return s(scope.row(), "authority_digest");
+        return scope.digest();
       }
 
       public String state() {
-        return s(scope.row(), "grant_state");
+        return scope.grant();
       }
     };
   }

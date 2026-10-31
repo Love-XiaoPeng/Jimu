@@ -49,6 +49,10 @@ public final class SessionFinalMapperSqlScenario {
     }
     var mappers = LedgerMapperSessions.create(source);
     var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
+    if (args.length > 3 && args[3].equals("creation-only")) {
+      creation(db, mappers, tx);
+      return;
+    }
     // The first call deliberately starts static initialization inside its actual Work.
     boolean allTables = args.length > 3 && args[3].equals("all-final-source");
     boolean slots = allTables || (args.length > 3 && args[3].equals("slot-source"));
@@ -140,6 +144,59 @@ public final class SessionFinalMapperSqlScenario {
     }
     if (!args[2].equals("seed") && !args[2].equals("cost-only") && !sourceOnly)
       SessionFinalMapperFailures.verify(source);
+  }
+
+  private static void creation(
+      JdbcTemplate db, org.mybatis.spring.SqlSessionTemplate mappers, SessionQueryTransaction tx) {
+    var q =
+        new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
+    q.restrictLineage();
+    var records = new JdbcSessionRecords(db, q, mappers);
+    var costs = new LinkedHashMap<String, Object>();
+    tx.required(
+        q,
+        () -> {
+          var owner = SessionQueryTransaction.current(q);
+          owner.locked("tenant-a", ID);
+          long start = q.resources().operations();
+          var full =
+              JdbcLedger.first(
+                  mappers
+                      .getMapper(
+                          io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskMapper
+                              .class)
+                      .selectTaskForUpdate(q, "tenant-a", ID));
+          costs.put("full", q.resources().operations() - start);
+          start = q.resources().operations();
+          SessionAcceptedTaskRows.creation(
+              mappers.getMapper(
+                  io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskAdmissionMapper
+                      .class),
+              q,
+              "tenant-a",
+              ID,
+              row -> {
+                for (var entry : row.entrySet()) {
+                  if (!java.util.Objects.equals(entry.getValue(), full.get(entry.getKey())))
+                    throw new AssertionError("Changed field " + entry.getKey());
+                }
+                if (!MapperSessionScopeRecords.caller(full)
+                    .equals(MapperSessionScopeRecords.caller(row)))
+                  throw new AssertionError("Changed Caller");
+                if (new MapperSessionHistoryStorage(records, full).initialBytes()
+                    != new MapperSessionHistoryStorage(records, row).initialBytes())
+                  throw new AssertionError("Changed initial charge");
+                costs.put("columns", row.size());
+              });
+          costs.put("creation", q.resources().operations() - start);
+          full.clear();
+          return null;
+        });
+    if (q.scratchLive() != 65536) throw new AssertionError("Leaked creation owner");
+    costs.put("scratchPeak", q.scratchPeak());
+    costs.put("scratchLive", q.scratchLive());
+    System.out.println("CREATION_COST " + Payloads.json(costs));
+    System.out.flush();
   }
 
   private static SessionScopeRecords.SourceFact sourceFact(JsonNode saved) {
