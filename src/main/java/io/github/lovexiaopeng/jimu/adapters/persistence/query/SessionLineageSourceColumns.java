@@ -171,6 +171,24 @@ final class SessionLineageSourceColumns {
     var fields = mysql.getFields();
     checkModelStep(query, owner, version);
     if (fields.length != width) throw new IllegalStateException("Changed model task width");
+    // Exact Connector accessors below read the current native fields. Keep the live charset
+    // mapping (including custom collations); never substitute the static collation table.
+    // Wrappers/subclasses retain the individually guarded metadata callbacks.
+    query.operation(16); // exact-class routes, native field reads and local reference handoffs
+    com.mysql.cj.NativeCharsetSettings charsetSettings = null;
+    if (rows.getClass() == com.mysql.cj.jdbc.result.ResultSetImpl.class
+        && mysql.getClass() == com.mysql.cj.jdbc.result.ResultSetMetaData.class) {
+      var session = ((com.mysql.cj.jdbc.result.ResultSetImpl) rows).getSession();
+      if (session != null && session.getClass() == com.mysql.cj.NativeSession.class) {
+        var server = session.getServerSession();
+        if (server != null
+            && server.getClass() == com.mysql.cj.protocol.a.NativeServerSession.class) {
+          var settings = server.getCharsetSettings();
+          if (settings != null && settings.getClass() == com.mysql.cj.NativeCharsetSettings.class)
+            charsetSettings = (com.mysql.cj.NativeCharsetSettings) settings;
+        }
+      }
+    }
     for (int i = 0; i < width; i++) {
       String label = modelTaskLabel(i, width);
       int original = width == 32 && i >= 29 ? i + 24 : i;
@@ -195,9 +213,16 @@ final class SessionLineageSourceColumns {
           || type == com.mysql.cj.MysqlType.TEXT
           || type == com.mysql.cj.MysqlType.MEDIUMTEXT
           || type == com.mysql.cj.MysqlType.LONGTEXT) {
-        checkModelStep(query, owner, version);
-        String charset = mysql.getColumnCharacterSet(i + 1);
-        checkModelStep(query, owner, version);
+        String charset;
+        query.operation(1);
+        if (charsetSettings != null) {
+          query.operation(6); // current collation, boxing, live map/static lookup and handoff
+          charset = charsetSettings.getMysqlCharsetNameForCollationIndex(field.getCollationIndex());
+        } else {
+          checkModelStep(query, owner, version);
+          charset = mysql.getColumnCharacterSet(i + 1);
+          checkModelStep(query, owner, version);
+        }
         query.operation(3); // exact native metadata's encoding accessor only delegates to Field
         String encoding;
         if (mysql.getClass() == com.mysql.cj.jdbc.result.ResultSetMetaData.class)

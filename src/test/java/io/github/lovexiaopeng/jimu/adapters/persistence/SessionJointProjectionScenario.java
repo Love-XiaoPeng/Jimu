@@ -817,6 +817,8 @@ public final class SessionJointProjectionScenario {
           || args[1].equals("borrowed-source-types")
           || args[1].equals("borrowed-query-task")
           || args[1].equals("borrowed-model-task")
+          || args[1].equals("borrowed-model-task-native")
+          || args[1].equals("borrowed-model-task-boundaries")
           || args[1].equals("borrowed-model-task-faults")
           || args[1].equals("borrowed-node-input")
           || args[1].equals("borrowed-model-step")

@@ -255,7 +255,7 @@ public final class QueryResults {
                       }
                       if ((method.getName().equals("getLong") || method.getName().equals("getInt"))
                           && ((Number) value).longValue() == 0) state.taskZero = value;
-                      else state.taskColumn(value);
+                      else state.taskColumn(value, label);
                     }
                     context.operation(1);
                     if (state.result.hasColumnCallback())
@@ -362,10 +362,9 @@ public final class QueryResults {
   }
 
   private static void checkStep(State state, SessionQueryContext context, long generation) {
-    state.verify(context);
-    if (state.owner.metadataFinalVersion(context) != generation)
-      throw state.owner.poisonProof(
-          new IllegalStateException("Write during model step consumption"));
+    // One current Work lookup at this instant checks query, identity, health and generation.
+    // This boundary is still called independently before and after every external callback.
+    state.owner.metadataFinalBoundary(context, generation);
   }
 
   static ResultSet meter(
@@ -436,9 +435,14 @@ public final class QueryResults {
     }
 
     void taskColumn(Object scalar) {
-      taskQuery.operation(8); // normalization, width/label, meter, ordinal and alias release
+      taskQuery.operation(3); // pending zero/NULL has no getter-local label
+      taskColumn(scalar, SessionLineageSourceColumns.modelTaskLabel(taskColumn, taskWidth));
+    }
+
+    void taskColumn(Object scalar, String label) {
+      taskQuery.operation(5); // normalization, meter, ordinal and alias release
       if (scalar instanceof java.sql.Timestamp time) scalar = time.toLocalDateTime();
-      result.column(SessionLineageSourceColumns.modelTaskLabel(taskColumn, taskWidth), scalar);
+      result.column(label, scalar);
       taskColumn++;
     }
 

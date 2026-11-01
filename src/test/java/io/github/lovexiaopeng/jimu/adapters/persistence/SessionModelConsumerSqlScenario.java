@@ -125,35 +125,148 @@ final class SessionModelConsumerSqlScenario {
     verifyTask(db, task, true);
   }
 
-  static void verifyModelTaskFaults(JdbcTemplate db, String task) {
+  static void verifyNativeModelTask(JdbcTemplate db, String task) {
     verifyModelTask(db, task);
-    verifyModelTaskExtensions(db, task);
+    var source = db.getDataSource();
+    var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
+    var mapper = LedgerMapperSessions.create(source);
+    var before = SessionDependencyScenario.snapshot(db);
+    for (boolean custom : List.of(false, true)) {
+      var q =
+          new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
+      q.restrictLineage();
+      Throwable caught = null;
+      try {
+        tx.required(
+            q,
+            () -> {
+              SessionQueryTransaction.current(q).locked("tenant-a", task);
+              var connection =
+                  org.springframework.jdbc.datasource.DataSourceUtils.getConnection(source);
+              com.mysql.cj.NativeCharsetSettings settings = null;
+              java.lang.reflect.Field mapping = null;
+              Object prior = null;
+              try {
+                var jdbc = (com.mysql.cj.jdbc.JdbcConnection) connection;
+                settings =
+                    (com.mysql.cj.NativeCharsetSettings)
+                        jdbc.getSession().getServerSession().getCharsetSettings();
+                mapping =
+                    com.mysql.cj.NativeCharsetSettings.class.getDeclaredField(
+                        "collationIndexToCharsetName");
+                mapping.setAccessible(true);
+                prior = mapping.get(settings);
+                if (custom) {
+                  // Change the current native mapping, not the Field encoding or a static table.
+                  var replacement = new java.util.HashMap<Integer, String>();
+                  if (prior instanceof Map<?, ?> old)
+                    old.forEach((key, value) -> replacement.put((Integer) key, (String) value));
+                  try (var command =
+                      connection.prepareStatement(
+                          "SELECT owner_actor_id FROM task WHERE tenant_id=? AND id=?")) {
+                    command.setString(1, "tenant-a");
+                    command.setString(2, task);
+                    try (var rows = command.executeQuery()) {
+                      check(
+                          rows.getClass() == com.mysql.cj.jdbc.result.ResultSetImpl.class,
+                          "exact Connector rows exercised");
+                      var metadata =
+                          (com.mysql.cj.jdbc.result.ResultSetMetaData) rows.getMetaData();
+                      replacement.put(metadata.getFields()[0].getCollationIndex(), "latin1");
+                    }
+                  }
+                  mapping.set(settings, replacement);
+                }
+                for (String statement :
+                    List.of(
+                        "selectModelAdmissionTaskForUpdate",
+                        "selectExtendedModelAdmissionTaskForUpdate")) {
+                  var row =
+                      mapper.<Map<String, Object>>selectOne(
+                          ROOT + "task.mapper.TaskMapper." + statement,
+                          Map.of("query", q, "tenant", "tenant-a", "taskId", task));
+                  check(
+                      !custom && row.size() == (statement.startsWith("selectExtended") ? 55 : 32),
+                      "native current task full projection " + statement);
+                }
+              } catch (ReflectiveOperationException | java.sql.SQLException failure) {
+                throw new AssertionError(failure);
+              } finally {
+                if (mapping != null && settings != null) {
+                  try {
+                    mapping.set(settings, prior);
+                  } catch (IllegalAccessException failure) {
+                    throw new AssertionError(failure);
+                  }
+                }
+                org.springframework.jdbc.datasource.DataSourceUtils.releaseConnection(
+                    connection, source);
+              }
+              return null;
+            });
+      } catch (RuntimeException | Error failure) {
+        caught = failure;
+      }
+      if (custom) {
+        check(
+            caught != null && !(caught instanceof AssertionError),
+            "native current custom charset rejected");
+        Throwable cursor = caught;
+        while (cursor != null
+            && !String.valueOf(cursor.getMessage()).contains("Changed model task charset"))
+          cursor = cursor.getCause();
+        check(cursor != null, "native charset is checked through the current mapping");
+      } else if (caught != null) throw new AssertionError("native task rejected", caught);
+      check(
+          q.scratchLive() == 65536
+              && SessionQueryTransaction.currentOwner() == null
+              && before.equals(SessionDependencyScenario.snapshot(db)),
+          "native mapping 22 tables unchanged and all owners released");
+    }
+  }
+
+  static void verifyModelTaskFaults(JdbcTemplate db, String task) {
+    verifyModelTaskFaults(db, task, null);
+  }
+
+  static void verifyModelTaskBoundaries(JdbcTemplate db, String task) {
+    verifyModelTaskFaults(
+        db, task, List.of("none", "metadata-write", "write", "extra", "error", "close-write"));
+  }
+
+  private static void verifyModelTaskFaults(JdbcTemplate db, String task, List<String> selected) {
+    if (selected == null) {
+      verifyModelTask(db, task);
+      verifyModelTaskExtensions(db, task);
+    }
     var source = new SessionFinalMapperFailures.FaultSource(db.getDataSource());
     var mapper = LedgerMapperSessions.create(source);
     var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
     String statement = ROOT + "task.mapper.TaskMapper.selectModelAdmissionTaskForUpdate";
     var before = SessionDependencyScenario.snapshot(db);
     for (String fault :
-        List.of(
-            "none",
-            "source-count",
-            "source-type",
-            "source-table",
-            "source-name",
-            "source-charset",
-            "source-encoding",
-            "foreign",
-            "connection",
-            "write",
-            "metadata-write",
-            "next-write",
-            "begin",
-            "before-close-write",
-            "incomplete",
-            "extra",
-            "close-write",
-            "error",
-            "close")) {
+        selected != null
+            ? selected
+            : List.of(
+                "none",
+                "source-count",
+                "source-type",
+                "source-table",
+                "source-name",
+                "source-charset",
+                "source-encoding",
+                "foreign",
+                "connection",
+                "write",
+                "metadata-write",
+                "next-write",
+                "begin",
+                "before-close-write",
+                "incomplete",
+                "extra",
+                "close-write",
+                "error",
+                "close")) {
       var q =
           new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
       q.restrictLineage();

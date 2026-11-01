@@ -316,6 +316,14 @@ final class SessionBorrowedMetadataSqlScenario {
         SessionModelConsumerSqlScenario.verifyModelTask(db, ID);
         return;
       }
+      if (mode.equals("borrowed-model-task-native")) {
+        SessionModelConsumerSqlScenario.verifyNativeModelTask(db, ID);
+        return;
+      }
+      if (mode.equals("borrowed-model-task-boundaries")) {
+        SessionModelConsumerSqlScenario.verifyModelTaskBoundaries(db, ID);
+        return;
+      }
       if (mode.equals("borrowed-model-consumers")) {
         SessionModelConsumerSqlScenario.verify(db, ID);
         return;
