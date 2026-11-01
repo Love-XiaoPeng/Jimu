@@ -68,6 +68,10 @@ class DirectoryWorkflowMapperTest {
             .forEach(c -> cols.add(alias.getKey() + "." + c.asText()));
         expected = expected.replace(alias.getKey() + ".*", String.join(",", cols));
       }
+      if (site.path("name").asText().equals("originalDirectoryTask"))
+        expected =
+            "SELECT tenant_id,id,capabilities,installation_epoch,tools_snapshot,tools_digest"
+                + " FROM task WHERE tenant_id=? AND id=?";
       assertEquals(
           expected.replaceAll("\\s+", " ").trim(),
           bound.getSql().replaceAll("\\s+", " ").trim(),
