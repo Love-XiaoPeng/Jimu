@@ -160,8 +160,9 @@ public final class SessionHistoryRows {
     }
 
     private void verify(String statement, Object parameter, Connection actual, boolean size) {
-      // 原15项与tenant/task费用保持；新选择/读取/局部写/NULL/identity/分支共8项先付。
-      query.operation(23L + tenant.length() + task.length());
+      // load owns both parameter Strings and places those exact references in its private Map.
+      // Compare current parameters by identity instead of rescanning their characters here.
+      query.operation(23L);
       if (invalid) throw new IllegalStateException("Different history length source");
       String confirmed = size ? confirmedSizeId : confirmedRawId;
       boolean same = confirmed != null && confirmed == statement;
@@ -175,8 +176,8 @@ public final class SessionHistoryRows {
           || connection != actual
           || !(parameter instanceof Map<?, ?> map)
           || map.get("query") != query
-          || !tenant.equals(map.get("tenant"))
-          || !task.equals(map.get("taskId")))
+          || tenant != map.get("tenant")
+          || task != map.get("taskId"))
         throw new IllegalStateException("Different history length source");
       owner.requireProjectionLocks(query, lock);
       query.operation(1); // 第二次发布条件也须在分支前支付，命中亦不退款。

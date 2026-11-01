@@ -464,8 +464,12 @@ public final class SessionJointProjectionScenario {
     if (args.length > 1 && args[1].startsWith("borrowed")) {
       SessionBorrowedMetadataSqlScenario.verify(db, args[1]);
       if (args[1].equals("borrowed-shapes")
+          || args[1].equals("borrowed-node-input")
           || args[1].equals("borrowed-model-step")
           || args[1].equals("borrowed-model-admission")
+          || args[1].equals("borrowed-model-consumers")
+          || args[1].equals("borrowed-ordinary-faults")
+          || args[1].startsWith("borrowed-row-")
           || args[1].equals("borrowed-boundaries")
           || args[1].startsWith("borrowed-preflight")) return;
     } else if (args.length < 2 || !args[1].startsWith("genuine"))

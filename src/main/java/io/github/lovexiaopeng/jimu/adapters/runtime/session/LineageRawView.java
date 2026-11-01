@@ -14,8 +14,15 @@ import java.util.HexFormat;
 /** 一次物化原串的严格UTF8长度和独立摘要；编码缓冲从不离开本方法。 */
 public final class LineageRawView {
   private final String raw;
-  private final int bytes;
+  private int bytes;
   private final String digest;
+
+  /** 同一次真实Result消费，编码缓冲仍由Result持有和清理；不接受外部长度或摘要。 */
+  public LineageRawView(String raw, SessionQueryContext.Result result, String label) {
+    if (raw == null) throw corrupt();
+    this.raw = raw;
+    digest = result.rawColumn(label, raw, length -> bytes = length);
+  }
 
   public LineageRawView(String raw, SessionQueryContext context) {
     if (raw == null) throw corrupt();

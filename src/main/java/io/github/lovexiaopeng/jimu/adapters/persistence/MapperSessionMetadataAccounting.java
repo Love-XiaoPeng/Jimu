@@ -89,6 +89,9 @@ final class MapperSessionMetadataAccounting
   }
 
   private FinalRows finalConsumer;
+  private boolean ordinaryRead;
+  private long ordinaryVersion;
+  private long[] ordinaryCounts, ordinarySizes;
 
   public void accept(
       Table table,
@@ -98,6 +101,14 @@ final class MapperSessionMetadataAccounting
       HistoryScalars history,
       long reservations,
       HistoryReservation reservation) {
+    if (readingCommand != null && readingTable == null) {
+      // Keep consumeFinal's per-table contract; only these two bounded arrays survive the Result.
+      // Their storage is covered by finalOwner's original 512-byte summary allowance.
+      finalQuery.operation(6);
+      ordinaryCounts[table.ordinal()] = rows;
+      ordinarySizes[table.ordinal()] = bytes;
+      return;
+    }
     // Real service work: empty returns immediately; nonempty totals and only relevant special
     // fields.
     finalQuery.operation(
@@ -122,27 +133,43 @@ final class MapperSessionMetadataAccounting
 
   private boolean consumeTable(Table table, FinalRows consumer) {
     try {
-      finalCheck();
+      long version = finalCheck();
       finalQuery.operation(9); // route, receiver store/check and finally clear; no summary readout
       if (finalConsumer != null) throw new IllegalStateException("Nested FINAL consumer");
       finalConsumer = consumer;
       FinalTable result;
-      if (table != Table.TASK && table != Table.TASK_SESSION_HISTORY) {
+      finalQuery.operation(8); // three special-table tests, summary state/version and stores
+      if (table != Table.TASK
+          && table != Table.TASK_SESSION_HISTORY
+          && table != Table.RESERVATION) {
+        if (!ordinaryRead) {
+          finalQuery.operation(48); // both arrays, zeroing, field stores and scope cleanup
+          ordinaryCounts = new long[18];
+          ordinarySizes = new long[18];
+          readFinal(null);
+          ordinaryVersion = version;
+          ordinaryRead = true;
+        } else if (ordinaryVersion != version)
+          throw new IllegalStateException("Write after ordinary metadata read");
+        finalQuery.operation(8);
+        accept(
+            table,
+            ordinaryCounts[table.ordinal()],
+            ordinarySizes[table.ordinal()],
+            0,
+            null,
+            0,
+            null);
+        return true;
+      }
+      if (table != Table.TASK_SESSION_HISTORY) {
         readFinal(table);
-        return true; // same-instant closed Result/return check remains in readFinal
-      } else if (table == Table.TASK)
-        result =
-            SessionCursorMetadataBatch.measureFinal(
-                finalQuery,
-                table,
-                SessionMetadataProjection.taskSized(),
-                () ->
-                    records.mapperCursor("SessionHistoryRetentionMapper.metadataTaskSized", task));
-      else
-        result =
-            io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistorySizedMetadataBatch
-                .measureFinal(
-                    records.mapperSession(), finalQuery, s(task, "tenant_id"), s(task, "id"));
+        return true;
+      }
+      result =
+          io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistorySizedMetadataBatch
+              .measureFinal(
+                  records.mapperSession(), finalQuery, s(task, "tenant_id"), s(task, "id"));
       finalCheck();
       accept(
           table,
@@ -170,35 +197,65 @@ final class MapperSessionMetadataAccounting
   private void readFinal(Table table) {
     // 原逐表参数构造/两次Map取身份改为作用域内一次；保留命令查找、分派及finally清理。
     finalQuery.operation(16);
-    if (readingTable != null) throw new IllegalStateException("Nested FINAL result");
+    if (readingCommand != null) throw new IllegalStateException("Nested FINAL result");
     finalQuery.operation(6); // current task Map still holds the identities bound at finalization
     if (s(task, "tenant_id") != finalTenant || s(task, "id") != finalTask)
       throw new IllegalStateException("Changed FINAL task identity");
     finalWork.requireProjectionLocks(finalQuery, finalLock);
     if (finalParameters == null) {
       // 外层owner已保留Map及三条引用；初始化及close/失败断引用全部在当前Work预付。
-      finalQuery.operation(22);
-      finalParameters = Map.of("query", finalQuery, "tenant", finalTenant, "taskId", finalTask);
+      finalQuery.operation(28);
+      finalParameters =
+          Map.of(
+              "query",
+              finalQuery,
+              "tenant",
+              finalTenant,
+              "taskId",
+              finalTask,
+              "nullBytes",
+              sessionNullBytes());
     }
     var session = records.mapperSession();
     var command =
         session
             .getConfiguration()
-            .getMappedStatement(SessionMetadataProjection.forFinalTable(table).statement);
+            .getMappedStatement(
+                table == null
+                    ? "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.metadataOrdinaryRows"
+                    : table == Table.TASK
+                        ? "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.metadataTaskSizedRow"
+                        : SessionMetadataProjection.forFinalTable(table).rowStatement);
     readingTable = table;
     readingCommand = command;
     try {
+      finalQuery.operation(4);
+      if (!finalParameters.get("nullBytes").equals(sessionNullBytes()))
+        throw new IllegalStateException("Changed metadata NULL policy");
+      io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistoryMetadataLanguageDriver
+          .verifyRowCommand(
+              command, table == null ? -2 : table.ordinal(), finalQuery, finalParameters);
+      if (table == null) {
+        finalQuery.operation(12);
+        finalQuery.retainScratch(
+            command, 8192 + 4L * command.getBoundSql(finalParameters).getSql().length());
+      }
       readingVersion = finalWork.metadataReadVersion(finalQuery);
       session.select(command.getId(), finalParameters, this);
       if (readingVersion != finalCheck())
         throw new IllegalStateException("Write before FINAL result closed");
       if (!readingConsumed) throw new IllegalStateException("Missing FINAL consumption");
     } finally {
+      if (table == null) finalQuery.releaseScratch(command);
       readingTable = null;
       readingCommand = null;
       readingConsumed = false;
       readingVersion = 0;
     }
+  }
+
+  private Long sessionNullBytes() {
+    return records.mapperSession().getConfiguration().isCallSettersOnNulls() ? 9L : 0L;
   }
 
   @Override
@@ -217,17 +274,27 @@ final class MapperSessionMetadataAccounting
       finalQuery.operation(8); // command/query identity, single read and receiver store
       if (context != finalQuery
           || command != readingCommand
-          || readingTable == null
+          || readingCommand == null
           || readingConsumed) throw new IllegalStateException("Foreign FINAL result");
       if (readingVersion != version)
         throw new IllegalStateException("Write before FINAL result consumption");
-      SessionCursorMetadataBatch.consumeResultSet(
-          finalQuery,
-          readingTable,
-          rows,
-          command,
-          records.mapperSession().getConfiguration().isCallSettersOnNulls(),
-          this);
+      if (readingTable == null)
+        SessionCursorMetadataBatch.consumeOrdinaryResultSet(finalQuery, rows, command, this);
+      else if (readingTable == Table.TASK)
+        SessionCursorMetadataBatch.consumeTaskRowResultSet(
+            finalQuery,
+            rows,
+            command,
+            records.mapperSession().getConfiguration().isCallSettersOnNulls(),
+            this);
+      else
+        SessionCursorMetadataBatch.consumeRowResultSet(
+            finalQuery,
+            readingTable,
+            rows,
+            command,
+            records.mapperSession().getConfiguration().isCallSettersOnNulls(),
+            this);
       readingConsumed = true;
       if (readingVersion != finalWork.metadataReadVersion(finalQuery))
         throw new IllegalStateException("Write during FINAL result consumption");
@@ -327,7 +394,7 @@ final class MapperSessionMetadataAccounting
         finalQuery.operation(40); // FinalTotals allocation/fields/readout and consumer lifecycle
         // 原4120 + 不可变三参数Map/entry保守128 + 字段及query/tenant/task别名32。
         finalQuery.retainScratch(
-            finalOwner, 4504); // add FinalTotals plus receiver aliases before allocation
+            finalOwner, 4568); // retain the additional immutable NULL-policy entry/alias as well
         if (finalWork != null && JdbcSessionScopes.lineage(task)) {
           finalTenant = s(task, "tenant_id");
           finalTask = s(task, "id");
@@ -344,6 +411,8 @@ final class MapperSessionMetadataAccounting
         finalClosed = true;
         finalOwner = null;
         finalParameters = null;
+        ordinaryCounts = null;
+        ordinarySizes = null;
         finalQuery = null;
         finalWork = null;
         finalLock = null;
@@ -356,6 +425,8 @@ final class MapperSessionMetadataAccounting
       if (finalQuery != null && finalOwner != null) finalQuery.releaseScratch(finalOwner);
       finalOwner = null;
       finalParameters = null;
+      ordinaryCounts = null;
+      ordinarySizes = null;
       finalQuery = null;
       finalWork = null;
       finalLock = null;

@@ -2202,7 +2202,10 @@ public final class JdbcLedger
     // Hold through the committing transaction: STOPPED cannot race a cached admission,
     // publication or successful finish. Settlement of previously admitted effects stays allowed.
     var evaluation = evaluation(lease, admission);
-    bucket(lease.tenant());
+    // This read owns the lock ordering/existence check; no budget value is consumed here.
+    if (query != null && query.lineage())
+      first(mappers.budgets().lockBudgetForUpdate(query, lease.tenant()));
+    else bucket(lease.tenant());
     var task = locked(lease.tenant(), lease.taskId());
     if (n(task, "fence") != lease.fence()
         || !lease.attemptId().equals(s(task, "current_attempt_id"))

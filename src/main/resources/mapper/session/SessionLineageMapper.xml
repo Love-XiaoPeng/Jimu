@@ -17,7 +17,7 @@
     JOIN task_session_lineage l ON l.tenant_id=t.tenant_id AND l.task_id=t.id
     WHERE t.tenant_id=#{tenant} AND t.id=#{id}
   </select>
-  <select id="nodeInput" resultType="map">
+  <select id="nodeInput" resultType="map" lang="io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistoryMetadataLanguageDriver">
     SELECT t.tenant_id,t.id,t.request_digest,t.request_snapshot,
       l.tenant_id AS lineage_tenant,l.task_id AS lineage_task,l.record_version,
       l.genesis_snapshot,l.genesis_digest,l.genesis_bytes,

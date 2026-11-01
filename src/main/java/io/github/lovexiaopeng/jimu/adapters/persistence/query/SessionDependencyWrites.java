@@ -205,6 +205,7 @@ final class SessionDependencyWrites {
     private final SessionQueryWork owner;
     private final Map<?, ?> map;
     private final org.apache.ibatis.reflection.MetaObject first, second;
+    private final int sources;
 
     Fields(Object parameter, SessionQueryWork owner) {
       this.owner = owner;
@@ -213,6 +214,8 @@ final class SessionDependencyWrites {
       Object b = map.containsKey("param1") ? map.get("param1") : null;
       first = entity(a) ? SystemMetaObject.forObject(a) : null;
       second = b != a && entity(b) ? SystemMetaObject.forObject(b) : null;
+      if (owner != null) owner.inspect(8); // two source tests, bound selection and field store
+      sources = second != null ? 3 : first != null ? 2 : 1;
     }
 
     Object value(int index, String name) {
@@ -223,7 +226,8 @@ final class SessionDependencyWrites {
     }
 
     boolean supplied(String... names) {
-      for (int i = 0; i < 3; i++) for (String name : names) if (value(i, name) != null) return true;
+      for (int i = 0; i < sources; i++)
+        for (String name : names) if (value(i, name) != null) return true;
       return false;
     }
   }
@@ -235,25 +239,7 @@ final class SessionDependencyWrites {
   /** 所有显式别名必须一致，缺全键/相互冲突都按未知处理。 */
   private static String key(Fields fields, String... aliases) {
     String found = null;
-    for (int i = 0; i < 3; i++)
-      for (String name : aliases) {
-        Object value = fields.value(i, name);
-        if (value == null) continue;
-        if (!(value instanceof String text) || text.isEmpty()) return null;
-        if (found != null) {
-          if (fields.owner != null) fields.owner.inspect(Math.max(found.length(), text.length()));
-          if (!found.equals(text)) return null;
-        }
-        found = text;
-      }
-    return found;
-  }
-
-  // keys的具名特化：仅删除尾部不存在的MetaObject来源；原key保持原调用/费用供observed使用。
-  // 与原key相同的值/别名/冲突规则，新增int参数交接已由各调用点先付2项。
-  private static String boundedKey(Fields fields, int sourceCount, String... aliases) {
-    String found = null;
-    for (int i = 0; i < sourceCount; i++)
+    for (int i = 0; i < fields.sources; i++)
       for (String name : aliases) {
         Object value = fields.value(i, name);
         if (value == null) continue;
@@ -271,15 +257,11 @@ final class SessionDependencyWrites {
     // MP的实体是SET值，不是WHERE证明；尚未登记的wrapper条件一律保守失效。
     if (parameter instanceof Map<?, ?> map && map.containsKey("ew")) return null;
     var fields = fields(parameter, owner);
-    // 先付owner判断、两次字段读取/NULL比较/选择及局部int交接；无新字段/对象/值缓存。
-    if (owner != null) owner.inspect(8);
-    int sourceCount = fields.second != null ? 3 : fields.first != null ? 2 : 1;
-    if (owner != null) owner.inspect(2); // 新owner判断及额外int参数交接先付。
-    String tenant = boundedKey(fields, sourceCount, "tenant", "tenantId", "tenant_id");
+    String tenant = key(fields, "tenant", "tenantId", "tenant_id");
     if (tenant == null) return null;
     if (kind == Kind.INSTALLATION) {
       if (owner != null) owner.inspect(2);
-      String plugin = boundedKey(fields, sourceCount, "plugin", "pluginId", "plugin_id");
+      String plugin = key(fields, "plugin", "pluginId", "plugin_id");
       return plugin == null ? null : Set.of(Dependency.installation(tenant, plugin));
     }
     // SQL以step/dispatch等主键写时，附带task候选只能用于交叉检查，绝不能替代真实关系。
@@ -292,16 +274,7 @@ final class SessionDependencyWrites {
         || kind == Kind.BINDING) return null;
     if (owner != null) owner.inspect(2);
     String task =
-        boundedKey(
-            fields,
-            sourceCount,
-            "caller",
-            "taskId",
-            "task",
-            "id",
-            "callerTaskId",
-            "caller_task_id",
-            "task_id");
+        key(fields, "caller", "taskId", "task", "id", "callerTaskId", "caller_task_id", "task_id");
     // 显式task候选冲突绝不可退到当前lease猜测。
     boolean explicit =
         fields.supplied(
@@ -468,6 +441,7 @@ final class SessionDependencyWrites {
             "selectLatestStep",
             "selectModelStep",
             "selectLineageModelAdmission",
+            "selectLineageModelResponse",
             "selectInvocationStep"))
       r.put(ROOT + "execution.mapper.StepMapper." + name, SessionQueryWork.Relation.STEP);
     r.put(

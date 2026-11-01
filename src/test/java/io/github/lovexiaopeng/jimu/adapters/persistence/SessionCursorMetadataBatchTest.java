@@ -527,7 +527,7 @@ class SessionCursorMetadataBatchTest {
     var values =
         new LinkedHashMap<String, Object>(row(p)) {
           @Override
-          public Object get(Object key) {
+          public Object getOrDefault(Object key, Object fallback) {
             throw error;
           }
         };

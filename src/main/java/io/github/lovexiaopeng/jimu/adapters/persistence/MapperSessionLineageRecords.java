@@ -256,29 +256,62 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
     sourceFactsBytes = held;
     sizes.clear();
     sizes = null;
-    var rows = sql.nodeInput(query, tenant, id);
+    query.operation(40); // three raw slots, callback, parameters, version and finally detach
+    var fresh = new io.github.lovexiaopeng.jimu.adapters.runtime.session.LineageRawView[3];
+    io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryResults.NodeInputRaw consume =
+        (result, label, value) -> {
+          query.operation(18L + label.length());
+          int index =
+              switch (label) {
+                case "request_snapshot" -> 0;
+                case "genesis_snapshot" -> 1;
+                case "graph_snapshot" -> 2;
+                default -> throw JdbcSessionRecords.corrupt();
+              };
+          if (fresh[index] != null) throw JdbcSessionRecords.corrupt();
+          query.retainScratch(rawOwner, (rawViews.size() + 1L) * 256);
+          // 每次真实列都重新编码，原串相同不授予本次新读取任何资格。
+          var view =
+              new io.github.lovexiaopeng.jimu.adapters.runtime.session.LineageRawView(
+                  value, result, label);
+          rawViews.put(value, view);
+          fresh[index] = view;
+        };
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+            query);
+    long version = owner.metadataFinalVersion(query);
+    var args =
+        java.util.Map.of("query", query, "tenant", tenant, "id", id, "nodeInputRaw", consume);
+    io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryResults.verifyNodeInputCommand(
+        ledger
+            .mappers
+            .session()
+            .getConfiguration()
+            .getMappedStatement(
+                "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionLineageMapper.nodeInput"),
+        query,
+        args);
+    List<java.util.Map<String, Object>> rows = null;
     java.util.Map<String, Object> row = null;
     try {
+      rows = sql.nodeInput(query, tenant, id, consume);
+      query.operation(6);
+      if (owner.metadataFinalVersion(query) != version
+          || fresh[0] == null
+          || fresh[1] == null
+          || fresh[2] == null) throw JdbcSessionRecords.corrupt();
       if (rows.size() != 1 || rows.getFirst().size() != 14) throw JdbcSessionRecords.corrupt();
       row = rows.getFirst();
       var c = source.caller();
       var scope = source.scope();
-      same(row, "tenant_id", tenant);
-      same(row, "id", id);
-      same(row, "lineage_tenant", tenant);
-      same(row, "lineage_task", id);
+      // 四项身份已在当前Result的源锁下逐getter核参；之后到此处generation仍未变化。
       same(row, "request_digest", c.requestDigest());
       same(row, "record_version", 1L);
       same(row, "content_state", "PRESENT");
       same(row, "genesis_bytes", genesisLength);
       same(row, "graph_bytes", graphLength);
-      String request = s(row, "request_snapshot"),
-          genesis = s(row, "genesis_snapshot"),
-          graph = s(row, "graph_snapshot");
-      if (request == null || genesis == null || graph == null) throw JdbcSessionRecords.corrupt();
-      query.operation(4);
-      rawViews.remove(genesis);
-      rawViews.remove(graph);
+      String request = fresh[0].raw(), genesis = fresh[1].raw(), graph = fresh[2].raw();
       var stored =
           new SessionLineage.Stored(
               genesis,
@@ -290,12 +323,10 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
               "PRESENT",
               1);
       // 长度预读与本次正文严格对应；hash/schema/pin/关系由原service继续逐份验证。
-      if (raw(genesis).bytes() != genesisLength || raw(graph).bytes() != graphLength)
+      if (fresh[1].bytes() != genesisLength || fresh[2].bytes() != graphLength)
         throw JdbcSessionRecords.corrupt();
       // 每次新SELECT，即使String身份碰巧相同也重新构造独立raw proof。
-      query.operation(4);
-      rawViews.remove(request);
-      var raw = raw(request);
+      var raw = fresh[0];
       query.operation(8L + c.requestDigest().length());
       if (raw.bytes() != length || !raw.digest().equals(c.requestDigest()))
         throw JdbcSessionRecords.corrupt();
@@ -346,8 +377,10 @@ final class MapperSessionLineageRecords implements SessionLineageRecords {
     } finally {
       if (row != null) row.clear();
       row = null;
-      rows.clear();
+      if (rows != null) rows.clear();
       rows = null;
+      java.util.Arrays.fill(fresh, null);
+      consume = null;
     }
   }
 

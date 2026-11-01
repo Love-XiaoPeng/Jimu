@@ -13,6 +13,16 @@ import org.springframework.dao.DataAccessResourceFailureException;
 public final class QueryResults {
   private QueryResults() {}
 
+  /** nodeInput三份当前raw的同步消费者；不持有Result或跨行资格。 */
+  public interface NodeInputRaw {
+    void read(SessionQueryContext.Result result, String label, String raw);
+  }
+
+  public static void verifyNodeInputCommand(
+      org.apache.ibatis.mapping.MappedStatement command, SessionQueryContext query, Object args) {
+    SessionLineageSourceColumns.verifyNodeInputCommand(command, query, args);
+  }
+
   /** Internal synchronous FINAL handler; the actual SQL result never leaves read(). */
   public interface FinalMetadata extends org.apache.ibatis.session.ResultHandler<Object> {
     void read(
@@ -49,16 +59,21 @@ public final class QueryResults {
       throw new IllegalStateException("Invalid model step consumer");
     @SuppressWarnings("unchecked")
     var stepHash = (java.util.function.BiConsumer<SessionQueryContext.Result, String>) step;
+    var nodeRaw =
+        parameter instanceof Map<?, ?> args && args.containsKey("nodeInputRaw")
+            ? (NodeInputRaw) args.get("nodeInputRaw")
+            : null;
+    boolean synchronousRaw = stepHash != null || nodeRaw != null;
     try {
       state.verify(context);
-      if (stepHash != null && state.owner == null)
+      if (synchronousRaw && state.owner == null)
         throw new IllegalStateException("Unowned step result");
-      final long stepVersion = stepHash == null ? 0 : state.owner.metadataFinalVersion(context);
+      final long stepVersion = !synchronousRaw ? 0 : state.owner.metadataFinalVersion(context);
       state.result = context.result(statement);
       state.metadata = delegate.getMetaData();
       if (state.owner != null) {
         context.operation(1);
-        if (state.owner.lineageSourceActive())
+        if (state.owner.lineageSourceActive() && nodeRaw == null)
           SessionLineageSourceColumns.verify(delegate, context, statement, state.owner);
       }
       return (ResultSet)
@@ -69,7 +84,7 @@ public final class QueryResults {
                 if (method.getName().equals("close")) {
                   try {
                     state.close();
-                    if (stepHash != null) checkStep(state, context, stepVersion);
+                    if (synchronousRaw) checkStep(state, context, stepVersion);
                     return null;
                   } catch (RuntimeException failure) {
                     if (state.owner != null) throw state.owner.poisonProof(failure);
@@ -85,12 +100,22 @@ public final class QueryResults {
                   if (state.delegate == null) throw new SQLException("ResultSet closed");
                   if (method.getName().equals("getMetaData") && state.owner != null)
                     return metadataView(state, context);
-                  if (stepHash != null) checkStep(state, context, stepVersion);
+                  if (synchronousRaw) checkStep(state, context, stepVersion);
                   Object value = method.invoke(state.delegate, args);
-                  if (stepHash != null) checkStep(state, context, stepVersion);
+                  if (synchronousRaw) checkStep(state, context, stepVersion);
                   if (method.getName().equals("next")) {
                     context.remainingMillis();
                     if (Boolean.TRUE.equals(value)) {
+                      if (nodeRaw != null) {
+                        SessionLineageSourceColumns.verifyNodeInput(
+                            state.delegate,
+                            context,
+                            statement,
+                            parameter,
+                            state.owner,
+                            stepVersion);
+                        checkStep(state, context, stepVersion);
+                      }
                       if (stepHash != null)
                         SessionLineageSourceColumns.verifyModelStep(
                             state.delegate,
@@ -104,20 +129,29 @@ public final class QueryResults {
                         // Include columns a projection ignores; repeated mapped getters cost no
                         // extra
                         // bytes.
-                        if (stepHash != null) checkStep(state, context, stepVersion);
+                        if (synchronousRaw) checkStep(state, context, stepVersion);
                         Object scalar = state.delegate.getObject(column);
-                        if (stepHash != null) checkStep(state, context, stepVersion);
+                        if (synchronousRaw) checkStep(state, context, stepVersion);
                         if (scalar instanceof java.sql.Timestamp time)
                           scalar = time.toLocalDateTime();
                         String label = state.metadata.getColumnLabel(column);
-                        if (stepHash != null && label.equals("request_snapshot")) {
+                        if (nodeRaw != null
+                            && (label.equals("request_snapshot")
+                                || label.equals("genesis_snapshot")
+                                || label.equals("graph_snapshot"))) {
+                          if (!(scalar instanceof String raw))
+                            throw new IllegalStateException("Missing node input raw");
+                          nodeRaw.read(state.result, label, raw);
+                          state.verify(context);
+                          context.checkHealthy();
+                        } else if (stepHash != null && label.equals("request_snapshot")) {
                           if (!(scalar instanceof String raw))
                             throw new IllegalStateException("Missing model step raw");
                           stepHash.accept(state.result, raw);
                           state.verify(context);
                           context.checkHealthy();
                         } else state.result.column(label, scalar);
-                        if (stepHash != null) checkStep(state, context, stepVersion);
+                        if (synchronousRaw) checkStep(state, context, stepVersion);
                       }
                     } else state.result.close();
                   }

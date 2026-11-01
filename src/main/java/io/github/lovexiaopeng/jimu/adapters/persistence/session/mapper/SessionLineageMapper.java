@@ -24,7 +24,9 @@ public interface SessionLineageMapper extends BaseMapper<SessionLineageEntity> {
   List<Map<String, Object>> nodeInput(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
-      @Param("id") String id);
+      @Param("id") String id,
+      @Param("nodeInputRaw")
+          io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryResults.NodeInputRaw raw);
 
   int purge(
       @Param("query") SessionQueryContext query,

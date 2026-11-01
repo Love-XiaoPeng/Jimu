@@ -10,8 +10,17 @@ import org.apache.ibatis.cursor.Cursor;
 
 /** 原Mapper的流式metadata投影；facade只借当前行，前移/关闭后失效，不保留旧Map。 */
 final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batch {
+  private static final SessionMetadataProjection.Column ROW_BYTES =
+      new SessionMetadataProjection.Column("row_bytes", 'L', 0, false);
+  private static final SessionMetadataProjection.Column BASE_BYTES =
+      new SessionMetadataProjection.Column("base_bytes", 'L', 0, false);
+  private static final SessionMetadataProjection.Column TABLE_TAG =
+      new SessionMetadataProjection.Column("table_tag", 'L', 0, false);
+
   /** 仅metadataTaskSized的具名长度列可构造，不赋予普通Long长度语义。 */
   private record SqlUtf8Length(long bytes) {}
+
+  private static final Object ABSENT = new Object();
 
   private final SessionQueryContext query;
   private final SessionMetadataProjection projection;
@@ -115,14 +124,10 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
         Long actual = null;
         for (var column : projection.columns) {
           SessionMetadataScalars.operation(
-              query, 2); // lookup and presence local; no slots/index/write.
-          var value = current.get(column.name());
-          boolean present;
-          if (value == null) {
-            SessionMetadataScalars.operation(query, 2L + column.name().length());
-            present = current.containsKey(column.name());
-          } else present = true;
-          SessionMetadataScalars.operation(query, 3);
+              query, 5); // one lookup, presence and NULL normalization.
+          var value = current.getOrDefault(column.name(), ABSENT);
+          boolean present = value != ABSENT;
+          if (!present) value = null;
           if (present) recognized++;
           long scalar;
           if (value == null) {
@@ -301,6 +306,297 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     };
   }
 
+  /** Ordinary metadata only consumes row size; its exact scalar expression stays in the SELECT. */
+  static void consumeRowResultSet(
+      SessionQueryContext query,
+      SessionMetadataAccounting.Table table,
+      java.sql.ResultSet source,
+      org.apache.ibatis.mapping.MappedStatement command,
+      boolean nullsPresent,
+      SessionMetadataAccounting.FinalRows consumer)
+      throws java.sql.SQLException {
+    var projection = SessionMetadataProjection.forFinalTable(table);
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    query.operation(20);
+    if (projection == null || projection.taskSized || owner == null)
+      throw new IllegalStateException("Unowned metadata row result");
+    long version = owner.metadataFinalVersion(query);
+    query.retainScratch(source, projection.retainedBytes);
+    boolean reserved = table == SessionMetadataAccounting.Table.RESERVATION;
+    try (var result = query.result(command.getId())) {
+      long rows = 0, bytes = 0, reservations = 0;
+      SessionMetadataAccounting.HistoryReservation reservation = null;
+      while (true) {
+        rowBoundary(query, owner, version);
+        boolean next = source.next();
+        rowBoundary(query, owner, version);
+        if (!next) break;
+        if (rows == 0) {
+          query.operation(4);
+          var metadata = source.getMetaData();
+          rowBoundary(query, owner, version);
+          int count = metadata.getColumnCount();
+          rowBoundary(query, owner, version);
+          query.operation(1);
+          if (count != (reserved ? 5 : 1)) throw JdbcSessionRecords.corrupt();
+          for (int i = 1; i <= (reserved ? 5 : 1); i++) {
+            String label =
+                switch (i) {
+                  case 1 -> "row_bytes";
+                  case 2 -> "category";
+                  case 3 -> "amount";
+                  case 4 -> "actual";
+                  default -> "state";
+                };
+            query.operation(10L + label.length());
+            rowBoundary(query, owner, version);
+            String actualLabel = metadata.getColumnLabel(i);
+            rowBoundary(query, owner, version);
+            int actualType = metadata.getColumnType(i);
+            boolean valid =
+                label.equals(actualLabel) && jdbcType(i == 2 || i == 5 ? 'S' : 'L', actualType);
+            rowBoundary(query, owner, version);
+            if (!valid) throw JdbcSessionRecords.corrupt();
+          }
+        }
+        result.row();
+        rowBoundary(query, owner, version);
+        Object value = source.getObject(1);
+        rowBoundary(query, owner, version);
+        query.operation(8);
+        if (!(value instanceof Long count) || count < 32 || count > projection.maximumRowBytes)
+          throw JdbcSessionRecords.corrupt();
+        result.metadataColumnChecked(ROW_BYTES, value);
+        rowBoundary(query, owner, version);
+        rows = Math.addExact(rows, 1);
+        bytes = Math.addExact(bytes, count);
+        if (projection.maximumRows > 0 && rows > projection.maximumRows)
+          throw JdbcSessionRecords.corrupt();
+        if (reserved) {
+          rowBoundary(query, owner, version);
+          Object category = source.getObject(2);
+          rowBoundary(query, owner, version);
+          result.metadataColumnChecked(projection.columns.get(4), category);
+          rowBoundary(query, owner, version);
+          Object amount = source.getObject(3);
+          rowBoundary(query, owner, version);
+          result.metadataColumnChecked(projection.columns.get(5), amount);
+          rowBoundary(query, owner, version);
+          Object actual = source.getObject(4);
+          rowBoundary(query, owner, version);
+          result.metadataColumnChecked(projection.columns.get(6), actual);
+          rowBoundary(query, owner, version);
+          Object state = source.getObject(5);
+          rowBoundary(query, owner, version);
+          result.metadataColumnChecked(projection.columns.get(9), state);
+          rowBoundary(query, owner, version);
+          query.operation(12L + "SESSION_HISTORY_STORAGE".length());
+          if ("SESSION_HISTORY_STORAGE".equals(category)) {
+            reservations = Math.addExact(reservations, 1);
+            reservation =
+                new SessionMetadataAccounting.HistoryReservation(
+                    (Long) amount, (Long) actual, (String) state);
+          }
+        }
+      }
+      rowBoundary(query, owner, version);
+      query.operation(8);
+      consumer.accept(table, rows, bytes, 0, null, reservations, reservation);
+      rowBoundary(query, owner, version);
+    }
+    rowBoundary(query, owner, version);
+  }
+
+  /** Fifteen ordinary tables share one actual SQL Result; only row sizes cross this boundary. */
+  static void consumeOrdinaryResultSet(
+      SessionQueryContext query,
+      java.sql.ResultSet source,
+      org.apache.ibatis.mapping.MappedStatement command,
+      SessionMetadataAccounting.FinalRows consumer)
+      throws java.sql.SQLException {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    query.operation(96); // array allocation/zeroing, table copy, locals and finally cleanup
+    if (owner == null) throw new IllegalStateException("Unowned ordinary metadata result");
+    long version = owner.metadataFinalVersion(query);
+    query.retainScratch(source, 4096);
+    long[] counts = new long[18], sizes = new long[18];
+    var tables = SessionMetadataAccounting.Table.values();
+    boolean first = true;
+    try (var result = query.result(command.getId())) {
+      while (true) {
+        rowBoundary(query, owner, version);
+        boolean next = source.next();
+        rowBoundary(query, owner, version);
+        if (!next) break;
+        if (first) {
+          query.operation(6);
+          var metadata = source.getMetaData();
+          rowBoundary(query, owner, version);
+          int columns = metadata.getColumnCount();
+          rowBoundary(query, owner, version);
+          if (columns != 2) throw JdbcSessionRecords.corrupt();
+          for (int i = 1; i <= 2; i++) {
+            String label = i == 1 ? "table_tag" : "row_bytes";
+            query.operation(10L + label.length());
+            rowBoundary(query, owner, version);
+            String actual = metadata.getColumnLabel(i);
+            rowBoundary(query, owner, version);
+            int type = metadata.getColumnType(i);
+            rowBoundary(query, owner, version);
+            if (!label.equals(actual) || type != java.sql.Types.BIGINT)
+              throw JdbcSessionRecords.corrupt();
+          }
+          first = false;
+        }
+        result.row();
+        rowBoundary(query, owner, version);
+        Object tagValue = source.getObject(1);
+        rowBoundary(query, owner, version);
+        query.operation(10);
+        if (!(tagValue instanceof Long tag) || tag < 2 || tag > 17 || tag == 16)
+          throw JdbcSessionRecords.corrupt();
+        result.metadataColumnChecked(TABLE_TAG, tagValue);
+        rowBoundary(query, owner, version);
+        Object value = source.getObject(2);
+        rowBoundary(query, owner, version);
+        query.operation(12); // ordinal routing, bounds, exact count/size additions and handoff
+        int index = tag.intValue();
+        var projection = SessionMetadataProjection.forFinalTable(tables[index]);
+        if (!(value instanceof Long count) || count < 32 || count > projection.maximumRowBytes)
+          throw JdbcSessionRecords.corrupt();
+        result.metadataColumnChecked(ROW_BYTES, value);
+        rowBoundary(query, owner, version);
+        counts[index] = Math.addExact(counts[index], 1);
+        sizes[index] = Math.addExact(sizes[index], count);
+        if (projection.maximumRows > 0 && counts[index] > projection.maximumRows)
+          throw JdbcSessionRecords.corrupt();
+      }
+      for (int i = 2; i < 18; i++) {
+        query.operation(10); // fixed summary slots; no empty table grants a row/column proof
+        if (i == 16) continue;
+        rowBoundary(query, owner, version);
+        consumer.accept(tables[i], counts[i], sizes[i], 0, null, 0, null);
+        rowBoundary(query, owner, version);
+      }
+    } finally {
+      counts = null;
+      sizes = null;
+      tables = null;
+    }
+    rowBoundary(query, owner, version);
+  }
+
+  /** TASK still exposes and checks every original SQL UTF8 length independently. */
+  static void consumeTaskRowResultSet(
+      SessionQueryContext query,
+      java.sql.ResultSet source,
+      org.apache.ibatis.mapping.MappedStatement command,
+      boolean nullsPresent,
+      SessionMetadataAccounting.FinalRows consumer)
+      throws java.sql.SQLException {
+    var projection = SessionMetadataProjection.taskSized();
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    query.operation(18);
+    if (owner == null) throw new IllegalStateException("Unowned TASK metadata row");
+    long version = owner.metadataFinalVersion(query);
+    query.retainScratch(source, projection.retainedBytes);
+    try (var result = query.result(command.getId())) {
+      long rows = 0, bytes = 0;
+      while (true) {
+        rowBoundary(query, owner, version);
+        boolean next = source.next();
+        rowBoundary(query, owner, version);
+        if (!next) break;
+        if (rows == 0) {
+          query.operation(5);
+          var metadata = source.getMetaData();
+          rowBoundary(query, owner, version);
+          int count = metadata.getColumnCount();
+          rowBoundary(query, owner, version);
+          query.operation(4);
+          if (count != 12) throw JdbcSessionRecords.corrupt();
+          rowBoundary(query, owner, version);
+          String baseLabel = metadata.getColumnLabel(1);
+          rowBoundary(query, owner, version);
+          boolean base =
+              "base_bytes".equals(baseLabel) && metadata.getColumnType(1) == java.sql.Types.BIGINT;
+          rowBoundary(query, owner, version);
+          if (!base) throw JdbcSessionRecords.corrupt();
+          int ordinal = 2;
+          for (var column : projection.sqlLengths) {
+            query.operation(2);
+            query.operation(9L + column.name().length());
+            rowBoundary(query, owner, version);
+            String label = metadata.getColumnLabel(ordinal);
+            rowBoundary(query, owner, version);
+            int type = metadata.getColumnType(ordinal++);
+            rowBoundary(query, owner, version);
+            if (!column.name().equals(label)
+                || (type != java.sql.Types.INTEGER && type != java.sql.Types.BIGINT))
+              throw JdbcSessionRecords.corrupt();
+          }
+        }
+        result.row();
+        rowBoundary(query, owner, version);
+        Object raw = source.getObject(1);
+        rowBoundary(query, owner, version);
+        query.operation(9);
+        if (!(raw instanceof Long base)
+            || base < 32
+            || base > projection.maximumBaseBytes
+            || ++rows > 1) throw JdbcSessionRecords.corrupt();
+        result.metadataColumnChecked(BASE_BYTES, raw);
+        rowBoundary(query, owner, version);
+        long rowBytes = base;
+        int ordinal = 2;
+        for (var column : projection.sqlLengths) {
+          query.operation(2);
+          rowBoundary(query, owner, version);
+          Object value = source.getObject(ordinal++);
+          rowBoundary(query, owner, version);
+          query.operation(12);
+          long scalar = 1;
+          if (value == null) {
+            if (!column.nullable()) throw JdbcSessionRecords.corrupt();
+          } else {
+            if (!(value instanceof Long || value instanceof Integer))
+              throw JdbcSessionRecords.corrupt();
+            scalar = ((Number) value).longValue();
+            long maximum =
+                column.kind() == 'T' ? 65535L : column.kind() == 'M' ? 16777215L : 4294967295L;
+            if (scalar < 0 || scalar > maximum) throw JdbcSessionRecords.corrupt();
+          }
+          result.metadataColumn(column, value);
+          rowBoundary(query, owner, version);
+          if (value != null || nullsPresent)
+            rowBytes = Math.addExact(rowBytes, Math.addExact(8, scalar));
+        }
+        query.operation(1);
+        bytes = Math.addExact(bytes, rowBytes);
+      }
+      rowBoundary(query, owner, version);
+      query.operation(4);
+      consumer.accept(SessionMetadataAccounting.Table.TASK, rows, bytes, 0, null, 0, null);
+      rowBoundary(query, owner, version);
+    }
+    rowBoundary(query, owner, version);
+  }
+
+  private static void rowBoundary(
+      SessionQueryContext query,
+      io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork owner,
+      long version) {
+    query.operation(2);
+    if (owner.metadataFinalVersion(query) != version)
+      throw owner.poisonProof(new IllegalStateException("Write during metadata row consumption"));
+  }
+
   private void fail(Throwable failure) {
     poison(failure);
     try {
@@ -389,16 +685,17 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     slots = new Object[projection.columns.size()];
     for (var column : projection.columns) {
       SessionMetadataScalars.operation(query, 1);
-      var value = current.get(column.name());
+      var value = current.getOrDefault(column.name(), ABSENT);
       // 保留原3项预付：局部索引、数组值写入与局部presence写入。
       SessionMetadataScalars.operation(query, 3);
       int index = recognized;
       slots[index] = value;
-      boolean present;
-      if (value == null) {
-        SessionMetadataScalars.operation(query, 2L + column.name().length());
-        present = current.containsKey(column.name());
-      } else present = true;
+      boolean present = value != ABSENT;
+      if (!present) {
+        SessionMetadataScalars.operation(query, 2);
+        value = null;
+        slots[index] = null;
+      }
       SessionMetadataScalars.operation(query, 3); // 保留presence读取、分支及至多一次计数推进。
       if (present) recognized++;
       if (value == null) {

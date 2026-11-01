@@ -61,12 +61,13 @@ final class SessionFinalMapperFailures {
             Object value = invoke(connection, m, a);
             if (!m.getName().equals("prepareStatement")
                 || !(value instanceof PreparedStatement statement)
-                || !a[0].toString().contains("FROM " + table)) return value;
+                || !a[0].toString().contains("FROM " + table + " ")) return value;
             statements++;
             return proxy(
                 PreparedStatement.class,
                 (p, sm, sa) -> {
-                  if (table.equals("step") && sm.getName().equals("getConnection")) return o;
+                  if ((table.equals("step") || table.equals("task"))
+                      && sm.getName().equals("getConnection")) return o;
                   if (sm.getName().equals("setString")) binds.add(sa[1]);
                   Object output = invoke(statement, sm, sa);
                   if (table.equals("step") && sm.getName().equals("close") && providerRows != null)
@@ -77,10 +78,11 @@ final class SessionFinalMapperFailures {
                   return proxy(
                       ResultSet.class,
                       (r, rm, ra) -> {
-                        if (table.equals("step") && rm.getName().equals("getStatement")) return p;
+                        if ((table.equals("step") || table.equals("task"))
+                            && rm.getName().equals("getStatement")) return p;
                         if (rm.getName().equals("getMetaData")) {
                           var metadata = rows.getMetaData();
-                          if (table.equals("step")
+                          if ((table.equals("step") || table.equals("task"))
                               && !List.of("count", "label", "type").contains(fault))
                             return metadata;
                           return proxy(
@@ -98,7 +100,19 @@ final class SessionFinalMapperFailures {
                         if (rm.getName().equals("getObject")) {
                           getters++;
                           if (fault.equals("error")) throw primary;
-                          if (fault.equals("write") && !changed) {
+                          if (fault.equals("tag-reservation") && ra[0].equals(1)) return 16L;
+                          if (fault.equals("row-negative") && ra[0].equals(2)) return -1L;
+                          if (fault.equals("row-oversize") && ra[0].equals(2))
+                            return Long.MAX_VALUE;
+                          if (fault.equals("row-type") && ra[0].equals(2)) return "32";
+                          if (fault.equals("task-length") && ra[0].equals(2)) return -1L;
+                          if (fault.equals("task-length-null") && ra[0].equals(2)) return null;
+                          if (fault.equals("negative")) return -1L;
+                          if (fault.equals("oversize")) return Long.MAX_VALUE;
+                          if (fault.equals("value-type")) return "32";
+                          if ((fault.equals("write")
+                                  || (fault.equals("row-write") && ra[0].equals(2)))
+                              && !changed) {
                             changed = true;
                             write.run();
                           }
@@ -125,7 +139,87 @@ final class SessionFinalMapperFailures {
   }
 
   static void verify(DataSource plain, String taskId, boolean preflight) {
+    verify(
+        plain,
+        taskId,
+        preflight,
+        List.of(
+            "count",
+            "label",
+            "type",
+            "write",
+            "close-write",
+            "error",
+            "close",
+            "foreign",
+            "parameter"));
+  }
+
+  static void verifyRowProjection(DataSource plain, String taskId) {
+    verify(
+        plain,
+        taskId,
+        true,
+        List.of(
+            "count",
+            "label",
+            "type",
+            "write",
+            "close-write",
+            "error",
+            "close",
+            "negative",
+            "oversize",
+            "value-type"));
+  }
+
+  static void verifyTaskProjection(DataSource plain, String taskId) {
+    verify(
+        plain,
+        taskId,
+        true,
+        List.of(
+            "count",
+            "label",
+            "type",
+            "write",
+            "error",
+            "close-write",
+            "negative",
+            "value-type",
+            "task-length",
+            "task-length-null"),
+        "task");
+  }
+
+  static void verifyOrdinaryProjection(DataSource plain, String taskId) {
+    verify(
+        plain,
+        taskId,
+        true,
+        List.of(
+            "count",
+            "label",
+            "type",
+            "write",
+            "row-write",
+            "error",
+            "close-write",
+            "tag-reservation",
+            "row-negative",
+            "row-oversize",
+            "row-type"));
+  }
+
+  private static void verify(
+      DataSource plain, String taskId, boolean preflight, List<String> faults) {
+    verify(plain, taskId, preflight, faults, "task_attempt");
+  }
+
+  private static void verify(
+      DataSource plain, String taskId, boolean preflight, List<String> faults, String table) {
     var source = new FaultSource(plain);
+    source.table = table;
     var db = new JdbcTemplate(source);
     var mappers = LedgerMapperSessions.create(source);
     var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
@@ -137,17 +231,7 @@ final class SessionFinalMapperFailures {
             taskId,
             "capabilities",
             SessionLineagePolicyV5.CAPABILITIES);
-    for (String fault :
-        List.of(
-            "count",
-            "label",
-            "type",
-            "write",
-            "close-write",
-            "error",
-            "close",
-            "foreign",
-            "parameter")) {
+    for (String fault : faults) {
       source.fault = fault;
       source.changed = false;
       source.closed = false;
@@ -211,7 +295,12 @@ final class SessionFinalMapperFailures {
       if (fault.equals("foreign") || fault.equals("parameter")) {
         if (source.statements != 0) throw new AssertionError("Foreign SQL executed");
       } else if (source.statements != 1
-          || !source.binds.equals(List.of("tenant-a", taskId))
+          || !source.binds.equals(
+              java.util.Collections.nCopies(
+                      table.equals("task_attempt") ? 15 : 1, List.of("tenant-a", taskId))
+                  .stream()
+                  .flatMap(List::stream)
+                  .toList())
           || !source.closed)
         throw new AssertionError("SQL/parameter/close changed " + fault + source.binds);
       if (fault.equals("error")

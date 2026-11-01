@@ -51,7 +51,8 @@ final class SessionBorrowedMetadataSqlScenario {
     return raw.getBytes(StandardCharsets.UTF_8).length;
   }
 
-  private static long scan(SessionCursorMetadataBatch batch) {
+  private static long scan(
+      io.github.lovexiaopeng.jimu.kernel.session.port.SessionMetadataAccounting.Batch batch) {
     long total = 0;
     for (var row : batch) {
       total += 32;
@@ -264,6 +265,31 @@ final class SessionBorrowedMetadataSqlScenario {
     var mappers = LedgerMapperSessions.create(source);
     seed(db);
     try {
+      if (mode.equals("borrowed-ordinary-faults")) {
+        SessionFinalMapperFailures.verifyOrdinaryProjection(source, ID);
+        return;
+      }
+      if (mode.equals("borrowed-row-faults")) {
+        SessionFinalMapperFailures.verifyRowProjection(source, ID);
+        SessionFinalMapperFailures.verifyTaskProjection(source, ID);
+        return;
+      }
+      if (mode.equals("borrowed-row-nulls")) {
+        rowNullPolicies(db, tx, mappers);
+        return;
+      }
+      if (mode.equals("borrowed-row-preflight")) {
+        preflight(db, tx, mappers);
+        return;
+      }
+      if (mode.equals("borrowed-model-consumers")) {
+        SessionModelConsumerSqlScenario.verify(db, ID);
+        return;
+      }
+      if (mode.equals("borrowed-node-input")) {
+        SessionNodeInputSqlScenario.verify(db, ID);
+        return;
+      }
       if (mode.equals("borrowed-model-step") || mode.equals("borrowed-model-admission")) {
         SessionModelStepSqlScenario.verify(db, ID, mode.equals("borrowed-model-admission"));
         return;
@@ -564,6 +590,89 @@ final class SessionBorrowedMetadataSqlScenario {
                     : "task_id";
         db.update("DELETE FROM `" + table + "` WHERE tenant_id='tenant-a' AND `" + key + "`=?", ID);
       }
+    }
+  }
+
+  private static void rowNullPolicies(
+      JdbcTemplate db, SessionQueryTransaction tx, org.mybatis.spring.SqlSessionTemplate mappers) {
+    // The original batch is the independent JVM scalar representation for each NULL policy.
+    // The seed also exercises Unicode, Boolean, both Long extrema and microsecond DATETIME.
+    db.update(
+        "UPDATE task_attempt SET fence=? WHERE tenant_id='tenant-a' AND task_id=? AND id='20000000-0000-0000-0000-000000000010'",
+        Long.MIN_VALUE,
+        ID);
+    var before = SessionDependencyScenario.snapshot(db);
+    try {
+      for (boolean nulls : List.of(false, true)) {
+        mappers.getConfiguration().setCallSettersOnNulls(nulls);
+        long expected = -1;
+        for (boolean folded : List.of(false, true)) {
+          var q = query(0);
+          long actual =
+              tx.required(
+                  q,
+                  () -> {
+                    SessionQueryTransaction.current(q).locked("tenant-a", ID);
+                    var task =
+                        Map.<String, Object>of(
+                            "tenant_id",
+                            "tenant-a",
+                            "id",
+                            ID,
+                            "capabilities",
+                            io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5
+                                .CAPABILITIES);
+                    var records =
+                        new MapperSessionMetadataAccounting(
+                            new JdbcSessionRecords(db, q, mappers), task);
+                    if (folded)
+                      return new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+                              .SessionMetadataAccountingServiceImpl()
+                          .metadata(records, false, 0);
+                    long total = 0;
+                    for (var table : Table.values())
+                      try (var batch = records.batch(table)) {
+                        total += scan(batch);
+                      }
+                    return total;
+                  });
+          if (!folded) expected = actual;
+          check(
+              actual == expected
+                  && before.equals(SessionDependencyScenario.snapshot(db))
+                  && q.scratchLive() == 65536,
+              "row SQL NULL policy=" + nulls + " folded=" + folded + " bytes=" + actual);
+        }
+        // Queryless ordinary batch still follows the original full scalar SELECT route.
+        var plain =
+            new MapperSessionMetadataAccounting(
+                new JdbcSessionRecords(db, null, mappers),
+                Map.of(
+                    "tenant_id",
+                    "tenant-a",
+                    "id",
+                    ID,
+                    "capabilities",
+                    io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5
+                        .CAPABILITIES));
+        long ordinary =
+            new org.springframework.transaction.support.TransactionTemplate(
+                    new DataSourceTransactionManager(db.getDataSource()))
+                .execute(
+                    status -> {
+                      long total = 0;
+                      for (var table : Table.values())
+                        try (var batch = plain.batch(table)) {
+                          total += scan(batch);
+                        }
+                      return total;
+                    });
+        check(
+            ordinary == expected && before.equals(SessionDependencyScenario.snapshot(db)),
+            "queryless metadata original route NULL=" + nulls);
+      }
+    } finally {
+      mappers.getConfiguration().setCallSettersOnNulls(true);
     }
   }
 

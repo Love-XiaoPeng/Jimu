@@ -14,6 +14,12 @@ public interface TenantBudgetMapper {
   List<Map<String, Object>> selectBudgetForUpdate(
       @Param("query") SessionQueryContext query, @Param("tenant") String tenant);
 
+  List<Map<String, Object>> lockBudgetForUpdate(
+      @Param("query") SessionQueryContext query, @Param("tenant") String tenant);
+
+  List<Map<String, Object>> selectModelBudgetForUpdate(
+      @Param("query") SessionQueryContext query, @Param("tenant") String tenant);
+
   int moveQueuedToRunning(
       @Param("query") SessionQueryContext query, @Param("tenant") String tenant);
 

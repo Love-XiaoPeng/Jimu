@@ -506,6 +506,11 @@ public final class SessionQueryContext {
 
     /** Current step raw: one strict encoding supplies SQL length and the actual digest. */
     public String modelStepColumn(String label, String raw) {
+      return rawColumn(label, raw, ignored -> {});
+    }
+
+    /** 当前新raw的一次严格编码交付传输长度和摘要，回调不能越过本Result生命周期。 */
+    public String rawColumn(String label, String raw, java.util.function.IntConsumer length) {
       String priorStatement = activeStatement, priorColumn = activeColumn;
       activeStatement = statement;
       activeColumn = label;
@@ -539,6 +544,8 @@ public final class SessionQueryContext {
           if (bytes > byteLimit) throw refuse(429, "SESSION_HISTORY_LIMIT");
         }
         String hash = modelStepHash(encoded);
+        operation(2); // length handoff and callback
+        length.accept(Math.toIntExact(scalar));
         encoded = null;
         retainScratch(this, Math.multiplyExact(batch, 3));
         if (additional != null) additional.column(label, raw);

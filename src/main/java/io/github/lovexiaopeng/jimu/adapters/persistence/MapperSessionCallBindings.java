@@ -28,6 +28,8 @@ import java.util.Map;
 
 /** Actual MP rows/inserts on original DS/UoW and explicit query; codecs/NULL access remain lazy. */
 final class MapperSessionCallBindings implements SessionCallBindings {
+  static final String LINEAGE_STEP =
+      "tenant_id,id,task_id,session_upper_seq,session_context_digest,session_binding_digest";
   private final JdbcSessionRecords records;
   private final Map<String, Object> task;
   private final String stepId;
@@ -58,7 +60,7 @@ final class MapperSessionCallBindings implements SessionCallBindings {
         bindingRow(
             ScopeQueryStepReadMapper.class,
             new QueryWrapper<>()
-                .select(Schema22Columns.STEP)
+                .select(lineageTask() ? LINEAGE_STEP : Schema22Columns.STEP)
                 .eq("tenant_id", s(task, "tenant_id"))
                 .eq("id", stepId)
                 .eq("task_id", s(task, "id"))

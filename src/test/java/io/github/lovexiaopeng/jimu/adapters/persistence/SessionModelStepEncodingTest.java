@@ -14,6 +14,38 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class SessionModelStepEncodingTest {
+  @Test
+  void nodeRawViewsEachUseTheirOwnResultEncodingLengthAndDigest() {
+    var q = query();
+    String raw = "a字😀\u0000";
+    long expectedBytes = raw.getBytes(StandardCharsets.UTF_8).length;
+    for (String label : List.of("request_snapshot", "genesis_snapshot", "graph_snapshot")) {
+      try (var result = q.result()) {
+        var view =
+            new io.github.lovexiaopeng.jimu.adapters.runtime.session.LineageRawView(
+                raw, result, label);
+        assertSame(raw, view.raw());
+        assertEquals(expectedBytes, view.bytes());
+        assertEquals(Payloads.hash(raw), view.digest());
+      }
+    }
+    assertEquals(3L * raw.length(), q.completedWork().get("history.encode"));
+    assertEquals(3L * expectedBytes, q.completedWork().get("history.hash"));
+    assertEquals(65536, q.scratchLive());
+    for (String invalid : List.of("\ud800", "x\udc00")) {
+      var bad = query();
+      try (var result = bad.result()) {
+        assertThrows(
+            TaskFailure.class,
+            () ->
+                new io.github.lovexiaopeng.jimu.adapters.runtime.session.LineageRawView(
+                    invalid, result, "graph_snapshot"));
+      }
+      assertEquals(65536, bad.scratchLive());
+      assertTrue(!bad.completedWork().containsKey("history.hash"));
+    }
+  }
+
   private static SessionQueryContext query() {
     var q =
         new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));

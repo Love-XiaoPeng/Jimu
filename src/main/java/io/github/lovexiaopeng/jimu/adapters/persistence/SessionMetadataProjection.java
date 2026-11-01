@@ -39,9 +39,13 @@ final class SessionMetadataProjection {
   }
 
   final List<Column> columns;
+  final List<Column> sqlLengths;
   final java.util.Set<String> names;
   // 编译期具名SQL只附着原静态描述；不另建名称/command容器。
   final String statement;
+  final String rowStatement;
+  final long maximumRowBytes;
+  final long maximumBaseBytes;
   private static final String MAPPER =
       "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.";
   final int maximumRows;
@@ -65,10 +69,39 @@ final class SessionMetadataProjection {
     // 新字段存储与初始化owner分派也计入首次实际Work；只交接编译期常量，不生成名称。
     if (owner != null) owner.inspect(4);
     this.statement = statement;
+    if (owner != null && statement != null) owner.inspect(4L + statement.length());
+    rowStatement = statement == null ? null : statement + "Row";
     this.taskSized = taskSized;
     this.maximumRows = maximumRows;
     columns =
         Arrays.stream(specification.split(",")).map(SessionMetadataProjection::column).toList();
+    if (owner != null) owner.inspect(taskSized ? 8L + 5L * columns.size() : 2);
+    sqlLengths =
+        taskSized
+            ? columns.stream()
+                .filter(c -> c.kind() == 'T' || c.kind() == 'M' || c.kind() == 'X')
+                .toList()
+            : List.of();
+    long maximum = 32;
+    long baseMaximum = 32;
+    for (var column : columns) {
+      if (owner != null) owner.inspect(7);
+      long columnMaximum =
+          8
+              + switch (column.kind()) {
+                case 'S' -> 4L * column.points();
+                case 'I' -> 11;
+                case 'L' -> 20;
+                case 'B' -> 5;
+                case 'D' -> 27;
+                default -> 4294967295L;
+              };
+      maximum += columnMaximum;
+      if (column.kind() != 'T' && column.kind() != 'M' && column.kind() != 'X')
+        baseMaximum += columnMaximum;
+    }
+    maximumRowBytes = maximum;
+    maximumBaseBytes = baseMaximum;
     names =
         columns.stream().map(Column::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
     // Two bounded row workspaces cover driver getter/materialization overlap; the

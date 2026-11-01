@@ -58,7 +58,14 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
     var task = ledger.fenced(lease, true);
     var model = ledger.snapshot(task);
     ledger.models.admit(model);
-    var budget = ledger.bucket(lease.tenant());
+    var budget =
+        ledger.queryContext() != null && ledger.queryContext().lineage()
+            ? JdbcLedger.first(
+                ledger
+                    .mappers
+                    .budgets()
+                    .selectModelBudgetForUpdate(ledger.queryContext(), lease.tenant()))
+            : ledger.bucket(lease.tenant());
     var step =
         JdbcSessionScopes.lineage(task)
                 && ledger.queryContext() != null
@@ -278,10 +285,19 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
     var task = ledger.measured("M2.lock", () -> ledger.fenced(lease, false));
     var step =
         JdbcLedger.first(
-            ledger
-                .mappers
-                .steps()
-                .selectModelStep(ledger.queryContext(), lease.tenant(), stepId, lease.taskId()));
+            JdbcSessionScopes.lineage(task)
+                    && ledger.queryContext() != null
+                    && ledger.queryContext().lineage()
+                ? ledger
+                    .mappers
+                    .steps()
+                    .selectLineageModelResponse(
+                        ledger.queryContext(), lease.tenant(), stepId, lease.taskId())
+                : ledger
+                    .mappers
+                    .steps()
+                    .selectModelStep(
+                        ledger.queryContext(), lease.tenant(), stepId, lease.taskId()));
     return new Response() {
       public boolean originalDispatch() {
         return dispatch.equals(ledger.s(step, "dispatch_id"))
