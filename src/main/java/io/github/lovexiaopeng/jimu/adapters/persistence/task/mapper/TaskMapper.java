@@ -39,6 +39,12 @@ public interface TaskMapper {
       @Param("tenant") String tenant,
       @Param("taskId") String taskId);
 
+  /** Non-null M1 extension state retains the full source projection and original consumers. */
+  List<Map<String, Object>> selectExtendedModelAdmissionTaskForUpdate(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
   /** 原 scope-query 消费者：保完整准入材料与权限，只删除未消费的调度/模型额度字段。 */
   List<Map<String, Object>> selectLineageQueryTaskForUpdate(
       @Param("query") SessionQueryContext query,

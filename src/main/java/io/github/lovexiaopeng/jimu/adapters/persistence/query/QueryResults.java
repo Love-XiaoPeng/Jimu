@@ -122,7 +122,14 @@ public final class QueryResults {
   private static ResultSet meter(
       ResultSet delegate, SessionQueryContext context, String statement, Object parameter)
       throws SQLException {
+    boolean modelTask = SessionLineageSourceColumns.modelTask(statement);
+    if (modelTask) {
+      context.operation(8); // route, width, reservation, row bookkeeping and close alias release
+      context.retainScratch(delegate, 128);
+    }
     var state = new State(delegate, context);
+    state.taskQuery = modelTask ? context : null;
+    state.taskWidth = modelTask ? SessionLineageSourceColumns.modelTaskWidth(statement) : 0;
     var step =
         parameter instanceof Map<?, ?> args && args.containsKey("modelStepHash")
             ? args.get("modelStepHash")
@@ -135,14 +142,17 @@ public final class QueryResults {
         parameter instanceof Map<?, ?> args && args.containsKey("nodeInputRaw")
             ? (NodeInputRaw) args.get("nodeInputRaw")
             : null;
-    boolean synchronousRaw = stepHash != null || nodeRaw != null;
+    boolean synchronousRaw = stepHash != null || nodeRaw != null || modelTask;
+    if (modelTask) context.operation(2); // task route and guarded handoff
     try {
       state.verify(context);
       if (synchronousRaw && state.owner == null)
         throw new IllegalStateException("Unowned step result");
       final long stepVersion = !synchronousRaw ? 0 : state.owner.metadataFinalVersion(context);
       state.result = context.result(statement);
+      if (modelTask) checkStep(state, context, stepVersion);
       state.metadata = delegate.getMetaData();
+      if (modelTask) checkStep(state, context, stepVersion);
       if (state.owner != null) {
         context.operation(1);
         if (state.owner.lineageSourceActive() && nodeRaw == null)
@@ -154,6 +164,27 @@ public final class QueryResults {
               new Class<?>[] {ResultSet.class},
               (proxy, method, args) -> {
                 if (method.getName().equals("close")) {
+                  if (modelTask) {
+                    Throwable primary = null;
+                    try {
+                      checkStep(state, context, stepVersion);
+                    } catch (RuntimeException | Error failure) {
+                      primary = state.failure(failure);
+                    }
+                    try {
+                      state.close();
+                      checkStep(state, context, stepVersion);
+                      state.completeTaskRow(context);
+                      context.operation(1);
+                      if (!state.taskEnded)
+                        throw new IllegalStateException("Unfinished task result");
+                    } catch (SQLException | RuntimeException | Error failure) {
+                      if (primary == null) primary = state.failure(failure);
+                      else suppress(primary, failure);
+                    }
+                    if (primary != null) throw primary;
+                    return null;
+                  }
                   try {
                     state.close();
                     if (synchronousRaw) checkStep(state, context, stepVersion);
@@ -171,13 +202,76 @@ public final class QueryResults {
                   if (state.owner != null) context.checkHealthy();
                   if (state.delegate == null) throw new SQLException("ResultSet closed");
                   if (method.getName().equals("getMetaData") && state.owner != null)
-                    return metadataView(state, context);
+                    return metadataView(state, context, modelTask, stepVersion);
                   if (synchronousRaw) checkStep(state, context, stepVersion);
+                  if (modelTask && method.getName().equals("next")) state.completeTaskRow(context);
                   Object value = method.invoke(state.delegate, args);
                   if (synchronousRaw) checkStep(state, context, stepVersion);
+                  if (modelTask
+                      && state.taskColumn >= 0
+                      && (method.getName().startsWith("get")
+                          || method.getName().equals("wasNull"))) {
+                    context.operation(
+                        11); // getter/NULL route, width/label, ordinal and pending scalar
+                    if (method.getName().equals("wasNull")) {
+                      if (state.taskZero == null)
+                        throw new IllegalStateException("Unexpected task NULL callback");
+                      Object scalar = Boolean.TRUE.equals(value) ? null : state.taskZero;
+                      state.taskZero = null;
+                      state.taskColumn(scalar);
+                    } else if (args != null
+                        && (args.length == 1
+                            || (args.length == 2
+                                && method.getName().equals("getObject")
+                                && args[1] == java.time.LocalDateTime.class))
+                        && (method.getName().equals("getObject")
+                            || method.getName().equals("getString")
+                            || method.getName().equals("getLong")
+                            || method.getName().equals("getInt")
+                            || method.getName().equals("getTimestamp"))) {
+                      if (state.taskZero != null || state.taskColumn >= state.taskWidth)
+                        throw new IllegalStateException("Repeated or incomplete task getter");
+                      String label =
+                          SessionLineageSourceColumns.modelTaskLabel(
+                              state.taskColumn, state.taskWidth);
+                      boolean nativeName = false;
+                      context.operation(8); // exact native metadata/Field and current name identity
+                      if (args[0] instanceof String
+                          && state.metadata.getClass()
+                              == com.mysql.cj.jdbc.result.ResultSetMetaData.class) {
+                        var field =
+                            ((com.mysql.cj.jdbc.result.ResultSetMetaData) state.metadata)
+                                .getFields()[state.taskColumn];
+                        nativeName =
+                            field != null
+                                && field.getClass() == com.mysql.cj.result.Field.class
+                                && args[0] == field.getName();
+                      }
+                      if (!nativeName) {
+                        context.operation(4L + label.length());
+                        if (!(label.equals(args[0])
+                            || Integer.valueOf(state.taskColumn + 1).equals(args[0])))
+                          throw new IllegalStateException("Changed task getter order: " + label);
+                      }
+                      if ((method.getName().equals("getLong") || method.getName().equals("getInt"))
+                          && ((Number) value).longValue() == 0) state.taskZero = value;
+                      else state.taskColumn(value);
+                    }
+                    context.operation(1);
+                    if (state.result.hasColumnCallback())
+                      checkStep(state, context, stepVersion); // independent external meter boundary
+                  }
                   if (method.getName().equals("next")) {
                     context.remainingMillis();
                     if (Boolean.TRUE.equals(value)) {
+                      if (modelTask)
+                        SessionLineageSourceColumns.verifyModelTask(
+                            state.delegate,
+                            context,
+                            state.taskWidth,
+                            parameter,
+                            state.owner,
+                            stepVersion);
                       if (nodeRaw != null) {
                         SessionLineageSourceColumns.verifyNodeInput(
                             state.delegate,
@@ -197,7 +291,14 @@ public final class QueryResults {
                             state.owner,
                             stepVersion);
                       state.result.row();
-                      for (int column = 1; column <= state.metadata.getColumnCount(); column++) {
+                      if (modelTask) {
+                        context.operation(2); // new row, all source columns already checked
+                        state.taskColumn = 0;
+                        return value;
+                      }
+                      int columns = state.metadata.getColumnCount();
+                      if (modelTask) checkStep(state, context, stepVersion);
+                      for (int column = 1; column <= columns; column++) {
                         // Include columns a projection ignores; repeated mapped getters cost no
                         // extra
                         // bytes.
@@ -207,6 +308,7 @@ public final class QueryResults {
                         if (scalar instanceof java.sql.Timestamp time)
                           scalar = time.toLocalDateTime();
                         String label = state.metadata.getColumnLabel(column);
+                        if (modelTask) checkStep(state, context, stepVersion);
                         if (nodeRaw != null
                             && (label.equals("request_snapshot")
                                 || label.equals("genesis_snapshot")
@@ -225,7 +327,13 @@ public final class QueryResults {
                         } else state.result.column(label, scalar);
                         if (synchronousRaw) checkStep(state, context, stepVersion);
                       }
-                    } else state.result.close();
+                    } else {
+                      if (modelTask) {
+                        context.operation(1);
+                        state.taskEnded = true;
+                      }
+                      state.result.close();
+                    }
                   }
                   return value;
                 } catch (InvocationTargetException failure) {
@@ -276,11 +384,13 @@ public final class QueryResults {
   private static void suppress(Throwable primary, Throwable extra) {
     if (primary != extra
         && primary.getCause() != extra
+        && extra.getCause() != primary
         && java.util.Arrays.stream(primary.getSuppressed()).noneMatch(t -> t == extra))
       primary.addSuppressed(extra);
   }
 
-  private static ResultSetMetaData metadataView(State state, SessionQueryContext context) {
+  private static ResultSetMetaData metadataView(
+      State state, SessionQueryContext context, boolean guarded, long version) {
     return (ResultSetMetaData)
         Proxy.newProxyInstance(
             ResultSetMetaData.class.getClassLoader(),
@@ -289,7 +399,10 @@ public final class QueryResults {
               try {
                 context.checkHealthy();
                 if (state.metadata == null) throw new SQLException("ResultSet closed");
-                return method.invoke(state.metadata, args);
+                if (guarded) checkStep(state, context, version);
+                Object value = method.invoke(state.metadata, args);
+                if (guarded) checkStep(state, context, version);
+                return value;
               } catch (InvocationTargetException failure) {
                 throw state.failure(failure.getCause());
               } catch (SQLException | RuntimeException failure) {
@@ -304,6 +417,11 @@ public final class QueryResults {
     private ResultSetMetaData metadata;
     private SessionQueryContext.Result result;
     private Error fatal;
+    private SessionQueryContext taskQuery;
+    private int taskColumn = -1;
+    private int taskWidth;
+    private Object taskZero;
+    private boolean taskEnded;
     private final SessionQueryWork owner;
 
     State(ResultSet delegate, SessionQueryContext context) {
@@ -315,6 +433,19 @@ public final class QueryResults {
     void verify(SessionQueryContext context) {
       if (owner != null && SessionQueryTransaction.current(context) != owner)
         throw new IllegalStateException("Different query for owned ResultSet");
+    }
+
+    void taskColumn(Object scalar) {
+      taskQuery.operation(8); // normalization, width/label, meter, ordinal and alias release
+      if (scalar instanceof java.sql.Timestamp time) scalar = time.toLocalDateTime();
+      result.column(SessionLineageSourceColumns.modelTaskLabel(taskColumn, taskWidth), scalar);
+      taskColumn++;
+    }
+
+    void completeTaskRow(SessionQueryContext context) {
+      context.operation(3);
+      if ((taskColumn >= 0 && taskColumn != taskWidth) || taskZero != null)
+        throw new IllegalStateException("Incomplete task row consumption");
     }
 
     Throwable failure(Throwable failure) {
@@ -351,6 +482,10 @@ public final class QueryResults {
         if (primary instanceof Error error) throw error;
         throw (RuntimeException) primary;
       } finally {
+        taskZero = null;
+        var payer = taskQuery;
+        taskQuery = null;
+        if (payer != null) payer.releaseScratch(cursor);
         if (result != null) result.close();
         result = null;
       }

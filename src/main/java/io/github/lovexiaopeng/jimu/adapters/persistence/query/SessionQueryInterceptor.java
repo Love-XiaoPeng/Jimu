@@ -94,7 +94,14 @@ public final class SessionQueryInterceptor implements Interceptor {
       try {
         if (command.getSqlCommandType() != org.apache.ibatis.mapping.SqlCommandType.SELECT)
           SessionDependencyWrites.before(command.getId(), parameter, owner);
+        boolean modelTask = SessionLineageSourceColumns.modelTask(command.getId());
+        long modelTaskVersion = 0;
+        if (modelTask) {
+          SessionLineageSourceColumns.verifyModelTaskCommand(command, context, parameter);
+          modelTaskVersion = owner.metadataFinalVersion(context);
+        }
         Object result = invocation.proceed();
+        if (modelTask) owner.metadataFinalBoundary(context, modelTaskVersion);
         SessionDependencyWrites.observed(command.getId(), parameter, result, owner);
         return result;
       } catch (Throwable failure) {

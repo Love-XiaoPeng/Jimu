@@ -26,6 +26,10 @@ public final class SessionHistoryMetadataLanguageDriver extends XMLLanguageDrive
     var bound = source.getBoundSql(null);
     if (SessionLineageSourceColumns.STEP_SQL.equals(bound.getSql()) && stepMappings(bound))
       return new RowSource(configuration, bound, type, -1);
+    if (SessionLineageSourceColumns.MODEL_TASK_SQL.equals(bound.getSql()) && taskMappings(bound))
+      return new RowSource(configuration, bound, type, -2);
+    if (SessionLineageSourceColumns.EXTENDED_MODEL_TASK_SQL.equals(bound.getSql())
+        && taskMappings(bound)) return new RowSource(configuration, bound, type, -3);
     if (matches(bound)) return new HistorySource(configuration, bound, type, false);
     if (nodeMatches(bound)) return new HistorySource(configuration, bound, type, true);
     return source;
@@ -33,6 +37,23 @@ public final class SessionHistoryMetadataLanguageDriver extends XMLLanguageDrive
 
   static boolean ownsModelStep(SqlSource source) {
     return source instanceof RowSource pinned && pinned.table == -1;
+  }
+
+  static boolean ownsModelTask(SqlSource source) {
+    return ownsModelTask(source, true);
+  }
+
+  static boolean ownsModelTask(SqlSource source, boolean compact) {
+    return source instanceof RowSource pinned && pinned.table == (compact ? -2 : -3);
+  }
+
+  private static boolean taskMappings(BoundSql bound) {
+    var mappings = bound.getParameterMappings();
+    return mappings.size() == 2
+        && "tenant".equals(mappings.get(0).getProperty())
+        && "taskId".equals(mappings.get(1).getProperty())
+        && mappings.get(0).getMode() == ParameterMode.IN
+        && mappings.get(1).getMode() == ParameterMode.IN;
   }
 
   private static boolean stepMappings(BoundSql bound) {

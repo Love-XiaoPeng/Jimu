@@ -308,6 +308,10 @@ final class SessionBorrowedMetadataSqlScenario {
         SessionModelConsumerSqlScenario.verifyQueryTask(db, ID);
         return;
       }
+      if (mode.equals("borrowed-model-task-faults")) {
+        SessionModelConsumerSqlScenario.verifyModelTaskFaults(db, ID);
+        return;
+      }
       if (mode.equals("borrowed-model-task")) {
         SessionModelConsumerSqlScenario.verifyModelTask(db, ID);
         return;

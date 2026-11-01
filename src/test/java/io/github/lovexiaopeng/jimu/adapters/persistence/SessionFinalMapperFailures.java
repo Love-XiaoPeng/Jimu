@@ -40,6 +40,8 @@ final class SessionFinalMapperFailures {
 
   static final class FaultSource extends DelegatingDataSource {
     String table = "task_attempt";
+    String sqlContains;
+    String matchedSql;
     String fault;
     Runnable write;
     boolean changed, closed;
@@ -60,27 +62,101 @@ final class SessionFinalMapperFailures {
           (o, m, a) -> {
             Object value = invoke(connection, m, a);
             if (!m.getName().equals("prepareStatement")
-                || !(value instanceof PreparedStatement statement)
-                || !a[0].toString().contains("FROM " + table + " ")) return value;
+                || !(value instanceof PreparedStatement statement)) return value;
+            String sql = a[0].toString();
+            if (!sql.contains("FROM " + table + " ")
+                || (sqlContains != null && !sql.contains(sqlContains))) {
+              ResultSet[] provider = {null}, wrapped = {null};
+              return proxy(
+                  PreparedStatement.class,
+                  (p, sm, sa) -> {
+                    if (sm.getName().equals("getConnection")) return o;
+                    Object result = invoke(statement, sm, sa);
+                    if (result instanceof ResultSet rows) {
+                      if (provider[0] != rows) {
+                        provider[0] = rows;
+                        wrapped[0] =
+                            proxy(
+                                ResultSet.class,
+                                (r, rm, ra) ->
+                                    rm.getName().equals("getStatement") ? p : invoke(rows, rm, ra));
+                      }
+                      return wrapped[0];
+                    }
+                    return result;
+                  });
+            }
             statements++;
+            matchedSql = sql;
             return proxy(
                 PreparedStatement.class,
                 (p, sm, sa) -> {
-                  if (table.equals("step") && sm.getName().equals("getConnection")) return o;
+                  if ((table.equals("step") || table.equals("task"))
+                      && sm.getName().equals("getConnection"))
+                    return fault.equals("connection") ? connection : o;
                   if (sm.getName().equals("setString")) binds.add(sa[1]);
                   Object output = invoke(statement, sm, sa);
-                  if (table.equals("step") && sm.getName().equals("close") && providerRows != null)
-                    closed = providerRows.isClosed();
+                  if ((table.equals("step") || table.equals("task"))
+                      && sm.getName().equals("close")
+                      && providerRows != null) closed = providerRows.isClosed();
                   if (!sm.getName().equals("getResultSet") || !(output instanceof ResultSet rows))
                     return output;
                   providerRows = rows;
                   return proxy(
                       ResultSet.class,
                       (r, rm, ra) -> {
-                        if (table.equals("step") && rm.getName().equals("getStatement")) return p;
+                        if ((table.equals("step") || table.equals("task"))
+                            && rm.getName().equals("getStatement")) return p;
                         if (rm.getName().equals("getMetaData")) {
                           var metadata = rows.getMetaData();
-                          if (table.equals("step")
+                          if (table.equals("task") && fault.equals("metadata-write") && !changed) {
+                            changed = true;
+                            write.run();
+                          }
+
+                          if (table.equals("task")
+                              && fault.startsWith("source-")
+                              && (!changed || fault.equals("source-count"))) {
+                            changed = true;
+                            var mysql = (com.mysql.cj.jdbc.result.ResultSetMetaData) metadata;
+                            if (fault.equals("source-count"))
+                              return new com.mysql.cj.jdbc.result.ResultSetMetaData(
+                                  null,
+                                  java.util.Arrays.copyOf(
+                                      mysql.getFields(), mysql.getFields().length - 1),
+                                  false,
+                                  false,
+                                  null);
+                            var field =
+                                mysql
+                                    .getFields()[
+                                    fault.equals("source-charset")
+                                            || fault.equals("source-encoding")
+                                        ? 2
+                                        : 20];
+                            if (fault.equals("source-type"))
+                              field.setMysqlType(com.mysql.cj.MysqlType.BLOB);
+                            else {
+                              String member =
+                                  switch (fault) {
+                                    case "source-charset" -> "collationIndex";
+                                    case "source-encoding" -> "encoding";
+                                    case "source-table" -> "originalTableName";
+                                    default -> "originalColumnName";
+                                  };
+                              var f = com.mysql.cj.result.Field.class.getDeclaredField(member);
+                              f.setAccessible(true);
+                              f.set(
+                                  field,
+                                  member.equals("collationIndex")
+                                      ? 8
+                                      : member.equals("encoding")
+                                          ? "windows-1252"
+                                          : new com.mysql.cj.util.LazyString("foreign"));
+                            }
+                            return metadata;
+                          }
+                          if ((table.equals("step") || table.equals("task"))
                               && !List.of("count", "label", "type").contains(fault))
                             return metadata;
                           return proxy(

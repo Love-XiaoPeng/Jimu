@@ -2198,30 +2198,24 @@ public final class JdbcLedger
   }
 
   Map<String, Object> fenced(Lease lease, boolean admission) {
-    return fenced(lease, admission, false, false, null);
+    return fenced(lease, admission, false, false);
   }
 
   Map<String, Object> fencedScopeQuery(Lease lease) {
-    return fenced(lease, true, true, false, null);
+    return fenced(lease, true, true, false);
   }
 
-  Map<String, Object> fencedModelAdmission(Lease lease, Map<String, Object> evaluation) {
-    return fenced(lease, true, false, true, evaluation);
+  Map<String, Object> fencedModelAdmission(Lease lease) {
+    return fenced(lease, true, false, true);
   }
 
   private Map<String, Object> fenced(
-      Lease lease,
-      boolean admission,
-      boolean scopeQuery,
-      boolean modelAdmission,
-      Map<String, Object> modelEvaluation) {
+      Lease lease, boolean admission, boolean scopeQuery, boolean modelAdmission) {
     bindSessionQuery(lease, null, null);
-    if (query != null) query.operation(8); // scope/model route and original evaluation handoff
+    if (query != null) query.operation(8); // scope/model route and evaluation handoff
     // Hold through the committing transaction: STOPPED cannot race a cached admission,
     // publication or successful finish. Settlement of previously admitted effects stays allowed.
-    // M1 already acquired the same evaluation lock immediately before this call; retain its
-    // original row for admission and limits instead of issuing the identical lock read twice.
-    var evaluation = modelAdmission ? modelEvaluation : evaluation(lease, admission);
+    var evaluation = evaluation(lease, admission);
     // This read owns the lock ordering/existence check; no budget value is consumed here.
     if (query != null && query.lineage())
       first(mappers.budgets().lockBudgetForUpdate(query, lease.tenant()));
@@ -2239,6 +2233,21 @@ public final class JdbcLedger
                   : mappers
                       .tasks()
                       .selectLineageQueryTaskForUpdate(query, lease.tenant(), lease.taskId()));
+      if (modelAdmission) {
+        // The current locked SQL proves all extension columns NULL, or requests their full read.
+        // This flag never escapes the current task row and grants no raw/history qualification.
+        query.operation(11); // flag extraction, strict type/value, route and full-read handoff
+        var extended = task.get("model_admission_extended");
+        if (!(extended instanceof Long present) || (present != 0 && present != 1))
+          throw new IllegalStateException("Invalid model admission extension flag");
+        if (present == 1)
+          task =
+              first(
+                  mappers
+                      .tasks()
+                      .selectExtendedModelAdmissionTaskForUpdate(
+                          query, lease.tenant(), lease.taskId()));
+      }
       if (scopeQuery && !JdbcSessionScopes.lineage(task))
         throw new TaskFailure(
             409,
@@ -2251,6 +2260,9 @@ public final class JdbcLedger
         || n(task, "live") != 1
         || !List.of(TaskState.RUNNING, TaskState.CANCEL_REQUESTED).contains(s(task, "state")))
       throw new TaskFailure(409, CommonErrorCode.FENCE_REJECTED);
+    // SQL/driver callbacks can write in this same transaction despite its held row lock.
+    // M1 must consume fresh run state after the budget and task reads.
+    if (modelAdmission) evaluation = evaluation(lease, admission);
     if (admission)
       executionAdmission.lease(new MapperLeaseAdmission(this, task, evaluation), lease);
     progressAttempt(task);

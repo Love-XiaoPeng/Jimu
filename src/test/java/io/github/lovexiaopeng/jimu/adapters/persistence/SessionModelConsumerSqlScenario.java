@@ -125,6 +125,274 @@ final class SessionModelConsumerSqlScenario {
     verifyTask(db, task, true);
   }
 
+  static void verifyModelTaskFaults(JdbcTemplate db, String task) {
+    verifyModelTask(db, task);
+    verifyModelTaskExtensions(db, task);
+    var source = new SessionFinalMapperFailures.FaultSource(db.getDataSource());
+    var mapper = LedgerMapperSessions.create(source);
+    var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
+    String statement = ROOT + "task.mapper.TaskMapper.selectModelAdmissionTaskForUpdate";
+    var before = SessionDependencyScenario.snapshot(db);
+    for (String fault :
+        List.of(
+            "none",
+            "source-count",
+            "source-type",
+            "source-table",
+            "source-name",
+            "source-charset",
+            "source-encoding",
+            "foreign",
+            "connection",
+            "write",
+            "metadata-write",
+            "next-write",
+            "begin",
+            "before-close-write",
+            "incomplete",
+            "extra",
+            "close-write",
+            "error",
+            "close")) {
+      var q =
+          new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
+      q.restrictLineage();
+      var other =
+          new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
+      other.restrictLineage();
+      source.table = "task";
+      source.fault = fault;
+      source.changed = false;
+      source.closed = false;
+      source.getters = 0;
+      source.statements = 0;
+      source.binds.clear();
+      source.primary =
+          fault.equals("error")
+              ? new AssertionError("M1 getter Error")
+              : new java.sql.SQLException("M1 close");
+      source.secondary =
+          fault.equals("error") ? new java.sql.SQLException("M1 suppressed close") : null;
+      source.write =
+          () ->
+              mapper
+                  .getMapper(
+                      io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper
+                          .SessionContextMapper.class)
+                  .account(q, 1, "tenant-a", task);
+      Throwable caught = null;
+      try {
+        tx.required(
+            q,
+            () -> {
+              SessionQueryTransaction.current(q).locked("tenant-a", task);
+              if (fault.equals("before-close-write") || fault.equals("incomplete")) {
+                var connection =
+                    org.springframework.jdbc.datasource.DataSourceUtils.getConnection(source);
+                try (var prepared =
+                    connection.prepareStatement(
+                        mapper
+                            .getConfiguration()
+                            .getMappedStatement(statement)
+                            .getBoundSql(Map.of("tenant", "tenant-a", "taskId", task))
+                            .getSql())) {
+                  prepared.setString(1, "tenant-a");
+                  prepared.setString(2, task);
+                  prepared.execute();
+                  try (var rows =
+                      io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryResults.meter(
+                          prepared.getResultSet(), q, statement)) {
+                    if (fault.equals("before-close-write")) {
+                      source.changed = true;
+                      source.write.run();
+                    }
+                  }
+                } catch (java.sql.SQLException failure) {
+                  throw new org.springframework.dao.DataAccessResourceFailureException(
+                      "M1 close fixture", failure);
+                } finally {
+                  org.springframework.jdbc.datasource.DataSourceUtils.releaseConnection(
+                      connection, source);
+                }
+                throw new AssertionError("M1 task fault accepted " + fault);
+              }
+              try (var meter =
+                  q.meter(
+                      () -> {
+                        if (fault.equals("begin") && !source.changed) {
+                          source.changed = true;
+                          source.write.run();
+                        }
+                        return (label, value) -> {
+                          if (fault.equals("extra") && source.getters > 0 && !source.changed) {
+                            source.changed = true;
+                            source.write.run();
+                          }
+                        };
+                      })) {
+                Map<String, Object> result =
+                    mapper.selectOne(
+                        statement,
+                        Map.of(
+                            "query",
+                            fault.equals("foreign") ? other : q,
+                            "tenant",
+                            "tenant-a",
+                            "taskId",
+                            task));
+                check(
+                    result.size() == 32 && result.containsKey("max_tokens"),
+                    "complete M1 source row");
+                if (!fault.equals("none"))
+                  throw new AssertionError("M1 task fault accepted " + fault);
+              }
+              return null;
+            });
+      } catch (RuntimeException | Error failure) {
+        caught = failure;
+      }
+      if (fault.equals("none")) {
+        if (caught != null) throw new AssertionError("M1 positive source rejected", caught);
+      } else {
+        if (caught == null
+            || caught instanceof AssertionError a
+                && a.getMessage().startsWith("M1 task fault accepted"))
+          throw new AssertionError("M1 failed to reject " + fault, caught);
+        if (fault.startsWith("source-")
+            || fault.equals("metadata-write")
+            || fault.equals("next-write"))
+          check(source.getters == 0, "M1 refuses before value getters " + fault);
+        if (fault.equals("write"))
+          check(source.getters == 1, "M1 stops immediately after getter write");
+        if (fault.equals("foreign")) check(source.statements == 0, "M1 foreign owner before SQL");
+        if (fault.equals("begin")
+            || fault.equals("before-close-write")
+            || fault.equals("incomplete"))
+          check(source.getters == 0 && source.closed, "M1 closes unconsumed source " + fault);
+        if (fault.equals("error"))
+          check(
+              SessionFinalMapperFailures.contains(caught, source.primary)
+                  && SessionFinalMapperFailures.contains(source.primary, source.secondary),
+              "M1 Error/suppressed close preserved");
+      }
+      check(
+          q.scratchLive() == 65536
+              && SessionQueryTransaction.currentOwner() == null
+              && before.equals(SessionDependencyScenario.snapshot(db)),
+          "M1 22-table rollback and owners released " + fault);
+      System.out.println(
+          "MODEL_TASK_FAULT "
+              + fault
+              + " getters="
+              + source.getters
+              + " operations="
+              + q.resources().operations());
+      System.out.flush();
+    }
+  }
+
+  private static void verifyModelTaskExtensions(JdbcTemplate db, String task) {
+    var source = db.getDataSource();
+    var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
+    var mapper = LedgerMapperSessions.create(source);
+    var before = SessionDependencyScenario.snapshot(db);
+    int version =
+        db.queryForObject(
+            "SELECT record_version FROM task WHERE tenant_id='tenant-a' AND id=?",
+            Integer.class,
+            task);
+    for (String field :
+        List.of(
+            "evaluation_snapshot",
+            "evaluation_digest",
+            "evaluation_phase",
+            "evaluation_sample",
+            "evaluation_model",
+            "material_snapshot",
+            "material_digest",
+            "material_system_digest",
+            "material_file_snapshot",
+            "material_file_digest",
+            "execution_scope_digest",
+            "business_policy_snapshot",
+            "business_policy_digest",
+            "media_snapshot",
+            "media_digest",
+            "media_cleanup_state",
+            "mcp_snapshot",
+            "mcp_digest",
+            "question_binding",
+            "question_binding_digest",
+            "waiting_question_id",
+            "question_continuation_step_id",
+            "question_cleanup_state",
+            "question_retained_digests")) {
+      Object old =
+          db.queryForObject(
+              "SELECT " + field + " FROM task WHERE tenant_id='tenant-a' AND id=?",
+              String.class,
+              task);
+      check(old == null, "M1 extension fixture starts NULL " + field);
+      String value =
+          field.endsWith("digest") ? "a".repeat(64) : field.endsWith("snapshot") ? "{}" : "x";
+      boolean mediaPair = field.equals("media_snapshot") || field.equals("media_digest");
+      boolean mcpPair = field.equals("mcp_snapshot") || field.equals("mcp_digest");
+      try {
+        if (mediaPair)
+          db.update(
+              "UPDATE task SET record_version=3,media_snapshot='{}',media_digest=REPEAT('a',64) WHERE tenant_id='tenant-a' AND id=?",
+              task);
+        else if (mcpPair)
+          db.update(
+              "UPDATE task SET mcp_snapshot='{}',mcp_digest=REPEAT('a',64) WHERE tenant_id='tenant-a' AND id=?",
+              task);
+        else
+          db.update(
+              "UPDATE task SET " + field + "=? WHERE tenant_id='tenant-a' AND id=?", value, task);
+        var q =
+            new SessionQueryContext(
+                System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
+        q.restrictLineage();
+        tx.required(
+            q,
+            () -> {
+              SessionQueryTransaction.current(q).locked("tenant-a", task);
+              var args = Map.of("query", q, "tenant", "tenant-a", "taskId", task);
+              var core =
+                  mapper.<Map<String, Object>>selectOne(
+                      ROOT + "task.mapper.TaskMapper.selectModelAdmissionTaskForUpdate", args);
+              check(
+                  Long.valueOf(1).equals(core.get("model_admission_extended")),
+                  "M1 detects current extension " + field);
+              var full =
+                  mapper.<Map<String, Object>>selectOne(
+                      ROOT + "task.mapper.TaskMapper.selectExtendedModelAdmissionTaskForUpdate",
+                      args);
+              check(
+                  full.size() == 55 && value.equals(full.get(field)),
+                  "M1 full source retains extension value/type " + field);
+              return null;
+            });
+        check(
+            q.scratchLive() == 65536 && SessionQueryTransaction.currentOwner() == null,
+            "M1 extension owners released " + field);
+      } finally {
+        if (mediaPair)
+          db.update(
+              "UPDATE task SET record_version=?,media_snapshot=NULL,media_digest=NULL WHERE tenant_id='tenant-a' AND id=?",
+              version,
+              task);
+        else if (mcpPair)
+          db.update(
+              "UPDATE task SET mcp_snapshot=NULL,mcp_digest=NULL WHERE tenant_id='tenant-a' AND id=?",
+              task);
+        else
+          db.update("UPDATE task SET " + field + "=NULL WHERE tenant_id='tenant-a' AND id=?", task);
+      }
+    }
+    check(before.equals(SessionDependencyScenario.snapshot(db)), "M1 extension 22 tables restored");
+  }
+
   private static void verifyTask(JdbcTemplate db, String task, boolean modelAdmission) {
     var source = db.getDataSource();
     var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
@@ -156,6 +424,10 @@ final class SessionModelConsumerSqlScenario {
         cost = q.resources().operations();
       } else {
         for (var entry : row.entrySet()) {
+          if (entry.getKey().equals("model_admission_extended")) {
+            check(Long.valueOf(0).equals(entry.getValue()), "M1 absent extension source flag");
+            continue;
+          }
           Object old = prior.get(entry.getKey()), fresh = entry.getValue();
           check(
               Objects.equals(old, fresh) && (old == null || old.getClass() == fresh.getClass()),
@@ -167,7 +439,11 @@ final class SessionModelConsumerSqlScenario {
                 && row.containsKey("models_used") == modelAdmission
                 && row.containsKey("tools_used"),
             "task projection deletes only unused fields and preserves M1 model allowances");
-        check(q.resources().operations() < cost, "complete scope-query task read saves operations");
+        // M1 now pays its full source/callback gates; compare semantics, report that cost below.
+        // The unchanged scope-query projection retains its original saving assertion.
+        if (!modelAdmission)
+          check(
+              q.resources().operations() < cost, "complete scope-query task read saves operations");
       }
       check(
           q.resources().reads() == 1
@@ -182,6 +458,10 @@ final class SessionModelConsumerSqlScenario {
     tx.required(
         q,
         () -> {
+          if (modelAdmission) {
+            SessionQueryTransaction.current(q).locked("foreign-tenant", task);
+            SessionQueryTransaction.current(q).locked("tenant-a", "missing");
+          }
           var sql =
               mappers.getMapper(
                   io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskMapper.class);

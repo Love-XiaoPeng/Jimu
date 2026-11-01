@@ -311,7 +311,88 @@ public final class SessionJointProjectionScenario {
   }
 
   /** Original no-source M1 only: complete service transaction, never call the model. */
-  private static void modelAdmissionPreflight() throws Exception {
+  private static void ordinaryModelAdmission() throws Exception {
+    var contracts = new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts();
+    var pin = contracts.descriptor();
+    db.update(
+        "UPDATE installation SET plugin_version=?,plugin_digest=? WHERE tenant_id='tenant-a' AND plugin_id=?",
+        pin.version(),
+        pin.outputSha256(),
+        pin.capability());
+    for (boolean scoped : List.of(false, true)) {
+      String key = "ordinary-m1-" + scoped;
+      var submitted =
+          root.submit(
+              IDENTITY,
+              key,
+              new io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Request(
+                  key,
+                  List.of("session_event_read"),
+                  List.of(),
+                  new io.github.lovexiaopeng.jimu.kernel.task.api.Tasks.Budget(120, 8, 20, null)));
+      root.registerWorker(key, key, ProcessHandle.current().pid(), 1, "private", "private");
+      var lease = root.claim(key).orElseThrow();
+      check(lease.taskId().equals(submitted.taskId()), "ordinary M1 exact genuine claim " + scoped);
+      var model = root.modelSnapshot(lease);
+      var messages =
+          List.of(
+              new io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.WireMessage(
+                  "user", root.sessionContext(lease), List.of(), List.of()));
+      var tool =
+          org.springframework.ai.tool.definition.ToolDefinition.builder()
+              .name("session_event_read")
+              .description(contracts.description())
+              .inputSchema(contracts.inputSchema())
+              .build();
+      String body =
+          new io.github.lovexiaopeng.jimu.adapters.ai.springai.OpenAiProtocol()
+              .body(model, messages, List.of(tool));
+      String request =
+          Payloads.json(
+              new io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Checkpoint(
+                  2,
+                  model.model(),
+                  messages,
+                  lease.capabilities(),
+                  lease.installationEpoch(),
+                  model.stream(),
+                  ModelProfiles.digest(model),
+                  body,
+                  Payloads.hash(body)));
+      var step = root.prepare(lease, request);
+      JdbcLedger admission = root;
+      if (scoped) {
+        var method =
+            JdbcLedger.class.getDeclaredMethod(
+                "queryView",
+                io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease.class,
+                boolean.class);
+        method.setAccessible(true);
+        admission = (JdbcLedger) method.invoke(root, lease, true);
+      }
+      check(
+          admission.queryContext() == null || !admission.queryContext().lineage(),
+          "actual ordinary M1 route " + scoped);
+      String dispatch = admission.dispatchModel(lease, step.id());
+      check(
+          db.queryForObject(
+                  "SELECT COUNT(*) FROM model_dispatch WHERE tenant_id='tenant-a' AND id=? AND task_id=?",
+                  Long.class,
+                  dispatch,
+                  lease.taskId())
+              == 1,
+          "ordinary M1 commits original dispatch " + scoped);
+      if (scoped)
+        check(admission.queryContext().scratchLive() == 1048576, "ordinary query owners released");
+      check(
+          io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+                  .currentOwner()
+              == null,
+          "ordinary M1 Work released " + scoped);
+    }
+  }
+
+  private static void modelAdmissionPreflight(String fault) throws Exception {
     String goal = "qa-r54-single-response-three-trace";
     byte[] raw =
         Payloads.json(Map.of("goal", goal, "history_session_ids", List.of()))
@@ -319,8 +400,11 @@ public final class SessionJointProjectionScenario {
     var v = view();
     var submitted =
         v.submitSessionLineage(
-            IDENTITY, "m1-preflight", end -> raw, v.queryContext().deadlineNanos());
-    String worker = "m1-private-worker";
+            IDENTITY,
+            fault == null ? "m1-preflight" : "m1-preflight-" + fault,
+            end -> raw,
+            v.queryContext().deadlineNanos());
+    String worker = fault == null ? "m1-private-worker" : "m1-worker-" + fault;
     root.registerWorker(worker, worker, ProcessHandle.current().pid(), 1, "private", "private");
     var lease = root.claim(worker).orElseThrow();
     check(lease.taskId().equals(submitted.taskId()), "M1 claims its exact genuine task");
@@ -378,24 +462,177 @@ public final class SessionJointProjectionScenario {
             io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease.class,
             boolean.class);
     factory.setAccessible(true);
-    var admission = (JdbcLedger) factory.invoke(root, lease, true);
+    var admissionRoot = root;
+    SessionFinalMapperFailures.FaultSource callback = null;
+    boolean extensionProbe = "extension-mcp".equals(fault);
+    if (fault != null) {
+      String run = "m1-current-evaluation-" + fault;
+      db.update("INSERT INTO evaluation_budget(tenant_id,id) VALUES('tenant-a',?)", run);
+      db.update(
+          "INSERT INTO evaluation_budget(tenant_id,id,state) VALUES('tenant-a',?,'STOPPED')",
+          run + "-replacement");
+      db.update(
+          "UPDATE task SET evaluation_run_id=? WHERE tenant_id='tenant-a' AND id=?",
+          run,
+          lease.taskId());
+      if (extensionProbe)
+        db.update(
+            "UPDATE task SET mcp_snapshot='{}',mcp_digest=REPEAT('a',64) WHERE tenant_id='tenant-a' AND id=?",
+            lease.taskId());
+      callback = new SessionFinalMapperFailures.FaultSource(db.getDataSource());
+      callback.table = fault.startsWith("budget-") ? "tenant_budget" : "task";
+      if (callback.table.equals("task"))
+        callback.sqlContains = " AS model_admission_extended FROM task";
+      else callback.sqlContains = "SELECT tenant_id FROM tenant_budget WHERE";
+      callback.fault = extensionProbe ? "none" : "write";
+      var callbackDb = new JdbcTemplate(callback);
+      callback.write =
+          () -> {
+            if (fault.endsWith("actor"))
+              callbackDb.update(
+                  "UPDATE actor_access SET enabled=FALSE WHERE tenant_id='tenant-a' AND actor_id='alice'");
+            else if (fault.endsWith("tool"))
+              callbackDb.update(
+                  "UPDATE installation SET enabled=FALSE WHERE tenant_id='tenant-a' AND plugin_id='session_trace'");
+            else if (fault.endsWith("replace"))
+              callbackDb.update(
+                  "UPDATE task SET evaluation_run_id=? WHERE tenant_id='tenant-a' AND id=?",
+                  run + "-replacement",
+                  lease.taskId());
+            else if (fault.endsWith("quota"))
+              callbackDb.update(
+                  "UPDATE evaluation_budget SET requests_used=max_requests WHERE tenant_id='tenant-a' AND id=?",
+                  run);
+            else
+              callbackDb.update(
+                  "UPDATE evaluation_budget SET state='STOPPED' WHERE tenant_id='tenant-a' AND id=?",
+                  run);
+          };
+      admissionRoot =
+          new JdbcLedger(
+              callback,
+              root.models,
+              null,
+              null,
+              null,
+              io.github.lovexiaopeng.jimu.adapters.persistence.infrastructure.LedgerMapperSessions
+                  .create(callback));
+      admissionRoot.sessionReadEnabled(true, List.of());
+      admissionRoot.sessionSearchEnabled(true);
+      admissionRoot.sessionTraceEnabled(true);
+      admissionRoot.priorSessionSearchEnabled(true);
+      admissionRoot.sessionLineageEnabled(true);
+    }
+    var admission = (JdbcLedger) factory.invoke(admissionRoot, lease, true);
     var before = SessionDependencyScenario.snapshot(db);
+    var evaluationBefore =
+        db.queryForList("SELECT * FROM evaluation_budget WHERE tenant_id='tenant-a' ORDER BY id");
+    boolean revoked = fault != null && (fault.endsWith("actor") || fault.endsWith("tool"));
+    var rolledBack = new java.util.concurrent.atomic.AtomicReference<List<Object>>();
     boolean committed = false;
     try {
-      String dispatch = admission.dispatchModel(lease, step.id());
+      if (fault != null && fault.endsWith("quota")) {
+        admission.sessionTransaction(
+            () -> {
+              var facts = new MapperModelWorkflows(admission).lockAdmission(lease, step.id());
+              var limits = facts.limits();
+              check(limits.requests() == limits.maxRequests(), "M1 fresh quota after " + fault);
+              throw new io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure(
+                  409, "EXPECTED_QUOTA_ROLLBACK");
+            },
+            admission.queryContext().deadlineNanos());
+      }
+      String dispatch;
+      if (revoked)
+        dispatch =
+            admission.sessionTransaction(
+                () -> {
+                  // Observe the failed business transaction before its existing REQUIRES_NEW
+                  // scope invalidation runs. That separate maintenance commit is intentional.
+                  org.springframework.transaction.support.TransactionSynchronizationManager
+                      .registerSynchronization(
+                          new org.springframework.transaction.support.TransactionSynchronization() {
+                            @Override
+                            public void afterCompletion(int status) {
+                              check(
+                                  status == STATUS_ROLLED_BACK,
+                                  "M1 revoked business transaction rolled back");
+                              rolledBack.set(SessionDependencyScenario.snapshot(db));
+                            }
+                          });
+                  return admission.dispatchModel(lease, step.id());
+                },
+                admission.queryContext().deadlineNanos());
+      else dispatch = admission.dispatchModel(lease, step.id());
       committed = true;
       check(dispatch != null, "full M1 committed before any model request");
     } catch (io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure failure) {
       check(
-          before.equals(SessionDependencyScenario.snapshot(db)), "M1 failure rolls back 22 tables");
+          before.equals(revoked ? rolledBack.get() : SessionDependencyScenario.snapshot(db)),
+          "M1 failure rolls back 22 tables");
+      if (revoked) {
+        check(
+            db.queryForObject(
+                "SELECT invalidated_at IS NOT NULL FROM task_session_scope WHERE tenant_id='tenant-a' AND caller_task_id=?",
+                Boolean.class,
+                lease.taskId()),
+            "M1 separate scope invalidation committed after revoked admission rollback");
+        check(
+            db.queryForObject(
+                    "SELECT COUNT(*) FROM model_dispatch WHERE tenant_id='tenant-a' AND task_id=?",
+                    Integer.class,
+                    lease.taskId())
+                == 0,
+            "M1 revoked admission creates no dispatch");
+      }
+      check(
+          evaluationBefore.equals(
+              db.queryForList(
+                  "SELECT * FROM evaluation_budget WHERE tenant_id='tenant-a' ORDER BY id")),
+          "M1 callback evaluation rows also roll back");
       System.out.println("M1_PREFLIGHT_FAILURE " + failure.code());
       failure.printStackTrace(System.out);
-      if (!failure.code().equals("SESSION_HISTORY_LIMIT")) throw failure;
+      if (fault == null) {
+        if (!failure.code().equals("SESSION_HISTORY_LIMIT")) throw failure;
+      } else
+        check(
+            failure
+                .code()
+                .equals(
+                    extensionProbe
+                        ? "SNAPSHOT_CORRUPT"
+                        : fault.endsWith("quota")
+                            ? "EXPECTED_QUOTA_ROLLBACK"
+                            : fault.endsWith("actor")
+                                ? "SESSION_SCOPE_UNAVAILABLE"
+                                : fault.endsWith("tool")
+                                    ? "SESSION_SCOPE_UNAVAILABLE"
+                                    : "MODEL_BUDGET_EXCEEDED"),
+            "M1 refuses latest evaluation state after " + fault);
     } finally {
+      if (fault != null)
+        check(
+            (extensionProbe || callback.changed)
+                && !committed
+                && callback.statements == 1
+                && (callback.sqlContains == null
+                    || callback.matchedSql.contains(callback.sqlContains)),
+            "M1 evaluation callback executed without commit " + fault);
       var q = admission.queryContext();
       phase("m1-preflight-committed=" + committed, q);
       check(q.scratchLive() == 65536, "M1 all owners released");
       System.out.println("M1_PREFLIGHT checkpointBytes=" + encoded.length() + " modelRequests=0");
+    }
+    if (fault != null) {
+      // Private callback fixtures only: free their running slot after rollback assertions.
+      // This SQL is not a production terminal settlement or a worker acceptance result.
+      db.update(
+          "UPDATE task SET state='FAILED',lease_until=NULL WHERE tenant_id='tenant-a' AND id=?",
+          lease.taskId());
+      db.update(
+          "UPDATE task_attempt SET state='FAILED',quiescent=TRUE,ended_at=CURRENT_TIMESTAMP(6) WHERE tenant_id='tenant-a' AND id=?",
+          lease.attemptId());
+      db.update("UPDATE tenant_budget SET running=running-1 WHERE tenant_id='tenant-a'");
     }
   }
 
@@ -542,8 +779,28 @@ public final class SessionJointProjectionScenario {
     root.sessionTraceEnabled(true);
     root.priorSessionSearchEnabled(true);
     root.sessionLineageEnabled(true);
+    if (args.length > 1 && args[1].equals("m1-ordinary")) {
+      ordinaryModelAdmission();
+      return;
+    }
+    if (args.length > 1 && args[1].equals("m1-callbacks")) {
+      for (String at : List.of("budget", "task"))
+        for (String change : List.of("stop", "replace", "quota", "actor", "tool"))
+          modelAdmissionPreflight(at + "-" + change);
+      return;
+    }
+    if (args.length > 1 && args[1].startsWith("m1-callbacks-")) {
+      String at = args[1].substring("m1-callbacks-".length());
+      for (String change : List.of("stop", "replace", "quota", "actor", "tool"))
+        modelAdmissionPreflight(at + "-" + change);
+      return;
+    }
+    if (args.length > 1 && args[1].startsWith("m1-eval-")) {
+      modelAdmissionPreflight(args[1].substring(8));
+      return;
+    }
     if (args.length > 1 && args[1].equals("m1-preflight")) {
-      modelAdmissionPreflight();
+      modelAdmissionPreflight(null);
       return;
     }
     if (args.length > 1 && args[1].equals("sql-history-length")) {
@@ -560,6 +817,7 @@ public final class SessionJointProjectionScenario {
           || args[1].equals("borrowed-source-types")
           || args[1].equals("borrowed-query-task")
           || args[1].equals("borrowed-model-task")
+          || args[1].equals("borrowed-model-task-faults")
           || args[1].equals("borrowed-node-input")
           || args[1].equals("borrowed-model-step")
           || args[1].equals("borrowed-model-admission")

@@ -54,8 +54,7 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
   @Override
   public Admission lockAdmission(Lease lease, String stepId) {
     ledger.bindSessionQuery(lease, stepId, null);
-    var evaluation = ledger.evaluation(lease);
-    var task = ledger.fencedModelAdmission(lease, evaluation);
+    var task = ledger.fencedModelAdmission(lease);
     var model = ledger.snapshot(task);
     ledger.models.admit(model);
     var budget =
@@ -78,6 +77,8 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
                     .selectModelStep(
                         ledger.queryContext(), lease.tenant(), stepId, lease.taskId()));
     return new Admission() {
+      private java.util.Map<String, Object> evaluation;
+
       public void validateStep() {
         if (JdbcSessionRecords.task(task)) {
           if (!JdbcSessionScopes.lineage(task)
@@ -118,6 +119,7 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void validateEvaluationAndMaterial() {
+        evaluation = ledger.evaluation(lease);
         ledger.checkEvaluation(task, evaluation, model);
         ledger.materialBody(
             task, ledger.s(step, "request_snapshot"), (int) ledger.n(step, "ordinal"));
@@ -128,6 +130,7 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
       }
 
       public Limits limits() {
+        evaluation = ledger.evaluation(lease);
         return new Limits(
             model.paid(),
             model.price() == null ? 0 : model.price().inputTokenUpper(),
