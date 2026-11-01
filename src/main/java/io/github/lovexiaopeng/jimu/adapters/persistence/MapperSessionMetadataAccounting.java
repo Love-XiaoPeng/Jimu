@@ -107,29 +107,29 @@ final class MapperSessionMetadataAccounting
 
   public boolean consumeFinal(Table table, FinalRows consumer) {
     if (!finalPresent || !JdbcSessionScopes.lineage(task)) return false;
-    return consumeTable(table, consumer);
+    consumeTable(table, consumer, finalCheck());
+    return true;
   }
 
   public boolean consumeMetadata(FinalRows consumer) {
     var query = records.appendQuery();
     if (query == null || !query.lineage() || !JdbcSessionScopes.lineage(task)) return false;
-    finalCheck();
-    // 接收对象/两标量、values数组/18表路由及scope返回清理均在当前Work预付。
-    finalQuery.operation(64);
-    for (var table : Table.values()) consumeTable(table, consumer);
+    long version = finalCheck();
+    // 原64项及新增局部version初始化、18次循环交接和清理在当前Work预付。
+    finalQuery.operation(84);
+    // 每个 SELECT 返回前已独立核实际关闭后的 Work/version；循环本身不调用外部代码。
+    for (var table : Table.values()) version = consumeTable(table, consumer, version);
     return true;
   }
 
-  private boolean consumeTable(Table table, FinalRows consumer) {
+  private long consumeTable(Table table, FinalRows consumer, long version) {
     try {
-      finalCheck();
       finalQuery.operation(9); // route, receiver store/check and finally clear; no summary readout
       if (finalConsumer != null) throw new IllegalStateException("Nested FINAL consumer");
       finalConsumer = consumer;
       FinalTable result;
       if (table != Table.TASK_SESSION_HISTORY) {
-        readFinal(table);
-        return true; // same-instant closed Result/return check remains in readFinal
+        return readFinal(table, version);
       } else
         result =
             io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionHistorySizedMetadataBatch
@@ -144,8 +144,7 @@ final class MapperSessionMetadataAccounting
           result.history(),
           result.reservations(),
           result.reservation());
-      finalCheck();
-      return true;
+      return finalCheck();
     } catch (RuntimeException | Error failure) {
       finalFailure(failure);
       throw failure;
@@ -159,7 +158,7 @@ final class MapperSessionMetadataAccounting
   private long readingVersion;
   private boolean readingConsumed;
 
-  private void readFinal(Table table) {
+  private long readFinal(Table table, long version) {
     // 原逐表参数构造/两次Map取身份改为作用域内一次；保留命令查找、分派及finally清理。
     finalQuery.operation(16);
     if (readingTable != null) throw new IllegalStateException("Nested FINAL result");
@@ -184,11 +183,16 @@ final class MapperSessionMetadataAccounting
     readingTable = table;
     readingCommand = command;
     try {
-      readingVersion = finalWork.metadataReadVersion(finalQuery);
+      // consumeTable 刚核过本时点，命令选择和私有字段交接之间没有 driver 回调。
+      finalQuery.operation(1);
+      readingVersion = version;
       session.select(command.getId(), finalParameters, this);
-      if (readingVersion != finalCheck())
+      long closedVersion = finalCheck();
+      if (readingVersion != closedVersion)
         throw new IllegalStateException("Write before FINAL result closed");
       if (!readingConsumed) throw new IllegalStateException("Missing FINAL consumption");
+      finalQuery.operation(1); // same-instant version return; no callback/proof storage
+      return closedVersion;
     } finally {
       readingTable = null;
       readingCommand = null;
@@ -223,10 +227,11 @@ final class MapperSessionMetadataAccounting
           rows,
           command,
           records.mapperSession().getConfiguration().isCallSettersOnNulls(),
-          this);
+          this,
+          finalWork,
+          version);
       readingConsumed = true;
-      if (readingVersion != finalWork.metadataReadVersion(finalQuery))
-        throw new IllegalStateException("Write during FINAL result consumption");
+      // consumeResultSet 的最后一项就是当前 owner/health/generation 检查；中间没有回调。
     } catch (RuntimeException | Error failure) {
       finalFailure(failure);
       throw failure;

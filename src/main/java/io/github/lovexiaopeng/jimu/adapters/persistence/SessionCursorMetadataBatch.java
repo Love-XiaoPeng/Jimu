@@ -200,7 +200,9 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
       java.sql.ResultSet source,
       org.apache.ibatis.mapping.MappedStatement command,
       boolean nullsPresent,
-      SessionMetadataAccounting.FinalRows consumer)
+      SessionMetadataAccounting.FinalRows consumer,
+      io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork owner,
+      long version)
       throws java.sql.SQLException {
     query.operation(2); // TASK route and projection handoff
     var projection =
@@ -209,11 +211,9 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
             : SessionMetadataProjection.forFinalTable(table);
     query.operation(16); // projection/metadata/results/locals and cleanup stores
     if (projection == null) throw JdbcSessionRecords.corrupt();
-    query.operation(4); // owner lookup, version local, nullable dispatch and handoff
-    var owner =
-        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
-            .currentOwner();
-    long version = owner == null ? 0 : owner.metadataFinalVersion(query);
+    // 上层实际 Result 回调已经核过本时点的 owner/version；普通参数只传当前局部值。
+    // Result 的 meter.begin、next、metadata、getter、额外 meter 和关闭仍各自重新核验。
+    query.operation(2); // two ordinary argument handoffs, no second owner/version lookup
     // Preserve the same conservative two-row workspace, before any scalar/getter allocation.
     // The original finalization owner already holds the summary/outer aliases.
     query.retainScratch(source, projection.retainedBytes);

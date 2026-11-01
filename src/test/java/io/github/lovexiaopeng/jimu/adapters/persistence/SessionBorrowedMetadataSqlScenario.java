@@ -264,6 +264,11 @@ final class SessionBorrowedMetadataSqlScenario {
     var mappers = LedgerMapperSessions.create(source);
     seed(db);
     try {
+      if (mode.equals("borrowed-preflight-handoffs")) {
+        scalarNulls(db, tx, mappers);
+        SessionFinalMapperFailures.verifyPreflightBoundaries(source, ID);
+        return;
+      }
       if (mode.equals("borrowed-row-native")) {
         sourceTypes(db, tx, mappers);
         scalarNulls(db, tx, mappers);

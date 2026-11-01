@@ -161,7 +161,12 @@ class SessionFinalResultFoldTest {
       SessionQueryContext q, Table t, Driver d, boolean nulls) throws Exception {
     try (d.result) {
       var receiver = new Collector();
-      SessionCursorMetadataBatch.consumeResultSet(q, t, d.result, command(t), nulls, receiver);
+      var owner =
+          io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+              .currentOwner();
+      long version = owner == null ? 0 : owner.metadataFinalVersion(q);
+      SessionCursorMetadataBatch.consumeResultSet(
+          q, t, d.result, command(t), nulls, receiver, owner, version);
       return receiver.value;
     } finally {
       q.releaseScratch(d.result);

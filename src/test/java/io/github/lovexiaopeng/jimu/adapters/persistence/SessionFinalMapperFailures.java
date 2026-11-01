@@ -222,6 +222,10 @@ final class SessionFinalMapperFailures {
     verify(plain, taskId, false, target, true);
   }
 
+  static void verifyPreflightBoundaries(DataSource plain, String taskId) {
+    verify(plain, taskId, true, Table.TASK_ATTEMPT, true);
+  }
+
   private static void verify(
       DataSource plain, String taskId, boolean preflight, Table target, boolean boundariesOnly) {
     var source = new FaultSource(plain);
