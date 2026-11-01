@@ -163,14 +163,21 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
 
     public Step validatedStep(String stepId) {
       ledger.bindSessionQuery(lease, stepId, null);
-      step =
-          MapperSessionScopeQueries.this.read(
-              ScopeQueryStepReadMapper.class,
-              new LambdaQueryWrapper<ScopeQueryStepEntity>()
-                  .eq(ScopeQueryStepEntity::getTenantId, lease.tenant())
-                  .eq(ScopeQueryStepEntity::getRowId, stepId)
-                  .eq(ScopeQueryStepEntity::getTaskId, lease.taskId()));
-      ledger.sessions.validateStep(task, step);
+      ledger.queryContext().operation(4);
+      if (lineageSlot && lineageTask()) {
+        // Read this slot's current request anew. The existing consumer jointly measures and
+        // hashes its raw, then validates the full checkpoint before returning these bindings.
+        step = ledger.sessions.modelStep(task, lease.tenant(), stepId, lease.taskId());
+      } else {
+        step =
+            MapperSessionScopeQueries.this.read(
+                ScopeQueryStepReadMapper.class,
+                new LambdaQueryWrapper<ScopeQueryStepEntity>()
+                    .eq(ScopeQueryStepEntity::getTenantId, lease.tenant())
+                    .eq(ScopeQueryStepEntity::getRowId, stepId)
+                    .eq(ScopeQueryStepEntity::getTaskId, lease.taskId()));
+        ledger.sessions.validateStep(task, step);
+      }
       return new Step(s(step, "session_binding_digest"), s(step, "session_context_digest"));
     }
 
