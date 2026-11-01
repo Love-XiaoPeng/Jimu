@@ -458,6 +458,9 @@ final class SessionDependencyWrites {
         ROOT + "session.mapper.ScopeQueryInvocationReadMapper.selectMaps",
         SessionQueryWork.Relation.INVOCATION);
     r.put(
+        ROOT + "directory.mapper.DirectoryInvocationReadMapper.originalDirectoryInvocation",
+        SessionQueryWork.Relation.INVOCATION);
+    r.put(
         ROOT + "model.mapper.ModelDispatchMapper.selectSettlementProof",
         SessionQueryWork.Relation.DISPATCH);
     for (String name :

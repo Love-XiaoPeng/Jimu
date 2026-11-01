@@ -19,6 +19,67 @@ class SessionDependencyRoutingTest {
   private static final String ROOT = "io.github.lovexiaopeng.jimu.adapters.persistence.";
   private static final String WRITE = ROOT + "task.mapper.TaskAdmissionMapper.bindSnapshots";
 
+  @Test
+  void originalSlotReadProvesToolSettlementOnlyForItsCurrentStepAndCategory() {
+    for (String shape : List.of("exact", "missing", "step", "category", "foreign")) {
+      var q = query();
+      var w = new SessionQueryWork(q);
+      w.leaseTask("tenant", "task");
+      w.bind("lease", "step", null);
+      var seen = new ArrayList<Set<SessionQueryWork.Dependency>>();
+      w.invalidator(this, seen::add);
+      try {
+        String task = shape.equals("foreign") ? "other" : "task";
+        if (!shape.equals("missing"))
+          SessionDependencyWrites.observed(
+              ROOT + "directory.mapper.DirectoryInvocationReadMapper.originalDirectoryInvocation",
+              Map.of(),
+              List.of(
+                  Map.of(
+                      "tenant_id",
+                      "tenant",
+                      "id",
+                      "invocation",
+                      "task_id",
+                      task,
+                      "step_id",
+                      shape.equals("step") ? "other-step" : "step")),
+              w);
+        SessionDependencyWrites.observed(
+            ROOT + "budget.mapper.ReservationMapper.insertReservation",
+            Map.of(
+                "tenant",
+                "tenant",
+                "reservationId",
+                "invocation",
+                "taskId",
+                task,
+                "dispatchId",
+                "invocation",
+                "category",
+                shape.equals("category") ? "MODEL" : "TOOL"),
+            1,
+            w);
+        SessionDependencyWrites.before(
+            ROOT + "session.mapper.SessionScopeQueryMapper.settle",
+            Map.of("tenant", "tenant", "invocation", "invocation"),
+            w);
+        if (shape.equals("exact")) assertEquals(List.of(), seen);
+        else {
+          assertEquals(1, seen.size());
+          assertEquals(
+              shape.equals("foreign")
+                  ? Set.of(new SessionQueryWork.Dependency("tenant", "other"))
+                  : null,
+              seen.getFirst());
+        }
+      } finally {
+        w.complete();
+      }
+      assertEquals(65536, q.scratchLive());
+    }
+  }
+
   private SessionQueryContext query() {
     var q =
         new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
