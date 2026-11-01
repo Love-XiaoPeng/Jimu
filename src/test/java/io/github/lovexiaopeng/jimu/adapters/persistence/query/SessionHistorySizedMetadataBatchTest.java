@@ -104,23 +104,21 @@ public class SessionHistorySizedMetadataBatchTest {
       values.put("binding_digest", text);
       assertFinalRejected(values);
     }
-    // The complete SQL/FINAL path rejects these large texts at its operation limit first.
-    // Exercise the independent UTF16 cap directly, without widening that Work's budget.
-    var constructor = SessionHistorySizedMetadataBatch.class.getDeclaredConstructors()[0];
-    constructor.setAccessible(true);
-    var batch = constructor.newInstance(null, null);
-    var scalar =
-        SessionHistorySizedMetadataBatch.class.getDeclaredMethod(
-            "finalText", Object.class, int.class, int.class);
-    scalar.setAccessible(true);
-    assertEquals(131069L, scalar.invoke(batch, "😀".repeat(32767) + "x", 65535, 65535));
-    var rejected =
-        assertThrows(
-            java.lang.reflect.InvocationTargetException.class,
-            () -> scalar.invoke(batch, "😀".repeat(32768), 65535, 65535));
-    assertEquals(
-        "SESSION_HISTORY_CORRUPT",
-        ((io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure) rejected.getCause()).code());
+    // Isolate the same scalar consumer without widening the real Work's operation budget.
+    var scalarQuery = new SessionQueryContext(System.nanoTime() + 2_000_000_000L, null);
+    var receipt =
+        new SessionQueryContext.MetadataLabel("cleanup_receipt", 'S', 65535, true, 65535) {};
+    try (var result = scalarQuery.result("receipt-bound")) {
+      assertEquals(131069L, result.metadataColumnChecked(receipt, "😀".repeat(32767) + "x"));
+      var rejected =
+          assertThrows(
+              io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure.class,
+              () -> result.metadataColumnChecked(receipt, "😀".repeat(32768)));
+      assertEquals("SESSION_HISTORY_CORRUPT", rejected.code());
+    }
+    var oversized = row(0L);
+    oversized.put("cleanup_receipt", "😀".repeat(32768));
+    assertFinalRejected(oversized);
   }
 
   @Test

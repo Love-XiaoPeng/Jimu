@@ -16,12 +16,8 @@ final class SessionMetadataProjection {
       var owner =
           io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
               .currentOwner();
-      if (owner != null) owner.inspect(4L + name.length());
+      if (owner != null) owner.inspect(7L + name.length()); // includes the exact UTF16 bound/store
       return name;
-    }
-
-    char kind() {
-      return kind;
     }
 
     int points() {

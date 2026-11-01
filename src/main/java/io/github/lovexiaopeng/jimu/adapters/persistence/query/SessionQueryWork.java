@@ -1087,6 +1087,15 @@ public final class SessionQueryWork {
     return generation;
   }
 
+  /** Check the current callback boundary without handing a version back through a second guard. */
+  public void metadataFinalBoundary(SessionQueryContext query, long version) {
+    context.operation(5); // active, query/current Work identity, health and generation comparison
+    active();
+    if (query != context || SessionQueryTransaction.currentOwner() != this || generation != version)
+      throw poisonProof(new IllegalStateException("Inactive, foreign or changed FINAL metadata"));
+    context.checkHealthy();
+  }
+
   public void mutation() {
     active();
     invalidateEventHistoryLength();

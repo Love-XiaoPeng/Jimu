@@ -435,6 +435,34 @@ class SessionFinalResultFoldTest {
   }
 
   @Test
+  void sqlTextLengthsKeepDistinctTransferAndBusinessSizesAndExactBounds() {
+    for (char kind : new char[] {'T', 'M', 'X'}) {
+      long maximum = kind == 'T' ? 65535L : kind == 'M' ? 16777215L : 4294967295L;
+      var label = new SessionQueryContext.MetadataLabel("length", kind, 0, true) {};
+      for (Object value : java.util.Arrays.asList(null, 0, 0L, 1, maximum)) {
+        var query = q();
+        try (var result = query.result("sql-length")) {
+          assertEquals(
+              value == null ? 1 : ((Number) value).longValue(),
+              result.metadataColumnChecked(label, value));
+          assertEquals(8 + 6 + SessionQueryContext.scalarBytes(value), query.resources().bytes());
+        }
+        assertEquals(65536, query.scratchLive());
+      }
+      for (Object value : List.of(-1, -1L, maximum + 1, "1", true, 1.0)) {
+        var query = q();
+        try (var result = query.result("invalid-sql-length")) {
+          var first =
+              assertThrows(
+                  RuntimeException.class, () -> result.metadataColumnChecked(label, value));
+          assertSame(first, query.recordedFailure());
+        }
+        assertEquals(65536, query.scratchLive());
+      }
+    }
+  }
+
+  @Test
   void additionalMeterKeepsOriginalValuesAndFirstRefusal() throws Exception {
     var p = SessionMetadataProjection.forFinalTable(Table.TASK_ATTEMPT);
     var q = q();

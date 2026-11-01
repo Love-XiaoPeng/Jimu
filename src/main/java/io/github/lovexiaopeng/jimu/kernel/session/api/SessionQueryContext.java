@@ -346,21 +346,31 @@ public final class SessionQueryContext {
     protected final char kind;
     protected final int points;
     protected final boolean nullable;
+    private final int units;
 
     protected MetadataLabel(String name) {
       this(name, '\0', 0, true);
     }
 
     protected MetadataLabel(String name, char kind, int points, boolean nullable) {
+      this(name, kind, points, nullable, Math.multiplyExact(points, 2));
+    }
+
+    protected MetadataLabel(String name, char kind, int points, boolean nullable, int units) {
       this.name = java.util.Objects.requireNonNull(name);
       bytes = utf8(name);
       this.kind = kind;
       this.points = points;
       this.nullable = nullable;
+      this.units = units;
     }
 
     public final String name() {
       return name;
+    }
+
+    public final char kind() {
+      return kind;
     }
   }
 
@@ -436,6 +446,11 @@ public final class SessionQueryContext {
       operation(1);
     }
 
+    /** Whether consuming this result's column invokes the original external meter. */
+    public boolean hasColumnCallback() {
+      return additional != null;
+    }
+
     public void column(String label, Object value) {
       String priorStatement = activeStatement, priorColumn = activeColumn;
       activeStatement = statement;
@@ -483,11 +498,56 @@ public final class SessionQueryContext {
       activeStatement = statement;
       activeColumn = label;
       try {
-        operation(8); // descriptor kind/NULL/type dispatch, scalar result and accounting handoffs
-        long scalar = metadataScalarBytes(descriptor, value);
+        operation(6); // one local type dispatch; no helper result/second business-size dispatch
+        long scalar, transfer;
+        if (value == null) {
+          if (!descriptor.nullable) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+          operation(1);
+          scalar = transfer = 1;
+        } else {
+          switch (descriptor.kind) {
+            case 'S' -> {
+              if (!(value instanceof String text)) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+              scalar = transfer = metadataTextBytes(text, descriptor.points, descriptor.units);
+            }
+            case 'I' -> {
+              if (!(value instanceof Integer)) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+              scalar = transfer = metadataNumberBytes((Integer) value);
+            }
+            case 'L' -> {
+              if (!(value instanceof Long)) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+              scalar = transfer = metadataNumberBytes((Long) value);
+            }
+            case 'T', 'M', 'X' -> {
+              operation(8); // source type, extraction and exact SQL text-length bound
+              if (!(value instanceof Integer || value instanceof Long))
+                throw refuse(409, "SESSION_HISTORY_CORRUPT");
+              scalar = ((Number) value).longValue();
+              long maximum =
+                  switch (descriptor.kind) {
+                    case 'T' -> 65535L;
+                    case 'M' -> 16777215L;
+                    default -> 4294967295L;
+                  };
+              if (scalar < 0 || scalar > maximum) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+              transfer = metadataNumberBytes(scalar);
+            }
+            case 'B' -> {
+              if (!(value instanceof Boolean flag)) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+              operation(1);
+              scalar = transfer = flag ? 4 : 5;
+            }
+            case 'D' -> {
+              if (!(value instanceof java.time.LocalDateTime time))
+                throw refuse(409, "SESSION_HISTORY_CORRUPT");
+              scalar = transfer = metadataTimeBytes(time);
+            }
+            default -> throw refuse(409, "SESSION_HISTORY_CORRUPT");
+          }
+        }
         if (metered) {
           operation(2); // immutable descriptor lookup; no repeated label encoding
-          long size = Math.addExact(8L + descriptor.bytes, scalar);
+          long size = Math.addExact(8L + descriptor.bytes, transfer);
           bytes = Math.addExact(bytes, size);
           groupCounters()[1] = Math.addExact(groupCounters()[1], size);
           batch = Math.addExact(batch, size);
@@ -640,43 +700,10 @@ public final class SessionQueryContext {
     }
   }
 
-  private long metadataScalarBytes(MetadataLabel descriptor, Object value) {
-    if (value == null) {
-      if (!descriptor.nullable) throw refuse(409, "SESSION_HISTORY_CORRUPT");
-      operation(1);
-      return 1;
-    }
-    return switch (descriptor.kind) {
-      case 'S' -> {
-        if (!(value instanceof String text)) throw refuse(409, "SESSION_HISTORY_CORRUPT");
-        yield metadataTextBytes(text, descriptor.points);
-      }
-      case 'I' -> {
-        if (!(value instanceof Integer)) throw refuse(409, "SESSION_HISTORY_CORRUPT");
-        yield metadataNumberBytes((Integer) value);
-      }
-      case 'L' -> {
-        if (!(value instanceof Long)) throw refuse(409, "SESSION_HISTORY_CORRUPT");
-        yield metadataNumberBytes((Long) value);
-      }
-      case 'B' -> {
-        if (!(value instanceof Boolean flag)) throw refuse(409, "SESSION_HISTORY_CORRUPT");
-        operation(1);
-        yield flag ? 4 : 5;
-      }
-      case 'D' -> {
-        if (!(value instanceof java.time.LocalDateTime time))
-          throw refuse(409, "SESSION_HISTORY_CORRUPT");
-        yield metadataTimeBytes(time);
-      }
-      default -> throw refuse(409, "SESSION_HISTORY_CORRUPT");
-    };
-  }
-
-  private long metadataTextBytes(String text, int maximumPoints) {
+  private long metadataTextBytes(String text, int maximumPoints, int maximumUnits) {
     operation(4); // length, bound, and code-point counter; no separate codePointCount traversal
     int units = text.length(), points = units;
-    if (units > 2L * maximumPoints) throw refuse(409, "SESSION_HISTORY_CORRUPT");
+    if (units > maximumUnits) throw refuse(409, "SESSION_HISTORY_CORRUPT");
     long size = 0;
     for (int i = 0; i < units; i++) {
       operation(1);

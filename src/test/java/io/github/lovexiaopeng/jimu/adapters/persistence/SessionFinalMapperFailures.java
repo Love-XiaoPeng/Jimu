@@ -139,6 +139,15 @@ final class SessionFinalMapperFailures {
   }
 
   static void verify(DataSource plain, String taskId, boolean preflight, Table target) {
+    verify(plain, taskId, preflight, target, false);
+  }
+
+  static void verifyBoundaries(DataSource plain, String taskId, Table target) {
+    verify(plain, taskId, false, target, true);
+  }
+
+  private static void verify(
+      DataSource plain, String taskId, boolean preflight, Table target, boolean boundariesOnly) {
     var source = new FaultSource(plain);
     var db = new JdbcTemplate(source);
     var mappers = LedgerMapperSessions.create(source);
@@ -167,6 +176,8 @@ final class SessionFinalMapperFailures {
                 "foreign",
                 "parameter"));
     if (preflight) faults.add("history-extra");
+    if (boundariesOnly)
+      faults.retainAll(List.of("write", "metadata-write", "next-write", "extra", "close-write"));
     for (String fault : faults) {
       source.table = "task_attempt";
       source.fault = fault;

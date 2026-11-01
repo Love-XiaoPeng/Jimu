@@ -32,6 +32,78 @@ public final class QueryResults {
         throws SQLException;
   }
 
+  /** 当前Result的完整列投影；Connector原字段只在本次同步调用借用，不授予跨行资格。 */
+  public static void finalColumns(
+      ResultSetMetaData metadata,
+      java.util.List<? extends SessionQueryContext.MetadataLabel> columns,
+      SessionQueryContext query,
+      SessionQueryWork owner,
+      long version)
+      throws SQLException {
+    query.operation(5); // native-class route, borrowed fields/local and width comparison
+    if (metadata.getClass() == com.mysql.cj.jdbc.result.ResultSetMetaData.class) {
+      var fields = ((com.mysql.cj.jdbc.result.ResultSetMetaData) metadata).getFields();
+      finalBoundary(query, owner, version);
+      if (fields.length != columns.size()) throw corruptFinalColumns();
+      // Exact Connector Field getters read its current projection data. getColumnLabel
+      // delegates to getName under both alias modes; YEAR is rejected by every original kind.
+      // A driver wrapper/subclass retains the original individually guarded callback path below.
+      int i = 0;
+      for (; i < fields.length; i++) {
+        var column = columns.get(i);
+        query.operation(8L + column.name().length()); // one loop/field load, class/label/type gates
+        var field = fields[i];
+        if (field == null || field.getClass() != com.mysql.cj.result.Field.class) break;
+        if (!column.name().equals(field.getName()) || !jdbcType(column.kind(), field.getJavaType()))
+          throw corruptFinalColumns();
+      }
+      if (i == fields.length) return;
+    }
+    int count = metadata.getColumnCount();
+    finalBoundary(query, owner, version);
+    if (count != columns.size()) throw corruptFinalColumns();
+    for (int i = 0; i < columns.size(); i++) {
+      var column = columns.get(i);
+      query.operation(9L + column.name().length());
+      String label = metadata.getColumnLabel(i + 1);
+      finalBoundary(query, owner, version);
+      int type = metadata.getColumnType(i + 1);
+      finalBoundary(query, owner, version);
+      if (!column.name().equals(label) || !jdbcType(column.kind(), type))
+        throw corruptFinalColumns();
+    }
+  }
+
+  private static io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure corruptFinalColumns() {
+    return new io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure(
+        409, "SESSION_HISTORY_CORRUPT");
+  }
+
+  private static void finalBoundary(
+      SessionQueryContext query, SessionQueryWork owner, long version) {
+    query.operation(1);
+    if (owner != null) owner.metadataFinalBoundary(query, version);
+    else query.checkHealthy();
+  }
+
+  private static boolean jdbcType(char kind, int type) {
+    return switch (kind) {
+      case 'S' ->
+          type == java.sql.Types.VARCHAR
+              || type == java.sql.Types.CHAR
+              || type == java.sql.Types.LONGVARCHAR;
+      case 'I' -> type == java.sql.Types.INTEGER;
+      case 'L' -> type == java.sql.Types.BIGINT;
+      case 'B' ->
+          type == java.sql.Types.BIT
+              || type == java.sql.Types.BOOLEAN
+              || type == java.sql.Types.TINYINT;
+      case 'D' -> type == java.sql.Types.TIMESTAMP;
+      case 'T', 'M', 'X' -> type == java.sql.Types.INTEGER || type == java.sql.Types.BIGINT;
+      default -> false;
+    };
+  }
+
   public static void verifyModelStepCommand(
       org.apache.ibatis.mapping.MappedStatement command, SessionQueryContext query, Object args) {
     SessionLineageSourceColumns.verifyModelStepCommand(command, query, args);

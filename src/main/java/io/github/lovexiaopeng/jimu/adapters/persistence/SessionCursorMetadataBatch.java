@@ -218,12 +218,14 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
     // The original finalization owner already holds the summary/outer aliases.
     query.retainScratch(source, projection.retainedBytes);
     try (var result = query.result(command.getId())) {
+      query.operation(2); // immutable callback flag and local; no row qualification
+      boolean callback = result.hasColumnCallback();
+      rowBoundary(query, owner, version); // Result construction may invoke meter.begin()
       long rows = 0, bytes = 0, reservations = 0;
       SessionMetadataAccounting.HistoryReservation reservation = null;
       while (true) {
         query.operation(2); // remaining/next; no row getter until the actual next succeeds
         query.remainingMillis();
-        rowBoundary(query, owner, version);
         boolean next = source.next();
         rowBoundary(query, owner, version);
         if (!next) break;
@@ -231,29 +233,23 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
         if (rows == 0) {
           var metadata = source.getMetaData();
           rowBoundary(query, owner, version);
-          query.operation(3);
-          int count = metadata.getColumnCount();
-          rowBoundary(query, owner, version);
-          if (count != projection.columns.size()) throw JdbcSessionRecords.corrupt();
-          for (int i = 0; i < projection.columns.size(); i++) {
-            var column = projection.columns.get(i);
-            query.operation(9L + column.name().length()); // ordinal/label/type and exact comparison
-            rowBoundary(query, owner, version);
-            String label = metadata.getColumnLabel(i + 1);
-            rowBoundary(query, owner, version);
-            int type = metadata.getColumnType(i + 1);
-            rowBoundary(query, owner, version);
-            if (!column.name().equals(label) || !jdbcType(column.kind(), type))
-              throw JdbcSessionRecords.corrupt();
-          }
+          io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryResults.finalColumns(
+              metadata, projection.columns, query, owner, version);
         }
+
         result.row();
-        query.operation(8); // row count/bound, byte header, four reservation locals
+        query.operation(10); // count/bound, fixed headers once, and reservation locals
         rows = Math.addExact(rows, 1);
         if (projection.maximumRows > 0 && rows > projection.maximumRows)
           throw JdbcSessionRecords.corrupt();
         long rowBytes =
-            io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1.ROW_HEADER_BYTES;
+            Math.addExact(
+                io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
+                    .ROW_HEADER_BYTES,
+                Math.multiplyExact(
+                    io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
+                        .FIELD_HEADER_BYTES,
+                    projection.columns.size()));
         String category = null, state = null;
         long amount = 0;
         Long actual = null;
@@ -261,40 +257,20 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
           query.operation(
               5); // descriptor/ordinal/getter/normalization; scalar dispatch belongs to Result
           var column = projection.columns.get(i);
-          rowBoundary(query, owner, version);
           Object value = source.getObject(i + 1);
           rowBoundary(query, owner, version);
           if (value instanceof java.sql.Timestamp time) value = time.toLocalDateTime();
-          long scalar;
-          query.operation(3); // SQL-length kind alternatives, also on ordinary scalar columns
-          if (column.kind() == 'T' || column.kind() == 'M' || column.kind() == 'X') {
-            query.operation(12); // SQL-length type/NULL/bounds, dispatch and business scalar local
-            if (!projection.taskSized) throw JdbcSessionRecords.corrupt();
-            if (value == null) {
-              if (!column.nullable()) throw JdbcSessionRecords.corrupt();
-              scalar = 1;
-            } else {
-              if (!(value instanceof Long || value instanceof Integer))
-                throw JdbcSessionRecords.corrupt();
-              scalar = ((Number) value).longValue();
-              long maximum =
-                  column.kind() == 'T' ? 65535L : column.kind() == 'M' ? 16777215L : 4294967295L;
-              if (scalar < 0 || scalar > maximum) throw JdbcSessionRecords.corrupt();
-            }
-            // Transfer accounting still consumes the actual numeric SQL length (decimal bytes).
-            // Business metadata uses that length as the original body-field scalar size.
-            result.metadataColumn(column, value);
-          } else scalar = result.metadataColumnChecked(column, value);
-          rowBoundary(query, owner, version);
-          query.operation(4); // NULL presence semantics and exact header/byte additions
-          if (value != null || nullsPresent)
-            rowBytes =
-                Math.addExact(
-                    rowBytes,
-                    Math.addExact(
-                        io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
-                            .FIELD_HEADER_BYTES,
-                        scalar));
+          long scalar = result.metadataColumnChecked(column, value);
+          query.operation(1); // only the external meter can execute between getter and this point
+          if (callback) rowBoundary(query, owner, version);
+          query.operation(3); // one exact addition; absent NULL removes its pre-counted header
+          rowBytes =
+              Math.addExact(
+                  rowBytes,
+                  value != null || nullsPresent
+                      ? scalar
+                      : -io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
+                          .FIELD_HEADER_BYTES);
           if (table == SessionMetadataAccounting.Table.RESERVATION) {
             query.operation(2); // fixed ordinal switch; no repeated label dispatch
             switch (i) {
@@ -328,31 +304,9 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
       SessionQueryContext query,
       io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork owner,
       long version) {
-    query.operation(1); // owner branch; operation also checks the current query's first failure
-    if (owner != null) {
-      query.operation(3); // callback boundary, version read and comparison
-      if (owner.metadataFinalVersion(query) != version)
-        throw owner.poisonProof(
-            new IllegalStateException("Write during FINAL metadata scalar read"));
-    }
-  }
-
-  private static boolean jdbcType(char kind, int type) {
-    return switch (kind) {
-      case 'S' ->
-          type == java.sql.Types.VARCHAR
-              || type == java.sql.Types.CHAR
-              || type == java.sql.Types.LONGVARCHAR;
-      case 'I' -> type == java.sql.Types.INTEGER;
-      case 'L' -> type == java.sql.Types.BIGINT;
-      case 'B' ->
-          type == java.sql.Types.BIT
-              || type == java.sql.Types.BOOLEAN
-              || type == java.sql.Types.TINYINT;
-      case 'D' -> type == java.sql.Types.TIMESTAMP;
-      case 'T', 'M', 'X' -> type == java.sql.Types.INTEGER || type == java.sql.Types.BIGINT;
-      default -> false;
-    };
+    query.operation(1); // owner branch, including legacy/queryless reads
+    if (owner != null) owner.metadataFinalBoundary(query, version);
+    else query.checkHealthy();
   }
 
   private void fail(Throwable failure) {

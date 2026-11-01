@@ -55,7 +55,7 @@ public final class SessionHistorySizedMetadataBatch
     final char type;
 
     FinalColumn(String label, char type, int points, boolean nullable) {
-      super(label, type, points, nullable);
+      super(label, type, points, nullable, nullable ? 65535 : Math.multiplyExact(points, 2));
       this.label = label;
       this.type = type;
     }
@@ -69,11 +69,12 @@ public final class SessionHistorySizedMetadataBatch
     var columns = new java.util.ArrayList<FinalColumn>();
     for (int i = 0; i < COLUMNS.size(); i++) {
       String label = COLUMNS.get(i);
-      if (work != null) work.inspect(20L + label.length());
+      if (work != null) work.inspect(23L + label.length());
       char type =
           switch (i) {
             case 0, 1, 5, 6, 13 -> 'S';
             case 2, 3 -> 'I';
+            case 4 -> 'T';
             case 12 -> 'D';
             default -> 'L';
           };
@@ -96,9 +97,7 @@ public final class SessionHistorySizedMetadataBatch
   private boolean finalConsumed;
 
   private void finalBoundary() {
-    ops(query, 2); // version comparison and callback handoff
-    if (owner.metadataFinalVersion(query) != finalGeneration)
-      throw owner.poisonProof(new IllegalStateException("Write during history FINAL read"));
+    owner.metadataFinalBoundary(query, finalGeneration);
   }
 
   @Override
@@ -120,46 +119,23 @@ public final class SessionHistorySizedMetadataBatch
       long count = 0, bytes = 0, metadata = 0, metadataSize = 0, body = 0, reserved = 0, held = 0;
       String content = null;
       try (var result = query.result(command.getId())) {
+        ops(query, 2); // immutable callback flag and local
+        boolean callback = result.hasColumnCallback();
+        finalBoundary(); // meter.begin() has returned
         while (true) {
-          finalBoundary();
           boolean next = source.next();
           finalBoundary();
           if (!next) break;
-          ops(query, 4);
+          ops(query, 6); // count/bound and complete fixed field headers once
           if (++count > 1) throw corrupt();
           var columns = source.getMetaData();
           finalBoundary();
-          int width = columns.getColumnCount();
-          finalBoundary();
-          if (width != FINAL_COLUMNS.size()) throw corrupt();
-          for (int i = 0; i < FINAL_COLUMNS.size(); i++) {
-            var column = FINAL_COLUMNS.get(i);
-            ops(query, 10L + column.label.length());
-            finalBoundary();
-            String label = columns.getColumnLabel(i + 1);
-            finalBoundary();
-            int type = columns.getColumnType(i + 1);
-            finalBoundary();
-            boolean valid =
-                i == 4
-                    ? type == java.sql.Types.INTEGER || type == java.sql.Types.BIGINT
-                    : switch (column.type) {
-                      case 'S' ->
-                          type == java.sql.Types.VARCHAR
-                              || type == java.sql.Types.CHAR
-                              || type == java.sql.Types.LONGVARCHAR;
-                      case 'I' -> type == java.sql.Types.INTEGER;
-                      case 'L' -> type == java.sql.Types.BIGINT;
-                      default -> type == java.sql.Types.TIMESTAMP;
-                    };
-            if (!column.label.equals(label) || !valid) throw corrupt();
-          }
+          QueryResults.finalColumns(columns, FINAL_COLUMNS, query, owner, finalGeneration);
           result.row();
-          bytes = 32;
+          bytes = Math.addExact(32, Math.multiplyExact(8L, FINAL_COLUMNS.size()));
           for (int i = 0; i < FINAL_COLUMNS.size(); i++) {
-            ops(query, 10); // column/getter/normalization, NULL and summary dispatch
+            ops(query, 9); // column/getter/normalization, one byte addition and summary dispatch
             var column = FINAL_COLUMNS.get(i);
-            finalBoundary();
             Object value = source.getObject(i + 1);
             finalBoundary();
             if (value instanceof java.sql.Timestamp time) value = time.toLocalDateTime();
@@ -168,21 +144,10 @@ public final class SessionHistorySizedMetadataBatch
               ops(query, 3L + expected.length());
               if (!expected.equals(value)) throw corrupt();
             }
-            long scalar;
-            if (i == 4) {
-              ops(query, 8);
-              if (!(value instanceof Integer || value instanceof Long)) throw corrupt();
-              scalar = ((Number) value).longValue();
-              if (scalar < 0 || scalar > 65535) throw corrupt();
-              result.metadataColumn(column, value);
-            } else if (i == 13 && value != null) {
-              scalar = finalText(value, 65535, 65535);
-              result.metadataColumn(column, value);
-            } else {
-              scalar = result.metadataColumnChecked(column, value);
-            }
-            finalBoundary();
-            if (value != null || nulls) bytes = Math.addExact(bytes, Math.addExact(8, scalar));
+            long scalar = result.metadataColumnChecked(column, value);
+            ops(query, 1); // the external meter, when present, requires its own post-boundary
+            if (callback) finalBoundary();
+            bytes = Math.addExact(bytes, value != null || nulls ? scalar : -8);
             switch (i) {
               case 6 -> content = (String) value;
               case 8 -> body = (Long) value;
@@ -607,31 +572,6 @@ public final class SessionHistorySizedMetadataBatch
     if (!(value instanceof Integer) && !(value instanceof Long)) throw corrupt();
     ops(query, 1); // extracted typed helper call on the public scalar path.
     return numberBytes(((Number) value).longValue());
-  }
-
-  private long finalText(Object value, int maximumPoints, int maximumUnits) {
-    if (!(value instanceof String text)) throw corrupt();
-    ops(query, 3); // one length read, UTF16 bound, and code-point counter initialization.
-    int units = text.length(), points = units;
-    if (units > maximumUnits) throw corrupt();
-    long size = 0;
-    for (int i = 0; i < units; i++) {
-      ops(query, 1);
-      char c = text.charAt(i);
-      if (c < 128) size++;
-      else if (c < 2048) size += 2;
-      else if (Character.isHighSurrogate(c)) {
-        if (++i >= units || !Character.isLowSurrogate(text.charAt(i))) throw corrupt();
-        ops(query, 1);
-        size += 4;
-        ops(query, 1); // this same pair consumes one code point; no second traversal.
-        points--;
-      } else if (Character.isLowSurrogate(c)) throw corrupt();
-      else size += 3;
-    }
-    ops(query, 1); // final code-point bound, including BMP-only strings.
-    if (points > maximumPoints) throw corrupt();
-    return size;
   }
 
   private long timeBytes(java.time.LocalDateTime time, boolean finalScan) {
