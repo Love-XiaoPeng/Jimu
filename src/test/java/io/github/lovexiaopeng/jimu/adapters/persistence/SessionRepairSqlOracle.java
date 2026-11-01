@@ -108,6 +108,14 @@ final class SessionRepairSqlOracle {
   }
 
   static Totals inspect(JdbcTemplate db, String task, List<String> tables) {
+    return inspect(db, task, tables, true);
+  }
+
+  static Totals inspect(JdbcTemplate db, String task, boolean nullsPresent) {
+    return inspect(db, task, TABLES, nullsPresent);
+  }
+
+  static Totals inspect(JdbcTemplate db, String task, List<String> tables, boolean nullsPresent) {
     long metadata = 0, body = 0;
     for (String table : tables) {
       var columns =
@@ -132,6 +140,7 @@ final class SessionRepairSqlOracle {
           if (BODY.contains(name)) {
             if (value != null) body += value.toString().getBytes(StandardCharsets.UTF_8).length;
           } else {
+            if (value == null && !nullsPresent) continue;
             String text =
                 value == null
                     ? null

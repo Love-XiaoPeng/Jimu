@@ -66,8 +66,7 @@ final class SessionFinalMapperFailures {
             return proxy(
                 PreparedStatement.class,
                 (p, sm, sa) -> {
-                  if ((table.equals("step") || table.equals("task"))
-                      && sm.getName().equals("getConnection")) return o;
+                  if (table.equals("step") && sm.getName().equals("getConnection")) return o;
                   if (sm.getName().equals("setString")) binds.add(sa[1]);
                   Object output = invoke(statement, sm, sa);
                   if (table.equals("step") && sm.getName().equals("close") && providerRows != null)
@@ -78,16 +77,21 @@ final class SessionFinalMapperFailures {
                   return proxy(
                       ResultSet.class,
                       (r, rm, ra) -> {
-                        if ((table.equals("step") || table.equals("task"))
-                            && rm.getName().equals("getStatement")) return p;
+                        if (table.equals("step") && rm.getName().equals("getStatement")) return p;
                         if (rm.getName().equals("getMetaData")) {
                           var metadata = rows.getMetaData();
-                          if ((table.equals("step") || table.equals("task"))
+                          if (table.equals("step")
                               && !List.of("count", "label", "type").contains(fault))
                             return metadata;
                           return proxy(
                               ResultSetMetaData.class,
                               (m0, mm, ma) -> {
+                                if (fault.equals("metadata-write")
+                                    && !changed
+                                    && mm.getName().equals("getColumnLabel")) {
+                                  changed = true;
+                                  write.run();
+                                }
                                 if (fault.equals("count") && mm.getName().equals("getColumnCount"))
                                   return metadata.getColumnCount() + 1;
                                 if (fault.equals("label") && mm.getName().equals("getColumnLabel"))
@@ -100,24 +104,16 @@ final class SessionFinalMapperFailures {
                         if (rm.getName().equals("getObject")) {
                           getters++;
                           if (fault.equals("error")) throw primary;
-                          if (fault.equals("tag-reservation") && ra[0].equals(1)) return 16L;
-                          if (fault.equals("row-negative") && ra[0].equals(2)) return -1L;
-                          if (fault.equals("row-oversize") && ra[0].equals(2))
-                            return Long.MAX_VALUE;
-                          if (fault.equals("row-type") && ra[0].equals(2)) return "32";
-                          if (fault.equals("task-length") && ra[0].equals(2)) return -1L;
-                          if (fault.equals("task-length-null") && ra[0].equals(2)) return null;
-                          if (fault.equals("negative")) return -1L;
-                          if (fault.equals("oversize")) return Long.MAX_VALUE;
-                          if (fault.equals("value-type")) return "32";
-                          if ((fault.equals("write")
-                                  || (fault.equals("row-write") && ra[0].equals(2)))
-                              && !changed) {
+                          if (fault.equals("write") && !changed) {
                             changed = true;
                             write.run();
                           }
                         }
                         Object outputRow = invoke(rows, rm, ra);
+                        if (fault.equals("next-write") && !changed && rm.getName().equals("next")) {
+                          changed = true;
+                          write.run();
+                        }
                         if (rm.getName().equals("close")) {
                           closed = true;
                           if (fault.equals("close-write") && !changed) {
@@ -139,87 +135,11 @@ final class SessionFinalMapperFailures {
   }
 
   static void verify(DataSource plain, String taskId, boolean preflight) {
-    verify(
-        plain,
-        taskId,
-        preflight,
-        List.of(
-            "count",
-            "label",
-            "type",
-            "write",
-            "close-write",
-            "error",
-            "close",
-            "foreign",
-            "parameter"));
+    verify(plain, taskId, preflight, Table.TASK_ATTEMPT);
   }
 
-  static void verifyRowProjection(DataSource plain, String taskId) {
-    verify(
-        plain,
-        taskId,
-        true,
-        List.of(
-            "count",
-            "label",
-            "type",
-            "write",
-            "close-write",
-            "error",
-            "close",
-            "negative",
-            "oversize",
-            "value-type"));
-  }
-
-  static void verifyTaskProjection(DataSource plain, String taskId) {
-    verify(
-        plain,
-        taskId,
-        true,
-        List.of(
-            "count",
-            "label",
-            "type",
-            "write",
-            "error",
-            "close-write",
-            "negative",
-            "value-type",
-            "task-length",
-            "task-length-null"),
-        "task");
-  }
-
-  static void verifyOrdinaryProjection(DataSource plain, String taskId) {
-    verify(
-        plain,
-        taskId,
-        true,
-        List.of(
-            "count",
-            "label",
-            "type",
-            "write",
-            "row-write",
-            "error",
-            "close-write",
-            "tag-reservation",
-            "row-negative",
-            "row-oversize",
-            "row-type"));
-  }
-
-  private static void verify(
-      DataSource plain, String taskId, boolean preflight, List<String> faults) {
-    verify(plain, taskId, preflight, faults, "task_attempt");
-  }
-
-  private static void verify(
-      DataSource plain, String taskId, boolean preflight, List<String> faults, String table) {
+  static void verify(DataSource plain, String taskId, boolean preflight, Table target) {
     var source = new FaultSource(plain);
-    source.table = table;
     var db = new JdbcTemplate(source);
     var mappers = LedgerMapperSessions.create(source);
     var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
@@ -231,7 +151,24 @@ final class SessionFinalMapperFailures {
             taskId,
             "capabilities",
             SessionLineagePolicyV5.CAPABILITIES);
+    var faults =
+        new ArrayList<>(
+            List.of(
+                "count",
+                "label",
+                "type",
+                "write",
+                "metadata-write",
+                "next-write",
+                "extra",
+                "close-write",
+                "error",
+                "close",
+                "foreign",
+                "parameter"));
+    if (preflight) faults.add("history-extra");
     for (String fault : faults) {
+      source.table = "task_attempt";
       source.fault = fault;
       source.changed = false;
       source.closed = false;
@@ -264,25 +201,41 @@ final class SessionFinalMapperFailures {
                       io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper
                           .SessionContextMapper.class)
                   .account(q, before + 1, "tenant-a", taskId);
+      source.table =
+          fault.equals("history-extra")
+              ? "task_session_history"
+              : target.name().toLowerCase(java.util.Locale.ROOT);
       Throwable caught = null;
       try {
         tx.required(
             q,
             () -> {
               SessionQueryTransaction.current(q).locked("tenant-a", taskId);
-              if (preflight && !fault.equals("parameter")) {
-                new io.github.lovexiaopeng.jimu.kernel.session.service.impl
-                        .SessionMetadataAccountingServiceImpl()
-                    .metadata(accounting, false, 0);
-                return null;
-              }
-              try (var scope = accounting.finalization()) {
-                if (fault.equals("parameter"))
-                  mappers.select(
-                      "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.metadataTaskAttempt",
-                      Map.of("query", foreign, "tenant", "tenant-a", "taskId", taskId),
-                      accounting);
-                else SessionFinalResultFoldTest.table(accounting, Table.TASK_ATTEMPT);
+              try (var meter =
+                  q.meter(
+                      () ->
+                          (label, value) -> {
+                            if (List.of("extra", "history-extra").contains(fault)
+                                && source.statements > 0
+                                && !source.changed) {
+                              source.changed = true;
+                              source.write.run();
+                            }
+                          })) {
+                if (preflight && !fault.equals("parameter")) {
+                  new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+                          .SessionMetadataAccountingServiceImpl()
+                      .metadata(accounting, false, 0);
+                  return null;
+                }
+                try (var scope = accounting.finalization()) {
+                  if (fault.equals("parameter"))
+                    mappers.select(
+                        "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.metadataTaskAttempt",
+                        Map.of("query", foreign, "tenant", "tenant-a", "taskId", taskId),
+                        accounting);
+                  else SessionFinalResultFoldTest.table(accounting, target);
+                }
               }
               return null;
             });
@@ -290,17 +243,16 @@ final class SessionFinalMapperFailures {
         caught = failure;
       }
       if (caught == null) throw new AssertionError("FINAL fault accepted " + fault);
+      if (List.of("write", "extra", "history-extra").contains(fault) && source.getters != 1)
+        throw new AssertionError("Getter after dynamic refusal " + fault + ": " + source.getters);
+      if (List.of("metadata-write", "next-write").contains(fault) && source.getters != 0)
+        throw new AssertionError("Getter after driver metadata/next write " + fault);
       if (fault.equals("count") || fault.equals("label") || fault.equals("type"))
         if (source.getters != 0) throw new AssertionError("Getter before static refusal " + fault);
       if (fault.equals("foreign") || fault.equals("parameter")) {
         if (source.statements != 0) throw new AssertionError("Foreign SQL executed");
       } else if (source.statements != 1
-          || !source.binds.equals(
-              java.util.Collections.nCopies(
-                      table.equals("task_attempt") ? 15 : 1, List.of("tenant-a", taskId))
-                  .stream()
-                  .flatMap(List::stream)
-                  .toList())
+          || !source.binds.equals(List.of("tenant-a", taskId))
           || !source.closed)
         throw new AssertionError("SQL/parameter/close changed " + fault + source.binds);
       if (fault.equals("error")

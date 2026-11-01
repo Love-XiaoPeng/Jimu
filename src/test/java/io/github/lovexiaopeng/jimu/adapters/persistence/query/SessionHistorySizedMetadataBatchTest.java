@@ -167,7 +167,6 @@ public class SessionHistorySizedMetadataBatchTest {
     var configuration = config(f, xml());
     var error = new AssertionError("history fold getter");
     error.addSuppressed(new IllegalStateException("original suppressed"));
-    var delegate = session(f, query, configuration, List.of(row(1L)));
     var exploding =
         new LinkedHashMap<String, Object>(row(1L)) {
           @Override
@@ -176,13 +175,7 @@ public class SessionHistorySizedMetadataBatchTest {
             return super.get(key);
           }
         };
-    var source =
-        proxy(
-            SqlSession.class,
-            (p, method, args) -> {
-              Object result = method.invoke(delegate, args);
-              return method.getName().equals("selectList") ? List.of(exploding) : result;
-            });
+    var source = session(f, query, configuration, List.of(exploding));
     var first =
         assertThrows(
             RuntimeException.class,
@@ -479,7 +472,7 @@ public class SessionHistorySizedMetadataBatchTest {
             switch (m.getName()) {
               case "getConfiguration" -> c;
               case "getConnection" -> f.connection;
-              case "selectList" -> {
+              case "selectList", "select" -> {
                 assertEquals(SessionHistorySizedMetadataBatch.STATEMENT, a[0]);
                 assertSame(q, ((Map<?, ?>) a[1]).get("query"));
                 assertEquals(expectedTenant, ((Map<?, ?>) a[1]).get("tenant"));
@@ -487,6 +480,8 @@ public class SessionHistorySizedMetadataBatchTest {
                     inputs.isEmpty()
                         ? List.<String>of()
                         : new ArrayList<>(inputs.getFirst().keySet());
+                if (!inputs.isEmpty() && !keys.contains("cleanup_receipt"))
+                  keys.add("cleanup_receipt");
                 int[] at = {-1};
                 var metadata =
                     proxy(
@@ -495,6 +490,19 @@ public class SessionHistorySizedMetadataBatchTest {
                             switch (method.getName()) {
                               case "getColumnCount" -> keys.size();
                               case "getColumnLabel" -> keys.get((int) args[0] - 1);
+                              case "getColumnType" ->
+                                  switch (keys.get((int) args[0] - 1)) {
+                                    case "tenant_id",
+                                            "task_id",
+                                            "binding_digest",
+                                            "content_state",
+                                            "cleanup_receipt" ->
+                                        java.sql.Types.VARCHAR;
+                                    case "record_version", "history_version" ->
+                                        java.sql.Types.INTEGER;
+                                    case "retain_until" -> java.sql.Types.TIMESTAMP;
+                                    default -> java.sql.Types.BIGINT;
+                                  };
                               default -> null;
                             });
                 var raw =
@@ -510,6 +518,13 @@ public class SessionHistorySizedMetadataBatchTest {
                               default -> null;
                             });
                 var result = new ArrayList<Map<String, Object>>();
+                if (m.getName().equals("select")) {
+                  try (raw) {
+                    ((QueryResults.FinalMetadata) a[2])
+                        .read(raw, q, c.getMappedStatement((String) a[0]));
+                  }
+                  yield null;
+                }
                 try (var metered = QueryResults.meter(raw, q, (String) a[0])) {
                   while (metered.next()) result.add(new LinkedHashMap<>(inputs.get(at[0])));
                 }
@@ -939,7 +954,7 @@ public class SessionHistorySizedMetadataBatchTest {
         proxy(
             SqlSession.class,
             (p, m, a) -> {
-              if (m.getName().equals("selectList")) throw failure;
+              if (List.of("selectList", "select").contains(m.getName())) throw failure;
               return m.invoke(delegate, a);
             });
     var first =
@@ -1093,7 +1108,7 @@ public class SessionHistorySizedMetadataBatchTest {
         proxy(
             SqlSession.class,
             (p, m, a) -> {
-              if (m.getName().equals("selectList")) throw error;
+              if (List.of("selectList", "select").contains(m.getName())) throw error;
               return m.invoke(original, a);
             });
     var first =
@@ -1126,7 +1141,10 @@ public class SessionHistorySizedMetadataBatchTest {
       var values = row(65535L);
       values.put("reserved_bytes", 123456L);
       values.put("held_bytes", 987654L);
-      if (mode.equals("absent")) values.remove("cleanup_receipt");
+      if (mode.equals("absent")) {
+        values.remove("cleanup_receipt");
+        c.setCallSettersOnNulls(false);
+      }
       if (mode.equals("wide")) {
         values.put("cleanup_receipt", "积木🧱");
         values.put("metadata_bytes", Long.MIN_VALUE);
@@ -1179,7 +1197,8 @@ public class SessionHistorySizedMetadataBatchTest {
           proxy(
               SqlSession.class,
               (p, m, a) -> {
-                if (mode.equals("error") && m.getName().equals("selectList")) throw error;
+                if (mode.equals("error") && List.of("selectList", "select").contains(m.getName()))
+                  throw error;
                 try {
                   return m.invoke(delegate, a);
                 } catch (java.lang.reflect.InvocationTargetException failure) {

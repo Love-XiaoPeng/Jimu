@@ -63,6 +63,7 @@ class SessionFinalResultFoldTest {
       case 'L' -> Types.BIGINT;
       case 'B' -> Types.BIT;
       case 'D' -> Types.TIMESTAMP;
+      case 'T', 'M', 'X' -> Types.BIGINT;
       default -> throw new AssertionError();
     };
   }

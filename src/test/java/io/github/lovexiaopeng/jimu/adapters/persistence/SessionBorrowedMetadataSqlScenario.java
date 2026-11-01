@@ -51,8 +51,7 @@ final class SessionBorrowedMetadataSqlScenario {
     return raw.getBytes(StandardCharsets.UTF_8).length;
   }
 
-  private static long scan(
-      io.github.lovexiaopeng.jimu.kernel.session.port.SessionMetadataAccounting.Batch batch) {
+  private static long scan(SessionCursorMetadataBatch batch) {
     long total = 0;
     for (var row : batch) {
       total += 32;
@@ -265,21 +264,32 @@ final class SessionBorrowedMetadataSqlScenario {
     var mappers = LedgerMapperSessions.create(source);
     seed(db);
     try {
-      if (mode.equals("borrowed-ordinary-faults")) {
-        SessionFinalMapperFailures.verifyOrdinaryProjection(source, ID);
+      if (mode.equals("borrowed-source-types")) {
+        sourceTypes(db, tx, mappers);
         return;
       }
-      if (mode.equals("borrowed-row-faults")) {
-        SessionFinalMapperFailures.verifyRowProjection(source, ID);
-        SessionFinalMapperFailures.verifyTaskProjection(source, ID);
+      if (mode.equals("borrowed-final-faults")) {
+        SessionFinalMapperFailures.verify(source, ID, false);
         return;
       }
-      if (mode.equals("borrowed-row-nulls")) {
-        rowNullPolicies(db, tx, mappers);
+      if (mode.equals("borrowed-task-faults")) {
+        SessionFinalMapperFailures.verify(source, ID, false, Table.TASK);
         return;
       }
-      if (mode.equals("borrowed-row-preflight")) {
-        preflight(db, tx, mappers);
+      if (mode.equals("borrowed-history-faults")) {
+        SessionFinalMapperFailures.verify(source, ID, false, Table.TASK_SESSION_HISTORY);
+        return;
+      }
+      if (mode.equals("borrowed-scalar-nulls")) {
+        scalarNulls(db, tx, mappers);
+        return;
+      }
+      if (mode.equals("borrowed-special-nulls")) {
+        specialNulls(db, tx, mappers);
+        return;
+      }
+      if (mode.equals("borrowed-query-task")) {
+        SessionModelConsumerSqlScenario.verifyQueryTask(db, ID);
         return;
       }
       if (mode.equals("borrowed-model-consumers")) {
@@ -593,86 +603,189 @@ final class SessionBorrowedMetadataSqlScenario {
     }
   }
 
-  private static void rowNullPolicies(
+  /** 改的是实际源列类型；聚合后的 BIGINT 元数据不能替代这些原门。 */
+  private static void sourceTypes(
       JdbcTemplate db, SessionQueryTransaction tx, org.mybatis.spring.SqlSessionTemplate mappers) {
-    // The original batch is the independent JVM scalar representation for each NULL policy.
-    // The seed also exercises Unicode, Boolean, both Long extrema and microsecond DATETIME.
-    db.update(
-        "UPDATE task_attempt SET fence=? WHERE tenant_id='tenant-a' AND task_id=? AND id='20000000-0000-0000-0000-000000000010'",
-        Long.MIN_VALUE,
-        ID);
-    var before = SessionDependencyScenario.snapshot(db);
-    try {
-      for (boolean nulls : List.of(false, true)) {
-        mappers.getConfiguration().setCallSettersOnNulls(nulls);
-        long expected = -1;
-        for (boolean folded : List.of(false, true)) {
-          var q = query(0);
-          long actual =
-              tx.required(
-                  q,
-                  () -> {
-                    SessionQueryTransaction.current(q).locked("tenant-a", ID);
-                    var task =
-                        Map.<String, Object>of(
+    for (String column : List.of("quiescent", "record_version")) {
+      boolean bool = column.equals("quiescent");
+      db.execute(
+          "ALTER TABLE task_attempt MODIFY "
+              + column
+              + (bool ? " INT NOT NULL DEFAULT 0" : " BIGINT NOT NULL DEFAULT 1"));
+      try {
+        var before = SessionDependencyScenario.snapshot(db);
+        var q = query(0);
+        Throwable caught = null;
+        try {
+          tx.required(
+              q,
+              () -> {
+                SessionQueryTransaction.current(q).locked("tenant-a", ID);
+                var accounting =
+                    new MapperSessionMetadataAccounting(
+                        new JdbcSessionRecords(db, q, mappers),
+                        Map.of(
                             "tenant_id",
                             "tenant-a",
                             "id",
                             ID,
                             "capabilities",
                             io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5
-                                .CAPABILITIES);
+                                .CAPABILITIES),
+                        true);
+                try (var scope = accounting.finalization()) {
+                  SessionFinalResultFoldTest.table(accounting, Table.TASK_ATTEMPT);
+                }
+                return null;
+              });
+        } catch (RuntimeException failure) {
+          caught = failure;
+        }
+        check(
+            caught instanceof TaskFailure failure
+                && failure.code().equals("SESSION_HISTORY_CORRUPT"),
+            "actual source type refused " + column);
+        check(
+            before.equals(SessionDependencyScenario.snapshot(db)) && q.scratchLive() == 65536,
+            "source type refusal rollback22 and release " + column);
+      } finally {
+        db.execute(
+            "ALTER TABLE task_attempt MODIFY "
+                + column
+                + (bool ? " TINYINT(1) NOT NULL DEFAULT 0" : " INT NOT NULL DEFAULT 1"));
+      }
+    }
+  }
+
+  private static void specialNulls(
+      JdbcTemplate db, SessionQueryTransaction tx, org.mybatis.spring.SqlSessionTemplate mappers) {
+    boolean prior = mappers.getConfiguration().isCallSettersOnNulls();
+    try {
+      for (boolean nulls : List.of(false, true)) {
+        mappers.getConfiguration().setCallSettersOnNulls(nulls);
+        for (var table : List.of(Table.TASK, Table.TASK_SESSION_HISTORY)) {
+          long expected =
+              SessionRepairSqlOracle.inspect(
+                      db, ID, List.of(table.name().toLowerCase(java.util.Locale.ROOT)), nulls)
+                  .metadata();
+          var before = SessionDependencyScenario.snapshot(db);
+          var q = query(0);
+          long actual =
+              tx.required(
+                  q,
+                  () -> {
+                    SessionQueryTransaction.current(q).locked("tenant-a", ID);
                     var records =
                         new MapperSessionMetadataAccounting(
-                            new JdbcSessionRecords(db, q, mappers), task);
-                    if (folded)
-                      return new io.github.lovexiaopeng.jimu.kernel.session.service.impl
-                              .SessionMetadataAccountingServiceImpl()
-                          .metadata(records, false, 0);
-                    long total = 0;
-                    for (var table : Table.values())
-                      try (var batch = records.batch(table)) {
-                        total += scan(batch);
-                      }
-                    return total;
+                            new JdbcSessionRecords(db, q, mappers),
+                            Map.of(
+                                "tenant_id",
+                                "tenant-a",
+                                "id",
+                                ID,
+                                "capabilities",
+                                io.github.lovexiaopeng.jimu.kernel.session.api
+                                    .SessionLineagePolicyV5.CAPABILITIES),
+                            true);
+                    try (var scope = records.finalization()) {
+                      return SessionFinalResultFoldTest.table(records, table).bytes();
+                    }
                   });
-          if (!folded) expected = actual;
           check(
-              actual == expected
-                  && before.equals(SessionDependencyScenario.snapshot(db))
-                  && q.scratchLive() == 65536,
-              "row SQL NULL policy=" + nulls + " folded=" + folded + " bytes=" + actual);
+              actual == expected, "special scalar independent oracle " + table + " nulls=" + nulls);
+          check(
+              q.resources().reads() == 1
+                  && q.scratchLive() == 65536
+                  && before.equals(SessionDependencyScenario.snapshot(db)),
+              "special scalar fresh read, 22 tables unchanged and owners released");
+          System.out.println(
+              "SPECIAL_METADATA table="
+                  + table
+                  + " nulls="
+                  + nulls
+                  + " metadata="
+                  + actual
+                  + " resources="
+                  + q.resources());
         }
-        // Queryless ordinary batch still follows the original full scalar SELECT route.
-        var plain =
-            new MapperSessionMetadataAccounting(
-                new JdbcSessionRecords(db, null, mappers),
-                Map.of(
-                    "tenant_id",
-                    "tenant-a",
-                    "id",
-                    ID,
-                    "capabilities",
-                    io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5
-                        .CAPABILITIES));
-        long ordinary =
-            new org.springframework.transaction.support.TransactionTemplate(
-                    new DataSourceTransactionManager(db.getDataSource()))
-                .execute(
-                    status -> {
-                      long total = 0;
-                      for (var table : Table.values())
-                        try (var batch = plain.batch(table)) {
-                          total += scan(batch);
-                        }
-                      return total;
-                    });
-        check(
-            ordinary == expected && before.equals(SessionDependencyScenario.snapshot(db)),
-            "queryless metadata original route NULL=" + nulls);
       }
     } finally {
-      mappers.getConfiguration().setCallSettersOnNulls(true);
+      mappers.getConfiguration().setCallSettersOnNulls(prior);
+    }
+  }
+
+  private static void scalarNulls(
+      JdbcTemplate db, SessionQueryTransaction tx, org.mybatis.spring.SqlSessionTemplate mappers) {
+    boolean prior = mappers.getConfiguration().isCallSettersOnNulls();
+    try {
+      for (boolean nulls : List.of(false, true)) {
+        mappers.getConfiguration().setCallSettersOnNulls(nulls);
+        long expected = SessionRepairSqlOracle.inspect(db, ID, nulls).metadata();
+        var before = SessionDependencyScenario.snapshot(db);
+        var q = query(0);
+        long actual;
+        try {
+          actual =
+              tx.required(
+                  q,
+                  () -> {
+                    SessionQueryTransaction.current(q).locked("tenant-a", ID);
+                    var records =
+                        new MapperSessionMetadataAccounting(
+                            new JdbcSessionRecords(db, q, mappers),
+                            Map.of(
+                                "tenant_id",
+                                "tenant-a",
+                                "id",
+                                ID,
+                                "capabilities",
+                                io.github.lovexiaopeng.jimu.kernel.session.api
+                                    .SessionLineagePolicyV5.CAPABILITIES));
+                    return new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+                            .SessionMetadataAccountingServiceImpl()
+                        .metadata(records, false, 0);
+                  });
+        } catch (RuntimeException | Error failure) {
+          boolean unchanged = before.equals(SessionDependencyScenario.snapshot(db));
+          boolean released =
+              q.scratchLive() == 65536 && SessionQueryTransaction.currentOwner() == null;
+          System.out.println(
+              "SCALAR_REJECT nulls="
+                  + nulls
+                  + " resources="
+                  + q.resources()
+                  + " requested="
+                  + q.requestedWork()
+                  + " completed="
+                  + q.completedWork()
+                  + " rejection="
+                  + q.operationRejection()
+                  + " unchanged22="
+                  + unchanged
+                  + " ownersReleased="
+                  + released
+                  + " first="
+                  + failure.getClass().getSimpleName());
+          if (!unchanged || !released)
+            failure.addSuppressed(new AssertionError("Scalar rollback/owner assertion failed"));
+          throw failure;
+        }
+        check(actual == expected, "18-table strict scalar independent oracle nulls=" + nulls);
+        check(
+            q.resources().reads() == 18
+                && q.scratchLive() == 65536
+                && before.equals(SessionDependencyScenario.snapshot(db)),
+            "18 fresh scalar results, 22 tables unchanged and owners released nulls=" + nulls);
+        System.out.println(
+            "SCALAR_METADATA nulls="
+                + nulls
+                + " metadata="
+                + actual
+                + " resources="
+                + q.resources());
+      }
+    } finally {
+      mappers.getConfiguration().setCallSettersOnNulls(prior);
     }
   }
 
@@ -721,10 +834,13 @@ final class SessionBorrowedMetadataSqlScenario {
           before.equals(SessionDependencyScenario.snapshot(db)) && q.scratchLive() == 65536,
           "preflight reads only and releases all owners folded=" + folded);
       if (!folded) oldCost = q.resources().operations();
-      else
+      else {
+        System.out.println(
+            "PREFLIGHT_FOLDED_COST old=" + oldCost + " actual=" + q.resources().operations());
         check(
             q.resources().operations() < oldCost,
             "complete preflight deletes duplicate consumption");
+      }
       System.out.println(
           "PREFLIGHT_COST "
               + Payloads.json(

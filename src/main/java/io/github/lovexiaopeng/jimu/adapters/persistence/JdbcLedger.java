@@ -2198,7 +2198,16 @@ public final class JdbcLedger
   }
 
   Map<String, Object> fenced(Lease lease, boolean admission) {
+    return fenced(lease, admission, false);
+  }
+
+  Map<String, Object> fencedScopeQuery(Lease lease) {
+    return fenced(lease, true, true);
+  }
+
+  private Map<String, Object> fenced(Lease lease, boolean admission, boolean scopeQuery) {
     bindSessionQuery(lease, null, null);
+    if (query != null) query.operation(4); // added scope-query route and shared helper handoff
     // Hold through the committing transaction: STOPPED cannot race a cached admission,
     // publication or successful finish. Settlement of previously admitted effects stays allowed.
     var evaluation = evaluation(lease, admission);
@@ -2206,7 +2215,21 @@ public final class JdbcLedger
     if (query != null && query.lineage())
       first(mappers.budgets().lockBudgetForUpdate(query, lease.tenant()));
     else bucket(lease.tenant());
-    var task = locked(lease.tenant(), lease.taskId());
+    Map<String, Object> task;
+    if (scopeQuery && query != null && query.lineage()) {
+      query.operation(8); // current route, lock and original row handoff
+      sessionScopes.lock(lease.tenant(), lease.taskId());
+      task =
+          first(
+              mappers
+                  .tasks()
+                  .selectLineageQueryTaskForUpdate(query, lease.tenant(), lease.taskId()));
+      if (!JdbcSessionScopes.lineage(task))
+        throw new TaskFailure(
+            409,
+            io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationErrorCode
+                .INVOCATION_MISMATCH);
+    } else task = locked(lease.tenant(), lease.taskId());
     if (n(task, "fence") != lease.fence()
         || !lease.attemptId().equals(s(task, "current_attempt_id"))
         || !lease.worker().equals(s(task, "worker_id"))

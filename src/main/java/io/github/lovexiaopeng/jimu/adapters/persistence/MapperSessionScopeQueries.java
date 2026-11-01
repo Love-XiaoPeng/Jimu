@@ -56,7 +56,7 @@ final class MapperSessionScopeQueries implements SessionScopeQueries {
   }
 
   public Task lock(Lease lease) {
-    return new Record(lease, ledger.fenced(lease, true));
+    return new Record(lease, ledger.fencedScopeQuery(lease));
   }
 
   public String hash(String raw) {

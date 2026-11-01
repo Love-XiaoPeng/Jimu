@@ -116,4 +116,71 @@ final class SessionModelConsumerSqlScenario {
       }
     }
   }
+
+  static void verifyQueryTask(JdbcTemplate db, String task) {
+    var source = db.getDataSource();
+    var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
+    var mappers = LedgerMapperSessions.create(source);
+    var before = SessionDependencyScenario.snapshot(db);
+    Map<String, Object> prior = null;
+    long cost = 0;
+    for (boolean narrow : List.of(false, true)) {
+      var q =
+          new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
+      q.restrictLineage();
+      var row =
+          tx.required(
+              q,
+              () -> {
+                SessionQueryTransaction.current(q).locked("tenant-a", task);
+                return mappers.<Map<String, Object>>selectOne(
+                    ROOT
+                        + "task.mapper.TaskMapper."
+                        + (narrow ? "selectLineageQueryTaskForUpdate" : "selectTaskForUpdate"),
+                    Map.of("query", q, "tenant", "tenant-a", "taskId", task));
+              });
+      if (!narrow) {
+        prior = row;
+        cost = q.resources().operations();
+      } else {
+        for (var entry : row.entrySet()) {
+          Object old = prior.get(entry.getKey()), fresh = entry.getValue();
+          check(
+              Objects.equals(old, fresh) && (old == null || old.getClass() == fresh.getClass()),
+              "scope query source value/type/NULL " + entry.getKey());
+        }
+        check(
+            !row.containsKey("request_snapshot")
+                && !row.containsKey("summary")
+                && !row.containsKey("models_used")
+                && row.containsKey("tools_used"),
+            "scope query deletes only unused scheduling/model fields");
+        check(q.resources().operations() < cost, "complete scope-query task read saves operations");
+      }
+      check(
+          q.resources().reads() == 1
+              && q.scratchLive() == 65536
+              && before.equals(SessionDependencyScenario.snapshot(db)),
+          "scope query fresh lock read, 22 tables unchanged and all owners released");
+      System.out.println("QUERY_TASK narrow=" + narrow + " resources=" + q.resources());
+    }
+    var q =
+        new SessionQueryContext(System.nanoTime() + 2_000_000_000L, new QueryResources(0, 0, 0));
+    q.restrictLineage();
+    tx.required(
+        q,
+        () -> {
+          var sql =
+              mappers.getMapper(
+                  io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskMapper.class);
+          check(
+              sql.selectLineageQueryTaskForUpdate(q, "foreign-tenant", task).isEmpty(),
+              "scope query cannot cross tenant");
+          check(
+              sql.selectLineageQueryTaskForUpdate(q, "tenant-a", "missing").isEmpty(),
+              "scope query cannot cross task");
+          return null;
+        });
+    check(q.scratchLive() == 65536, "empty scope-query results release without row qualification");
+  }
 }

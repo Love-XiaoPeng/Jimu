@@ -464,6 +464,8 @@ public final class SessionJointProjectionScenario {
     if (args.length > 1 && args[1].startsWith("borrowed")) {
       SessionBorrowedMetadataSqlScenario.verify(db, args[1]);
       if (args[1].equals("borrowed-shapes")
+          || args[1].equals("borrowed-source-types")
+          || args[1].equals("borrowed-query-task")
           || args[1].equals("borrowed-node-input")
           || args[1].equals("borrowed-model-step")
           || args[1].equals("borrowed-model-admission")
@@ -471,7 +473,12 @@ public final class SessionJointProjectionScenario {
           || args[1].equals("borrowed-ordinary-faults")
           || args[1].startsWith("borrowed-row-")
           || args[1].equals("borrowed-boundaries")
-          || args[1].startsWith("borrowed-preflight")) return;
+          || args[1].startsWith("borrowed-preflight")
+          || args[1].equals("borrowed-scalar-nulls")
+          || args[1].equals("borrowed-special-nulls")
+          || args[1].equals("borrowed-final-faults")
+          || args[1].equals("borrowed-task-faults")
+          || args[1].equals("borrowed-history-faults")) return;
     } else if (args.length < 2 || !args[1].startsWith("genuine"))
       SessionTaskSizedSqlScenario.verify(db);
     String worker = "joint-private-worker";

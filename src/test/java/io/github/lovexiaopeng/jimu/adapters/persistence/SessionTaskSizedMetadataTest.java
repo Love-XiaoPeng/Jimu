@@ -45,6 +45,65 @@ class SessionTaskSizedMetadataTest {
     return row;
   }
 
+  @org.junit.jupiter.api.Test
+  void directFinalKeepsSqlLengthBytesSeparateFromBusinessBytes() throws Exception {
+    var p = SessionMetadataProjection.taskSized();
+    for (boolean nulls : List.of(false, true)) {
+      var values = row();
+      for (var c : p.columns)
+        if (c.nullable()) {
+          if (nulls) values.put(c.name(), null);
+          else values.remove(c.name());
+        }
+      values.put("capabilities", 65535L);
+      values.put("model_snapshot", 16777215L);
+      values.put("material_snapshot", 4294967295L);
+      var expected =
+          SessionCursorMetadataBatch.measureFinal(
+              query(),
+              io.github.lovexiaopeng.jimu.kernel.session.port.SessionMetadataAccounting.Table.TASK,
+              p,
+              () -> new Rows(List.of(values)));
+      var q = query();
+      var driver = new SessionFinalResultFoldTest.Driver(p, List.of(values));
+      assertEquals(
+          expected,
+          SessionFinalResultFoldTest.direct(
+              q,
+              io.github.lovexiaopeng.jimu.kernel.session.port.SessionMetadataAccounting.Table.TASK,
+              driver,
+              nulls));
+      var transfer = query();
+      var original = new SessionFinalResultFoldTest.Driver(p, List.of(values));
+      try (var cursor =
+          io.github.lovexiaopeng.jimu.adapters.persistence.query.QueryResults.meter(
+              original.result, transfer, "task-sized")) {
+        while (cursor.next()) {}
+      }
+      assertEquals(transfer.resources().bytes(), q.resources().bytes());
+      assertEquals(p.columns.size(), driver.getters);
+      assertTrue(driver.closed);
+      assertEquals(65536, q.scratchLive());
+    }
+    for (Object bad : List.of(-1L, 65536L, "1", 1.0)) {
+      var values = row();
+      values.put("capabilities", bad);
+      var driver = new SessionFinalResultFoldTest.Driver(p, List.of(values));
+      var q = query();
+      assertThrows(
+          RuntimeException.class,
+          () ->
+              SessionFinalResultFoldTest.direct(
+                  q,
+                  io.github.lovexiaopeng.jimu.kernel.session.port.SessionMetadataAccounting.Table
+                      .TASK,
+                  driver,
+                  true));
+      assertTrue(driver.closed);
+      assertEquals(65536, q.scratchLive());
+    }
+  }
+
   private static class Rows implements Cursor<Map<String, Object>> {
     final List<Map<String, Object>> values;
     boolean closed;

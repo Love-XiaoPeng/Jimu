@@ -11,7 +11,8 @@ import java.util.NoSuchElementException;
  * V19 history 专用元数据批；只把 binding 表示为受 SQL 来源约束的 UTF8 长度。 保留原 TEXT 保守驻留及独立 raw 校验；错误先污染当前
  * Work，行引用清空后退款。
  */
-public final class SessionHistorySizedMetadataBatch implements SessionMetadataAccounting.Batch {
+public final class SessionHistorySizedMetadataBatch
+    implements SessionMetadataAccounting.Batch, QueryResults.FinalMetadata {
   private static final List<String> COLUMNS =
       List.of(
           "tenant_id",
@@ -48,6 +49,180 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
   private record SqlUtf8Length(SessionHistorySizedMetadataBatch owner, long bytes) {}
 
   private final SessionQueryWork owner;
+
+  private static final class FinalColumn extends SessionQueryContext.MetadataLabel {
+    final String label;
+    final char type;
+
+    FinalColumn(String label, char type, int points, boolean nullable) {
+      super(label, type, points, nullable);
+      this.label = label;
+      this.type = type;
+    }
+  }
+
+  private static final List<FinalColumn> FINAL_COLUMNS = finalColumns();
+
+  private static List<FinalColumn> finalColumns() {
+    var work = SessionQueryTransaction.currentOwner();
+    if (work != null) work.inspect(24 + 2L * COLUMNS.size());
+    var columns = new java.util.ArrayList<FinalColumn>();
+    for (int i = 0; i < COLUMNS.size(); i++) {
+      String label = COLUMNS.get(i);
+      if (work != null) work.inspect(20L + label.length());
+      char type =
+          switch (i) {
+            case 0, 1, 5, 6, 13 -> 'S';
+            case 2, 3 -> 'I';
+            case 12 -> 'D';
+            default -> 'L';
+          };
+      int points =
+          switch (i) {
+            case 0, 5 -> 64;
+            case 1 -> 36;
+            case 6 -> 16;
+            case 13 -> 65535;
+            default -> 0;
+          };
+      columns.add(new FinalColumn(label, type, points, i == 13));
+    }
+    return List.copyOf(columns);
+  }
+
+  private org.apache.ibatis.mapping.MappedStatement finalCommand;
+  private String finalTenant, finalTask;
+  private long finalGeneration;
+  private boolean finalConsumed;
+
+  private void finalBoundary() {
+    ops(query, 2); // version comparison and callback handoff
+    if (owner.metadataFinalVersion(query) != finalGeneration)
+      throw owner.poisonProof(new IllegalStateException("Write during history FINAL read"));
+  }
+
+  @Override
+  public void handleResult(org.apache.ibatis.session.ResultContext<?> ignored) {
+    throw new IllegalStateException("History FINAL must consume its actual ResultSet");
+  }
+
+  @Override
+  public void read(
+      java.sql.ResultSet source,
+      SessionQueryContext context,
+      org.apache.ibatis.mapping.MappedStatement command)
+      throws java.sql.SQLException {
+    try {
+      ops(query, 12); // identity, result scope, summary locals and cleanup handoff
+      finalBoundary();
+      if (context != query || command != finalCommand || finalConsumed) throw corrupt();
+      boolean nulls = command.getConfiguration().isCallSettersOnNulls();
+      long count = 0, bytes = 0, metadata = 0, metadataSize = 0, body = 0, reserved = 0, held = 0;
+      String content = null;
+      try (var result = query.result(command.getId())) {
+        while (true) {
+          finalBoundary();
+          boolean next = source.next();
+          finalBoundary();
+          if (!next) break;
+          ops(query, 4);
+          if (++count > 1) throw corrupt();
+          var columns = source.getMetaData();
+          finalBoundary();
+          int width = columns.getColumnCount();
+          finalBoundary();
+          if (width != FINAL_COLUMNS.size()) throw corrupt();
+          for (int i = 0; i < FINAL_COLUMNS.size(); i++) {
+            var column = FINAL_COLUMNS.get(i);
+            ops(query, 10L + column.label.length());
+            finalBoundary();
+            String label = columns.getColumnLabel(i + 1);
+            finalBoundary();
+            int type = columns.getColumnType(i + 1);
+            finalBoundary();
+            boolean valid =
+                i == 4
+                    ? type == java.sql.Types.INTEGER || type == java.sql.Types.BIGINT
+                    : switch (column.type) {
+                      case 'S' ->
+                          type == java.sql.Types.VARCHAR
+                              || type == java.sql.Types.CHAR
+                              || type == java.sql.Types.LONGVARCHAR;
+                      case 'I' -> type == java.sql.Types.INTEGER;
+                      case 'L' -> type == java.sql.Types.BIGINT;
+                      default -> type == java.sql.Types.TIMESTAMP;
+                    };
+            if (!column.label.equals(label) || !valid) throw corrupt();
+          }
+          result.row();
+          bytes = 32;
+          for (int i = 0; i < FINAL_COLUMNS.size(); i++) {
+            ops(query, 10); // column/getter/normalization, NULL and summary dispatch
+            var column = FINAL_COLUMNS.get(i);
+            finalBoundary();
+            Object value = source.getObject(i + 1);
+            finalBoundary();
+            if (value instanceof java.sql.Timestamp time) value = time.toLocalDateTime();
+            if (i < 2) {
+              String expected = i == 0 ? finalTenant : finalTask;
+              ops(query, 3L + expected.length());
+              if (!expected.equals(value)) throw corrupt();
+            }
+            long scalar;
+            if (i == 4) {
+              ops(query, 8);
+              if (!(value instanceof Integer || value instanceof Long)) throw corrupt();
+              scalar = ((Number) value).longValue();
+              if (scalar < 0 || scalar > 65535) throw corrupt();
+              result.metadataColumn(column, value);
+            } else if (i == 13 && value != null) {
+              scalar = finalText(value, 65535, 65535);
+              result.metadataColumn(column, value);
+            } else {
+              scalar = result.metadataColumnChecked(column, value);
+            }
+            finalBoundary();
+            if (value != null || nulls) bytes = Math.addExact(bytes, Math.addExact(8, scalar));
+            switch (i) {
+              case 6 -> content = (String) value;
+              case 8 -> body = (Long) value;
+              case 9 -> {
+                metadata = (Long) value;
+                metadataSize = scalar;
+              }
+              case 10 -> reserved = (Long) value;
+              case 11 -> held = (Long) value;
+              default -> {}
+            }
+          }
+        }
+        ops(query, 18);
+        summary =
+            new SessionMetadataAccounting.FinalTable(
+                count,
+                bytes,
+                count,
+                count == 0
+                    ? null
+                    : new SessionMetadataAccounting.HistoryScalars(
+                        metadata, metadataSize, body, reserved, held, content),
+                0,
+                null);
+      }
+      finalBoundary();
+      finalConsumed = true;
+    } catch (RuntimeException failure) {
+      throw owner.recordMetadataFailure(failure);
+    } catch (Error failure) {
+      owner.recordMetadataError(failure);
+      throw failure;
+    } catch (java.sql.SQLException failure) {
+      owner.recordMetadataFailure(
+          new org.springframework.dao.DataAccessResourceFailureException(
+              "History FINAL unavailable", failure));
+      throw failure;
+    }
+  }
 
   private SessionHistorySizedMetadataBatch(SessionQueryContext query, SessionQueryWork owner) {
     this.query = query;
@@ -119,7 +294,7 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
       // This synchronous factory has no user-supplied loader or reentrant callback.
       query.retainScratch(BOOTSTRAP, RETAINED_BYTES + EXTRA_BYTES + 64);
       bootstrap = true;
-      ops(query, 40); // batch allocation, fields, handoff and failure/close actions prepaid.
+      ops(query, 52); // batch fields, FINAL aliases and all failure/close clears prepaid.
       batch = new SessionHistorySizedMetadataBatch(query, owner);
       query.retainScratch(BOOTSTRAP, 64); // only the allocated receiver exists at this point.
       query.retainScratch(batch, RETAINED_BYTES + EXTRA_BYTES);
@@ -221,14 +396,30 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
               != org.apache.ibatis.mapping.ParameterMode.IN) throw corrupt();
     }
     ops(query, 3); // select handoff, row reference assignment, row-count guard.
+    if (finalMode) {
+      ops(query, 12); // captured command/identities/version and finally field cleanup
+      finalCommand = command;
+      finalTenant = tenant;
+      finalTask = task;
+      finalGeneration = owner.metadataFinalVersion(query);
+      try {
+        session.select(STATEMENT, args, this);
+        finalBoundary(); // provider close has completed before a summary can leave this read
+        if (!finalConsumed) throw corrupt();
+        connection(session);
+        return;
+      } finally {
+        finalCommand = null;
+        finalTenant = null;
+        finalTask = null;
+        finalGeneration = 0;
+        finalConsumed = false;
+      }
+    }
     rows = session.selectList(STATEMENT, args); // normal interceptor/Result metering remains.
     connection(session);
     ops(query, 4); // current owner, query identity, dispatch and row-count comparison.
     if (SessionQueryTransaction.current(query) != owner || rows.size() > 1) throw corrupt();
-    if (finalMode) {
-      measureRows(tenant, task);
-      return;
-    }
     for (var row : rows) {
       ops(query, 3L + tenant.length() + task.length());
       if (!tenant.equals(row.get("tenant_id")) || !task.equals(row.get("task_id"))) throw corrupt();
@@ -272,102 +463,6 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
           row.containsKey("cleanup_receipt") ? COLUMNS.size() : COLUMNS.size() - 1;
       if (row.size() != expectedColumns) throw corrupt();
     }
-  }
-
-  private void measureRows(String tenant, String task) {
-    ops(query, 9);
-    long bytes = 0, metadata = 0, metadataSize = 0, body = 0, reserved = 0, held = 0;
-    String content = null;
-    for (var row : rows) {
-      ops(query, 3L + tenant.length() + task.length());
-      if (!tenant.equals(row.get("tenant_id")) || !task.equals(row.get("task_id"))) throw corrupt();
-      bytes =
-          Math.addExact(
-              bytes,
-              io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
-                  .ROW_HEADER_BYTES);
-      int recognized = 0;
-      for (int i = 0; i < COLUMNS.size(); i++) {
-        ops(query, 5);
-        Object value = row.get(COLUMNS.get(i));
-        boolean present = value != null;
-        if (i == 13 && value == null) {
-          ops(query, 15L + 2L * "cleanup_receipt".length());
-          present = row.containsKey("cleanup_receipt");
-        }
-        if (present) recognized++;
-        long scalar;
-        if (i == 4) {
-          ops(query, 10);
-          if (!(value instanceof Integer || value instanceof Long)) throw corrupt();
-          scalar = ((Number) value).longValue();
-          if (scalar < 0 || scalar > 65535) throw corrupt();
-        } else {
-          if (!present && i == 13) continue;
-          scalar =
-              switch (i) {
-                case 0, 5 -> finalText(value, 64, 128);
-                case 1 -> finalText(value, 36, 72);
-                case 6 -> finalText(value, 16, 32);
-                case 2, 3 -> {
-                  if (!(value instanceof Integer number)) throw corrupt();
-                  yield numberBytes(number);
-                }
-                case 7, 8, 9, 10, 11 -> {
-                  if (!(value instanceof Long number)) throw corrupt();
-                  yield numberBytes(number);
-                }
-                case 12 -> {
-                  if (!(value instanceof java.time.LocalDateTime time)) throw corrupt();
-                  yield timeBytes(time, true);
-                }
-                case 13 -> {
-                  if (value == null) {
-                    ops(query, 1);
-                    yield 1;
-                  }
-                  yield finalText(value, 65535, 65535);
-                }
-                default -> throw corrupt();
-              };
-        }
-        ops(query, 3);
-        bytes =
-            Math.addExact(
-                bytes,
-                Math.addExact(
-                    io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
-                        .FIELD_HEADER_BYTES,
-                    scalar));
-        ops(query, 2); // private selector and primitive/string handoff, no second Map read.
-        switch (i) {
-          case 6 -> content = (String) value;
-          case 8 -> body = (Long) value;
-          case 9 -> {
-            metadata = (Long) value;
-            metadataSize = scalar;
-          }
-          case 10 -> reserved = (Long) value;
-          case 11 -> held = (Long) value;
-          default -> {}
-        }
-      }
-      ops(query, 3);
-      if (recognized != row.size()) throw corrupt();
-    }
-    ops(query, 18);
-    summary =
-        new SessionMetadataAccounting.FinalTable(
-            rows.size(),
-            bytes,
-            rows.size(),
-            rows.isEmpty()
-                ? null
-                : new SessionMetadataAccounting.HistoryScalars(
-                    metadata, metadataSize, body, reserved, held, content),
-            0,
-            null);
-    rows = null; // finalization's scalar owner has received it before the raw batch is refunded.
   }
 
   private void open() {
@@ -576,6 +671,11 @@ public final class SessionHistorySizedMetadataBatch implements SessionMetadataAc
     closed = true;
     rows = null;
     summary = null;
+    finalCommand = null;
+    finalTenant = null;
+    finalTask = null;
+    finalGeneration = 0;
+    finalConsumed = false;
     if (query != null) query.releaseScratch(this);
   }
 }

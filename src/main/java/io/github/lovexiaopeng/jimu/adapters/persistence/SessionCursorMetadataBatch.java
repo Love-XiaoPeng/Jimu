@@ -10,13 +10,6 @@ import org.apache.ibatis.cursor.Cursor;
 
 /** 原Mapper的流式metadata投影；facade只借当前行，前移/关闭后失效，不保留旧Map。 */
 final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batch {
-  private static final SessionMetadataProjection.Column ROW_BYTES =
-      new SessionMetadataProjection.Column("row_bytes", 'L', 0, false);
-  private static final SessionMetadataProjection.Column BASE_BYTES =
-      new SessionMetadataProjection.Column("base_bytes", 'L', 0, false);
-  private static final SessionMetadataProjection.Column TABLE_TAG =
-      new SessionMetadataProjection.Column("table_tag", 'L', 0, false);
-
   /** 仅metadataTaskSized的具名长度列可构造，不赋予普通Long长度语义。 */
   private record SqlUtf8Length(long bytes) {}
 
@@ -209,9 +202,18 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
       boolean nullsPresent,
       SessionMetadataAccounting.FinalRows consumer)
       throws java.sql.SQLException {
-    var projection = SessionMetadataProjection.forFinalTable(table);
+    query.operation(2); // TASK route and projection handoff
+    var projection =
+        table == SessionMetadataAccounting.Table.TASK
+            ? SessionMetadataProjection.taskSized()
+            : SessionMetadataProjection.forFinalTable(table);
     query.operation(16); // projection/metadata/results/locals and cleanup stores
-    if (projection == null || projection.taskSized) throw JdbcSessionRecords.corrupt();
+    if (projection == null) throw JdbcSessionRecords.corrupt();
+    query.operation(4); // owner lookup, version local, nullable dispatch and handoff
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    long version = owner == null ? 0 : owner.metadataFinalVersion(query);
     // Preserve the same conservative two-row workspace, before any scalar/getter allocation.
     // The original finalization owner already holds the summary/outer aliases.
     query.retainScratch(source, projection.retainedBytes);
@@ -221,18 +223,27 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
       while (true) {
         query.operation(2); // remaining/next; no row getter until the actual next succeeds
         query.remainingMillis();
-        if (!source.next()) break;
+        rowBoundary(query, owner, version);
+        boolean next = source.next();
+        rowBoundary(query, owner, version);
+        if (!next) break;
         query.operation(1); // first-row dispatch; an empty result grants no column proof
         if (rows == 0) {
           var metadata = source.getMetaData();
+          rowBoundary(query, owner, version);
           query.operation(3);
-          if (metadata.getColumnCount() != projection.columns.size())
-            throw JdbcSessionRecords.corrupt();
+          int count = metadata.getColumnCount();
+          rowBoundary(query, owner, version);
+          if (count != projection.columns.size()) throw JdbcSessionRecords.corrupt();
           for (int i = 0; i < projection.columns.size(); i++) {
             var column = projection.columns.get(i);
             query.operation(9L + column.name().length()); // ordinal/label/type and exact comparison
-            if (!column.name().equals(metadata.getColumnLabel(i + 1))
-                || !jdbcType(column.kind(), metadata.getColumnType(i + 1)))
+            rowBoundary(query, owner, version);
+            String label = metadata.getColumnLabel(i + 1);
+            rowBoundary(query, owner, version);
+            int type = metadata.getColumnType(i + 1);
+            rowBoundary(query, owner, version);
+            if (!column.name().equals(label) || !jdbcType(column.kind(), type))
               throw JdbcSessionRecords.corrupt();
           }
         }
@@ -250,9 +261,31 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
           query.operation(
               5); // descriptor/ordinal/getter/normalization; scalar dispatch belongs to Result
           var column = projection.columns.get(i);
+          rowBoundary(query, owner, version);
           Object value = source.getObject(i + 1);
+          rowBoundary(query, owner, version);
           if (value instanceof java.sql.Timestamp time) value = time.toLocalDateTime();
-          long scalar = result.metadataColumnChecked(column, value);
+          long scalar;
+          query.operation(3); // SQL-length kind alternatives, also on ordinary scalar columns
+          if (column.kind() == 'T' || column.kind() == 'M' || column.kind() == 'X') {
+            query.operation(12); // SQL-length type/NULL/bounds, dispatch and business scalar local
+            if (!projection.taskSized) throw JdbcSessionRecords.corrupt();
+            if (value == null) {
+              if (!column.nullable()) throw JdbcSessionRecords.corrupt();
+              scalar = 1;
+            } else {
+              if (!(value instanceof Long || value instanceof Integer))
+                throw JdbcSessionRecords.corrupt();
+              scalar = ((Number) value).longValue();
+              long maximum =
+                  column.kind() == 'T' ? 65535L : column.kind() == 'M' ? 16777215L : 4294967295L;
+              if (scalar < 0 || scalar > maximum) throw JdbcSessionRecords.corrupt();
+            }
+            // Transfer accounting still consumes the actual numeric SQL length (decimal bytes).
+            // Business metadata uses that length as the original body-field scalar size.
+            result.metadataColumn(column, value);
+          } else scalar = result.metadataColumnChecked(column, value);
+          rowBoundary(query, owner, version);
           query.operation(4); // NULL presence semantics and exact header/byte additions
           if (value != null || nullsPresent)
             rowBytes =
@@ -286,6 +319,21 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
       query.checkHealthy();
       query.operation(8); // synchronous consumer call/arguments; no per-table summary allocation
       consumer.accept(table, rows, bytes, 0, null, reservations, reservation);
+      rowBoundary(query, owner, version);
+    }
+    rowBoundary(query, owner, version);
+  }
+
+  private static void rowBoundary(
+      SessionQueryContext query,
+      io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork owner,
+      long version) {
+    query.operation(1); // owner branch; operation also checks the current query's first failure
+    if (owner != null) {
+      query.operation(3); // callback boundary, version read and comparison
+      if (owner.metadataFinalVersion(query) != version)
+        throw owner.poisonProof(
+            new IllegalStateException("Write during FINAL metadata scalar read"));
     }
   }
 
@@ -302,299 +350,9 @@ final class SessionCursorMetadataBatch implements SessionMetadataAccounting.Batc
               || type == java.sql.Types.BOOLEAN
               || type == java.sql.Types.TINYINT;
       case 'D' -> type == java.sql.Types.TIMESTAMP;
+      case 'T', 'M', 'X' -> type == java.sql.Types.INTEGER || type == java.sql.Types.BIGINT;
       default -> false;
     };
-  }
-
-  /** Ordinary metadata only consumes row size; its exact scalar expression stays in the SELECT. */
-  static void consumeRowResultSet(
-      SessionQueryContext query,
-      SessionMetadataAccounting.Table table,
-      java.sql.ResultSet source,
-      org.apache.ibatis.mapping.MappedStatement command,
-      boolean nullsPresent,
-      SessionMetadataAccounting.FinalRows consumer)
-      throws java.sql.SQLException {
-    var projection = SessionMetadataProjection.forFinalTable(table);
-    var owner =
-        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
-            .currentOwner();
-    query.operation(20);
-    if (projection == null || projection.taskSized || owner == null)
-      throw new IllegalStateException("Unowned metadata row result");
-    long version = owner.metadataFinalVersion(query);
-    query.retainScratch(source, projection.retainedBytes);
-    boolean reserved = table == SessionMetadataAccounting.Table.RESERVATION;
-    try (var result = query.result(command.getId())) {
-      long rows = 0, bytes = 0, reservations = 0;
-      SessionMetadataAccounting.HistoryReservation reservation = null;
-      while (true) {
-        rowBoundary(query, owner, version);
-        boolean next = source.next();
-        rowBoundary(query, owner, version);
-        if (!next) break;
-        if (rows == 0) {
-          query.operation(4);
-          var metadata = source.getMetaData();
-          rowBoundary(query, owner, version);
-          int count = metadata.getColumnCount();
-          rowBoundary(query, owner, version);
-          query.operation(1);
-          if (count != (reserved ? 5 : 1)) throw JdbcSessionRecords.corrupt();
-          for (int i = 1; i <= (reserved ? 5 : 1); i++) {
-            String label =
-                switch (i) {
-                  case 1 -> "row_bytes";
-                  case 2 -> "category";
-                  case 3 -> "amount";
-                  case 4 -> "actual";
-                  default -> "state";
-                };
-            query.operation(10L + label.length());
-            rowBoundary(query, owner, version);
-            String actualLabel = metadata.getColumnLabel(i);
-            rowBoundary(query, owner, version);
-            int actualType = metadata.getColumnType(i);
-            boolean valid =
-                label.equals(actualLabel) && jdbcType(i == 2 || i == 5 ? 'S' : 'L', actualType);
-            rowBoundary(query, owner, version);
-            if (!valid) throw JdbcSessionRecords.corrupt();
-          }
-        }
-        result.row();
-        rowBoundary(query, owner, version);
-        Object value = source.getObject(1);
-        rowBoundary(query, owner, version);
-        query.operation(8);
-        if (!(value instanceof Long count) || count < 32 || count > projection.maximumRowBytes)
-          throw JdbcSessionRecords.corrupt();
-        result.metadataColumnChecked(ROW_BYTES, value);
-        rowBoundary(query, owner, version);
-        rows = Math.addExact(rows, 1);
-        bytes = Math.addExact(bytes, count);
-        if (projection.maximumRows > 0 && rows > projection.maximumRows)
-          throw JdbcSessionRecords.corrupt();
-        if (reserved) {
-          rowBoundary(query, owner, version);
-          Object category = source.getObject(2);
-          rowBoundary(query, owner, version);
-          result.metadataColumnChecked(projection.columns.get(4), category);
-          rowBoundary(query, owner, version);
-          Object amount = source.getObject(3);
-          rowBoundary(query, owner, version);
-          result.metadataColumnChecked(projection.columns.get(5), amount);
-          rowBoundary(query, owner, version);
-          Object actual = source.getObject(4);
-          rowBoundary(query, owner, version);
-          result.metadataColumnChecked(projection.columns.get(6), actual);
-          rowBoundary(query, owner, version);
-          Object state = source.getObject(5);
-          rowBoundary(query, owner, version);
-          result.metadataColumnChecked(projection.columns.get(9), state);
-          rowBoundary(query, owner, version);
-          query.operation(12L + "SESSION_HISTORY_STORAGE".length());
-          if ("SESSION_HISTORY_STORAGE".equals(category)) {
-            reservations = Math.addExact(reservations, 1);
-            reservation =
-                new SessionMetadataAccounting.HistoryReservation(
-                    (Long) amount, (Long) actual, (String) state);
-          }
-        }
-      }
-      rowBoundary(query, owner, version);
-      query.operation(8);
-      consumer.accept(table, rows, bytes, 0, null, reservations, reservation);
-      rowBoundary(query, owner, version);
-    }
-    rowBoundary(query, owner, version);
-  }
-
-  /** Fifteen ordinary tables share one actual SQL Result; only row sizes cross this boundary. */
-  static void consumeOrdinaryResultSet(
-      SessionQueryContext query,
-      java.sql.ResultSet source,
-      org.apache.ibatis.mapping.MappedStatement command,
-      SessionMetadataAccounting.FinalRows consumer)
-      throws java.sql.SQLException {
-    var owner =
-        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
-            .currentOwner();
-    query.operation(96); // array allocation/zeroing, table copy, locals and finally cleanup
-    if (owner == null) throw new IllegalStateException("Unowned ordinary metadata result");
-    long version = owner.metadataFinalVersion(query);
-    query.retainScratch(source, 4096);
-    long[] counts = new long[18], sizes = new long[18];
-    var tables = SessionMetadataAccounting.Table.values();
-    boolean first = true;
-    try (var result = query.result(command.getId())) {
-      while (true) {
-        rowBoundary(query, owner, version);
-        boolean next = source.next();
-        rowBoundary(query, owner, version);
-        if (!next) break;
-        if (first) {
-          query.operation(6);
-          var metadata = source.getMetaData();
-          rowBoundary(query, owner, version);
-          int columns = metadata.getColumnCount();
-          rowBoundary(query, owner, version);
-          if (columns != 2) throw JdbcSessionRecords.corrupt();
-          for (int i = 1; i <= 2; i++) {
-            String label = i == 1 ? "table_tag" : "row_bytes";
-            query.operation(10L + label.length());
-            rowBoundary(query, owner, version);
-            String actual = metadata.getColumnLabel(i);
-            rowBoundary(query, owner, version);
-            int type = metadata.getColumnType(i);
-            rowBoundary(query, owner, version);
-            if (!label.equals(actual) || type != java.sql.Types.BIGINT)
-              throw JdbcSessionRecords.corrupt();
-          }
-          first = false;
-        }
-        result.row();
-        rowBoundary(query, owner, version);
-        Object tagValue = source.getObject(1);
-        rowBoundary(query, owner, version);
-        query.operation(10);
-        if (!(tagValue instanceof Long tag) || tag < 2 || tag > 17 || tag == 16)
-          throw JdbcSessionRecords.corrupt();
-        result.metadataColumnChecked(TABLE_TAG, tagValue);
-        rowBoundary(query, owner, version);
-        Object value = source.getObject(2);
-        rowBoundary(query, owner, version);
-        query.operation(12); // ordinal routing, bounds, exact count/size additions and handoff
-        int index = tag.intValue();
-        var projection = SessionMetadataProjection.forFinalTable(tables[index]);
-        if (!(value instanceof Long count) || count < 32 || count > projection.maximumRowBytes)
-          throw JdbcSessionRecords.corrupt();
-        result.metadataColumnChecked(ROW_BYTES, value);
-        rowBoundary(query, owner, version);
-        counts[index] = Math.addExact(counts[index], 1);
-        sizes[index] = Math.addExact(sizes[index], count);
-        if (projection.maximumRows > 0 && counts[index] > projection.maximumRows)
-          throw JdbcSessionRecords.corrupt();
-      }
-      for (int i = 2; i < 18; i++) {
-        query.operation(10); // fixed summary slots; no empty table grants a row/column proof
-        if (i == 16) continue;
-        rowBoundary(query, owner, version);
-        consumer.accept(tables[i], counts[i], sizes[i], 0, null, 0, null);
-        rowBoundary(query, owner, version);
-      }
-    } finally {
-      counts = null;
-      sizes = null;
-      tables = null;
-    }
-    rowBoundary(query, owner, version);
-  }
-
-  /** TASK still exposes and checks every original SQL UTF8 length independently. */
-  static void consumeTaskRowResultSet(
-      SessionQueryContext query,
-      java.sql.ResultSet source,
-      org.apache.ibatis.mapping.MappedStatement command,
-      boolean nullsPresent,
-      SessionMetadataAccounting.FinalRows consumer)
-      throws java.sql.SQLException {
-    var projection = SessionMetadataProjection.taskSized();
-    var owner =
-        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
-            .currentOwner();
-    query.operation(18);
-    if (owner == null) throw new IllegalStateException("Unowned TASK metadata row");
-    long version = owner.metadataFinalVersion(query);
-    query.retainScratch(source, projection.retainedBytes);
-    try (var result = query.result(command.getId())) {
-      long rows = 0, bytes = 0;
-      while (true) {
-        rowBoundary(query, owner, version);
-        boolean next = source.next();
-        rowBoundary(query, owner, version);
-        if (!next) break;
-        if (rows == 0) {
-          query.operation(5);
-          var metadata = source.getMetaData();
-          rowBoundary(query, owner, version);
-          int count = metadata.getColumnCount();
-          rowBoundary(query, owner, version);
-          query.operation(4);
-          if (count != 12) throw JdbcSessionRecords.corrupt();
-          rowBoundary(query, owner, version);
-          String baseLabel = metadata.getColumnLabel(1);
-          rowBoundary(query, owner, version);
-          boolean base =
-              "base_bytes".equals(baseLabel) && metadata.getColumnType(1) == java.sql.Types.BIGINT;
-          rowBoundary(query, owner, version);
-          if (!base) throw JdbcSessionRecords.corrupt();
-          int ordinal = 2;
-          for (var column : projection.sqlLengths) {
-            query.operation(2);
-            query.operation(9L + column.name().length());
-            rowBoundary(query, owner, version);
-            String label = metadata.getColumnLabel(ordinal);
-            rowBoundary(query, owner, version);
-            int type = metadata.getColumnType(ordinal++);
-            rowBoundary(query, owner, version);
-            if (!column.name().equals(label)
-                || (type != java.sql.Types.INTEGER && type != java.sql.Types.BIGINT))
-              throw JdbcSessionRecords.corrupt();
-          }
-        }
-        result.row();
-        rowBoundary(query, owner, version);
-        Object raw = source.getObject(1);
-        rowBoundary(query, owner, version);
-        query.operation(9);
-        if (!(raw instanceof Long base)
-            || base < 32
-            || base > projection.maximumBaseBytes
-            || ++rows > 1) throw JdbcSessionRecords.corrupt();
-        result.metadataColumnChecked(BASE_BYTES, raw);
-        rowBoundary(query, owner, version);
-        long rowBytes = base;
-        int ordinal = 2;
-        for (var column : projection.sqlLengths) {
-          query.operation(2);
-          rowBoundary(query, owner, version);
-          Object value = source.getObject(ordinal++);
-          rowBoundary(query, owner, version);
-          query.operation(12);
-          long scalar = 1;
-          if (value == null) {
-            if (!column.nullable()) throw JdbcSessionRecords.corrupt();
-          } else {
-            if (!(value instanceof Long || value instanceof Integer))
-              throw JdbcSessionRecords.corrupt();
-            scalar = ((Number) value).longValue();
-            long maximum =
-                column.kind() == 'T' ? 65535L : column.kind() == 'M' ? 16777215L : 4294967295L;
-            if (scalar < 0 || scalar > maximum) throw JdbcSessionRecords.corrupt();
-          }
-          result.metadataColumn(column, value);
-          rowBoundary(query, owner, version);
-          if (value != null || nullsPresent)
-            rowBytes = Math.addExact(rowBytes, Math.addExact(8, scalar));
-        }
-        query.operation(1);
-        bytes = Math.addExact(bytes, rowBytes);
-      }
-      rowBoundary(query, owner, version);
-      query.operation(4);
-      consumer.accept(SessionMetadataAccounting.Table.TASK, rows, bytes, 0, null, 0, null);
-      rowBoundary(query, owner, version);
-    }
-    rowBoundary(query, owner, version);
-  }
-
-  private static void rowBoundary(
-      SessionQueryContext query,
-      io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryWork owner,
-      long version) {
-    query.operation(2);
-    if (owner.metadataFinalVersion(query) != version)
-      throw owner.poisonProof(new IllegalStateException("Write during metadata row consumption"));
   }
 
   private void fail(Throwable failure) {
