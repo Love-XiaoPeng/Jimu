@@ -9,6 +9,14 @@ import org.apache.ibatis.annotations.Param;
 /** B2 固定参数持久操作；事务、锁调用顺序及行数判定由原用例持有。 */
 @Mapper
 public interface TaskAttemptMapper {
+  List<Map<String, Object>> lockProgressAttempt(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String task,
+      @Param("attemptId") String attempt,
+      @Param("worker") String worker,
+      @Param("fence") long fence);
+
   List<Map<String, Object>> selectWorkerTasks(
       @Param("query") SessionQueryContext query, @Param("worker") String worker);
 

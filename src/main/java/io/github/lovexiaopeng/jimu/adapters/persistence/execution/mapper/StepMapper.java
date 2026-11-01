@@ -44,6 +44,20 @@ public interface StepMapper {
       @Param("stepId") String stepId,
       @Param("taskId") String taskId);
 
+  /** v5模型准入仅消费身份、请求证明和派发计数。 */
+  List<Map<String, Object>> selectLineageModelAdmission(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("stepId") String stepId,
+      @Param("taskId") String taskId);
+
+  /** 响应结算只消费原派发身份和响应是否已存在，不读取丢弃的请求原文。 */
+  List<Map<String, Object>> selectLineageModelResponse(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("stepId") String stepId,
+      @Param("taskId") String taskId);
+
   int markModelRunning(
       @Param("query") SessionQueryContext query,
       @Param("dispatchId") String dispatchId,

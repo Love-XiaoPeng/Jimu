@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.budget.mapper.ReservationMapper">
+  <select id="lockProgressReservation" resultType="map">
+    SELECT tenant_id,id,task_id,dispatch_id,category,amount,actual,state FROM reservation
+    WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND id=#{reservationId} AND category=#{category} FOR UPDATE
+  </select>
   <select id="selectReservedSlot" resultType="map">
-    <![CDATA[SELECT id FROM reservation WHERE tenant_id=#{tenant} AND id=#{reservationId} AND state='RESERVED']]>
+    <![CDATA[SELECT tenant_id,id,task_id,dispatch_id,category FROM reservation WHERE tenant_id=#{tenant} AND id=#{reservationId} AND state='RESERVED']]>
   </select>
   <update id="releaseQueueSlot">
     <![CDATA[UPDATE reservation SET state='RELEASED' WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
@@ -23,7 +27,7 @@
     <![CDATA[SELECT amount FROM reservation WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
   </select>
   <select id="selectTokenAmount" resultType="map">
-    <![CDATA[SELECT amount FROM reservation WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
+    <![CDATA[SELECT tenant_id,id,task_id,dispatch_id,category,amount FROM reservation WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>
   </select>
   <update id="settleModelTokens">
     <![CDATA[UPDATE reservation SET state='SETTLED',actual=#{actual},usage_quality='KNOWN' WHERE tenant_id=#{tenant} AND id=#{reservationId}]]>

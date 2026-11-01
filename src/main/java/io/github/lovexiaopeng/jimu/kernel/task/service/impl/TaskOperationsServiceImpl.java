@@ -48,6 +48,10 @@ public final class TaskOperationsServiceImpl implements TaskOperationsService {
   }
 
   public Tasks.View view(Row row) {
+    return row.response(() -> visibleView(row));
+  }
+
+  private Tasks.View visibleView(Row row) {
     var task = row.snapshot();
     var artifacts = row.artifacts();
     String summary = task.summary();
@@ -57,6 +61,9 @@ public final class TaskOperationsServiceImpl implements TaskOperationsService {
       try {
         row.requireAccess();
       } catch (TaskFailure failure) {
+        if (!(failure.status() == 404
+                && failure.code().equals(SessionErrorCode.SESSION_SCOPE_UNAVAILABLE))
+            && failure.status() != 403) throw failure;
         summary = null;
         artifacts = List.of();
         code = SessionErrorCode.SESSION_SCOPE_UNAVAILABLE;

@@ -1,3 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryStepReadMapper"/>
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.ScopeQueryStepReadMapper">
+  <update id="bindPrepared">
+    UPDATE step SET session_upper_seq=#{upper},session_context_digest=#{contextDigest},session_binding_digest=#{bindingDigest}
+    WHERE tenant_id=#{tenant} AND task_id=#{taskId} AND id=#{stepId} AND state='PREPARED'
+  </update>
+</mapper>

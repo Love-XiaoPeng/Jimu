@@ -1,0 +1,24 @@
+{
+  "scope": "Exact statement dispatch in sqlUtf8LengthResult only; not raw reader/digest/schema or authority reuse",
+  "history": {
+    "statement": "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.historyBindingSize",
+    "deleted": "failed event statement equality followed by branch; history equality still executes",
+    "oldStatementDispatch": 229,
+    "newStatementDispatch": 115,
+    "delta": 114
+  },
+  "event": {
+    "statement": "io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionHistoryRetentionMapper.eventHistoryBindingSize",
+    "added": "first history name equality; existing event equality follows",
+    "oldStatementDispatch": 120,
+    "newStatementDispatch": 239,
+    "increase": 119
+  },
+  "unchanged": [
+    "StackWalker issuer actual Class/name/loader validation, scratch512 and clear before release",
+    "sqlUtf8Lengths enabled + no additional meter, poisoning, source binding, ResultSet read increment, capability owner/consumption",
+    "both exact names checked for unsupported source; invalid names remain refused",
+    "no new allocation/helper/lookup/cache/owner; original3 and second2+length prepay before comparisons"
+  ],
+  "evidence": "f796abc second submit source SessionQueryContext.sqlUtf8LengthResult rejects114 at65489, both business batches saved first. New ordering must be measured in a new complete batch, no algebraic pass claim."
+}

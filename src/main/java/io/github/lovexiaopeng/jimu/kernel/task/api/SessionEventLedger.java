@@ -23,7 +23,24 @@ public interface SessionEventLedger {
   record SearchRequest(
       long deadlineNanos,
       java.util.function.Consumer<byte[]> completed,
-      java.util.function.Consumer<RuntimeException> failed) {}
+      java.util.function.Consumer<RuntimeException> failed,
+      boolean deadlineThroughResponse,
+      SessionTaskResponse inputOwner) {
+    public SearchRequest(
+        long deadlineNanos,
+        java.util.function.Consumer<byte[]> completed,
+        java.util.function.Consumer<RuntimeException> failed,
+        boolean deadlineThroughResponse) {
+      this(deadlineNanos, completed, failed, deadlineThroughResponse, null);
+    }
+
+    public SearchRequest(
+        long deadlineNanos,
+        java.util.function.Consumer<byte[]> completed,
+        java.util.function.Consumer<RuntimeException> failed) {
+      this(deadlineNanos, completed, failed, false, null);
+    }
+  }
 
   void authorizeSessionSearch(Tasks.Identity identity, String taskId, long deadlineNanos);
 

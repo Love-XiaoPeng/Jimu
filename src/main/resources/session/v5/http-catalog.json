@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "authentication": "existing Authenticator; host Identity only",
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/session-search/tasks",
+      "input": "admission-input.schema.json",
+      "output": "admission-output.schema.json",
+      "success": 202,
+      "idempotency": "existing tenant/actor/Idempotency-Key; includes canonical target list"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{callerId}/session-history/session-search",
+      "input": "session_search-0.1.0/input.schema.json",
+      "output": "session_search-0.1.0/output.schema.json",
+      "success": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/tasks/{callerId}/session-search-scope",
+      "input": null,
+      "output": null,
+      "success": 204,
+      "idempotency": "irreversible owner revocation, repeat returns 204"
+    }
+  ],
+  "errors": {
+    "400": [
+      "TOOL_INPUT_INVALID",
+      "SESSION_SEARCH_FILTER_UNSUPPORTED"
+    ],
+    "401": "UNAUTHENTICATED",
+    "403": "SESSION_SEARCH_DISABLED",
+    "404": "SESSION_SCOPE_UNAVAILABLE",
+    "409": [
+      "IDEMPOTENCY_CONFLICT",
+      "SESSION_HISTORY_CORRUPT"
+    ],
+    "429": "SESSION_HISTORY_LIMIT",
+    "503": "SESSION_QUERY_UNAVAILABLE",
+    "504": "SESSION_QUERY_TIMEOUT"
+  },
+  "details": "implementation-contract.md sections 2, 5"
+}

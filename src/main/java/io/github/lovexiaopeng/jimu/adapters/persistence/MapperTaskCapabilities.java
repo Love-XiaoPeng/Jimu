@@ -98,6 +98,12 @@ final class MapperTaskCapabilities implements TaskCapabilities {
     return prior.getAsBoolean();
   }
 
+  public boolean lineageAvailable() {
+    return new io.github.lovexiaopeng.jimu.kernel.session.service.impl
+            .SessionAvailabilityServiceImpl()
+        .lineage(new MapperSessionAvailability(ledger, identity));
+  }
+
   public boolean searchAvailable() {
     return ledger.searchAvailable.getAsBoolean();
   }

@@ -50,8 +50,9 @@ public final class SessionScopeQueryServiceImpl implements SessionScopeQueryServ
   private Outcome execute(Lease lease, String step, Call call, String version, String digest) {
     var task = records.lock(lease);
     if (!task.scopeTask()
-        || !List.of(ToolCapability.SESSION_EVENT_READ, ToolCapability.SESSION_SEARCH)
-            .contains(call.tool()))
+        || !(List.of(ToolCapability.SESSION_EVENT_READ, ToolCapability.SESSION_SEARCH)
+                .contains(call.tool())
+            || task.lineageTask() && ToolCapability.SESSION_TRACE.equals(call.tool())))
       throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
     var invocation = task.originalSlot(step, call, version, digest);
     var st = task.validatedStep(step);
@@ -65,10 +66,11 @@ public final class SessionScopeQueryServiceImpl implements SessionScopeQueryServ
             binding.normalized(), binding::normalizedDigest, binding::normalizedBytes),
         records);
     boolean read = call.tool().equals(ToolCapability.SESSION_EVENT_READ);
+    boolean lineage = call.tool().equals(ToolCapability.SESSION_TRACE);
     if (binding.version() != 1
         || !lease.taskId().equals(binding.caller())
         || !step.equals(binding.step())
-        || !(read ? SessionScopeOperation.READ : SessionScopeOperation.SEARCH)
+        || !(read ? SessionScopeOperation.READ : lineage ? "TRACE" : SessionScopeOperation.SEARCH)
             .equals(binding.operation())
         || !st.binding().equals(binding.binding())
         || !records.hash(call.input()).equals(binding.input())
@@ -78,6 +80,8 @@ public final class SessionScopeQueryServiceImpl implements SessionScopeQueryServ
         || !cut.context().equals(binding.context())
         || !records.hash(cut.snapshot()).equals(cut.context())
         || !SessionContentState.PRESENT.equals(binding.content())) throw corrupt();
+    if (lineage && (!task.lineageTask() || !task.graphDigest().equals(binding.graph())))
+      throw corrupt();
     if (!InvocationState.PENDING.equals(invocation.state())) {
       boolean success = SessionOutcome.SUCCEEDED.equals(binding.outcome());
       if (!invocation.state().equals(binding.outcome())
@@ -98,7 +102,10 @@ public final class SessionScopeQueryServiceImpl implements SessionScopeQueryServ
             || !invocation.outputDigest().equals(binding.outputDigest())
             || records.bytes(output) != binding.outputBytes()) throw corrupt();
         if (read) task.validateReadOutput(output);
-        else task.validateSearchOutput(output);
+        else if (lineage) {
+          task.validateLineageOutput(output);
+          task.verifyLineageCommit();
+        } else task.validateSearchOutput(output);
       } else if (invocation.output() != null
           || invocation.outputDigest() != null
           || binding.outputBytes() != 0) throw corrupt();
@@ -117,7 +124,7 @@ public final class SessionScopeQueryServiceImpl implements SessionScopeQueryServ
     Result found = null;
     TaskFailure failure = null;
     try {
-      found = read ? task.read(normalized) : task.search(call.input());
+      found = read ? task.read(normalized) : lineage ? task.trace() : task.search(call.input());
     } catch (TaskFailure rejected) {
       if (!rejected.code().equals(SessionErrorCode.SESSION_EVENT_NOT_FOUND)) throw rejected;
       failure = rejected;
@@ -137,9 +144,15 @@ public final class SessionScopeQueryServiceImpl implements SessionScopeQueryServ
     task.settle(invocation.id());
     task.finishInvocation(
         invocation.id(), outcome, output, output == null ? null : records.hash(output));
-    task.event("intent:" + invocation.id(), "tool.dispatched", null);
-    task.event(
-        "result:" + invocation.id(), failure == null ? "tool.completed" : "tool.failed", code);
+    if (lineage) {
+      task.eventBeforeFinalAccount("intent:" + invocation.id(), "tool.dispatched", null);
+      task.eventBeforeFinalAccount(
+          "result:" + invocation.id(), failure == null ? "tool.completed" : "tool.failed", code);
+    } else {
+      task.event("intent:" + invocation.id(), "tool.dispatched", null);
+      task.event(
+          "result:" + invocation.id(), failure == null ? "tool.completed" : "tool.failed", code);
+    }
     long receipt = task.receiptSequence(invocation.id());
     Long nativeSeq = read ? task.nextNativeSequence() : null;
     Integer rows = found == null ? null : read ? task.refCount(refs) : found.rows();
@@ -159,7 +172,8 @@ public final class SessionScopeQueryServiceImpl implements SessionScopeQueryServ
             output == null ? null : records.hash(output),
             output == null ? 0 : records.bytes(output),
             receipt,
-            nativeSeq));
+            nativeSeq,
+            found == null ? null : found.lineage()));
     if (read) task.appendRead(step, invocation);
     finish(task);
     return new Outcome(output, failure);

@@ -6,6 +6,26 @@ import java.util.List;
 public interface SessionHistoryRetentions {
   record Candidate(String tenant, String taskId) {}
 
+  interface CandidateBatch extends Iterable<Candidate>, AutoCloseable {
+    @Override
+    void close();
+  }
+
+  default CandidateBatch candidateBatch() {
+    return new CandidateBatch() {
+      private List<Candidate> values = candidates();
+
+      public java.util.Iterator<Candidate> iterator() {
+        if (values == null) throw new IllegalStateException("Closed retention candidates");
+        return values.iterator();
+      }
+
+      public void close() {
+        values = null;
+      }
+    };
+  }
+
   record History(
       long recordVersion,
       long version,
@@ -29,12 +49,20 @@ public interface SessionHistoryRetentions {
 
   record MetadataRow(List<String> scalars) {}
 
+  /** 已purge同一锁内快照，扣除metadata/held/actual三个十进制值，state已影子置SETTLED。 */
+  record PurgeMetadata(long fixedBytes) {}
+
   interface LockedHistory {
     History history();
 
     int expectedVersion();
 
     String expectedBinding();
+
+    /** Validate actual storage bytes without replacing the SQL source. */
+    default boolean matchesSnapshot(String actual) {
+      return expectedBinding().equals(actual);
+    }
 
     boolean scoped();
 
@@ -62,6 +90,10 @@ public interface SessionHistoryRetentions {
 
     void purgeScope();
 
+    default void purgeLineage() {
+      throw new UnsupportedOperationException("v5 retention required");
+    }
+
     void purgePublicEvents();
 
     void purgeSearch();
@@ -83,6 +115,17 @@ public interface SessionHistoryRetentions {
     void event();
 
     List<MetadataRow> metadata();
+
+    default PurgeMetadata purgeMetadata() {
+      return null;
+    }
+
+    default void operation(long count) {}
+
+    /** 已按原32/8/UTF8公式消费并释放的lineage固定投影；其余表仍由metadata提供。 */
+    default long lineageMetadataBytes() {
+      return 0;
+    }
 
     void settleHistory(long bytes);
 

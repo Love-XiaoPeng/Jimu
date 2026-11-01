@@ -23,19 +23,28 @@ import java.util.List;
 /** ADR-0014 byte-pinned v4 contracts and strict untrusted input. */
 public final class PriorSessionContracts {
   public static final String NAME = ToolCapability.SESSION_SEARCH;
-  private final SessionContracts history = new SessionContracts(4);
+  private final SessionContracts history;
+  private final int version;
   private final SchemaContract input, output, admission, authority, refs;
   private final ToolDescriptor descriptor;
   private final String schema, description;
 
   public PriorSessionContracts() {
+    this(4);
+  }
+
+  public PriorSessionContracts(int version) {
+    this.version = version;
+    history = new SessionContracts(version);
     try {
       var catalog =
           history.json(
-              new String(SessionContracts.resource("v4/catalog-v4.json"), StandardCharsets.UTF_8),
+              new String(
+                  SessionContracts.resource("v" + version + "/catalog-v" + version + ".json"),
+                  StandardCharsets.UTF_8),
               8192);
       var entry = catalog.path("tools").get(1);
-      String root = "v4/session_search-0.1.0/";
+      String root = "v" + version + "/session_search-" + (version == 4 ? "0.1.0" : "0.2.0") + "/";
       byte[] in =
           SessionContracts.checked(root + "input.schema.json", entry.path("inputSha256").asText());
       byte[] out =
@@ -56,7 +65,7 @@ public final class PriorSessionContracts {
       descriptor =
           new ToolDescriptor(
               "jimu.session.search",
-              "0.1.0",
+              version == 4 ? "0.1.0" : "0.2.0",
               NAME,
               "session/" + root + "input.schema.json",
               "session/" + root + "output.schema.json",
@@ -67,9 +76,10 @@ public final class PriorSessionContracts {
     }
   }
 
-  private static SchemaContract contract(JsonNode catalog, String name) throws IOException {
+  private SchemaContract contract(JsonNode catalog, String name) throws IOException {
     return new SchemaContract(
-        SessionContracts.checked("v4/" + name, catalog.path("schemas").path(name).asText()));
+        SessionContracts.checked(
+            "v" + version + "/" + name, catalog.path("schemas").path(name).asText()));
   }
 
   public ToolDescriptor descriptor() {
@@ -202,7 +212,20 @@ public final class PriorSessionContracts {
   }
 
   public void authority(String raw) {
-    validate(authority, raw, PriorSessionPolicyV4.AUTHORITY_BYTES);
+    authorityValue(raw);
+  }
+
+  /** schema验证和typed转换共享同一个解析树。 */
+  public JsonNode authorityValue(String raw) {
+    if (SessionContracts.bytes(raw) > PriorSessionPolicyV4.AUTHORITY_BYTES)
+      throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
+    try {
+      var value = history.json(raw, PriorSessionPolicyV4.AUTHORITY_BYTES);
+      authority.validate(value);
+      return value;
+    } catch (IllegalArgumentException | TaskFailure failure) {
+      throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
+    }
   }
 
   public void refs(String raw) {

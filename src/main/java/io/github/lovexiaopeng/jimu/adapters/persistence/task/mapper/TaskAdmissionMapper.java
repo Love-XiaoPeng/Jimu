@@ -19,6 +19,16 @@ public interface TaskAdmissionMapper {
       @Param("tenant") String tenant,
       @Param("plugin") String plugin);
 
+  /** v5 identity/epoch consumes no installation snapshot or pin columns. */
+  List<Map<String, Object>> lockInstallationEpoch(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("plugin") String plugin);
+
+  /** Same tenant budget lock, containing all fields consumed by Admission.room(). */
+  List<Map<String, Object>> lockAdmissionRoom(
+      @Param("query") SessionQueryContext query, @Param("tenant") String tenant);
+
   List<Map<String, Object>> selectScopeTargets(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,
@@ -29,6 +39,52 @@ public interface TaskAdmissionMapper {
       @Param("tenant") String tenant,
       @Param("actor") String actor,
       @Param("key") String key);
+
+  /** 仅已持锁v5受理的event后View；动态字段重新读取，授权仍消费原tools/MCP列。 */
+  List<Map<String, Object>> lockAcceptedView(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  /** 同锁实际文本长度，先预留driver/Map及尾部借用owner，再物化原文。 */
+  List<Map<String, Object>> lockAcceptedSizes(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  /** accepted-user及同次scope核权的十二列闭包；不替代事件后的View/MCP新读。 */
+  List<Map<String, Object>> lockAcceptedEvent(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  /** accepted-event和scope实际文本长度；先保留持续到事务尾部的owner再物化。 */
+  List<Map<String, Object>> lockAcceptedEventSizes(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  /** 第二次createLineage核权专用；完整Caller和末端tools/pin，不替代View/MCP核权。 */
+  List<Map<String, Object>> lockLineageScope(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  List<Map<String, Object>> lockLineageScopeSizes(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  /** Session initialization consumes only its goal/request and the complete current Caller. */
+  List<Map<String, Object>> lockSessionCreation(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
+
+  List<Map<String, Object>> lockSessionCreationSizes(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("task") String task);
 
   long maxPacket(@Param("query") SessionQueryContext query);
 

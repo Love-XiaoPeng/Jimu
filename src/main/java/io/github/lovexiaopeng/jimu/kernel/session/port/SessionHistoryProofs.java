@@ -18,6 +18,15 @@ public interface SessionHistoryProofs {
     String binding();
 
     String hash(String raw);
+
+    /** Validate the real SQL snapshot representation; does not grant freshness or authority. */
+    default boolean matchesSnapshot(String actual) {
+      return matches(binding(), actual);
+    }
+
+    default boolean matches(String expected, String actual) {
+      return expected.equals(actual);
+    }
   }
 
   record StepRow(
@@ -38,6 +47,10 @@ public interface SessionHistoryProofs {
 
     String hash(String raw);
 
+    default String requestHash(String raw) {
+      return hash(raw);
+    }
+
     int checkpointVersion(String raw);
 
     boolean messagesEmpty();
@@ -47,6 +60,12 @@ public interface SessionHistoryProofs {
     void validateContext(String raw);
 
     Context context(String raw);
+
+    /** Validate and extract this same context without requiring a second decode. */
+    default Context checkedContext(String raw) {
+      validateContext(raw);
+      return context(raw);
+    }
 
     String lastRole();
 

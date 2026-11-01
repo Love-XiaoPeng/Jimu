@@ -1,0 +1,10 @@
+id,where,when,paid,work,owner_and_failure
+S01,SessionHistorySizedMetadataBatch.read,after all original14 values and types validate,38,optional key lookup 8+2*cleanup_receipt.length; length15; full uncached hash/equality bound used by original key dispatch,existing row borrowed; no new field or reference holder
+S02,SessionHistorySizedMetadataBatch.read,same prepayment before shape reads,7,presence selector branch1; selected fixed size getter1; subtraction worst-case1; int local store1; row size getter1; inequality comparison1; failure/normal branch handoff1,no short-circuit refund; int local dies at method return
+S03,SessionHistorySizedMetadataBatch.read,every validated nonempty row,45,15+2*15; optional presence plus exact Map size; removes separate keySet and per-key hash/switch traversal,refusal before containsKey and before returning the batch
+S04,SessionHistorySizedMetadataBatch.read,original14-key row before vs candidate,482->45,original each key2+8+2L; removes437 actually computed work,all14 original get/type/bounds/length-marker checks remain
+S05,SessionHistorySizedMetadataBatch.read,original13-key row without optional cleanup before vs candidate,442->45,original each key2+8+2L; removes397,absence remains distinct from explicit null in values iteration
+S06,SessionHistorySizedMetadataBatch.load,allocation and failure paths unchanged,267596+8192+64 bootstrap then267596+8192 batch,existing object/marker/Map/cursor accounting remains; no scratch discount,close drops owned rows reference before refund
+S07,new local data,no additional allocation,0 heap bytes,only primitive expectedColumns; static column list and String and existing row borrowed,no new token registry Array Map or retained alias
+S08,guard threshold,new check only,N45,free44 rejects before lookup;45/46 complete guard; force rollback after success in test,no partial receiver publication; same recorded refusal; live65536
+S09,full load threshold,same form scripted JDBC fixture,N1159,free1158 rejects;1159/1160 reaches return then test forces rollback,1read406bytes; no MySQL or whole second-admission claim

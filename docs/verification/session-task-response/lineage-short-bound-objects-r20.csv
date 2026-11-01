@@ -1,0 +1,9 @@
+object_or_alias,new_heap_allocation,owner,held_before,release_or_limit
+batch receiver,none newly introduced,current query existing batch,original constructor reservation3440,rows=null then releaseScratch
+rows and row maps,none newly introduced,current batch,original pre-supplier3440 retained,same close and borrowed alias limitations
+String values,none newly introduced,current batch rows,existing schema bounded representation,no content or permission cache
+helper value/text reference,none,current synchronous batch call,borrowed from retained row,method return; no collection capture
+units and points,none,primitive stack locals,current synchronous call,no heap owner needed
+helper method/frame,none new explicit heap allocation,original synchronous call,existing implementation object model,not complete JVM stack/heap/native A12
+iterators/facades/Set.copyOf,unchanged,existing object model,original3440 incl1024 facade/table/list allowance,no new full-A12 claim
+invalid/threshold/loader exit,none newly introduced,original batch,other scratch owners kept,original close clears rows and releases exactly batch

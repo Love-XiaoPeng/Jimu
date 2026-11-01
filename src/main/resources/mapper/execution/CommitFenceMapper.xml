@@ -2,4 +2,42 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.execution.mapper.CommitFenceMapper">
   <update id="commitFence">UPDATE task SET updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{task} AND current_attempt_id=#{attempt} AND worker_id=#{worker} AND fence=#{fence} AND lease_until&gt;CURRENT_TIMESTAMP(6) AND deadline&gt;CURRENT_TIMESTAMP(6) AND cancel_requested_at IS NULL AND state='RUNNING'</update>
+  <update id="commitRetainedFence">UPDATE task SET updated_at=CURRENT_TIMESTAMP(6) WHERE tenant_id=#{tenant} AND id=#{task} AND current_attempt_id=#{attempt} AND worker_id=#{worker} AND fence=#{fence} AND lease_until&gt;CURRENT_TIMESTAMP(6) AND deadline&gt;CURRENT_TIMESTAMP(6) AND CURRENT_TIMESTAMP(6)&lt;#{retain} AND cancel_requested_at IS NULL AND state='RUNNING'</update>
+  <update id="admissionFence"><![CDATA[
+    UPDATE task SET updated_at=CURRENT_TIMESTAMP(6)
+    WHERE tenant_id=#{tenant} AND id=#{task} AND owner_actor_id=#{owner} AND request_digest=#{digest}
+      AND state=#{state} AND CURRENT_TIMESTAMP(6)<#{retain}
+      AND (#{fresh}=FALSE OR (state='QUEUED' AND current_attempt_id IS NULL AND worker_id IS NULL
+        AND cancel_requested_at IS NULL AND deadline>CURRENT_TIMESTAMP(6)))
+  ]]></update>
+  <update id="terminalRetainedFence"><![CDATA[
+    UPDATE task t JOIN task_attempt a ON a.tenant_id=t.tenant_id AND a.task_id=t.id AND a.id=t.current_attempt_id
+    SET t.updated_at=CURRENT_TIMESTAMP(6)
+    WHERE t.tenant_id=#{tenant} AND t.id=#{task} AND t.current_attempt_id=#{attempt}
+      AND t.worker_id=#{worker} AND t.fence=#{fence} AND a.worker_id=#{worker} AND a.fence=#{fence}
+      AND t.state=#{state} AND a.state=#{attemptState} AND a.ended_at IS NOT NULL
+      AND t.lease_until>CURRENT_TIMESTAMP(6) AND t.deadline>CURRENT_TIMESTAMP(6)
+      AND t.cancel_requested_at IS NULL AND CURRENT_TIMESTAMP(6)<#{retain}
+  ]]></update>
+  <update id="settlementFence"><![CDATA[
+    UPDATE task t JOIN task_attempt a ON a.tenant_id=t.tenant_id AND a.task_id=t.id AND a.id=t.current_attempt_id
+    JOIN model_dispatch d ON d.tenant_id=t.tenant_id AND d.task_id=t.id AND d.id=#{dispatch}
+    JOIN step s ON s.tenant_id=d.tenant_id AND s.id=d.step_id AND s.task_id=t.id
+      AND s.dispatch_id=d.id AND s.response_snapshot IS NULL
+    SET t.updated_at=CURRENT_TIMESTAMP(6)
+    WHERE t.tenant_id=#{tenant} AND t.id=#{task} AND t.current_attempt_id=#{attempt}
+      AND t.worker_id=#{worker} AND t.fence=#{fence} AND t.lease_until>CURRENT_TIMESTAMP(6)
+      AND a.worker_id=#{worker} AND a.fence=#{fence} AND a.state='ACTIVE' AND a.ended_at IS NULL
+      AND t.state IN ('RUNNING','CANCEL_REQUESTED')
+  ]]></update>
+  <update id="stopSettlementFence"><![CDATA[
+    UPDATE task t JOIN task_attempt a ON a.tenant_id=t.tenant_id AND a.task_id=t.id AND a.id=t.current_attempt_id
+    SET t.updated_at=CURRENT_TIMESTAMP(6)
+    WHERE t.tenant_id=#{tenant} AND t.id=#{task} AND t.current_attempt_id=#{attempt}
+      AND t.worker_id=#{worker} AND t.fence=#{fence} AND t.lease_until>CURRENT_TIMESTAMP(6)
+      AND a.worker_id=#{worker} AND a.fence=#{fence}
+      AND ((a.state='STOPPED' AND a.ended_at IS NOT NULL
+          AND t.state=#{state} AND t.state IN ('FAILED','CANCELLED','NEEDS_RECONCILIATION'))
+        OR (#{state}='CANCELLED' AND t.state='CANCEL_REQUESTED' AND a.state='ACTIVE' AND a.ended_at IS NULL))
+  ]]></update>
 </mapper>

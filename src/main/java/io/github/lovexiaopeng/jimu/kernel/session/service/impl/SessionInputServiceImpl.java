@@ -11,7 +11,11 @@ import io.github.lovexiaopeng.jimu.plugin.api.ToolErrorCode;
 public final class SessionInputServiceImpl implements SessionInputService {
   public void validate(SessionInputEligibility p) {
     if (p.scopeTask()) {
-      if (p.tool().equals(ToolCapability.SESSION_SEARCH)) {
+      if (p.lineageTask() && p.tool().equals(ToolCapability.SESSION_TRACE)) {
+        String target = p.lineageTarget();
+        if (target != null && !target.equals(p.callerId()) && !p.requireScope().contains(target))
+          throw unavailable();
+      } else if (p.tool().equals(ToolCapability.SESSION_SEARCH)) {
         var targets = p.scopeSearchTargets();
         var scope = p.requireScope();
         for (String id : targets) if (!scope.contains(id)) throw unavailable();

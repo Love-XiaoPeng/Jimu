@@ -50,7 +50,7 @@ final class MapperSessionScopeReadRefs implements SessionScopeReadRefs {
   }
 
   public void validateRefs(String raw) {
-    records.scopes.contracts.refs(raw);
+    records.scopes.contracts(task).refs(raw);
   }
 
   public int bytes(String raw) {

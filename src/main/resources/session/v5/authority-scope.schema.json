@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session-search:2:authority",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "caller_session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "owner_actor_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "caller_binding_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "caller_tools_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authority_policy": {
+      "const": "explicit-terminal-closed-v5"
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 32,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|[+-][0-9]{2}:[0-9]{2})$",
+      "description": "Host additionally validates Gregorian dates, offsets, inclusive UTC microsecond ranges and ordering."
+    },
+    "retain_until": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 32,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|[+-][0-9]{2}:[0-9]{2})$",
+      "description": "Host additionally validates Gregorian dates, offsets, inclusive UTC microsecond ranges and ordering."
+    },
+    "targets": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "history_version": {
+            "const": 5
+          },
+          "binding_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "pins_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "upper_seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 127
+          },
+          "created_at": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 32,
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|[+-][0-9]{2}:[0-9]{2})$",
+            "description": "Host additionally validates Gregorian dates, offsets, inclusive UTC microsecond ranges and ordering."
+          },
+          "retain_until": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 32,
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|[+-][0-9]{2}:[0-9]{2})$",
+            "description": "Host additionally validates Gregorian dates, offsets, inclusive UTC microsecond ranges and ordering."
+          }
+        },
+        "required": [
+          "session_id",
+          "history_version",
+          "binding_sha256",
+          "pins_sha256",
+          "upper_seq",
+          "created_at",
+          "retain_until"
+        ]
+      }
+    }
+  },
+  "required": [
+    "version",
+    "caller_session_id",
+    "tenant_id",
+    "owner_actor_id",
+    "caller_binding_sha256",
+    "caller_tools_sha256",
+    "authority_policy",
+    "created_at",
+    "retain_until",
+    "targets"
+  ]
+}

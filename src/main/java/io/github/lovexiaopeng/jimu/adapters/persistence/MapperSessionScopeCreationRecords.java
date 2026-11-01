@@ -9,6 +9,16 @@ import java.util.Map;
 
 /** Retains map identity and member access timing on the admission connection. */
 final class MapperSessionScopeCreationRecords implements SessionScopeCreationRecords {
+  @Override
+  public int utf8Bytes(String raw) {
+    return JdbcSessionRecords.scopeUtf8Bytes(sessions.appendQuery(), raw);
+  }
+
+  @Override
+  public <T> T withRaw(String raw, java.util.function.BiFunction<Integer, String, T> use) {
+    return JdbcSessionRecords.withScopeRaw(sessions.appendQuery(), raw, use);
+  }
+
   private final JdbcLedger ledger;
   private final JdbcSessionScopes scopes;
   private final JdbcSessionRecords sessions;
@@ -21,14 +31,14 @@ final class MapperSessionScopeCreationRecords implements SessionScopeCreationRec
   }
 
   static Row wrap(Map<String, Object> row) {
-    return new View(row);
+    return new View(row, null);
   }
 
   private static Map<String, Object> unwrap(Row row) {
     return ((View) row).row;
   }
 
-  private record View(Map<String, Object> row) implements Row {
+  private record View(Map<String, Object> row, Map<String, Object> history) implements Row {
     public String tenant() {
       return (String) row.get("tenant_id");
     }
@@ -63,11 +73,36 @@ final class MapperSessionScopeCreationRecords implements SessionScopeCreationRec
   }
 
   public Row source(Row caller, String id) {
-    return wrap(scopes.source(unwrap(caller), id, true));
+    var c = MapperSessionScopeRecords.caller(unwrap(caller));
+    var fact =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryDiagnostics.measure(
+            ledger.queryContext(),
+            "scope.current",
+            () -> scopes.eligibility.sourceFacts(c, id, true));
+    var history = new java.util.HashMap<String, Object>();
+    history.put("retain_until", fact.history().retain());
+    history.put("binding_digest", fact.history().binding());
+    history.put("next_seq", fact.history().nextSeq());
+    return new View(MapperSessionScopeRecords.row(fact.caller()), history);
   }
 
   public Row history(Row source) {
-    return wrap(sessions.history(unwrap(source), true));
+    return wrap(
+        ((View) source).history() != null
+            ? ((View) source).history()
+            : sessions.history(unwrap(source), true));
+  }
+
+  public int version(Row c) {
+    return sessions.version(unwrap(c));
+  }
+
+  public String binding(Row c) {
+    return sessions.contract(unwrap(c)).binding();
+  }
+
+  public void validateAuthority(Row c, String raw) {
+    scopes.contracts(unwrap(c)).authority(raw);
   }
 
   public String binding() {
@@ -75,7 +110,7 @@ final class MapperSessionScopeCreationRecords implements SessionScopeCreationRec
   }
 
   public String hash(String value) {
-    return Payloads.hash(value);
+    return sessions.scopeHash(value);
   }
 
   public String json(Object value) {

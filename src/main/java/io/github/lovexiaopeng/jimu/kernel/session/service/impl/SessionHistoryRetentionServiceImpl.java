@@ -34,30 +34,32 @@ public final class SessionHistoryRetentionServiceImpl implements SessionHistoryR
     var h = task.history();
     if (h.recordVersion() != 1
         || h.version() != task.expectedVersion()
-        || !task.expectedBinding().equals(h.binding())
+        || !task.matchesSnapshot(h.binding())
         || !digest.hash(task.expectedBinding()).equals(h.digest()))
       throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_VERSION_UNSUPPORTED);
     return h;
   }
 
   public void cleanup() {
-    for (var candidate : records.candidates())
-      work.required(
-          () -> {
-            records.lockBudget(candidate.tenant());
-            var task = records.lockTask(candidate);
-            var h = history(task);
-            if (!SessionContentState.PRESENT.equals(h.state())
-                || h.retained() && (!task.scoped() || !task.invalidated())
-                || !List.of(TaskState.SUCCEEDED, TaskState.FAILED, TaskState.CANCELLED)
-                    .contains(task.state())
-                || !task.writersQuiescent()
-                || task.activeInvocations()
-                || task.unsafeReservations()
-                || task.dispatchedModels()) return null;
-            purge(task);
-            return null;
-          });
+    try (var candidates = records.candidateBatch()) {
+      for (var candidate : candidates)
+        work.required(
+            () -> {
+              records.lockBudget(candidate.tenant());
+              var task = records.lockTask(candidate);
+              var h = history(task);
+              if (!SessionContentState.PRESENT.equals(h.state())
+                  || h.retained() && (!task.scoped() || !task.invalidated())
+                  || !List.of(TaskState.SUCCEEDED, TaskState.FAILED, TaskState.CANCELLED)
+                      .contains(task.state())
+                  || !task.writersQuiescent()
+                  || task.activeInvocations()
+                  || task.unsafeReservations()
+                  || task.dispatchedModels()) return null;
+              purge(task);
+              return null;
+            });
+    }
   }
 
   private static long bytes(String value) {
@@ -65,7 +67,7 @@ public final class SessionHistoryRetentionServiceImpl implements SessionHistoryR
   }
 
   private long metadata(LockedHistory task) {
-    long total = 0;
+    long total = task.lineageMetadataBytes();
     for (var row : task.metadata()) {
       total += 32;
       for (var value : row.scalars()) total += 8 + (value == null ? 1 : bytes(value));
@@ -100,6 +102,7 @@ public final class SessionHistoryRetentionServiceImpl implements SessionHistoryR
                             .toList()))
             .toList();
     if (task.scoped()) {
+      if (task.expectedVersion() == 5) task.purgeLineage();
       task.purgeScopeQuery();
       task.purgeScopeStep();
       task.purgeScopeTargets();
@@ -116,6 +119,28 @@ public final class SessionHistoryRetentionServiceImpl implements SessionHistoryR
     task.purgeTask();
     task.markPurged(receipt);
     task.event();
+    var snapshot = task.purgeMetadata();
+    if (snapshot != null) {
+      // 只改变这三个数字及reservation.state；其它标量来自event后的真实同锁快照。
+      long size = 0;
+      for (int pass = 0; pass < 5; pass++) {
+        long digits = 1;
+        for (long n = size; n >= 10; n /= 10) digits++;
+        task.operation(digits + 1);
+        long next = Math.addExact(snapshot.fixedBytes(), 3 * digits);
+        if (next < 0 || next > SessionHistoryPolicyV1.CLOSED_METADATA_BYTES)
+          throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
+        if (next == size) {
+          task.settleHistory(size);
+          task.settleReservation(size);
+          // Work最终阶段仍完整独立读取18投影并readBack；这里不复用权限或原行容器。
+          task.releaseBudget(SessionHistoryPolicyV1.TASK_RESERVE_BYTES - size);
+          return;
+        }
+        size = next;
+      }
+      throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
+    }
     // Decimal widths of history counters and SETTLED/actual participate in the same fixed point.
     for (int pass = 0; pass < 5; pass++) {
       long size = metadata(task);

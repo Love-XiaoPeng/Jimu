@@ -135,7 +135,7 @@ class DurableAssemblyTest {
           assertTrue(filter.getFilter() instanceof SessionSearchBodyFilter);
           assertTrue(filter.isAsyncSupported());
           assertEquals(
-              Set.of("/api/tasks/*", "/api/session-search/tasks"),
+              Set.of("/api/tasks/*", "/api/session-search/tasks", "/api/session-trace/tasks"),
               Set.copyOf(filter.getUrlPatterns()));
           assertFalse(context.getBean(NativeSearchRuntime.class).available());
           assertNotNull(context.getBean(LedgerProbe.class));

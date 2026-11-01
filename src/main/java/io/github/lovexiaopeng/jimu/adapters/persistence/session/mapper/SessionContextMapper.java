@@ -14,6 +14,11 @@ public interface SessionContextMapper {
       @Param("tenant") String tenant,
       @Param("taskId") String taskId);
 
+  List<Map<String, Object>> balance(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
   int account(
       @Param("query") SessionQueryContext query,
       @Param("bytes") long bytes,

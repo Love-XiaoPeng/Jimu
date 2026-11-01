@@ -4,6 +4,16 @@ import java.time.LocalDateTime;
 
 /** Lazy original rows; each operation is one existing IO or codec boundary. */
 public interface SessionScopeCreationRecords {
+  /** 原位置每次独立UTF8编码；适配器可在相同query中预留并计量。 */
+  default int utf8Bytes(String raw) {
+    return raw.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+  }
+
+  /** One local raw consumption; encoded workspace remains owned through use. */
+  default <T> T withRaw(String raw, java.util.function.BiFunction<Integer, String, T> use) {
+    return use.apply(utf8Bytes(raw), hash(raw));
+  }
+
   interface Row {
     String tenant();
 
@@ -27,6 +37,18 @@ public interface SessionScopeCreationRecords {
   Row history(Row source);
 
   String binding();
+
+  default int version(Row caller) {
+    return 4;
+  }
+
+  default String binding(Row caller) {
+    return binding();
+  }
+
+  default void validateAuthority(Row caller, String raw) {
+    validateAuthority(raw);
+  }
 
   String hash(String value);
 

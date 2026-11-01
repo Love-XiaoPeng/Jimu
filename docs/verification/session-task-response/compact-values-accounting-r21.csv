@@ -1,0 +1,15 @@
+action,before,after,payment_time,owner_and_alias
+recognized_local_init,1,1,before local initialization,existing validate stack
+slots_initialization,2+2*C,2+C,before array allocation,slotsOwner unchanged; delete boolean array and its zeroing
+column_value_lookup,1,1,before current.get,existing controlled Map and column descriptor
+column_stores,3,3,before index-slot-presence stores,index=recognized; slots[index]=value; local boolean replaces boolean-array element
+nullable_presence,2+name.length,2+name.length,before containsKey,missing and explicit NULL still distinct
+recognized_presence_and_increment,3,3,before branch and increment,existing recognized stack int
+type_and_sized_length,unchanged,unchanged,before original work,original scalar checks and private SQL length marker
+final_cardinality,4,5,before Map.size and comparison,new valueCount field store explicitly adds one; no facade published before success
+values_hasNext_present_column,2,1,before boundary comparison,delete boolean-array read; retain valid() every call
+values_hasNext_missing_column,2 per skipped column,deleted,deleted,missing nullable values never enter logical prefix
+values_hasNext_end,1,1,before returning false,retain valid() every call
+values_next,2,2,before index advance and slots fetch,still invokes hasNext and still rejects exhausted or expired facade
+row_replacement_and_close,clear current-slots-present-source-cursor,clear current-slots-source-cursor,original cleanup even after refusal,remove only deleted array reference; no new release or reservation shrink
+per_accepted_row_k_complete_normal_passes,baseline,candidate saves (1+2*k)*C-1,formula only for stated loop pattern,not a whole-transaction prediction

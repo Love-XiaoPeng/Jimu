@@ -23,6 +23,14 @@ final class StoredSessionInputEligibility implements SessionInputEligibility {
     return JdbcSessionScopes.task(task);
   }
 
+  public boolean lineageTask() {
+    return JdbcSessionScopes.lineage(task);
+  }
+
+  public String lineageTarget() {
+    return records.lineage.input(call.input());
+  }
+
   public boolean searchTask() {
     return JdbcSessionRecords.searchTask(task);
   }
@@ -40,11 +48,11 @@ final class StoredSessionInputEligibility implements SessionInputEligibility {
   }
 
   public List<String> scopeSearchTargets() {
-    return records.scopes.contracts.input(call.input()).sessionIds();
+    return records.scopes.contracts(task).input(call.input()).sessionIds();
   }
 
   public String scopeReadTarget() {
-    return records.v4.input(call.input()).sessionId();
+    return records.contract(task).input(call.input()).sessionId();
   }
 
   public String traceTarget() {
@@ -60,6 +68,21 @@ final class StoredSessionInputEligibility implements SessionInputEligibility {
   }
 
   public Scope requireScope() {
+    var owner =
+        io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction
+            .currentOwner();
+    if (owner != null && owner.lineage()) {
+      records.scopes.ensure(task);
+      records.appendQuery().operation(4);
+      return id -> {
+        var proof = records.scopes.requireProof(task);
+        for (var source : proof.sources()) {
+          records.appendQuery().operation(3L + id.length());
+          if (id.equals(source.id())) return true;
+        }
+        return false;
+      };
+    }
     var scope = records.scopes.require(task);
     return id -> scope.sources().stream().anyMatch(t -> id.equals(s(t, "id")));
   }

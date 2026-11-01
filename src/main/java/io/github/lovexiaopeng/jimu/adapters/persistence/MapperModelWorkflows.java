@@ -53,21 +53,37 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
 
   @Override
   public Admission lockAdmission(Lease lease, String stepId) {
-    var evaluation = ledger.evaluation(lease);
-    var task = ledger.fenced(lease, true);
+    ledger.bindSessionQuery(lease, stepId, null);
+    var task = ledger.fencedModelAdmission(lease);
     var model = ledger.snapshot(task);
     ledger.models.admit(model);
-    var budget = ledger.bucket(lease.tenant());
+    var budget =
+        ledger.queryContext() != null && ledger.queryContext().lineage()
+            ? JdbcLedger.first(
+                ledger
+                    .mappers
+                    .budgets()
+                    .selectModelBudgetForUpdate(ledger.queryContext(), lease.tenant()))
+            : ledger.bucket(lease.tenant());
     var step =
-        JdbcLedger.first(
-            ledger
-                .mappers
-                .steps()
-                .selectModelStep(ledger.queryContext(), lease.tenant(), stepId, lease.taskId()));
+        JdbcSessionScopes.lineage(task)
+                && ledger.queryContext() != null
+                && ledger.queryContext().lineage()
+            ? ledger.sessions.modelStep(task, lease.tenant(), stepId, lease.taskId())
+            : JdbcLedger.first(
+                ledger
+                    .mappers
+                    .steps()
+                    .selectModelStep(
+                        ledger.queryContext(), lease.tenant(), stepId, lease.taskId()));
     return new Admission() {
+      private java.util.Map<String, Object> evaluation;
+
       public void validateStep() {
         if (JdbcSessionRecords.task(task)) {
-          ledger.sessions.validateStep(task, step);
+          if (!JdbcSessionScopes.lineage(task)
+              || ledger.queryContext() == null
+              || !ledger.queryContext().lineage()) ledger.sessions.validateStep(task, step);
           ledger.sessions.metadata(task, false, 4096);
         }
       }
@@ -103,6 +119,7 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void validateEvaluationAndMaterial() {
+        evaluation = ledger.evaluation(lease);
         ledger.checkEvaluation(task, evaluation, model);
         ledger.materialBody(
             task, ledger.s(step, "request_snapshot"), (int) ledger.n(step, "ordinal"));
@@ -113,6 +130,7 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
       }
 
       public Limits limits() {
+        evaluation = ledger.evaluation(lease);
         return new Limits(
             model.paid(),
             model.price() == null ? 0 : model.price().inputTokenUpper(),
@@ -257,25 +275,63 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void commitFence() {
-        if (ledger.directoryTask(task)) ledger.todoCommitFence(lease);
+        if (ledger.directoryTask(task) || JdbcSessionScopes.lineage(task))
+          ledger.todoCommitFence(lease);
       }
     };
   }
 
   @Override
   public Response lockResponse(Lease lease, String stepId, String dispatch) {
+    ledger.bindSessionQuery(lease, stepId, dispatch);
     var evaluation = ledger.evaluation(lease, false);
-    var task = ledger.fenced(lease, false);
+    var task = ledger.measured("M2.lock", () -> ledger.fenced(lease, false));
     var step =
         JdbcLedger.first(
-            ledger
-                .mappers
-                .steps()
-                .selectModelStep(ledger.queryContext(), lease.tenant(), stepId, lease.taskId()));
+            JdbcSessionScopes.lineage(task)
+                    && ledger.queryContext() != null
+                    && ledger.queryContext().lineage()
+                ? ledger
+                    .mappers
+                    .steps()
+                    .selectLineageModelResponse(
+                        ledger.queryContext(), lease.tenant(), stepId, lease.taskId())
+                : ledger
+                    .mappers
+                    .steps()
+                    .selectModelStep(
+                        ledger.queryContext(), lease.tenant(), stepId, lease.taskId()));
     return new Response() {
       public boolean originalDispatch() {
         return dispatch.equals(ledger.s(step, "dispatch_id"))
             && step.get("response_snapshot") == null;
+      }
+
+      public boolean ordinaryRejection(TaskFailure failure) {
+        if (!JdbcSessionScopes.lineage(task)) return true;
+        var query = ledger.queryContext();
+        query.remainingMillis();
+        var resources = query.resources();
+        if (resources.reads() > 256
+            || resources.bytes() > 1048576
+            || resources.operations() > 65536
+            || query.scratchPeak() > 1048576) return false;
+        return java.util.Set.of(
+                "TOOL_INPUT_INVALID",
+                "TOOL_NOT_AUTHORIZED",
+                "MODEL_RESPONSE_TOO_LARGE",
+                "TOOL_BUDGET_EXCEEDED",
+                "SESSION_HISTORY_LIMIT",
+                "CAPABILITY_REVOKED",
+                "ACTOR_REVOKED",
+                "SESSION_SCOPE_UNAVAILABLE",
+                "SESSION_HISTORY_EXPIRED")
+            .contains(failure.code());
+      }
+
+      public void settlementOnly() {
+        if (JdbcSessionScopes.lineage(task))
+          new MapperCommitFence(ledger, lease).settlement(dispatch);
       }
 
       public io.github.lovexiaopeng.jimu.kernel.model.port.ModelCostRecords costs() {
@@ -458,6 +514,10 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void storeResponse(String response) {
+        var owner =
+            io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+                ledger.queryContext());
+        if (owner != null) owner.protectedWrite();
         ledger
             .mappers
             .steps()
@@ -529,19 +589,35 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
       }
 
       public void responded() {
-        ledger.event(task, "response:" + stepId, "model.responded", null);
+        if (JdbcSessionScopes.lineage(task)) ledger.todoCommitFence(lease);
+        ledger.measured(
+            "M2.event",
+            () -> {
+              ledger.event(task, "response:" + stepId, "model.responded", null);
+              return null;
+            });
       }
     };
   }
 
   @Override
   public Outcome outcome(Lease lease, String dispatch) {
-    var row =
-        JdbcLedger.first(
-            ledger
-                .mappers
-                .dispatches()
-                .selectOutcome(ledger.queryContext(), lease.tenant(), dispatch));
-    return new Outcome(ledger.s(row, "state"), ledger.s(row, "code"));
+    java.util.function.Supplier<Outcome> read =
+        () -> {
+          var row =
+              JdbcLedger.first(
+                  ledger
+                      .mappers
+                      .dispatches()
+                      .selectOutcome(ledger.queryContext(), lease.tenant(), dispatch));
+          return new Outcome(ledger.s(row, "state"), ledger.s(row, "code"));
+        };
+    // 必须在结算提交之后读取拒绝；仍沿原query截止，不包住整个responded。
+    return ledger.measured(
+        "M2.outcome",
+        () ->
+            ledger.queryContext() == null
+                ? read.get()
+                : ledger.sessionTransaction(read, ledger.queryContext().deadlineNanos()));
   }
 }

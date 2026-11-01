@@ -16,11 +16,23 @@ public interface SessionCallBindings {
 
   boolean scopeTask();
 
+  default boolean lineageTask() {
+    return false;
+  }
+
   boolean traceTask();
 
   boolean searchTask();
 
   interface Invocation {
+    default void normalizeLineage() {
+      throw new UnsupportedOperationException("v5 binding required");
+    }
+
+    default void insertLineage() {
+      throw new UnsupportedOperationException("v5 binding required");
+    }
+
     String tool();
 
     void parseTrace();

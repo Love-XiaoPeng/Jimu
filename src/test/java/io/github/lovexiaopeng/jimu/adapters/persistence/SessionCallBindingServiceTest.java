@@ -99,6 +99,7 @@ class SessionCallBindingServiceTest {
         List.of(
             "scopeTask",
             "requireScope",
+            "tool",
             "normalizeScope",
             "loadCut",
             "authority",

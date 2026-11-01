@@ -23,6 +23,8 @@ import org.springframework.util.LinkedCaseInsensitiveMap;
 
 /** Same DS/UoW and explicit query, without an additional search meter or eager value conversion. */
 final class MapperSessionFacts implements SessionFacts.Fact {
+  static final String LINEAGE_STEP =
+      "tenant_id,id,task_id,state,ordinal,request_digest,response_digest,response_snapshot";
   private final JdbcLedger ledger;
   private final Map<String, Object> task;
 
@@ -97,7 +99,7 @@ final class MapperSessionFacts implements SessionFacts.Fact {
         one(
             SessionFactStepMapper.class,
             new QueryWrapper<ScopeQueryStepEntity>()
-                .select(Schema22Columns.STEP)
+                .select(JdbcSessionScopes.lineage(task) ? LINEAGE_STEP : Schema22Columns.STEP)
                 .eq("tenant_id", s(task, "tenant_id"))
                 .eq("id", id)
                 .eq("task_id", s(task, "id")));

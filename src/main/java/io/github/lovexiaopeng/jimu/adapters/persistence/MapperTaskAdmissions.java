@@ -50,6 +50,10 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     return Payloads.hash(value);
   }
 
+  public boolean sameJson(String left, String right) {
+    return ledger.sessions.v5.json(left, 16384).equals(ledger.sessions.v5.json(right, 16384));
+  }
+
   public Request readRequest(String value) {
     return Payloads.read(value, Request.class);
   }
@@ -96,7 +100,13 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
       }
     } else run = ledger.s(found.getFirst(), "evaluation_run_id");
     var evaluation = ledger.evaluation(identity.tenant(), run);
-    var budget = ledger.bucket(identity.tenant());
+    var query = ledger.queryContext();
+    boolean projected = query != null && query.lineage();
+    if (projected) query.operation(8); // current route and unchanged locked Room consumer
+    var budget =
+        projected
+            ? JdbcLedger.first(sql.lockAdmissionRoom(query, identity.tenant()))
+            : ledger.bucket(identity.tenant());
     if (historySources != null) {
       var ids = new java.util.ArrayList<>(historySources);
       ids.add(callerId);
@@ -160,6 +170,8 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
 
     public View replay(boolean recheckAccess) {
       if (recheckAccess) ledger.access(retry);
+      if (JdbcSessionScopes.lineage(retry))
+        new MapperCommitFence(ledger, null).admission(retry, false);
       return ledger.view(retry);
     }
 
@@ -197,10 +209,20 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     }
 
     public PluginPin pin(String capability) {
+      var query = ledger.queryContext();
+      boolean projected = query != null && query.lineage();
+      if (projected) query.operation(10); // current route, mapper and original PluginPin consumer
       var row =
           JdbcLedger.first(
-              ledger.mappers.selectInstallation(
-                  ledger.queryContext(), identity.tenant(), capability));
+              projected
+                  ? ledger
+                      .mappers
+                      .session()
+                      .getMapper(
+                          io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper
+                              .SessionEligibilityMapper.class)
+                      .lockPin(query, identity.tenant(), capability)
+                  : ledger.mappers.selectInstallation(query, identity.tenant(), capability));
       return new PluginPin(
           ledger.s(row, "plugin_version"), ledger.s(row, "plugin_digest"), ledger.n(row, "epoch"));
     }
@@ -242,6 +264,21 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
       return ledger.priorSessionSearchEnabled;
     }
 
+    public boolean lineageEnabled() {
+      return ledger.sessionLineageEnabled;
+    }
+
+    public PluginPin lineageContract(String name) {
+      var descriptor =
+          switch (name) {
+            case ToolCapability.SESSION_EVENT_READ -> ledger.sessions.v5.descriptor();
+            case ToolCapability.SESSION_SEARCH -> ledger.sessionScopes.v5.descriptor();
+            case ToolCapability.SESSION_TRACE -> ledger.sessions.lineage.descriptor();
+            default -> throw new IllegalArgumentException(name);
+          };
+      return new PluginPin(descriptor.version(), descriptor.outputSha256(), 0);
+    }
+
     public boolean sessionTraceEnabled() {
       return ledger.sessionTraceEnabled;
     }
@@ -263,6 +300,7 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
         case ToolCapability.READ -> ledger.models.requireSessionRead(model);
         case "search" -> ledger.models.requireSessionSearch(model);
         case "trace" -> ledger.models.requireSessionTrace(model);
+        case "lineage" -> ledger.models.requireSessionLineage(model);
         default -> throw new IllegalArgumentException(kind);
       }
     }
@@ -330,20 +368,26 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     public String insert(
         String caller, String key, Request request, String snapshot, String digest, long epoch) {
       String task = caller == null ? JdbcLedger.id() : caller;
-      sql.insertAccepted(
-          ledger.queryContext(),
-          identity.tenant(),
-          task,
-          identity.actor(),
-          key,
-          digest,
-          snapshot,
-          request.goal(),
-          String.join(",", request.capabilityIds()),
-          epoch,
-          request.budget().deadlineSeconds(),
-          request.budget().maxModelRequests(),
-          request.budget().maxToolInvocations());
+      int inserted =
+          sql.insertAccepted(
+              ledger.queryContext(),
+              identity.tenant(),
+              task,
+              identity.actor(),
+              key,
+              digest,
+              snapshot,
+              request.goal(),
+              String.join(",", request.capabilityIds()),
+              epoch,
+              request.budget().deadlineSeconds(),
+              request.budget().maxModelRequests(),
+              request.budget().maxToolInvocations());
+      if (inserted != 1) throw JdbcSessionRecords.corrupt();
+      var owner =
+          io.github.lovexiaopeng.jimu.adapters.persistence.query.SessionQueryTransaction.current(
+              ledger.queryContext());
+      if (owner != null) owner.locked(identity.tenant(), task);
       return task;
     }
 
@@ -364,10 +408,38 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     }
 
     public void createSession(String task, List<String> historySources) {
-      var accepted = ledger.locked(identity.tenant(), task);
-      ledger.sessions.create(accepted);
-      if (historySources != null) ledger.sessionScopes.create(accepted, historySources);
-      sql.holdHistory(ledger.queryContext(), identity.tenant());
+      var query = ledger.queryContext();
+      if (query != null && query.lineage()) {
+        query.operation(6); // route, captures and original initialization callback
+        // insertAccepted registered this new row's exclusive transaction lock. Creation freshly
+        // checks that registry and every source lock; no scope targets exist to discover yet.
+        SessionAcceptedTaskRows.creation(
+            sql,
+            query,
+            identity.tenant(),
+            task,
+            accepted -> {
+              ledger.sessions.create(accepted);
+              if (historySources != null) ledger.sessionScopes.create(accepted, historySources);
+            });
+      } else {
+        var accepted = ledger.locked(identity.tenant(), task);
+        ledger.sessions.create(accepted);
+        if (historySources != null) ledger.sessionScopes.create(accepted, historySources);
+      }
+      sql.holdHistory(query, identity.tenant());
+    }
+
+    public void createLineage(String task, String parent) {
+      ledger.lineages.create(identity.tenant(), task, parent);
+      // Called after reservations. v5 publishes scope from the fresh accepted-event projection
+      // immediately next, keeping graph construction and proof publication together.
+      var query = ledger.queryContext();
+      if (query != null && query.lineage())
+        query.operation(8); // route and deferred receiver handoff
+      else
+        ledger.sessionScopes.ensure(
+            SessionAcceptedTaskRows.lineage(sql, query, identity.tenant(), task));
     }
 
     public void createDirectory(String task) {
@@ -497,9 +569,26 @@ final class MapperTaskAdmissions implements TaskAdmissionRecords {
     }
 
     public View accepted(String task) {
-      var row = ledger.locked(identity.tenant(), task);
+      var query = ledger.queryContext();
+      boolean projected = query != null && query.lineage();
+      Map<String, Object> row;
+      if (projected) {
+        ledger.sessionScopes.lock(identity.tenant(), task);
+        row = SessionAcceptedTaskRows.load(sql, query, identity.tenant(), task, true);
+        if (!JdbcSessionScopes.lineage(row)) throw JdbcSessionRecords.corrupt();
+        query.operation(2); // scope receiver and original synchronous proof consumer
+        ledger.sessionScopes.ensure(row);
+      } else row = ledger.locked(identity.tenant(), task);
       ledger.event(row, "accepted", "task.accepted", null);
-      return ledger.view(ledger.locked(identity.tenant(), task));
+      // event已改变revision/序号/时间；只在v5具名入口重新读View及其真实授权消费者。
+      // 其他受理保留全行，不把该投影扩散到通用locked或重用event前的动态Map。
+      var finalRow =
+          projected
+              ? SessionAcceptedTaskRows.load(sql, query, identity.tenant(), task, false)
+              : ledger.locked(identity.tenant(), task);
+      if (JdbcSessionScopes.lineage(finalRow))
+        new MapperCommitFence(ledger, null).admission(finalRow, true);
+      return ledger.view(finalRow);
     }
   }
 }

@@ -7,10 +7,19 @@ import java.util.Map;
 final class MapperEventRecords implements EventRecords {
   private final JdbcLedger ledger;
   private final Map<String, Object> task;
+  private final java.util.function.Consumer<Boolean> sessionAccounting;
 
   MapperEventRecords(JdbcLedger ledger, Map<String, Object> task) {
+    this(ledger, task, closing -> ledger.sessions.account(task, closing));
+  }
+
+  MapperEventRecords(
+      JdbcLedger ledger,
+      Map<String, Object> task,
+      java.util.function.Consumer<Boolean> sessionAccounting) {
     this.ledger = ledger;
     this.task = task;
+    this.sessionAccounting = sessionAccounting;
   }
 
   private String tenant() {
@@ -71,7 +80,7 @@ final class MapperEventRecords implements EventRecords {
   }
 
   public void sessionAccount(boolean closing) {
-    ledger.sessions.account(task, closing);
+    sessionAccounting.accept(closing);
   }
 
   public void directoryAccount(boolean closing) {

@@ -23,7 +23,7 @@ class SessionMetadataAccountingServiceTest {
   private final SessionMetadataAccountingServiceImpl service =
       new SessionMetadataAccountingServiceImpl();
 
-  private static final class Records implements SessionMetadataAccounting {
+  private static class Records implements SessionMetadataAccounting {
     final List<String> calls = new ArrayList<>();
     final EnumMap<Table, List<Row>> rows = new EnumMap<>(Table.class);
     final List<Long> writes = new ArrayList<>();
@@ -57,6 +57,60 @@ class SessionMetadataAccountingServiceTest {
     void value(String value) {
       rows.put(Table.TASK, List.of(() -> List.of(value)));
     }
+  }
+
+  @Test
+  void preflightConsumesCurrentRowsWithoutFinalSelfDependencyOrAccountWrites() {
+    var records =
+        new Records() {
+          boolean retained;
+
+          public io.github.lovexiaopeng.jimu.kernel.session.api.SessionQueryContext.MeterScope
+              finalization() {
+            retained = true;
+            return () -> {
+              retained = false;
+              calls.add("closed");
+            };
+          }
+
+          public boolean consumeMetadata(FinalRows consumer) {
+            assertTrue(retained);
+            consumer.accept(Table.TASK, 1, 100, 0, null, 0, null);
+            consumer.accept(
+                Table.TASK_SESSION_HISTORY,
+                1,
+                200,
+                1,
+                new HistoryScalars(1234, 4, 0, 0, 0, "PRESENT"),
+                0,
+                null);
+            consumer.accept(Table.SESSION_PUBLIC_EVENT, 2, 300, 0, null, 0, null);
+            return true;
+          }
+        };
+    assertEquals(600, service.metadata(records, false, 0));
+    assertEquals(List.of("closed"), records.calls);
+    assertTrue(records.writes.isEmpty());
+    long headroom =
+        io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1.CLEANUP_BASE_BYTES
+            + io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
+                .TASK_CLEANUP_BYTES
+            + 2
+                * io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1
+                    .DISPATCH_CLEANUP_BYTES;
+    long remaining =
+        io.github.lovexiaopeng.jimu.kernel.session.api.SessionHistoryPolicyV1.OPEN_METADATA_BYTES
+            - 600
+            - headroom;
+    assertEquals(600, service.metadata(records, false, remaining));
+    assertEquals(
+        "SESSION_HISTORY_LIMIT",
+        assertThrows(TaskFailure.class, () -> service.metadata(records, false, remaining + 1))
+            .code());
+    assertEquals(600, service.metadata(records, true, remaining + 1));
+    assertEquals(4, records.calls.size());
+    assertTrue(records.calls.stream().allMatch("closed"::equals));
   }
 
   @Test
@@ -147,9 +201,9 @@ class SessionMetadataAccountingServiceTest {
   void allTableHeadroomWeightsRemainPerRow() {
     var records = new Records();
     for (Table table : Table.values()) records.rows.put(table, List.of(() -> List.of()));
-    // 16*32 actual; 1024+768+3*512+2*256 headroom.
-    assertEquals(512, service.metadata(records, false, 57088));
-    assertThrows(TaskFailure.class, () -> service.metadata(records, false, 57089));
+    // 18*32 actual; the two v5 tables each require 512 cleanup bytes.
+    assertEquals(576, service.metadata(records, false, 56000));
+    assertThrows(TaskFailure.class, () -> service.metadata(records, false, 56001));
   }
 
   @Test
@@ -185,5 +239,84 @@ class SessionMetadataAccountingServiceTest {
     assertSame(
         failure, assertThrows(NoSuchElementException.class, () -> service.account(records, true)));
     assertTrue(records.writes.isEmpty());
+  }
+
+  @Test
+  void purgedFinalizerChecksClosedBalanceWithoutChangingReservationOrRefundingAgain() {
+    class Purged implements SessionMetadataAccounting {
+      long stored;
+      boolean dirty;
+
+      public boolean session() {
+        return true;
+      }
+
+      public boolean finalPresent() {
+        return true;
+      }
+
+      public long metadataBytes() {
+        return stored;
+      }
+
+      public void account(long bytes) {
+        throw new AssertionError("purge already settled; no second write/refund");
+      }
+
+      public Balance readBack() {
+        return new Balance(
+            stored, 0, 8388608, stored, 8388608, dirty ? stored + 1 : stored, "SETTLED", "PURGED");
+      }
+
+      private Row row(java.util.Map<String, Object> fields) {
+        return new Row() {
+          public Iterable<?> values() {
+            return fields.values();
+          }
+
+          public Object value(String name) {
+            return fields.get(name);
+          }
+        };
+      }
+
+      public Iterable<? extends Row> rows(Table table) {
+        if (table == Table.TASK_SESSION_HISTORY)
+          return List.of(
+              row(
+                  java.util.Map.of(
+                      "content_state",
+                      "PURGED",
+                      "metadata_bytes",
+                      stored,
+                      "body_bytes",
+                      0L,
+                      "reserved_bytes",
+                      8388608L,
+                      "held_bytes",
+                      stored)));
+        if (table == Table.RESERVATION)
+          return List.of(
+              row(
+                  java.util.Map.of(
+                      "category",
+                      "SESSION_HISTORY_STORAGE",
+                      "amount",
+                      8388608L,
+                      "actual",
+                      stored,
+                      "state",
+                      "SETTLED")));
+        return List.of();
+      }
+    }
+    var records = new Purged();
+    for (int i = 0; i < 4; i++) records.stored = service.metadata(records, true, 0);
+    service.account(records, true);
+    service.account(records, true);
+    records.dirty = true;
+    assertEquals(
+        "SESSION_HISTORY_CORRUPT",
+        assertThrows(TaskFailure.class, () -> service.account(records, true)).code());
   }
 }

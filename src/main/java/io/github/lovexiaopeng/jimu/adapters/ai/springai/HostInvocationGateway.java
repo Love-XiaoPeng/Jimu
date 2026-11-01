@@ -74,6 +74,8 @@ final class HostInvocationGateway {
   private String invokeSlot(Lease lease, String stepId, Call call, String input) {
     if (call.tool().equals(ToolCapability.WORKING_DIRECTORY))
       return workspace.directories().invoke(ledger, lease, stepId, call, input, probe);
+    if (call.tool().equals(ToolCapability.SESSION_TRACE))
+      return invokeLineage(lease, stepId, call, input);
     if (call.tool().equals(ToolCapability.SESSION_SEARCH))
       return invokePriorSessionSearch(lease, stepId, call, input);
     if (call.tool().equals(ToolCapability.SESSION_EVENT_TRACE))
@@ -271,7 +273,8 @@ final class HostInvocationGateway {
     if (!call.input().equals(input))
       throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
     var contracts =
-        new io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionContracts();
+        new io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionContracts(
+            lease.capabilities().contains(ToolCapability.SESSION_TRACE) ? 5 : 4);
     var canonical = contracts.input(input);
     var pin = ledger.toolSnapshot(lease).pins().get(call.tool());
     io.github.lovexiaopeng.jimu.plugin.api.SessionSearchPort port =
@@ -300,11 +303,15 @@ final class HostInvocationGateway {
       throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
     var contracts =
         new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts(
-            lease.capabilities().contains(ToolCapability.SESSION_SEARCH)
-                ? 4
-                : lease.capabilities().contains(ToolCapability.SESSION_EVENT_TRACE)
-                    ? 3
-                    : lease.capabilities().contains(ToolCapability.SESSION_EVENT_SEARCH) ? 2 : 1);
+            lease.capabilities().contains(ToolCapability.SESSION_TRACE)
+                ? 5
+                : lease.capabilities().contains(ToolCapability.SESSION_SEARCH)
+                    ? 4
+                    : lease.capabilities().contains(ToolCapability.SESSION_EVENT_TRACE)
+                        ? 3
+                        : lease.capabilities().contains(ToolCapability.SESSION_EVENT_SEARCH)
+                            ? 2
+                            : 1);
     var canonical = contracts.input(input);
     var pin = ledger.toolSnapshot(lease).pins().get(call.tool());
     io.github.lovexiaopeng.jimu.plugin.api.SessionEventPort port =
@@ -326,6 +333,34 @@ final class HostInvocationGateway {
             port, contracts.descriptor())
         .execute(
             canonical,
+            new ExecutionContext(
+                call.providerId(), lease.deadline(), () -> ledger.checkpoint(lease)))
+        .output();
+  }
+
+  private String invokeLineage(Lease lease, String stepId, Call call, String input) {
+    if (!call.input().equals(input))
+      throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
+    var contracts =
+        new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionLineageContracts();
+    contracts.input(input);
+    var pin = ledger.toolSnapshot(lease).pins().get(call.tool());
+    io.github.lovexiaopeng.jimu.plugin.api.SessionLineagePort port =
+        (value, context) -> {
+          if (!input.equals(value))
+            throw new TaskFailure(409, InvocationErrorCode.INVOCATION_MISMATCH);
+          probe.hit("SESSION_LINEAGE_COMMIT_BEFORE", lease.taskId());
+          String output =
+              ((io.github.lovexiaopeng.jimu.kernel.task.api.SessionLineageLedger) ledger)
+                  .lineageOrResult(lease, stepId, call, pin.version(), pin.digest());
+          probe.hit("SESSION_LINEAGE_COMMIT_AFTER", lease.taskId());
+          contracts.output(output);
+          return output;
+        };
+    return new io.github.lovexiaopeng.jimu.plugins.builtin.session.SessionLineagePlugin(
+            port, contracts.descriptor())
+        .execute(
+            input,
             new ExecutionContext(
                 call.providerId(), lease.deadline(), () -> ledger.checkpoint(lease)))
         .output();

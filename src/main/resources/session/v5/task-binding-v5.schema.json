@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session:v5:binding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "profile",
+    "historyVersion",
+    "contentPolicy",
+    "allowedSessions",
+    "boundary",
+    "capabilities",
+    "maxInputBytes",
+    "maxJsonDepth",
+    "maxWindowSide",
+    "maxNeighbors",
+    "maxEventBytes",
+    "maxEvents",
+    "maxSummaryCodePoints",
+    "maxSummaryTextBytes",
+    "maxSummaryJsonBytes",
+    "maxOutputBytes",
+    "maxReadRows",
+    "maxReadScratchBytes",
+    "maxContextBytes",
+    "maxRecent",
+    "timeoutMs",
+    "lockWaitSeconds",
+    "maxModelRequestBytes",
+    "maxCheckpointBytes",
+    "maxModelResponseBytes",
+    "maxCallsPerResponse",
+    "maxModelRequests",
+    "maxToolInvocations",
+    "maxAttempts",
+    "maxReliableEvents",
+    "maxSummaryBytes",
+    "maxDatabaseBodyBytes",
+    "maxMetadataBytes",
+    "reservedTaskBytes",
+    "retentionSeconds",
+    "catalogDigest",
+    "eventVersion",
+    "maxReadInputBytes",
+    "maxNormalizedQueryBytes",
+    "maxQueryCodePoints",
+    "maxQueryBytes",
+    "matchPolicy",
+    "ordering",
+    "maxSearchRows",
+    "maxSearchEventBytes",
+    "maxSearchReadBytes",
+    "maxSearchScratchBytes",
+    "maxSearchSourceReads",
+    "maxSearchComparisons",
+    "maxSearchResults",
+    "maxSnippetCodePoints",
+    "maxSnippetTextBytes",
+    "maxSnippetJsonBytes",
+    "maxSearchHitBytes",
+    "maxReadSourceSnapshotBytes",
+    "maxSearchOutputBytes",
+    "maxSearchOperations",
+    "maxScopeTargets",
+    "maxScopeBytes",
+    "authorityVersion",
+    "authorityPolicy",
+    "retentionPolicy",
+    "maxDeadlineSeconds",
+    "lineagePolicy",
+    "coverage",
+    "maxLineageNodes",
+    "maxLineageEdges",
+    "maxLineageDepth",
+    "maxLineageProofReads",
+    "maxLineageProofBytes",
+    "maxLineageScratchBytes",
+    "maxLineageOperations",
+    "maxLineageOutputBytes",
+    "maxGenesisBytes",
+    "maxGraphBytes"
+  ],
+  "properties": {
+    "version": {
+      "const": 5
+    },
+    "profile": {
+      "const": "local-session-trace-v5"
+    },
+    "historyVersion": {
+      "const": 5
+    },
+    "contentPolicy": {
+      "const": "public-v1"
+    },
+    "allowedSessions": {
+      "const": "current-task-plus-explicit-terminal-closed-v5"
+    },
+    "boundary": {
+      "const": "pre-step-or-scoped-admission"
+    },
+    "capabilities": {
+      "const": [
+        "session_event_read",
+        "session_search",
+        "session_trace"
+      ]
+    },
+    "maxInputBytes": {
+      "const": 4096
+    },
+    "maxJsonDepth": {
+      "const": 4
+    },
+    "maxWindowSide": {
+      "const": 4
+    },
+    "maxNeighbors": {
+      "const": 8
+    },
+    "maxEventBytes": {
+      "const": 16384
+    },
+    "maxEvents": {
+      "const": 128
+    },
+    "maxSummaryCodePoints": {
+      "const": 256
+    },
+    "maxSummaryTextBytes": {
+      "const": 1024
+    },
+    "maxSummaryJsonBytes": {
+      "const": 1536
+    },
+    "maxOutputBytes": {
+      "const": 32768
+    },
+    "maxReadRows": {
+      "const": 9
+    },
+    "maxReadScratchBytes": {
+      "const": 1048576
+    },
+    "maxContextBytes": {
+      "const": 4096
+    },
+    "maxRecent": {
+      "const": 8
+    },
+    "timeoutMs": {
+      "const": 2000
+    },
+    "lockWaitSeconds": {
+      "const": 1
+    },
+    "maxModelRequestBytes": {
+      "const": 65536
+    },
+    "maxCheckpointBytes": {
+      "const": 131072
+    },
+    "maxModelResponseBytes": {
+      "const": 16384
+    },
+    "maxCallsPerResponse": {
+      "const": 4
+    },
+    "maxModelRequests": {
+      "const": 8
+    },
+    "maxToolInvocations": {
+      "const": 20
+    },
+    "maxAttempts": {
+      "const": 8
+    },
+    "maxReliableEvents": {
+      "const": 256
+    },
+    "maxSummaryBytes": {
+      "const": 8192
+    },
+    "maxDatabaseBodyBytes": {
+      "const": 7340032
+    },
+    "maxMetadataBytes": {
+      "const": 65536
+    },
+    "reservedTaskBytes": {
+      "const": 8388608
+    },
+    "retentionSeconds": {
+      "const": 604800
+    },
+    "catalogDigest": {
+      "const": "c5e41af8f9ff746ade078feaecd5fdad245188829c65e595dc4c0c49dc846a29"
+    },
+    "eventVersion": {
+      "const": 5
+    },
+    "maxReadInputBytes": {
+      "const": 1024
+    },
+    "maxNormalizedQueryBytes": {
+      "const": 4096
+    },
+    "maxQueryCodePoints": {
+      "const": 256
+    },
+    "maxQueryBytes": {
+      "const": 1024
+    },
+    "matchPolicy": {
+      "const": "public-content-literal-v1"
+    },
+    "ordering": {
+      "const": "occurrences-desc,length-asc,time-desc,session-id-asc,seq-desc"
+    },
+    "maxSearchRows": {
+      "const": 1024
+    },
+    "maxSearchEventBytes": {
+      "const": 4194304
+    },
+    "maxSearchReadBytes": {
+      "const": 16777216
+    },
+    "maxSearchScratchBytes": {
+      "const": 16777216
+    },
+    "maxSearchSourceReads": {
+      "const": 4096
+    },
+    "maxSearchComparisons": {
+      "const": 16777216
+    },
+    "maxSearchResults": {
+      "const": 4
+    },
+    "maxSnippetCodePoints": {
+      "const": 240
+    },
+    "maxSnippetTextBytes": {
+      "const": 960
+    },
+    "maxSnippetJsonBytes": {
+      "const": 1536
+    },
+    "maxSearchHitBytes": {
+      "const": 2048
+    },
+    "maxReadSourceSnapshotBytes": {
+      "const": 2048
+    },
+    "maxSearchOutputBytes": {
+      "const": 16384
+    },
+    "maxSearchOperations": {
+      "const": 2097152
+    },
+    "maxScopeTargets": {
+      "const": 8
+    },
+    "maxScopeBytes": {
+      "const": 4096
+    },
+    "authorityVersion": {
+      "const": 1
+    },
+    "authorityPolicy": {
+      "const": "explicit-terminal-closed-v5"
+    },
+    "retentionPolicy": {
+      "const": "earliest-source-or-caller-seven-days"
+    },
+    "maxDeadlineSeconds": {
+      "const": 180
+    },
+    "lineagePolicy": {
+      "const": "owner-declared-continuation-v1"
+    },
+    "coverage": {
+      "const": "admission-scope"
+    },
+    "maxLineageNodes": {
+      "const": 9
+    },
+    "maxLineageEdges": {
+      "const": 8
+    },
+    "maxLineageDepth": {
+      "const": 8
+    },
+    "maxLineageProofReads": {
+      "const": 256
+    },
+    "maxLineageProofBytes": {
+      "const": 1048576
+    },
+    "maxLineageScratchBytes": {
+      "const": 1048576
+    },
+    "maxLineageOperations": {
+      "const": 65536
+    },
+    "maxLineageOutputBytes": {
+      "const": 8192
+    },
+    "maxGenesisBytes": {
+      "const": 1024
+    },
+    "maxGraphBytes": {
+      "const": 16384
+    }
+  }
+}

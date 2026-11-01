@@ -1,0 +1,11 @@
+object_or_alias,construction_or_handoff,reservation,lifetime_and_release,change
+batch_and_controlled_row,original constructor before supplier,projection.retainedBytes before supplier,clear current-source-cursor before releaseScratch(this),unchanged
+slotsOwner,existing Object field,256+16*C before supplier,clear slots before releaseScratch(slotsOwner); exactly once,unchanged amount
+Object_array,validate after prepaid 2+C,existing slotsOwner already live,no new owner; replaced every row and cleared on failure/advance/close,existing allocation retained
+boolean_array,removed,original reservation retained,removed allocation and all aliases,one fewer per validated row
+valueCount,one primitive int field replacing reference field,no new heap object; original batch reservation retained,stored only after valid cardinality; stale scalar cannot bypass current/generation/closed checks,new store prepaid +1
+recognized_index_present_value,method stack,old 1 and 3+3 costs retained,no captured heap alias; index=recognized compacts nullable gaps,no new array-map-string-node-cache
+private_SqlUtf8Length,original sizedLength method,original taskSized 4096 extra plus row workspace,original Map replacement and slots write at compact index,unchanged wrapper semantics and scalar lookup
+Facade_and_value_iterator,original public entry points,original batch envelope,valid checks current-generation-closed every call; close failure path unchanged,unchanged allocations
+external_supplier_or_Map_alias,original external references,not newly certified,original external-alias and infrastructure A12 limitations remain,not a full-heap closure claim
+query_Work_token_connection_scope_live_fence,original transaction boundary,original payment and ownership,never retained or reused by this patch,unchanged

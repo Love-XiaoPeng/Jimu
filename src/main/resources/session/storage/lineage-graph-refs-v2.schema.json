@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session:storage:lineage-graph-refs:2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "caller_session_id",
+    "authority_sha256",
+    "nodes",
+    "codec_id",
+    "schema_sha256"
+  ],
+  "properties": {
+    "version": {
+      "const": 2
+    },
+    "caller_session_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "authority_sha256": {
+      "$ref": "#/$defs/hash"
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "session_id",
+          "genesis_sha256"
+        ],
+        "properties": {
+          "session_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "genesis_sha256": {
+            "$ref": "#/$defs/hash"
+          }
+        }
+      }
+    },
+    "codec_id": {
+      "const": "jimu.lineage.graph.refs.v2"
+    },
+    "schema_sha256": {
+      "$ref": "#/$defs/hash"
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "$comment": "Internal storage codec only. Match the exact ordered caller and source set against fresh standalone genesis validated in the same Work/query/token, tenant, live locks and fence. Structure record_version remains 1. Not a public graph-v1 payload or a source permission."
+}

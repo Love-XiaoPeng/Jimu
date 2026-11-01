@@ -9,6 +9,12 @@ import org.apache.ibatis.annotations.Param;
 /** 锁/条件写入/账本结算；只在原同DS事务与锁序内调用。 */
 @Mapper
 public interface TaskOperationsMapper {
+  /** 已持task锁；原published产物清单物化前的真实行数及文本UTF8长度。 */
+  List<Map<String, Object>> publishedArtifactSizes(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
   int requestCancelIntent(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,

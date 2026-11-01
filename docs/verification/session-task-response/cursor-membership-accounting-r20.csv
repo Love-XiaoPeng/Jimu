@@ -1,0 +1,9 @@
+segment,before,after,payer,allocation_and_ownership
+driver_label_validation,each actual key:1+2*key.length,deleted,current query,deleted keySet view/iterator and contains hash-comparison
+recognized_init,none,1,current query,stack int only
+recognized_per_schema_column,none,3,current query,existing presence bit read/branch/at most increment
+map_cardinality_guard,none,4,current query,size getter/compare/branch-return; no new heap
+original_slots_and_presence,unchanged,unchanged,current batch,original slotsOwner reservation and row/facade lifetime
+nullable_presence,original containsKey charged2+name.length,unchanged,current query,missing and explicit NULL remain distinct
+release,clear references then refund,unchanged,current query,no reservation shrink or extra refund
+scope_and_raw_identity,unchanged,unchanged,actual Work/query,no permission or digest reuse

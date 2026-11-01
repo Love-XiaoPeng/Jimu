@@ -26,6 +26,17 @@ final class MapperTaskIdentity implements TaskIdentityRecords {
   }
 
   public Rows<Installation> lockInstallation(Identity identity, String capability) {
+    var query = ledger.queryContext();
+    if (query != null && query.lineage()) {
+      query.operation(10); // route, mapper, original wrapper/consumer handoff; no permission cache
+      var result =
+          ledger
+              .mappers
+              .session()
+              .getMapper(TaskAdmissionMapper.class)
+              .lockInstallationEpoch(query, identity.tenant(), capability);
+      return new RowsView<>(result, InstallationView::new);
+    }
     var result =
         ledger
             .mappers

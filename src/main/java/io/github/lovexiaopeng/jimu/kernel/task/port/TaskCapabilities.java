@@ -26,6 +26,10 @@ public interface TaskCapabilities {
 
   boolean priorAvailable();
 
+  default boolean lineageAvailable() {
+    return false;
+  }
+
   boolean searchAvailable();
 
   boolean imagesAvailable();

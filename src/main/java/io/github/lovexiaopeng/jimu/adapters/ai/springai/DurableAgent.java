@@ -153,6 +153,12 @@ public final class DurableAgent implements AutoCloseable {
     } catch (
         io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionCommitUnconfirmed unconfirmed) {
       probe.hit("SESSION_UNCONFIRMED", lease.taskId());
+    } catch (
+        io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionUnconfirmed
+            unconfirmed) {
+      // M0/M1/M2 and snapshots use the same owner receipt as tool slots. Leave the
+      // original records to a fresh fence; WorkerLoop drains without ordinary stop.
+      probe.hit("SESSION_UNCONFIRMED", lease.taskId());
     } catch (FileFailure failure) {
       if (lease.capabilities().contains(ToolCapability.WORKING_DIRECTORY))
         throw new TaskFailure(409, failure.code());

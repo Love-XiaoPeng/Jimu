@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionLineageTraceMapper">
+  <select id="lockBinding" resultType="map">
+    SELECT tenant_id,invocation_id,caller_task_id,step_id,record_version,binding_digest,input_digest,authority_digest,
+      graph_digest,context_digest,normalized_snapshot,normalized_digest,normalized_bytes,outcome,failure_code,
+      scan_digest,node_count,edge_count,proof_reads,proof_bytes,output_digest,output_bytes,receipt_event_seq,
+      committed_attempt_id,committed_fence,committed_at,content_state,'TRACE' AS operation,NULL AS native_read_seq
+    FROM invocation_session_lineage_trace WHERE tenant_id=#{tenant} AND invocation_id=#{id} FOR UPDATE
+  </select>
+  <update id="commit">
+    UPDATE invocation_session_lineage_trace SET outcome=#{commit.outcome},failure_code=#{commit.code},
+      scan_digest=#{commit.scan},node_count=#{commit.lineage.nodes},edge_count=#{commit.lineage.edges},
+      proof_reads=#{commit.lineage.reads},proof_bytes=#{commit.lineage.bytes},output_digest=#{commit.outputDigest},
+      output_bytes=#{commit.outputBytes},receipt_event_seq=#{commit.receipt},committed_attempt_id=#{attempt},
+      committed_fence=#{fence},committed_at=CURRENT_TIMESTAMP(6)
+    WHERE tenant_id=#{tenant} AND invocation_id=#{id} AND outcome='PENDING' AND content_state='PRESENT'
+  </update>
+</mapper>

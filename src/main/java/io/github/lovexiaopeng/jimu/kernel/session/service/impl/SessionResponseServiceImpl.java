@@ -30,6 +30,7 @@ public final class SessionResponseServiceImpl implements SessionResponseService 
           || !"function".equals(wire.type())
           || !(ToolCapability.SESSION_EVENT_READ.equals(call.tool())
               || storage.scopeTask() && call.tool().equals(ToolCapability.SESSION_SEARCH)
+              || storage.lineageTask() && call.tool().equals(ToolCapability.SESSION_TRACE)
               || storage.searchTask() && call.tool().equals(ToolCapability.SESSION_EVENT_SEARCH)
               || storage.traceTask() && call.tool().equals(ToolCapability.SESSION_EVENT_TRACE)))
         throw new TaskFailure(400, ToolErrorCode.TOOL_INPUT_INVALID);

@@ -88,6 +88,11 @@ final class MapperSessionContexts implements SessionContexts {
                 .addObject()
                 .put("session_id", target.sessionId())
                 .put("upper_seq", target.upper());
+          if (JdbcSessionScopes.lineage(row)) {
+            var lineage = ledger.lineages.verify(s(row, "tenant_id"), s(row, "id"));
+            node.put("genesis_sha256", lineage.genesisDigest());
+            node.put("graph_sha256", lineage.graphDigest());
+          }
           raw = Payloads.json(node);
         }
         ledger.sessions.contract(row).context(raw);

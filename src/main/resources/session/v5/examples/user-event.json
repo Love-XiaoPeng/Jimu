@@ -1,0 +1,18 @@
+{
+  "version": 5,
+  "session_id": "00000000-0000-4000-8000-000000000051",
+  "seq": 0,
+  "type": "user.message",
+  "time": "2026-10-23T05:00:00Z",
+  "source": {
+    "kind": "request",
+    "step_id": null,
+    "invocation_id": null
+  },
+  "content_policy": "public-v1",
+  "redacted": false,
+  "data": {
+    "content": "积木检索历史事实 🧱"
+  },
+  "source_event_refs": []
+}

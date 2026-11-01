@@ -1,0 +1,11 @@
+{
+  "taskId": "00000000-0000-4000-8000-000000000055",
+  "state": "QUEUED",
+  "revision": 0,
+  "createdAt": "2026-10-23T06:00:00Z",
+  "updatedAt": "2026-10-23T06:00:00Z",
+  "cancelRequestedAt": null,
+  "code": null,
+  "summary": null,
+  "artifacts": []
+}

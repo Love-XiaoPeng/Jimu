@@ -43,6 +43,17 @@ final class MapperSessionAvailability implements SessionAvailability {
     return ledger.priorSessionSearchEnabled;
   }
 
+  public boolean lineageEnabled() {
+    return ledger.sessionLineageEnabled;
+  }
+
+  public List<ToolDescriptor> lineageDescriptors() {
+    return List.of(
+        ledger.sessions.v5.descriptor(),
+        ledger.sessionScopes.v5.descriptor(),
+        ledger.sessions.lineage.descriptor());
+  }
+
   public ModelSnapshot selected() {
     return ledger.models.selected(identity.tenant());
   }

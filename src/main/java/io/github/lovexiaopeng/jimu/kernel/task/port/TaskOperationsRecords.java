@@ -23,6 +23,10 @@ public interface TaskOperationsRecords {
   record Question(String id, String invocationId) {}
 
   interface Row {
+    default Tasks.View response(java.util.function.Supplier<Tasks.View> build) {
+      return build.get();
+    }
+
     Snapshot snapshot();
 
     void requireAccess();

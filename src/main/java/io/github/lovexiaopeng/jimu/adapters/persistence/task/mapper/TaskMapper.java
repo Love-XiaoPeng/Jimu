@@ -33,6 +33,24 @@ public interface TaskMapper {
       @Param("tenant") String tenant,
       @Param("taskId") String taskId);
 
+  /** M1 原生锁行：保留准入、材料、额度和末端消费者；不读取请求正文等未消费字段。 */
+  List<Map<String, Object>> selectModelAdmissionTaskForUpdate(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  /** Non-null M1 extension state retains the full source projection and original consumers. */
+  List<Map<String, Object>> selectExtendedModelAdmissionTaskForUpdate(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
+  /** 原 scope-query 消费者：保完整准入材料与权限，只删除未消费的调度/模型额度字段。 */
+  List<Map<String, Object>> selectLineageQueryTaskForUpdate(
+      @Param("query") SessionQueryContext query,
+      @Param("tenant") String tenant,
+      @Param("taskId") String taskId);
+
   List<Map<String, Object>> selectEvaluationRun(
       @Param("query") SessionQueryContext query,
       @Param("tenant") String tenant,

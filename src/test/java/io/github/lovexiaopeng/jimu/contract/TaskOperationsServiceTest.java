@@ -23,6 +23,8 @@ class TaskOperationsServiceTest {
   private boolean scope, history, quiescent = true, access = true;
   private long next = 2, oldest = 1;
   private int pageLimit;
+  private TaskFailure viewFailure;
+  private int accessCalls;
 
   private TaskOperationsServiceImpl service() {
     var row =
@@ -31,6 +33,8 @@ class TaskOperationsServiceTest {
                 getClass().getClassLoader(),
                 new Class<?>[] {TaskOperationsRecords.Row.class},
                 (p, m, a) -> {
+                  if (m.isDefault())
+                    return java.lang.reflect.InvocationHandler.invokeDefault(p, m, a);
                   calls.add(m.getName());
                   return switch (m.getName()) {
                     case "snapshot" ->
@@ -51,6 +55,7 @@ class TaskOperationsServiceTest {
                         List.of(
                             new Tasks.Artifact("artifact", "text/plain", 1, "hash", Instant.EPOCH));
                     case "requireAccess" -> {
+                      if (++accessCalls == 2 && viewFailure != null) throw viewFailure;
                       if (!access) throw new TaskFailure(403, "CAPABILITY_REVOKED");
                       yield null;
                     }
@@ -106,6 +111,25 @@ class TaskOperationsServiceTest {
   }
 
   private final Tasks.Identity owner = new Tasks.Identity("tenant", "owner");
+
+  @Test
+  void viewNeverRedactsCorruptionAsAnOrdinaryScopeStatus() {
+    scope = true;
+    viewFailure = new TaskFailure(409, "SESSION_HISTORY_CORRUPT");
+    org.junit.jupiter.api.Assertions.assertSame(
+        viewFailure, assertThrows(TaskFailure.class, () -> service().get(owner, "id")));
+  }
+
+  @Test
+  void viewStillRedactsNamedRevocationAtItsOwnAccessCheck() {
+    scope = true;
+    viewFailure = new TaskFailure(403, "CAPABILITY_REVOKED");
+    var view = service().get(owner, "id");
+    assertEquals("SESSION_SCOPE_UNAVAILABLE", view.code());
+    org.junit.jupiter.api.Assertions.assertNull(view.summary());
+    assertTrue(view.artifacts().isEmpty());
+    assertEquals("QUEUED", view.state());
+  }
 
   @Test
   void scopeGetRedactsWithoutChangingPublicState() {

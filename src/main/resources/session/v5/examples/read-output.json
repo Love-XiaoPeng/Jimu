@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "session_id": "00000000-0000-4000-8000-000000000051",
+  "history_version": 5,
+  "content_policy": "public-v1",
+  "boundary": "scoped-admission",
+  "upper_seq": 4,
+  "window": {
+    "from_seq": 0,
+    "to_seq": 0,
+    "before_requested": 0,
+    "after_requested": 0
+  },
+  "target": {
+    "version": 5,
+    "session_id": "00000000-0000-4000-8000-000000000051",
+    "seq": 0,
+    "type": "user.message",
+    "time": "2026-10-23T05:00:00Z",
+    "source": {
+      "kind": "request",
+      "step_id": null,
+      "invocation_id": null
+    },
+    "content_policy": "public-v1",
+    "redacted": false,
+    "data": {
+      "content": "积木检索历史事实 🧱"
+    },
+    "source_event_refs": []
+  },
+  "before": [],
+  "after": []
+}

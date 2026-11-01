@@ -1,0 +1,1 @@
+Trace owner-declared continuations within the caller admission scope. Omit session_id for caller. No fork, hidden context inheritance or future descendants.

@@ -31,6 +31,7 @@ class SessionAvailabilityServiceTest {
             getClass().getClassLoader(),
             new Class<?>[] {type},
             (p, m, a) -> {
+              if (m.getName().equals("lineageEnabled")) return false;
               calls.add(
                   prefix
                       + m.getName()

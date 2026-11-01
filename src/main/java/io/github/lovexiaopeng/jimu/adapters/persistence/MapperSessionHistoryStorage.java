@@ -2,7 +2,6 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 
 import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcSessionRecords.s;
 
-import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;
 import java.util.Map;
 
@@ -31,13 +30,13 @@ final class MapperSessionHistoryStorage
 
   public void insert(Binding binding) {
     int version = records.version(task);
-    String digest = Payloads.hash(binding.snapshot());
+    String digest = records.policyHash(task, binding.snapshot());
     records
         .historyStorageMapper()
         .create(
             records.appendQuery(),
             version,
-            binding.snapshot(),
+            records.contract(task).historySnapshot(records.appendQuery()),
             digest,
             binding.tenant(),
             binding.task());

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jimu:session:v5:session-trace-input:0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "session_id": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"}
+  },
+  "$comment": "Omitted session_id resolves to the host-bound caller. UTF8 input<=1024 bytes. This selector cannot expand the immutable authority scope."
+}

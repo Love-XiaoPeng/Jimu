@@ -183,6 +183,54 @@ class SessionScopeQueryServiceTest {
   }
 
   @Test
+  void lineageAccountsOnceAfterBothReliableEventsAndSlotCommit() throws Exception {
+    lineage();
+    assertEquals("output", trace());
+    assertEquals(2, records.log.stream().filter("eventBeforeFinalAccount"::equals).count());
+    assertFalse(records.log.contains("event"));
+    assertEquals(1, records.log.stream().filter("account"::equals).count());
+    assertTrue(records.log.indexOf("commitQuery") < records.log.indexOf("account"));
+    assertEquals(
+        new SessionScopeQueries.LineageProof(5, 3, 100, 10000), records.committed.lineage());
+  }
+
+  @Test
+  void lineageFinalAccountingRefusalRollsBackEventsAndConsumption() throws Exception {
+    lineage();
+    records.fail = "account";
+    assertThrows(TaskFailure.class, this::trace);
+    assertTrue(records.log.contains("consumeTask"));
+    assertTrue(records.log.contains("commitQuery"));
+    assertEquals("rollback", records.log.getLast());
+  }
+
+  @Test
+  void lineageReplayChecksGraphAndCommitWithoutAnotherConsumption() throws Exception {
+    lineage();
+    replay();
+    assertEquals("output", trace());
+    assertTrue(records.log.contains("verifyLineageCommit"));
+    assertFalse(records.log.contains("trace"));
+    assertFalse(records.log.contains("consumeTask"));
+  }
+
+  private void lineage() throws Exception {
+    records.values.put("lineageTask", true);
+    records.values.put("graphDigest", "graph");
+    records.values.put(
+        "trace",
+        new SessionScopeQueries.Result(
+            "output", null, "scan", 5, 0, new SessionScopeQueries.LineageProof(5, 3, 100, 10000)));
+    records.change("operation", "TRACE");
+    records.change("graph", "graph");
+  }
+
+  private String trace() {
+    return service.scopedOrResult(
+        lease, "step", new Call("slot", "provider", "session_trace", "{}"), "version", "digest");
+  }
+
+  @Test
   void pendingSettlementBeforeFinalFenceAndAccounting() {
     assertEquals("output", query());
     assertTrue(records.log.indexOf("finishInvocation") < records.log.indexOf("commitQuery"));

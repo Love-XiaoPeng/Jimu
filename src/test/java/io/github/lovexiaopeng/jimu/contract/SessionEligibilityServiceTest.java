@@ -29,6 +29,7 @@ class SessionEligibilityServiceTest {
             getClass().getClassLoader(),
             new Class<?>[] {type},
             (p, m, a) -> {
+              if (m.getName().equals("lineage")) return false;
               String key = prefix + m.getName();
               calls.add(key + (a != null && a.length > 0 ? ":" + a[0] : ""));
               var value = values.get(key);

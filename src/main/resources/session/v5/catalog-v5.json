@@ -1,0 +1,53 @@
+{
+  "version": 5,
+  "profile": "local-session-trace-v5",
+  "historyVersion": 5,
+  "eventVersion": 5,
+  "contentPolicy": "public-v1",
+  "tools": [
+    {
+      "name": "session_event_read",
+      "version": "0.5.0",
+      "pluginId": "jimu.session.event_read",
+      "inputSha256": "3947b127ca51da7625ee817d71d6166f9939ca629eebee9a33df86fb81d0e6a0",
+      "outputSha256": "8fad2125831919d1b6fbea40588d259c39fb50827ea49ba8fb6128d707c87dd8",
+      "manifestSha256": "3590fa3bec7781f17000da2033a5d0e14a064147d8ca2888da4a0b2bc197a998",
+      "descriptionSha256": "695b9ea5f0fac218aa5abfbb207c803995502eb8de516c5b5404ba32a1095412"
+    },
+    {
+      "name": "session_search",
+      "version": "0.2.0",
+      "pluginId": "jimu.session.search",
+      "inputSha256": "d9aa4b214420c1201899be88662e6f0b8b4f2ec62617a5052abd6a907c89fc16",
+      "outputSha256": "e8b4ede2898268f9edb1385b7681e1ca058cea5b8336d63c7625ff291cb2a1d5",
+      "manifestSha256": "c508f697d4cdb526ff58734e9fc0d12d14abeb10f194139a88ae688a6298e89f",
+      "descriptionSha256": "77cc9f0ab2b2534f0277aa5469822a7212802f89836b538f058ec79dc112b756"
+    },
+    {
+      "name": "session_trace",
+      "version": "0.1.0",
+      "pluginId": "jimu.session.trace",
+      "inputSha256": "f247361fc326f508c5a9d0c1e0a2ed30de7b085a09e5651c9f6bd0540cc62725",
+      "outputSha256": "f3da08feba2f25ce25c15119e9ce99c09dff3c9dcd6f42426cf77624f3c2b433",
+      "manifestSha256": "ba03565e0deb2ff52d88098f420a7234d3ee7532b5e8bc92b90b136318917461",
+      "descriptionSha256": "482643bbcf7a56e5a9d8088df48953413fad37b1fbc0e4f5c156dfb89a0a717f"
+    }
+  ],
+  "upstream": {
+    "revision": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+    "entryBlob": "61e18cc8f57826d672ba95b6e1fc2dd6d93e8274",
+    "license": "MIT"
+  },
+  "schemas": {
+    "admission-input.schema.json": "ce4912b50552eeb771895218da8d96d9a75365b4602713aad9cb74567ecf5185",
+    "admission-output.schema.json": "8f7752f9e806ed064bcc38eb7200b49b7fc619ae5170e5106061d4047ea1bcd9",
+    "authority-scope.schema.json": "27b6847ed7678895d1f1a17ebbae2070dcba07fe2f417c69ce6810afb4d0def9",
+    "context-v5.schema.json": "db97bac2480beabf114eb4dd34ff3c4f98680f247c8183f5c96679ab050430fe",
+    "event-v5.schema.json": "d3c85bdf8b3191d364cfdb0255d682caf737236087af0a98b8471fcc662feecb",
+    "genesis.schema.json": "86bea4af466f7190dcd9d2a5e7c0eeea7e92965be223d36e2db64744a4e60551",
+    "graph.schema.json": "e6c4f774c95a0a73c0a1e9e4f0528750adcc2f46b09e2851a6a6689f166a8f8b",
+    "owner-history-v5.schema.json": "a248e653a1aab94f5140a46ddccc0a49ee226cc3f25d8ed64b260f31da1c0888",
+    "read-refs.schema.json": "aef90cf87c72ab84cafb630e161c095857d8a6ac62f867219b298462b72df314"
+  },
+  "compatibility": "ADR-0016; owner-declared continuation; admission-scope only"
+}

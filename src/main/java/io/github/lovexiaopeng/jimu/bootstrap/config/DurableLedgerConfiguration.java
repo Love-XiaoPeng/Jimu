@@ -96,6 +96,8 @@ public class DurableLedgerConfiguration {
         env.getProperty("jimu.session-event-read.enabled", Boolean.class, false), sensitive);
     ledger.priorSessionSearchEnabled(
         env.getProperty("jimu.session-search.enabled", Boolean.class, false));
+    ledger.sessionLineageEnabled(
+        env.getProperty("jimu.session-trace.enabled", Boolean.class, false));
     ledger.sessionTraceEnabled(
         env.getProperty("jimu.session-event-trace.enabled", Boolean.class, false));
     ledger.sessionSearchEnabled(

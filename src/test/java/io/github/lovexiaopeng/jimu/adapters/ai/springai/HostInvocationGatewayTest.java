@@ -93,7 +93,19 @@ class HostInvocationGatewayTest {
   @Test
   void sessionCommitUnconfirmedIsPropagatedUnchanged() throws Exception {
     var fixture = new Fixture("session_event_read", "{\"seq\":1}");
-    var failure = new SessionCommitUnconfirmed();
+    var failure =
+        new SessionCommitUnconfirmed(
+            new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionUnconfirmed(
+                new java.sql.SQLException("ACK"),
+                new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionOutcome(
+                    io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionOutcome
+                        .Completion.UNKNOWN,
+                    io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionTransactionOutcome
+                        .Phase.BEFORE_COMMIT,
+                    1,
+                    2,
+                    3,
+                    System.nanoTime())));
     fixture.failure = failure;
     assertSame(
         failure,

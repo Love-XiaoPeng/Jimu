@@ -3,10 +3,8 @@ package io.github.lovexiaopeng.jimu.adapters.persistence;
 import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcSessionRecords.n;
 import static io.github.lovexiaopeng.jimu.adapters.persistence.JdbcSessionRecords.s;
 
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent;
 import io.github.lovexiaopeng.jimu.adapters.codec.Payloads;
-import io.github.lovexiaopeng.jimu.adapters.persistence.session.entity.ScopeQueryStepEntity;
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.entity.SessionPreparedScopeEntity;
 import io.github.lovexiaopeng.jimu.adapters.persistence.session.mapper.SessionPreparedScopeMapper;
 import io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts;
@@ -66,12 +64,7 @@ final class MapperSessionCheckpointPreparation implements SessionCheckpointPrepa
 
   public void updateStep(long upper, String contextDigest, String bindingDigest) {
     records.updatePreparedStep(
-        new LambdaUpdateWrapper<ScopeQueryStepEntity>()
-            .set(ScopeQueryStepEntity::getSessionUpperSeq, upper)
-            .set(ScopeQueryStepEntity::getSessionContextDigest, contextDigest)
-            .set(ScopeQueryStepEntity::getSessionBindingDigest, bindingDigest)
-            .eq(ScopeQueryStepEntity::getTenantId, s(task, "tenant_id"))
-            .eq(ScopeQueryStepEntity::getRowId, step));
+        s(task, "tenant_id"), s(task, "id"), step, upper, contextDigest, bindingDigest);
   }
 
   public boolean scopeTask() {
