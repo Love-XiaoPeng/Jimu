@@ -61,6 +61,12 @@ public interface SessionHistoryProofs {
 
     Context context(String raw);
 
+    /** Validate and extract this same context without requiring a second decode. */
+    default Context checkedContext(String raw) {
+      validateContext(raw);
+      return context(raw);
+    }
+
     String lastRole();
 
     String historyBinding();

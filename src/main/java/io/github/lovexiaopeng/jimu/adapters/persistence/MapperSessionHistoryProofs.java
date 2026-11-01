@@ -138,6 +138,13 @@ final class MapperSessionHistoryProofs
         value.path("session_id").asText(), value.path("upper_seq").asLong());
   }
 
+  @Override
+  public SessionHistoryProofs.Context checkedContext(String raw) {
+    var value = records.contract(task).checkedContext(raw);
+    return new SessionHistoryProofs.Context(
+        value.path("session_id").asText(), value.path("upper_seq").asLong());
+  }
+
   public String lastRole() {
     return checkpoint.messages().getLast().role();
   }

@@ -276,17 +276,24 @@ public final class SessionContracts {
   }
 
   public void context(String raw) {
-    validate(context, raw, SessionHistoryPolicyV1.CONTEXT_BYTES);
+    checkedContext(raw);
+  }
+
+  /** The current step consumer borrows only this invocation's schema-checked tree. */
+  public JsonNode checkedContext(String raw) {
+    return validate(context, raw, SessionHistoryPolicyV1.CONTEXT_BYTES);
   }
 
   public void owner(String raw) {
     validate(owner, raw, SessionHistoryPolicyV1.OWNER_BYTES);
   }
 
-  private void validate(SchemaContract contract, String raw, int max) {
+  private JsonNode validate(SchemaContract contract, String raw, int max) {
     if (bytes(raw) > max) throw new TaskFailure(429, SessionErrorCode.SESSION_HISTORY_LIMIT);
     try {
-      contract.validate(json(raw, max));
+      var value = json(raw, max);
+      contract.validate(value);
+      return value;
     } catch (IllegalArgumentException | TaskFailure e) {
       throw new TaskFailure(409, SessionErrorCode.SESSION_HISTORY_CORRUPT);
     }

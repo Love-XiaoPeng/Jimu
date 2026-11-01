@@ -28,8 +28,7 @@ public final class SessionHistoryProofServiceImpl implements SessionHistoryProof
     if (!p.requestHash(request).equals(st.requestDigest())) throw corrupt();
     if (p.checkpointVersion(request) != 2 || p.messagesEmpty()) throw corrupt();
     String context = p.lastContent();
-    p.validateContext(context);
-    var value = p.context(context);
+    var value = p.checkedContext(context);
     if (!p.lastRole().equals("user")
         || !p.task().equals(value.session())
         || !p.hash(context).equals(st.contextDigest())

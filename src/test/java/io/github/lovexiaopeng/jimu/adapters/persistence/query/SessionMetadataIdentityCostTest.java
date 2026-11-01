@@ -387,11 +387,13 @@ class SessionMetadataIdentityCostTest {
 
   @Test
   void bootstrapRefusalAndInstallBoundaryAlwaysRefundsUnregisteredOwner() throws Exception {
-    for (int remaining : new int[] {11, 12, 23, 24, 25, 60, 90, 127, 128, 129}) {
+    // The original lock registry added six actual constructor operations (12 -> 18).
+    for (int remaining :
+        new int[] {11, 12, 17, 18, 23, 24, 25, 60, 90, 127, 128, 129, 133, 134, 135}) {
       var f = new SessionQueryTransactionTest.Fixture();
       var q = query();
       q.operation(65536 - q.resources().operations() - remaining);
-      if (remaining < 128) {
+      if (remaining < 134) {
         assertThrows(RuntimeException.class, () -> f.transaction.required(q, () -> "done"));
         assertEquals(0, f.commits);
         assertEquals(1, f.rollbacks);
@@ -413,13 +415,34 @@ class SessionMetadataIdentityCostTest {
       var f = new SessionQueryTransactionTest.Fixture();
       var q = query();
       var filler = new Object();
-      q.retainScratch(filler, 1048576 - 65536 - 1280 - 4160 - delta);
+      // The current lock registry coexists with the original relation and Settings owners.
+      q.retainScratch(filler, 1048576 - 65536 - 128 - 1280 - 4160 - delta);
       long baseline = q.scratchLive();
       try {
         if (delta < 0)
           assertThrows(RuntimeException.class, () -> f.transaction.required(q, () -> "done"));
         else assertEquals("done", f.transaction.required(q, () -> "done"));
         assertEquals(baseline, q.scratchLive());
+      } finally {
+        q.releaseScratch(filler);
+      }
+      assertEquals(65536, q.scratchLive());
+    }
+  }
+
+  @Test
+  void partiallyReservedWorkConstructorReleasesBeforeSettingsCanRegister() {
+    for (int free : new int[] {127, 128, 129, 1407, 1408, 1409}) {
+      var f = new SessionQueryTransactionTest.Fixture();
+      var q = query();
+      var filler = new Object();
+      q.retainScratch(filler, 1048576 - 65536 - free);
+      long baseline = q.scratchLive();
+      try {
+        assertThrows(RuntimeException.class, () -> f.transaction.required(q, () -> "unreachable"));
+        assertEquals(0, f.commits);
+        assertEquals(1, f.rollbacks);
+        assertEquals(baseline, q.scratchLive(), "constructor free=" + free);
       } finally {
         q.releaseScratch(filler);
       }

@@ -841,7 +841,12 @@ public final class SessionQueryWork {
     this.context = context;
     context.operation(18); // failures plus original-lock registry/lookup owner and final cleanup
     context.retainScratch(lockScratch, lockBytes);
-    context.retainScratch(relationScratch, RELATION_ROOT_BYTES);
+    try {
+      context.retainScratch(relationScratch, RELATION_ROOT_BYTES);
+    } catch (RuntimeException | Error failure) {
+      context.releaseScratch(lockScratch);
+      throw failure;
+    }
     metadataClosed = new MetadataClosedFailure();
     metadataError = new MetadataError();
     relations = new LinkedHashMap<>();

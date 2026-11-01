@@ -15,6 +15,50 @@ import org.junit.jupiter.api.Test;
 
 class SessionModelStepEncodingTest {
   @Test
+  void currentStepContextExtractsOnlyAfterItsOwnSchemaValidation() throws Exception {
+    var records = new JdbcSessionRecords(new org.springframework.jdbc.core.JdbcTemplate());
+    var proof =
+        new MapperSessionHistoryProofs(
+            records,
+            java.util.Map.of(
+                "capabilities",
+                io.github.lovexiaopeng.jimu.kernel.session.api.SessionLineagePolicyV5.CAPABILITIES),
+            java.util.Map.of());
+    String raw;
+    try (var source = getClass().getResourceAsStream("/session/v5/examples/context.json")) {
+      raw = new String(source.readAllBytes(), StandardCharsets.UTF_8);
+    }
+    // The frozen illustrative example predates v5's two required lineage digests.
+    // Complete this local shape fixture without changing that published example.
+    raw =
+        raw.replaceFirst(
+            "\\{",
+            "{\"genesis_sha256\":\""
+                + "a".repeat(64)
+                + "\",\"graph_sha256\":\""
+                + "b".repeat(64)
+                + "\",");
+    var checked = proof.checkedContext(raw);
+    assertEquals("00000000-0000-4000-8000-000000000055", checked.session());
+    assertEquals(3, checked.upper());
+    for (String invalid :
+        List.of(
+            raw.replace("\"version\": 5", "\"version\": 4"),
+            raw.replace("\"upper_seq\": 3", "\"upper_seq\": -1"),
+            raw.replaceFirst("\\{", "{\"unexpected\":true,"),
+            "{\"session_id\":\"x\",\"upper_seq\":3}",
+            raw + " {}")) {
+      var failure = assertThrows(TaskFailure.class, () -> proof.checkedContext(invalid));
+      assertEquals("SESSION_HISTORY_CORRUPT", failure.code());
+    }
+    assertEquals(
+        "SESSION_HISTORY_LIMIT",
+        assertThrows(TaskFailure.class, () -> proof.checkedContext(" ".repeat(4097))).code());
+    // A prior successful call cannot authorize a changed raw or replace a fresh parse.
+    assertEquals(checked, proof.checkedContext(new String(raw)));
+  }
+
+  @Test
   void nodeRawViewsEachUseTheirOwnResultEncodingLengthAndDigest() {
     var q = query();
     String raw = "a字😀\u0000";
