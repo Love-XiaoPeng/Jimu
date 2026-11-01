@@ -310,6 +310,95 @@ public final class SessionJointProjectionScenario {
     }
   }
 
+  /** Original no-source M1 only: complete service transaction, never call the model. */
+  private static void modelAdmissionPreflight() throws Exception {
+    String goal = "qa-r54-single-response-three-trace";
+    byte[] raw =
+        Payloads.json(Map.of("goal", goal, "history_session_ids", List.of()))
+            .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    var v = view();
+    var submitted =
+        v.submitSessionLineage(
+            IDENTITY, "m1-preflight", end -> raw, v.queryContext().deadlineNanos());
+    String worker = "m1-private-worker";
+    root.registerWorker(worker, worker, ProcessHandle.current().pid(), 1, "private", "private");
+    var lease = root.claim(worker).orElseThrow();
+    check(lease.taskId().equals(submitted.taskId()), "M1 claims its exact genuine task");
+    var model = root.modelSnapshot(lease);
+    var definitions = new ArrayList<org.springframework.ai.tool.definition.ToolDefinition>();
+    for (String name : lease.capabilities()) {
+      String description, schema;
+      if (name.equals("session_trace")) {
+        var contracts = new SessionLineageContracts();
+        description = contracts.description();
+        schema = contracts.inputSchema();
+      } else if (name.equals("session_search")) {
+        var contracts =
+            new io.github.lovexiaopeng.jimu.adapters.runtime.session.PriorSessionContracts(5);
+        description = contracts.description();
+        schema = contracts.inputSchema();
+      } else {
+        var contracts =
+            new io.github.lovexiaopeng.jimu.adapters.runtime.session.SessionContracts(5);
+        description = contracts.description();
+        schema = contracts.inputSchema();
+      }
+      definitions.add(
+          org.springframework.ai.tool.definition.ToolDefinition.builder()
+              .name(name)
+              .description(description)
+              .inputSchema(schema)
+              .build());
+    }
+    var messages =
+        List.of(
+            new io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.WireMessage(
+                "user", goal, List.of(), List.of()),
+            new io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.WireMessage(
+                "user", root.sessionContext(lease), List.of(), List.of()));
+    String body =
+        new io.github.lovexiaopeng.jimu.adapters.ai.springai.OpenAiProtocol()
+            .body(model, messages, definitions);
+    String encoded =
+        Payloads.json(
+            new io.github.lovexiaopeng.jimu.adapters.ai.springai.DurableAgent.Checkpoint(
+                2,
+                model.model(),
+                messages,
+                lease.capabilities(),
+                lease.installationEpoch(),
+                model.stream(),
+                ModelProfiles.digest(model),
+                body,
+                Payloads.hash(body)));
+    var step = root.prepare(lease, encoded);
+    var factory =
+        JdbcLedger.class.getDeclaredMethod(
+            "queryView",
+            io.github.lovexiaopeng.jimu.kernel.task.api.ExecutionLedger.Lease.class,
+            boolean.class);
+    factory.setAccessible(true);
+    var admission = (JdbcLedger) factory.invoke(root, lease, true);
+    var before = SessionDependencyScenario.snapshot(db);
+    boolean committed = false;
+    try {
+      String dispatch = admission.dispatchModel(lease, step.id());
+      committed = true;
+      check(dispatch != null, "full M1 committed before any model request");
+    } catch (io.github.lovexiaopeng.jimu.kernel.task.api.TaskFailure failure) {
+      check(
+          before.equals(SessionDependencyScenario.snapshot(db)), "M1 failure rolls back 22 tables");
+      System.out.println("M1_PREFLIGHT_FAILURE " + failure.code());
+      failure.printStackTrace(System.out);
+      if (!failure.code().equals("SESSION_HISTORY_LIMIT")) throw failure;
+    } finally {
+      var q = admission.queryContext();
+      phase("m1-preflight-committed=" + committed, q);
+      check(q.scratchLive() == 65536, "M1 all owners released");
+      System.out.println("M1_PREFLIGHT checkpointBytes=" + encoded.length() + " modelRequests=0");
+    }
+  }
+
   /** 第二确认提交后才开始的新query；真实require/graph/history/current-live完整保留。 */
   private static void secondEventProof(String id) throws Exception {
     var before = SessionDependencyScenario.snapshot(db);
@@ -453,6 +542,10 @@ public final class SessionJointProjectionScenario {
     root.sessionTraceEnabled(true);
     root.priorSessionSearchEnabled(true);
     root.sessionLineageEnabled(true);
+    if (args.length > 1 && args[1].equals("m1-preflight")) {
+      modelAdmissionPreflight();
+      return;
+    }
     if (args.length > 1 && args[1].equals("sql-history-length")) {
       SessionHistoryLengthSqlScenario.verify(db);
       return;
@@ -466,6 +559,7 @@ public final class SessionJointProjectionScenario {
       if (args[1].equals("borrowed-shapes")
           || args[1].equals("borrowed-source-types")
           || args[1].equals("borrowed-query-task")
+          || args[1].equals("borrowed-model-task")
           || args[1].equals("borrowed-node-input")
           || args[1].equals("borrowed-model-step")
           || args[1].equals("borrowed-model-admission")

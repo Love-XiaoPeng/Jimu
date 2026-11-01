@@ -55,7 +55,7 @@ final class MapperModelWorkflows implements ModelWorkflowRecords {
   public Admission lockAdmission(Lease lease, String stepId) {
     ledger.bindSessionQuery(lease, stepId, null);
     var evaluation = ledger.evaluation(lease);
-    var task = ledger.fenced(lease, true);
+    var task = ledger.fencedModelAdmission(lease, evaluation);
     var model = ledger.snapshot(task);
     ledger.models.admit(model);
     var budget =

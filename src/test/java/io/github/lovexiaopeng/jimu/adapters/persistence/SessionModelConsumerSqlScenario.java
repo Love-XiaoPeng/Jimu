@@ -118,6 +118,14 @@ final class SessionModelConsumerSqlScenario {
   }
 
   static void verifyQueryTask(JdbcTemplate db, String task) {
+    verifyTask(db, task, false);
+  }
+
+  static void verifyModelTask(JdbcTemplate db, String task) {
+    verifyTask(db, task, true);
+  }
+
+  private static void verifyTask(JdbcTemplate db, String task, boolean modelAdmission) {
     var source = db.getDataSource();
     var tx = new SessionQueryTransaction(source, new DataSourceTransactionManager(source));
     var mappers = LedgerMapperSessions.create(source);
@@ -136,7 +144,11 @@ final class SessionModelConsumerSqlScenario {
                 return mappers.<Map<String, Object>>selectOne(
                     ROOT
                         + "task.mapper.TaskMapper."
-                        + (narrow ? "selectLineageQueryTaskForUpdate" : "selectTaskForUpdate"),
+                        + (narrow
+                            ? modelAdmission
+                                ? "selectModelAdmissionTaskForUpdate"
+                                : "selectLineageQueryTaskForUpdate"
+                            : "selectTaskForUpdate"),
                     Map.of("query", q, "tenant", "tenant-a", "taskId", task));
               });
       if (!narrow) {
@@ -152,9 +164,9 @@ final class SessionModelConsumerSqlScenario {
         check(
             !row.containsKey("request_snapshot")
                 && !row.containsKey("summary")
-                && !row.containsKey("models_used")
+                && row.containsKey("models_used") == modelAdmission
                 && row.containsKey("tools_used"),
-            "scope query deletes only unused scheduling/model fields");
+            "task projection deletes only unused fields and preserves M1 model allowances");
         check(q.resources().operations() < cost, "complete scope-query task read saves operations");
       }
       check(
@@ -174,10 +186,16 @@ final class SessionModelConsumerSqlScenario {
               mappers.getMapper(
                   io.github.lovexiaopeng.jimu.adapters.persistence.task.mapper.TaskMapper.class);
           check(
-              sql.selectLineageQueryTaskForUpdate(q, "foreign-tenant", task).isEmpty(),
+              (modelAdmission
+                      ? sql.selectModelAdmissionTaskForUpdate(q, "foreign-tenant", task)
+                      : sql.selectLineageQueryTaskForUpdate(q, "foreign-tenant", task))
+                  .isEmpty(),
               "scope query cannot cross tenant");
           check(
-              sql.selectLineageQueryTaskForUpdate(q, "tenant-a", "missing").isEmpty(),
+              (modelAdmission
+                      ? sql.selectModelAdmissionTaskForUpdate(q, "tenant-a", "missing")
+                      : sql.selectLineageQueryTaskForUpdate(q, "tenant-a", "missing"))
+                  .isEmpty(),
               "scope query cannot cross task");
           return null;
         });

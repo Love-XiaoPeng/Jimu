@@ -2198,33 +2198,48 @@ public final class JdbcLedger
   }
 
   Map<String, Object> fenced(Lease lease, boolean admission) {
-    return fenced(lease, admission, false);
+    return fenced(lease, admission, false, false, null);
   }
 
   Map<String, Object> fencedScopeQuery(Lease lease) {
-    return fenced(lease, true, true);
+    return fenced(lease, true, true, false, null);
   }
 
-  private Map<String, Object> fenced(Lease lease, boolean admission, boolean scopeQuery) {
+  Map<String, Object> fencedModelAdmission(Lease lease, Map<String, Object> evaluation) {
+    return fenced(lease, true, false, true, evaluation);
+  }
+
+  private Map<String, Object> fenced(
+      Lease lease,
+      boolean admission,
+      boolean scopeQuery,
+      boolean modelAdmission,
+      Map<String, Object> modelEvaluation) {
     bindSessionQuery(lease, null, null);
-    if (query != null) query.operation(4); // added scope-query route and shared helper handoff
+    if (query != null) query.operation(8); // scope/model route and original evaluation handoff
     // Hold through the committing transaction: STOPPED cannot race a cached admission,
     // publication or successful finish. Settlement of previously admitted effects stays allowed.
-    var evaluation = evaluation(lease, admission);
+    // M1 already acquired the same evaluation lock immediately before this call; retain its
+    // original row for admission and limits instead of issuing the identical lock read twice.
+    var evaluation = modelAdmission ? modelEvaluation : evaluation(lease, admission);
     // This read owns the lock ordering/existence check; no budget value is consumed here.
     if (query != null && query.lineage())
       first(mappers.budgets().lockBudgetForUpdate(query, lease.tenant()));
     else bucket(lease.tenant());
     Map<String, Object> task;
-    if (scopeQuery && query != null && query.lineage()) {
+    if ((scopeQuery || modelAdmission) && query != null && query.lineage()) {
       query.operation(8); // current route, lock and original row handoff
       sessionScopes.lock(lease.tenant(), lease.taskId());
       task =
           first(
-              mappers
-                  .tasks()
-                  .selectLineageQueryTaskForUpdate(query, lease.tenant(), lease.taskId()));
-      if (!JdbcSessionScopes.lineage(task))
+              modelAdmission
+                  ? mappers
+                      .tasks()
+                      .selectModelAdmissionTaskForUpdate(query, lease.tenant(), lease.taskId())
+                  : mappers
+                      .tasks()
+                      .selectLineageQueryTaskForUpdate(query, lease.tenant(), lease.taskId()));
+      if (scopeQuery && !JdbcSessionScopes.lineage(task))
         throw new TaskFailure(
             409,
             io.github.lovexiaopeng.jimu.kernel.invocation.api.InvocationErrorCode
